@@ -1,0 +1,65 @@
+#~
+A Byte[] read of a TLS socket at the end of the stream returns 0 and stores nothing.
+
+Driven by run_vm_flag_tests.py (check_tls_byte_read_eof): the driver is the TLS server. It
+sends "abc" and then closes the TCP connection WITHOUT a close_notify alert, which is the
+one way a TLS read ends with "no more bytes" rather than an alert (a peer that was killed,
+or one that does not bother with the alert).
+
+TCPSecureSocket->ReadBuffer(offset, num, Byte[]) read a byte at a time and counted every
+attempt, the one that found the end of the stream included: that read returned 1, not 0,
+and stored a zero byte over the caller's element at 'offset' (Codex review round 2, slice
+5, finding 5). A plain TCPSocket returns 0 there and leaves the array alone.
+
+  (no argument)    print PASS, so the regression runner can run this file
+  <port> <cert>    connect to the driver on 127.0.0.1:<port>, trusting <cert>
+~#
+use System.IO.Net;
+
+class TlsByteReadEof {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 2) {
+      "PASS: tls_byte_read_eof"->PrintLine();
+      return;
+    };
+
+    client := TCPSecureSocket->New("127.0.0.1", args[0]->ToInt(), args[1]);
+    if(<>client->IsOpen()) {
+      "FAIL: the TLS client did not connect: {$(TCPSecureSocket->GetLastError())}"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    buffer := Byte->New[8];
+    each(i : buffer) {
+      buffer[i] := 0x58;
+    };
+
+    # the three bytes the server sent
+    first := client->ReadBuffer(0, 3, buffer);
+    # the end of the stream, at an offset: nothing arrives
+    second := client->ReadBuffer(5, 2, buffer);
+    # and again: the end stays the end
+    third := client->ReadBuffer(5, 1, buffer);
+    client->Close();
+
+    shown := "";
+    each(i : buffer) {
+      shown += buffer[i]->As(Int)->ToHexString();
+      shown += ' ';
+    };
+    "first={$first} second={$second} third={$third} buffer={$shown}"->PrintLine();
+
+    ok := first = 3 & buffer[0] = 0x61 & buffer[1] = 0x62 & buffer[2] = 0x63;
+    ok := ok & second = 0 & third = 0;
+    for(i := 3; i < 8; i += 1;) {
+      ok := ok & buffer[i] = 0x58;
+    };
+    if(ok) {
+      "PASS: tls_byte_read_eof read"->PrintLine();
+    }
+    else {
+      "FAIL: a TLS Byte[] read at the end of the stream counted or stored a byte"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}

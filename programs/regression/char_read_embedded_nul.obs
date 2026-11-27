@@ -1,0 +1,249 @@
+#~
+# ReadBuffer(offset, num, Char[]) keeps a zero byte: it is the character U+0000, not the end of the text
+#
+# A Char[] read of a byte stream reads up to 'num' bytes and stores the characters they decode to,
+# returning how many. The bytes were decoded as a C string, so the text ended at the first zero byte:
+# a read of the two bytes 00 41 consumed both, stored nothing and returned 0, which is the answer for
+# the end of the stream, and 'A' was gone (Codex review round 2, slice 5, finding 4). The bytes are now
+# decoded by their length: 00 41 is two characters, U+0000 and 'A'.
+#
+# The same decoder serves a file, a pipe, a TCP socket (and the console, TLS, UDP and DTLS); the first
+# three are driven here.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# writes bytes to the one connection it accepts, then waits to be told to close
+class NulByteSender from Thread {
+	@server : TCPSocketServer;
+	@bytes : Byte[];
+	@release : Bool;
+
+	New(server : TCPSocketServer, bytes : Byte[]) {
+		Parent("nul-byte-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil & client->IsOpen()) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+class NulPipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("nul-pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe { return @pipe; }
+}
+
+class CharReadEmbeddedNul {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("file")) {
+			CheckFile();
+		};
+		if(only->Size() = 0 | only->Equals("pipe")) {
+			CheckPipe();
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			CheckTcp();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} embedded-zero Char[] read check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Char[] reads keep a zero byte as a character"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# every element: ASCII as itself, a zero as '.', anything else as its code point
+	function : Show(chars : Char[]) ~ String {
+		out := "";
+		each(i : chars) {
+			c := chars[i];
+			if(c = '\0') {
+				out += '.';
+			}
+			else if(c->As(Int) < 128) {
+				out += c;
+			}
+			else {
+				out += "<{$(c->As(Int)->ToHexString())}>";
+			};
+		};
+		return out;
+	}
+
+	function : Marks(size : Int) ~ Char[] {
+		marks := Char->New[size];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		return marks;
+	}
+
+	# 00 41
+	function : ZeroThenA() ~ Byte[] {
+		bytes := Byte->New[2];
+		bytes[0] := 0x00; bytes[1] := 0x41;
+		return bytes;
+	}
+
+	# 'a' 00 'b' 00 'c'
+	function : Laced() ~ Byte[] {
+		bytes := Byte->New[5];
+		bytes[0] := 0x61; bytes[1] := 0x00; bytes[2] := 0x62; bytes[3] := 0x00; bytes[4] := 0x63;
+		return bytes;
+	}
+
+	function : LacedOk(chars : Char[]) ~ Bool {
+		return chars[0] = 'a' & chars[1] = '\0' & chars[2] = 'b' & chars[3] = '\0' & chars[4] = 'c';
+	}
+
+	function : Put(name : String, bytes : Byte[]) ~ Nil {
+		writer := FileWriter->New(name);
+		writer->WriteBuffer(0, bytes->Size(), bytes);
+		writer->Close();
+	}
+
+	function : CheckFile() ~ Nil {
+		name := "char_read_embedded_nul_{$Runtime->GetProcessId()}.tmp";
+
+		# the finding: two bytes, 00 41, read as two characters
+		Put(name, ZeroThenA());
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(0, 2, chars);
+		end := reader->ReadBuffer(2, 2, chars);
+		reader->Close();
+		Check("a file read of 00 41 returns 2, U+0000 and 'A' (got {$got}, '{$Show(chars)}')",
+			got = 2 & chars[0] = '\0' & chars[1] = 'A');
+		Check("and the end of the file is 0 after it (got {$end})", end = 0);
+
+		# at an offset, the element before the slice is the caller's
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(3, 2, chars);
+		reader->Close();
+		Check("a file read of 00 41 at offset 3 stores both there (got {$got}, '{$Show(chars)}')",
+			got = 2 & chars[2] = 'X' & chars[3] = '\0' & chars[4] = 'A');
+
+		# zeros between characters, in one read and one byte at a time
+		Put(name, Laced());
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(0, 5, chars);
+		reader->Close();
+		Check("a file read of a 00 b 00 c returns 5 (got {$got}, '{$Show(chars)}')", got = 5 & LacedOk(chars));
+
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		counts := "";
+		for(i := 0; i < 6; i += 1;) {
+			counts += reader->ReadBuffer(i, 1, chars);
+		};
+		reader->Close();
+		Check("read 1 at a time every byte is one character and only the end is 0 (counts {$counts}, '{$Show(chars)}')",
+			counts->Equals("111110") & LacedOk(chars));
+
+		File->Delete(name);
+	}
+
+	function : CheckPipe() ~ Nil {
+		name := "objeck-pipe-nul-{$Int->Random(100000, 999999)}";
+		owner := NulPipeOwner->New(name);
+		owner->Execute(Nil);
+
+		client : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			client := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := client->IsOpen();
+		};
+		owner->Join();
+		server := owner->GetPipe();
+		if(<>opened | <>server->IsOpen()) {
+			Check("the pipe connects", false);
+			return;
+		};
+
+		bytes := ZeroThenA();
+		client->WriteBuffer(0, bytes->Size(), bytes);
+		chars := Marks(8);
+		got := server->ReadBuffer(0, 2, chars);
+		Check("a pipe read of 00 41 returns 2, U+0000 and 'A' (got {$got}, '{$Show(chars)}')",
+			got = 2 & chars[0] = '\0' & chars[1] = 'A');
+
+		client->Close();
+		server->Close();
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		sender := NulByteSender->New(server, Laced());
+		sender->Execute(Nil);
+
+		client := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(<>client->IsOpen()) {
+			Check("the TCP client connects", false);
+			sender->Release();
+			return;
+		};
+		client->SetRecvTimeout(10000);
+
+		chars := Marks(8);
+		got := client->ReadBuffer(0, 2, chars);
+		Check("a TCP read of a 00 returns 2 (got {$got}, '{$Show(chars)}')", got = 2 & chars[0] = 'a' & chars[1] = '\0');
+		got := client->ReadBuffer(2, 3, chars);
+		Check("and the three bytes after it are three characters (got {$got}, '{$Show(chars)}')", got = 3 & LacedOk(chars));
+
+		sender->Release();
+		client->Close();
+		sender->Join();
+		server->Close();
+	}
+}
