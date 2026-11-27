@@ -506,7 +506,16 @@ namespace Runtime {
     static void PublishThreadHandle(size_t* slot, size_t handle, size_t fault_key);
     static size_t TakeThreadHandle(size_t* slot, size_t& fault_key);
     static void EndThreadFault(size_t key, bool faulted, const std::wstring& message);
-    static void TakeThreadFault(size_t key);
+    // `faulted`: what the joined thread itself said as it ended (its exit status)
+    static void TakeThreadFault(size_t key, bool faulted);
+    // The exit status of a thread the VM started that ended in an isolated
+    // fault (0 otherwise): the thread function's return value, which Join reads
+    // back from the system. It is how a Join knows the thread faulted when the
+    // registry no longer has its message (THREAD_FAULT_RECORD_CAP).
+    static const unsigned int THREAD_FAULT_EXIT = 1;
+    // The most messages kept for faulted threads that nothing has joined yet.
+    // One more drops the oldest; its Join then reports THREAD_FAULT_DROPPED.
+    static const size_t THREAD_FAULT_RECORD_CAP = 4096;
     static size_t ThreadFaultCount();
     // Test hook: with OBJECK_THREAD_FAULT_STATS=1, what the registry still holds
     // when Main has returned, as one line on stderr. Not a program-visible value.

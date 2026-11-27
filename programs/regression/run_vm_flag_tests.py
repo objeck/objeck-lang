@@ -433,7 +433,14 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     handles=0, and 4,000 such threads must cost under 32 KB of peak resident
     memory each over 500 (9 to 13 KB on Linux x64, all of it the unjoined
     thread's own stack, which this does not change: the bound is a ceiling,
-    the registry line is the measurement).
+    the registry line is the measurement). Faulted threads that are never
+    joined are the one open-ended case, and are capped: "capped" 10000 times
+    (ten thousand faulting, unjoined threads) must leave records=4095
+    handles=4095 dropped=5904 -- the newest 4096 kept, less the newest one
+    that the program joins -- must print the one-line count of dropped faults,
+    and its three Joins must report the newest worker's own message, "Thread
+    fault record dropped" for the oldest, and nothing for a worker that did
+    not fault; "capped" 100 times, under the cap, drops nothing.
  39. A caller and its callee compiled at the same moment by two threads give
     the right code. A generated program has 24 pairs: a long `Caller`, compiled
     on its first call, that holds a call of a `native` `Leaf` its first call
@@ -1996,6 +2003,20 @@ def check_thread_fault_registry(obc, obr, env, bin_dir):
             if left is not None:
                 check(f"{scenario} x {count} leaves nothing in the registry (records={left[0]} handles={left[1]})",
                       left == want, f"left={left}")
+
+        # faulted and never joined: the newest 4096 records are kept
+        for count, want, dropped in ((100, (98, 98), 0), (10000, (4095, 4095), 5904)):
+            rc, out, err = run([obr, dest, "capped", str(count)], env=stats_env, cwd=bin_dir, timeout=600)
+            left = thread_fault_registry_left(err)
+            said = re.search(rb"^\[thread-faults\] (\d+) unjoined worker faults dropped \(cap 4096\)", err, re.M)
+            check(f"capped x {count}: the newest, the oldest and an unfaulted worker each report what they should",
+                  rc == 0 and f"PASS: capped x {count}".encode() in out and left is not None,
+                  f"rc={rc} out={out[-200:]!r}")
+            if left is not None:
+                check(f"capped x {count} leaves {want[0]} records (records={left[0]} handles={left[1]})",
+                      left == want, f"left={left}")
+            check(f"capped x {count}: {dropped} dropped faults are " + ("counted on stderr" if dropped else "not mentioned"),
+                  (int(said.group(1)) == dropped) if said else dropped == 0, f"line={said.group(0) if said else None!r}")
 
         # peak resident memory per unjoined thread, isolation off
         rss_env = dict(stats_env)

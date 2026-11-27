@@ -1749,7 +1749,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
     VmExit(1);
 #endif
   }
-  TakeThreadFault(fault_key);
+  TakeThreadFault(fault_key, (size_t)status == THREAD_FAULT_EXIT);
 #ifdef __linux__
   // the stack the VM allocated for it (ProcessAsyncMethodCall)
   ThreadStacks::Release(vm_thread);
@@ -1758,7 +1758,9 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   MemoryManager::EndBlocking();
 
 #ifdef _WIN32
-  TakeThreadFault(fault_key);
+  DWORD exit_code = 0;
+  GetExitCodeThread(vm_thread, &exit_code);
+  TakeThreadFault(fault_key, exit_code == THREAD_FAULT_EXIT);
   // The thread has finished and been joined. Close its handle, which nothing did: each
   // thread a program started kept a kernel object for the life of the process. The
   // Thread object is not touched again: its slot was emptied before the wait, and may
@@ -2305,7 +2307,8 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
 // in the JIT's bridge, which reports the same way; this one covers the
 // interpreter.
 //
-static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack, size_t* stack_pos,
+// Returns whether the thread ended in an isolated fault.
+static bool ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack, size_t* stack_pos,
                               StackMethod* called, size_t* self, bool isolate = false, size_t fault_key = 0)
 {
   try {
@@ -2321,6 +2324,7 @@ static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack
     }
     // however it ended: a thread nothing can join any more leaves the registry here
     StackInterpreter::EndThreadFault(fault_key, faulted, fault);
+    return faulted;
   }
   catch(const std::bad_alloc&) {
     std::wcerr << L">>> virtual machine: out of memory <<<" << std::endl;
@@ -2335,6 +2339,8 @@ static void ExecuteThreadBody(Runtime::StackInterpreter* intpr, size_t* op_stack
     std::wcerr << L">>> virtual machine: unexpected error <<<" << std::endl;
     VmExit(-1);
   }
+  // not reached: each catch ends the process
+  return false;
 }
 
 //
@@ -2397,10 +2403,11 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // Halted on registering: Main returned before this thread started, and the
   // program is being torn down. It ends as a thread halted mid-run does, without
   // entering a method it would only leave again.
+  bool faulted = false;
   if(!intpr->IsHalted()) {
     // isolated when its parent registered it (ProcessAsyncMethodCall)
-    ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                      holder->fault_key != 0, holder->fault_key);
+    faulted = ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
+                                holder->fault_key != 0, holder->fault_key);
   }
   else {
     // it ran nothing, and ended without a fault
@@ -2443,7 +2450,8 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
   ThreadFinished();
 
-  return 0;
+  // the thread's exit status: its Join reads whether it faulted (THREAD_FAULT_EXIT)
+  return faulted ? THREAD_FAULT_EXIT : 0;
 }
 #else
 //
@@ -2477,10 +2485,11 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // Halted on registering: Main returned before this thread started, and the
   // program is being torn down. It ends as a thread halted mid-run does, without
   // entering a method it would only leave again.
+  bool faulted = false;
   if(!intpr->IsHalted()) {
     // isolated when its parent registered it (ProcessAsyncMethodCall)
-    ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                      holder->fault_key != 0, holder->fault_key);
+    faulted = ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
+                                holder->fault_key != 0, holder->fault_key);
   }
   else {
     // it ran nothing, and ended without a fault
@@ -2523,7 +2532,8 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
   ThreadFinished();
 
-  return nullptr;
+  // the thread's exit status: its Join reads whether it faulted (THREAD_FAULT_EXIT)
+  return faulted ? (void*)(size_t)THREAD_FAULT_EXIT : nullptr;
 }
 #endif
 
@@ -4351,7 +4361,9 @@ void StackInterpreter::FinishThreadFault()
 //     takes its handle's binding with it; a thread started while isolation is
 //     off is never in the registry at all (thread_fault_registry.obs,
 //     "unjoined" and "plain": 2,000 unjoined threads used to leave 2,000
-//     bindings). An abandoned
+//     bindings);
+//   - of the entries kept for a Join that has not come, at most
+//     THREAD_FAULT_RECORD_CAP (see EndThreadFault). An abandoned
 //     thread's entry goes when the thread ends, its message with it. It used
 //     to be the other way about: the restart dropped the binding, and when the
 //     earlier run faulted afterwards its message was stored under a key no
@@ -4385,6 +4397,20 @@ static std::unordered_map<size_t, size_t>& ThreadFaultKeys()
   static std::unordered_map<size_t, size_t> keys;   // handle -> key
   return keys;
 }
+// The keys of the entries that are only waiting for a Join that may never
+// come: ended, faulted, not claimed, not abandoned. These are the registry's
+// one open-ended part -- a program that starts faulting threads and never joins
+// them adds one per thread -- so there are at most THREAD_FAULT_RECORD_CAP of
+// them. Keys rise with each start, so the first is the oldest.
+static std::set<size_t>& ThreadFaultsUnjoined()
+{
+  static std::set<size_t> unjoined;
+  return unjoined;
+}
+static size_t thread_faults_dropped = 0;
+// what the Join of a thread whose record was dropped reports
+static const wchar_t* const THREAD_FAULT_DROPPED =
+  L"Thread fault record dropped: the thread ended in an uncaught error, but too many faulted threads were left unjoined to keep its message";
 static std::atomic<size_t> thread_fault_next_key(1);
 static std::atomic<size_t> thread_fault_count(0);
 static std::wstring last_thread_fault;
@@ -4409,6 +4435,7 @@ void StackInterpreter::PublishThreadHandle(size_t* slot, size_t handle, size_t f
       const auto entry = ThreadFaults().find(bound->second);
       if(entry != ThreadFaults().end()) {
         if(entry->second.ended) {
+          ThreadFaultsUnjoined().erase(bound->second);
           ThreadFaults().erase(entry);
         }
         else {
@@ -4445,6 +4472,8 @@ size_t StackInterpreter::TakeThreadHandle(size_t* slot, size_t& fault_key)
       if(entry != ThreadFaults().end()) {
         entry->second.claimed = true;
         entry->second.handle = 0;
+        // a Join has it now: no longer one of the records that may wait for ever
+        ThreadFaultsUnjoined().erase(fault_key);
       }
     }
   }
@@ -4478,15 +4507,38 @@ void StackInterpreter::EndThreadFault(size_t key, bool faulted, const std::wstri
     ThreadFaults().erase(found);
     return;
   }
-  // Kept for the Join that is waiting, or for one that may still come. Not
-  // capped: the cap that was here (clear all at 4096) made a program that
-  // started 4097 workers and then joined them read "no fault" for the first
-  // 4096. There is at most one such entry per faulted thread that can still
-  // be joined, and each of those already holds more than its entry until it
-  // is: its handle on Windows, its stack elsewhere.
+  // Kept for the Join that is waiting, or for one that may still come.
   entry.ended = true;
   entry.faulted = faulted;
   entry.message = message;
+  if(entry.claimed) {
+    return;
+  }
+
+  // One that may still come, and may never: a program that starts faulting
+  // threads and joins none of them would add a record per thread for the life
+  // of the process, so only the newest THREAD_FAULT_RECORD_CAP are kept. The
+  // oldest goes, binding and message. Its Join still learns that the thread
+  // faulted, from the thread's exit status, and reports THREAD_FAULT_DROPPED:
+  // never "no fault", which is what the cap this registry once had (clear
+  // everything at 4096) made 4096 Joins read.
+  ThreadFaultsUnjoined().insert(key);
+  if(ThreadFaultsUnjoined().size() > THREAD_FAULT_RECORD_CAP) {
+    const size_t oldest = *ThreadFaultsUnjoined().begin();
+    ThreadFaultsUnjoined().erase(ThreadFaultsUnjoined().begin());
+    const auto dropped = ThreadFaults().find(oldest);
+    if(dropped != ThreadFaults().end()) {
+      if(dropped->second.handle) {
+        ThreadFaultKeys().erase(dropped->second.handle);
+      }
+      ThreadFaults().erase(dropped);
+    }
+    if(++thread_faults_dropped == 1) {
+      // said once, when it starts; the count is printed when Main returns
+      std::wcerr << std::dec << L"[thread-faults] unjoined worker faults are being dropped (cap " << THREAD_FAULT_RECORD_CAP
+                 << L"): Join the threads a program starts, or their fault messages are lost" << std::endl;
+    }
+  }
 }
 
 std::wstring& StackInterpreter::JoinedThreadFault()
@@ -4496,14 +4548,20 @@ std::wstring& StackInterpreter::JoinedThreadFault()
 }
 
 // Join found the thread: its fault, if it had one, is what this thread's
-// Runtime->GetProperty("runtime.thread.join.fault") now reads
-void StackInterpreter::TakeThreadFault(size_t key)
+// Runtime->GetProperty("runtime.thread.join.fault") now reads. `faulted` is
+// the thread's own exit status. With no entry it tells a thread that ended
+// without a fault (nothing was kept) from one whose record was dropped at the
+// cap, which must not read as "no fault".
+void StackInterpreter::TakeThreadFault(size_t key, bool faulted)
 {
   std::lock_guard<std::mutex> guard(thread_fault_lock);
   auto found = ThreadFaults().find(key);
   if(found != ThreadFaults().end()) {
     JoinedThreadFault() = found->second.faulted ? found->second.message : std::wstring();
     ThreadFaults().erase(found);
+  }
+  else if(faulted) {
+    JoinedThreadFault() = THREAD_FAULT_DROPPED;
   }
   else {
     JoinedThreadFault().clear();
@@ -4520,9 +4578,16 @@ void StackInterpreter::ReportThreadFaultRegistry()
 #else
   const bool report = getenv("OBJECK_THREAD_FAULT_STATS") != nullptr;
 #endif
+  std::lock_guard<std::mutex> guard(thread_fault_lock);
+  if(thread_faults_dropped) {
+    // not a test hook: a program that lost fault messages is told how many
+    // (std::dec: a stack report before this may have left the stream in hex)
+    std::wcerr << std::dec << L"[thread-faults] " << thread_faults_dropped << L" unjoined worker faults dropped (cap "
+               << THREAD_FAULT_RECORD_CAP << L")" << std::endl;
+  }
   if(report) {
-    std::lock_guard<std::mutex> guard(thread_fault_lock);
-    std::wcerr << L"[thread-faults] records=" << ThreadFaults().size() << L" handles=" << ThreadFaultKeys().size() << std::endl;
+    std::wcerr << std::dec << L"[thread-faults] records=" << ThreadFaults().size() << L" handles=" << ThreadFaultKeys().size()
+               << L" dropped=" << thread_faults_dropped << std::endl;
   }
 }
 

@@ -1240,7 +1240,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
-    Runtime::StackInterpreter::TakeThreadFault(fault_key);
+    Runtime::StackInterpreter::TakeThreadFault(fault_key, (size_t)status == Runtime::StackInterpreter::THREAD_FAULT_EXIT);
 #ifdef __linux__
     // the stack the VM allocated for it (ProcessAsyncMethodCall)
     Runtime::ThreadStacks::Release(vm_thread);
@@ -1249,7 +1249,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     MemoryManager::EndBlocking();
 
 #ifdef _WIN32
-    Runtime::StackInterpreter::TakeThreadFault(fault_key);
+    DWORD exit_code = 0;
+    GetExitCodeThread(vm_thread, &exit_code);
+    Runtime::StackInterpreter::TakeThreadFault(fault_key, exit_code == Runtime::StackInterpreter::THREAD_FAULT_EXIT);
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a
