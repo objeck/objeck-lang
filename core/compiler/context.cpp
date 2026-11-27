@@ -7068,6 +7068,148 @@ bool ContextAnalyzer::UnifyClassGeneric(Type* param, Type* arg, int arg_dimensio
 }
 
 /****************************
+ * A constructor parameter's type with the class's type parameters replaced by
+ * the classes a candidate binds them to: 'T' is the binding, 'Vector<T>' is a
+ * Vector of it. Always a copy; the declaration's type is not touched.
+ ****************************/
+Type* ContextAnalyzer::SubstituteClassGenerics(Type* param, Class* klass, LibraryClass* lib_klass, const std::vector<Type*> &bindings)
+{
+  if(!param || param->GetType() != CLASS_TYPE) {
+    return param;
+  }
+
+  const std::wstring param_name = param->GetClassGeneric().empty() ? param->GetName() : param->GetClassGeneric();
+  const int index = klass ? klass->GenericIndex(param_name) : lib_klass->GenericIndex(param_name);
+  if(index > -1 && index < (int)bindings.size() && bindings[index]) {
+    Type* bound = TypeFactory::Instance()->MakeType(bindings[index]);
+    bound->SetDimension(param->GetDimension());
+    return bound;
+  }
+
+  Type* copy = TypeFactory::Instance()->MakeType(param);
+  if(param->HasGenerics()) {
+    std::vector<Type*> generics = param->GetGenerics();
+    for(size_t i = 0; i < generics.size(); ++i) {
+      generics[i] = SubstituteClassGenerics(generics[i], klass, lib_klass, bindings);
+    }
+    copy->SetGenerics(generics);
+  }
+
+  return copy;
+}
+
+/****************************
+ * False when an argument of this type cannot be passed for a parameter of
+ * this type, whatever conversion, boxing, unboxing or widening the call is
+ * allowed: a String for an IntRef, an Int[] for an Int, a Widget for a Float.
+ * Anything this cannot tell -- a function type, a class it does not find (a
+ * type parameter of the class the call stands in), the type arguments of a
+ * generic -- counts as passable, so the answer errs towards the candidate.
+ *
+ * Used only to set aside constructors while a generic class's type arguments
+ * are inferred (InferNewTypeArguments); the call itself is resolved by
+ * ResolveMethodCall as it always was.
+ ****************************/
+bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, Expression* argument, Class* klass)
+{
+  if(!param || !arg || param->GetType() == FUNC_TYPE || arg->GetType() == FUNC_TYPE ||
+     param->GetType() == VAR_TYPE || arg->GetType() == VAR_TYPE || param->GetType() == ALIAS_TYPE || arg->GetType() == ALIAS_TYPE) {
+    return true;
+  }
+
+  // Nil is a value of every class and of every array
+  if(arg->GetType() == NIL_TYPE) {
+    return param->GetType() == CLASS_TYPE || param->GetDimension() > 0;
+  }
+
+  if(param->GetType() == NIL_TYPE) {
+    return true;
+  }
+
+  // an array for one value, or one value for an array
+  if(param->GetDimension() != arg_dimension) {
+    return false;
+  }
+
+  const bool param_class = param->GetType() == CLASS_TYPE;
+  const bool arg_class = arg->GetType() == CLASS_TYPE;
+
+  // arrays: of the same primitive, or of classes (which this does not compare)
+  if(arg_dimension > 0) {
+    if(param_class || arg_class) {
+      return param_class && arg_class;
+    }
+    return param->GetType() == arg->GetType();
+  }
+
+  // the classes, resolved on copies (resolving renames a type in place)
+  Type* param_type = param;
+  Class* param_klass = nullptr; LibraryClass* param_lib_klass = nullptr;
+  bool param_enum = false;
+  if(param_class) {
+    param_type = TypeFactory::Instance()->MakeType(param);
+    param_type->SetDimension(0);
+    bool param_known = false;
+    if(klass ? ResolveClassEnumType(param_type, klass) : ResolveClassEnumType(param_type)) {
+      param_enum = HasProgramOrLibraryEnum(param_type->GetName());
+      param_known = param_enum || GetProgramOrLibraryClass(param_type, param_klass, param_lib_klass);
+    }
+    if(!param_known) {
+      return true;
+    }
+  }
+
+  Type* arg_type = arg;
+  Class* arg_klass = nullptr; LibraryClass* arg_lib_klass = nullptr;
+  bool arg_enum = false;
+  if(arg_class) {
+    arg_type = TypeFactory::Instance()->MakeType(arg);
+    arg_type->SetDimension(0);
+    bool arg_known = false;
+    if(ResolveClassEnumType(arg_type)) {
+      arg_enum = HasProgramOrLibraryEnum(arg_type->GetName()) ||
+        (argument && argument->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(argument)->GetEnumItem());
+      arg_known = arg_enum || GetProgramOrLibraryClass(arg_type, arg_klass, arg_lib_klass);
+    }
+    if(!arg_known) {
+      return true;
+    }
+  }
+
+  EntryType held;
+  if(!param_class) {
+    // a primitive parameter: a primitive that converts, an enum item, or a
+    // holder whose value converts
+    if(!arg_class) {
+      return PrimitiveConverts(param->GetType(), arg->GetType());
+    }
+    if(arg_enum) {
+      return param->GetType() != BOOLEAN_TYPE && param->GetType() != FLOAT_TYPE;
+    }
+    return HolderPrimitive(arg_type, held) && PrimitiveConverts(param->GetType(), held);
+  }
+
+  if(!arg_class) {
+    // a primitive argument: for its holder (boxed), or for an enum
+    if(param_enum) {
+      return arg->GetType() != BOOLEAN_TYPE && arg->GetType() != FLOAT_TYPE;
+    }
+    return HolderPrimitive(param_type, held) && PrimitiveConverts(held, arg->GetType());
+  }
+
+  // two classes: the same one, an enum item for a holder, or the argument's
+  // class is the parameter's, derives from it or implements it
+  if(param_enum || arg_enum) {
+    return (param_enum && arg_enum) ? param_type->GetName() == arg_type->GetName() :
+      (arg_enum && HolderPrimitive(param_type, held));
+  }
+
+  const std::wstring param_class_name = param_klass ? param_klass->GetName() : param_lib_klass->GetName();
+  const std::wstring arg_class_name = arg_klass ? arg_klass->GetName() : arg_lib_klass->GetName();
+  return param_class_name == arg_class_name || ValidDownCast(param_class_name, arg_klass, arg_lib_klass);
+}
+
+/****************************
  * Gives a constructor call of a
  * generic class the type
  * arguments that were not
@@ -7179,13 +7321,28 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
   // One that leaves a type parameter without a class, or gives one two
   // classes, says nothing. The type arguments are settled when every
   // constructor that says something says the same.
+  //
+  // A constructor that could not be called with these arguments says nothing
+  // either, when another could. Matching looks only at the parameters that
+  // name a type parameter, so with 'New(left : T, right : Widget)' and
+  // 'New(left : IntRef, right : T)', 'Pair->New("left", widget)' had the second
+  // constructor say T is Widget -- though a String is no IntRef -- and the call
+  // was refused as a conflict before overload resolution could discard it. Each
+  // settled constructor's parameters are therefore checked against the
+  // arguments with its own bindings in place (ArgumentMayFit). When none could
+  // be called, all of them count as before, and the call is reported as it
+  // always was.
   const std::wstring written = FormatTypeString(class_name) + L"->New(..)<..>";
   std::wstring first_error;
-  std::vector<Type*> bindings;
+  std::vector<std::vector<Type*> > settled_bindings;
+  std::vector<bool> settled_viable;
+  bool any_viable = false;
   for(size_t c = 0; c < candidates.size(); ++c) {
     std::wstring error;
     std::vector<Type*> candidate_bindings(generic_count, nullptr);
     const std::vector<Type*> params = candidates[c];
+    std::vector<Type*> argument_types(params.size(), nullptr);
+    std::vector<int> argument_dimensions(params.size(), 0);
     bool settled = true;
     for(size_t i = 0; settled && i < params.size(); ++i) {
       Type* arg = arguments[i]->GetExpressionType() == LAMBDA_EXPR ? nullptr : GetExpressionType(arguments[i], depth + 1);
@@ -7193,6 +7350,8 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
         continue;
       }
       const int arg_dimension = IsScalar(arguments[i]) ? 0 : arg->GetDimension();
+      argument_types[i] = arg;
+      argument_dimensions[i] = arg_dimension;
       settled = UnifyClassGeneric(params[i], arg, arg_dimension, klass, lib_klass, candidate_bindings, error);
     }
 
@@ -7211,6 +7370,25 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
       continue;
     }
 
+    bool viable = true;
+    for(size_t i = 0; viable && i < params.size(); ++i) {
+      if(argument_types[i]) {
+        viable = ArgumentMayFit(SubstituteClassGenerics(params[i], klass, lib_klass, candidate_bindings), argument_types[i],
+                                argument_dimensions[i], arguments[i], klass);
+      }
+    }
+    any_viable = any_viable || viable;
+    settled_viable.push_back(viable);
+    settled_bindings.push_back(std::move(candidate_bindings));
+  }
+
+  std::vector<Type*> bindings;
+  for(size_t c = 0; c < settled_bindings.size(); ++c) {
+    if(any_viable && !settled_viable[c]) {
+      continue;
+    }
+
+    std::vector<Type*> &candidate_bindings = settled_bindings[c];
     if(bindings.empty()) {
       bindings = std::move(candidate_bindings);
       continue;

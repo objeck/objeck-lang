@@ -897,6 +897,8 @@ std::vector<std::wstring> alt_error_method_names;
   Type* WrittenTypeArgument(Type* type);
   bool UnifyClassGeneric(Type* param, Type* arg, int arg_dimension, Class* klass, LibraryClass* lib_klass,
                          std::vector<Type*> &bindings, std::wstring &error);
+  Type* SubstituteClassGenerics(Type* param, Class* klass, LibraryClass* lib_klass, const std::vector<Type*> &bindings);
+  bool ArgumentMayFit(Type* param, Type* arg, int arg_dimension, Expression* argument, Class* klass);
   bool InferNewTypeArguments(Class* klass, LibraryClass* lib_klass, MethodCall* method_call, const int depth);
   Type* SubstituteAlong(Type* original, Type* resolved, const std::map<std::wstring, Type*> &bindings);
   Type* LambdaResultType(Lambda* lambda);
