@@ -2211,9 +2211,12 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   holder->param = param;
   holder->self = instance;
   // Registered before the thread exists, so that whenever it ends the registry
-  // knows the key. Read back below from the local: the thread may have ended,
-  // and freed the holder, by then.
-  const size_t fault_key = RegisterThreadFault();
+  // knows the key; and only when an uncaught error will end this thread alone,
+  // which is decided here, once, for parent and child: with isolation off no
+  // fault is ever recorded, so there is nothing for a Join to look up and the
+  // thread costs the registry nothing (key 0). Read back below from the local:
+  // the thread may have ended, and freed the holder, by then.
+  const size_t fault_key = ThreadFaultIsolation() ? RegisterThreadFault() : 0;
   holder->fault_key = fault_key;
 
   // self/param are raw object pointers living in this heap holder until the child
@@ -2395,8 +2398,9 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   // program is being torn down. It ends as a thread halted mid-run does, without
   // entering a method it would only leave again.
   if(!intpr->IsHalted()) {
+    // isolated when its parent registered it (ProcessAsyncMethodCall)
     ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                      StackInterpreter::ThreadFaultIsolation(), holder->fault_key);
+                      holder->fault_key != 0, holder->fault_key);
   }
   else {
     // it ran nothing, and ended without a fault
@@ -2474,8 +2478,9 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   // program is being torn down. It ends as a thread halted mid-run does, without
   // entering a method it would only leave again.
   if(!intpr->IsHalted()) {
+    // isolated when its parent registered it (ProcessAsyncMethodCall)
     ExecuteThreadBody(intpr, thread_op_stack, thread_stack_pos, holder->called, holder->self,
-                      StackInterpreter::ThreadFaultIsolation(), holder->fault_key);
+                      holder->fault_key != 0, holder->fault_key);
   }
   else {
     // it ran nothing, and ended without a fault
@@ -4320,7 +4325,12 @@ void StackInterpreter::FinishThreadFault()
 //     Join that is waiting ("claimed"), and it cannot once another Execute has
 //     overwritten the handle ("abandoned");
 //   - after the thread has ended, the entry is kept only if a Join can still
-//     come, and then only until that Join (TakeThreadFault). An abandoned
+//     come and the thread faulted, or a Join is already waiting, and then only
+//     until that Join (TakeThreadFault). A thread that ended without a fault
+//     takes its handle's binding with it; a thread started while isolation is
+//     off is never in the registry at all (thread_fault_registry.obs,
+//     "unjoined" and "plain": 2,000 unjoined threads used to leave 2,000
+//     bindings). An abandoned
 //     thread's entry goes when the thread ends, its message with it. It used
 //     to be the other way about: the restart dropped the binding, and when the
 //     earlier run faulted afterwards its message was stored under a key no
@@ -4388,12 +4398,14 @@ void StackInterpreter::PublishThreadHandle(size_t* slot, size_t handle, size_t f
       ThreadFaultKeys().erase(bound);
     }
   }
-  // (no entry: the thread has already ended with nothing for a Join to read)
-  const auto entry = ThreadFaults().find(fault_key);
+  // Bound only while there is something a Join could read: not for a thread
+  // started with isolation off (key 0), nor for one that has already ended
+  // without a fault (no entry). A Join that finds no binding reports no fault.
+  const auto entry = fault_key ? ThreadFaults().find(fault_key) : ThreadFaults().end();
   if(entry != ThreadFaults().end()) {
     entry->second.handle = handle;
+    ThreadFaultKeys()[handle] = fault_key;
   }
-  ThreadFaultKeys()[handle] = fault_key;
   *slot = handle;
 }
 
@@ -4434,8 +4446,14 @@ void StackInterpreter::EndThreadFault(size_t key, bool faulted, const std::wstri
   ThreadFaultEntry& entry = found->second;
   if(entry.abandoned || (!faulted && !entry.claimed)) {
     // Nothing will ask, or there is nothing to tell: the entry goes, and no
-    // message is kept. (A Join that comes later for a thread that ended
-    // without a fault finds no entry, which is what "no fault" reads as.)
+    // message is kept. So does the binding of its handle, which used to stay
+    // until a Join that for most threads never comes: a server that starts a
+    // thread per request and joins none of them kept one binding per request.
+    // (A Join that does come later for a thread that ended without a fault
+    // finds no binding, which is what "no fault" reads as.)
+    if(entry.handle) {
+      ThreadFaultKeys().erase(entry.handle);
+    }
     ThreadFaults().erase(found);
     return;
   }

@@ -54,14 +54,21 @@ spawned thread a **sentinel handler at the bottom of its handler stack**:
   the thread `faulted` instead of jumping to a handler address.
 - The dispatch loop turns `recovery_ip == THREAD_FAULT_IP` into `halt`. A method compiled on entry returns early
   with the recovery pending; `ExecuteThreadBody` clears it either way.
-- `ExecuteThreadBody` then calls `FinishThreadFault` (releases the entry frame, releases held locks) and records the
-  fault under the key the VM gave the thread when it was started (a counter; `NewThreadFaultKey`), which the parent
-  bound to the thread's handle before publishing the handle in the `Thread` object. `Thread->Join` (interpreter
-  `ThreadJoin` and the JIT's `THREAD_JOIN` callback) claims the key by the handle it holds before it waits, and takes
-  the record after. (Until v2026.11.4's second review the key was the OS thread id, `GetThreadId` of the handle or
-  the `pthread_t` itself. An OS id is given out again once its thread can no longer be joined, which with pthreads
-  is when `pthread_join` returns, before `Join` had read the record: a thread started in that gap could drop the
-  record or leave its own. `thread_fault_join_own.obs`.)
+- `ExecuteThreadBody` then calls `FinishThreadFault` (releases the entry frame, releases held locks) and tells the
+  registry how the thread ended (`EndThreadFault`), under the key the VM gave the thread before it was created (a
+  counter; `RegisterThreadFault`). A thread is registered only when isolation is on as it is started, which the
+  parent decides once for both of them.
+- The registry (in `interpreter.cpp`, one lock) knows for each key whether a `Join` can still come: the key is bound
+  to the thread's handle as `Execute` stores the handle in the `Thread` object (`PublishThreadHandle`), claimed by
+  the `Join` that takes the handle out of the object before it waits (`TakeThreadHandle`; the interpreter's
+  `ThreadJoin` and the JIT's `THREAD_JOIN` callback), and abandoned when another `Execute` overwrites the handle.
+  The handle slot is read and written only under that lock, so an `Execute` and a `Join` of one object on two
+  threads cannot undo each other. What is kept after a thread has ended: a faulted thread's message while a `Join`
+  can still come, until that `Join`; nothing for a thread that ended without a fault, and nothing for an abandoned
+  one. (Until v2026.11.4's second review the key was the OS thread id, `GetThreadId` of the handle or the
+  `pthread_t` itself. An OS id is given out again once its thread can no longer be joined, which with pthreads is
+  when `pthread_join` returns, before `Join` had read the record: a thread started in that gap could drop the record
+  or leave its own. Tests: `thread_fault_join_own.obs`, `thread_restart_join.obs`, `thread_fault_registry.obs`.)
 - A real `Try()` inside the worker pushes above the sentinel and recovers as always; the thread is not faulted.
 
 Because the sentinel counts as a handler, `ThreadHasTryHandler()` is true on such a thread, so the places that

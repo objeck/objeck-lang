@@ -427,7 +427,13 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     thread_fault_registry.obs "abandoned" 200 times left records=200. It must
     leave records=0, and thread_restart_join.obs (a restart while a Join of the
     earlier run is parked, and a restart whose earlier run then faults) must
-    leave records=0 handles=0 in each JIT mode.
+    leave records=0 handles=0 in each JIT mode. A thread that returned normally
+    and was never joined kept its handle's binding, with isolation on or off
+    ("unjoined" and "plain" 2000 times left handles=2000): both must leave
+    handles=0, and 4,000 such threads must cost under 32 KB of peak resident
+    memory each over 500 (9 to 13 KB on Linux x64, all of it the unjoined
+    thread's own stack, which this does not change: the bound is a ceiling,
+    the registry line is the measurement).
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -1960,7 +1966,7 @@ def check_thread_fault_registry(obc, obr, env, bin_dir):
         rc, out, err = run([obr, dest, "abandoned", "2"], env=env, cwd=bin_dir)
         check("no registry line without OBJECK_THREAD_FAULT_STATS (control)",
               rc == 0 and thread_fault_registry_left(err) is None, f"rc={rc} stderr={err[-200:]!r}")
-        for scenario, count, want in (("abandoned", 200, (0, None)),):
+        for scenario, count, want in (("abandoned", 200, (0, 0)), ("unjoined", 2000, (0, 0)), ("plain", 2000, (0, 0))):
             rc, out, err = run([obr, dest, scenario, str(count)], env=stats_env, cwd=bin_dir, timeout=300)
             left = thread_fault_registry_left(err)
             check(f"thread_fault_registry {scenario} x {count} passes its own checks",
@@ -1968,7 +1974,21 @@ def check_thread_fault_registry(obc, obr, env, bin_dir):
                   f"rc={rc} out={out[-200:]!r} stderr={err[-200:]!r}")
             if left is not None:
                 check(f"{scenario} x {count} leaves nothing in the registry (records={left[0]} handles={left[1]})",
-                      left[0] == want[0] and (want[1] is None or left[1] == want[1]), f"left={left}")
+                      left == want, f"left={left}")
+
+        # peak resident memory per unjoined thread, isolation off
+        rss_env = dict(stats_env)
+        rss_env["OBJECK_GC_STATS"] = "1"
+        peaks = {}
+        for count in (500, 4000):
+            rc, out, err = run([obr, dest, "plain", str(count)], env=rss_env, cwd=bin_dir, timeout=300)
+            found = re.search(rb"^\[gc-stats\] .*\bpeak_rss_bytes=(\d+)", err, re.M)
+            peaks[count] = int(found.group(1)) if rc == 0 and found else None
+        check("plain x 500 and x 4000 run and report a peak resident size", None not in peaks.values(), f"peaks={peaks}")
+        if None not in peaks.values():
+            each = (peaks[4000] - peaks[500]) / 3500.0
+            check(f"an unjoined thread costs under 32 KB of peak resident memory ({each / 1024:.1f} KB each)",
+                  each < 32 * 1024, f"peaks={peaks}")
 
     dest = compile_fixture(obc, "thread_restart_join", env, bin_dir)
     if dest:
