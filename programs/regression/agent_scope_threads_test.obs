@@ -1,0 +1,394 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+AgentScope and Redactor under threads (API.Agent), against scripted fake models (no key, no network).
+
+Part 1: several threads, each inside its own Child() of one shared parent, make runs until the parent's
+limit refuses them. A step and a tool call are checked and taken in one move, so however the threads
+interleave the parent's count must never pass its limit, and the count must be what really happened: the
+model calls the backends saw, the handler runs. Every backend sleeps a little in each call so that all
+the threads are between "is one left?" and "the reply is here" at the same time.
+
+Part 2: several threads register keys with Redactor and scrub text at the same time. No key may be lost
+and every one of them must be masked afterwards.
+
+Before any thread starts, the main thread does once what the workers will do (WarmUp). That is not for
+AgentScope: with OBJECK_JIT_THRESHOLD=1 eight threads that all make their first agent run at the same
+moment crash the VM about one time in ten (a segmentation fault or a corrupt native heap), with or without
+a scope, and not once in 60 runs after one run on the main thread. That is a VM matter with its own
+report; this test is about the counters.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+class OwnCount implements AgentToolHandler {
+  @count : Int;
+
+  New() {
+  }
+
+  method : public : GetCount() ~ Int {
+    return @count;
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    @count += 1;
+    return "ok";
+  }
+}
+
+# one thread: its own agent, backend and handler, run under its own child of the shared parent
+class BudgetWorker from Thread {
+  @scope : AgentScope;
+  @agent : Agent;
+  @backend : ScriptedBackend;
+  @handler : OwnCount;
+  @runs : Int;
+  @completed : Int;
+  @steps_seen : Int;
+  @workers : static : Vector<BudgetWorker>;
+  @ids : static : Vector<IntRef>;
+  @lock : static : ThreadMutex;
+
+  function : Reset() ~ Nil {
+    if(@lock = Nil) {
+      @lock := ThreadMutex->New("budget_workers");
+    };
+    @workers := Vector->New()<BudgetWorker>;
+    @ids := Vector->New()<IntRef>;
+  }
+
+  New(scope : AgentScope, runs : Int, delay_ms : Int) {
+    Parent("budget_worker");
+    @scope := scope;
+    @runs := runs;
+    @handler := OwnCount->New();
+    script := Vector->New()<AgentReply>;
+    for(i := 0; i < runs; i += 1;) {
+      ask := AgentReply->Ask("c{$i}", "count", "{}");
+      script->AddBack(AgentReply->New(ask->GetText(), ask->GetToolCalls(), ask->GetStopReason(), 10, 10));
+      say := AgentReply->Say("done {$i}");
+      script->AddBack(AgentReply->New(say->GetText(), say->GetToolCalls(), say->GetStopReason(), 5, 5));
+    };
+    @backend := ScriptedBackend->New(script)->SetDelayMs(delay_ms);
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("count", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), @handler));
+    @agent := Agent->New(@backend, registry);
+  }
+
+  # the body of AgentScope->Run takes no arguments: the worker is found by the thread it runs on
+  function : Body() ~ Nil {
+    me : BudgetWorker;
+    id := Thread->GetCurrentId();
+    critical(@lock) {
+      # newest first: a thread that has ended may have handed its id on to a later one
+      i := @ids->Size() - 1;
+      while(me = Nil & i >= 0) {
+        if(@ids->Get(i)->Get() = id) {
+          me := @workers->Get(i);
+        };
+        i -= 1;
+      };
+    };
+    me->Work();
+  }
+
+  method : public : Work() ~ Nil {
+    going := true;
+    made := 0;
+    while(going & made < @runs) {
+      result := @agent->Run("work");
+      made += 1;
+      @steps_seen += result->GetSteps()->Size();
+      if(result->IsCompleted()) {
+        @completed += 1;
+      }
+      else {
+        going := false;
+      };
+    };
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    id := Thread->GetCurrentId();
+    critical(@lock) {
+      @workers->AddBack(@self);
+      @ids->AddBack(IntRef->New(id));
+    };
+    AgentScope->Run(@scope, BudgetWorker->Body() ~ Nil);
+  }
+
+  method : public : GetScope() ~ AgentScope {
+    return @scope;
+  }
+
+  method : public : GetAsked() ~ Int {
+    return @backend->GetAskedCount();
+  }
+
+  method : public : GetHandled() ~ Int {
+    return @handler->GetCount();
+  }
+
+  method : public : GetStepsSeen() ~ Int {
+    return @steps_seen;
+  }
+
+  method : public : GetCompleted() ~ Int {
+    return @completed;
+  }
+}
+
+# registers keys of its own and scrubs while the others do the same
+class KeyWorker from Thread {
+  @index : Int;
+  @count : Int;
+  @leaks : Int;
+
+  New(index : Int, count : Int) {
+    Parent("key_worker");
+    @index := index;
+    @count := count;
+  }
+
+  function : Key(index : Int, i : Int) ~ String {
+    return "worker{$index}-secret-{$i}-end";
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    for(i := 0; i < @count; i += 1;) {
+      key := Key(@index, i);
+      Redactor->Add(key);
+      scrubbed := Redactor->Scrub("a line with {$key} in it");
+      if(scrubbed->Find("secret") > -1) {
+        @leaks += 1;
+      };
+    };
+  }
+
+  method : public : GetLeaks() ~ Int {
+    return @leaks;
+  }
+}
+
+class AgentScopeThreadsTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # one round: `threads` workers under children of `parent`; returns the workers after they have all ended
+  function : Round(parent : AgentScope, threads : Int, runs : Int, child_steps : Int) ~ Vector<BudgetWorker> {
+    BudgetWorker->Reset();
+    workers := Vector->New()<BudgetWorker>;
+    for(i := 0; i < threads; i += 1;) {
+      child := parent->Child();
+      if(child_steps > 0 & i = 0) {
+        child->SetMaxSteps(child_steps);
+      };
+      workers->AddBack(BudgetWorker->New(child, runs, 2));
+    };
+
+    each(worker in workers) {
+      worker->Execute(Nil);
+    };
+
+    each(worker in workers) {
+      worker->Join();
+    };
+    return workers;
+  }
+
+  function : TestSteps(rounds : Int, threads : Int) ~ Nil {
+    "parallel children, one step limit:"->PrintLine();
+    limit := 41;
+    over := 0;
+    short := 0;
+    wrong_asked := 0;
+    wrong_children := 0;
+    wrong_seen := 0;
+    child_over := 0;
+    for(round := 0; round < rounds; round += 1;) {
+      parent := AgentScope->New()->SetMaxSteps(limit);
+      workers := Round(parent, threads, 30, 5);
+      asked := 0;
+      children := 0;
+      seen := 0;
+      each(worker in workers) {
+        asked += worker->GetAsked();
+        children += worker->GetScope()->GetStepsUsed();
+        seen += worker->GetStepsSeen();
+      };
+
+      used := parent->GetStepsUsed();
+      if(used > limit | asked > limit) {
+        over += 1;
+      };
+      if(used < limit) {
+        short += 1;
+      };
+      if(asked <> used) {
+        wrong_asked += 1;
+      };
+      if(children <> used) {
+        wrong_children += 1;
+      };
+      if(seen <> used) {
+        wrong_seen += 1;
+      };
+      if(workers->Get(0)->GetScope()->GetStepsUsed() > 5 | workers->Get(0)->GetAsked() > 5) {
+        child_over += 1;
+      };
+    };
+    Check("{$threads} threads never pass the parent's {$limit} steps ({$rounds} rounds)", over = 0);
+    Check("and use all of them", short = 0);
+    Check("the parent's count is the model calls that were made", wrong_asked = 0);
+    Check("the children's counts add up to the parent's", wrong_children = 0);
+    Check("the results hold the same steps", wrong_seen = 0);
+    Check("a child's own tighter limit holds as well", child_over = 0);
+  }
+
+  function : TestToolCalls(rounds : Int, threads : Int) ~ Nil {
+    "parallel children, one tool call limit:"->PrintLine();
+    limit := 13;
+    over := 0;
+    short := 0;
+    wrong_handled := 0;
+    wrong_children := 0;
+    for(round := 0; round < rounds; round += 1;) {
+      parent := AgentScope->New()->SetMaxToolCalls(limit);
+      workers := Round(parent, threads, 30, 0);
+      handled := 0;
+      children := 0;
+      each(worker in workers) {
+        handled += worker->GetHandled();
+        children += worker->GetScope()->GetToolCallsUsed();
+      };
+
+      used := parent->GetToolCallsUsed();
+      if(used > limit | handled > limit) {
+        over += 1;
+      };
+      if(used < limit) {
+        short += 1;
+      };
+      if(handled <> used) {
+        wrong_handled += 1;
+      };
+      if(children <> used) {
+        wrong_children += 1;
+      };
+    };
+    Check("{$threads} threads never pass the parent's {$limit} tool calls ({$rounds} rounds)", over = 0);
+    Check("and use all of them", short = 0);
+    Check("the parent's count is the handler runs that were made", wrong_handled = 0);
+    Check("the children's counts add up to the parent's", wrong_children = 0);
+  }
+
+  function : TestBoth(rounds : Int, threads : Int) ~ Nil {
+    "parallel children under a parent that is itself inside a scope:"->PrintLine();
+    @grand := AgentScope->New()->SetMaxSteps(23)->SetMaxToolCalls(9);
+    @rounds := rounds;
+    @threads := threads;
+    @over := 0;
+    AgentScope->Run(@grand, UnderGrand() ~ Nil);
+    Check("the scope two levels up is never passed either", @over = 0);
+  }
+
+  @grand : static : AgentScope;
+  @rounds : static : Int;
+  @threads : static : Int;
+  @over : static : Int;
+
+  function : UnderGrand() ~ Nil {
+    # the grand scope's counters add up over the rounds; a fresh parent each round, entered on this thread
+    for(round := 0; round < @rounds; round += 1;) {
+      @parent := AgentScope->New()->SetMaxSteps(40);
+      AgentScope->Run(@parent, OneRound() ~ Nil);
+      if(@grand->GetStepsUsed() > 23 | @grand->GetToolCallsUsed() > 9 | @asked > 23 | @handled > 9) {
+        @over += 1;
+      };
+    };
+  }
+
+  @parent : static : AgentScope;
+  @asked : static : Int;
+  @handled : static : Int;
+
+  function : OneRound() ~ Nil {
+    workers := Round(@parent, @threads, 30, 0);
+    each(worker in workers) {
+      @asked += worker->GetAsked();
+      @handled += worker->GetHandled();
+    };
+  }
+
+  function : TestRedactor(threads : Int, count : Int) ~ Nil {
+    "Redactor from several threads:"->PrintLine();
+    Redactor->Init();
+    before := Redactor->Size();
+    workers := Vector->New()<KeyWorker>;
+    for(i := 0; i < threads; i += 1;) {
+      workers->AddBack(KeyWorker->New(i, count));
+    };
+
+    each(worker in workers) {
+      worker->Execute(Nil);
+    };
+
+    leaks := 0;
+    each(worker in workers) {
+      worker->Join();
+      leaks += worker->GetLeaks();
+    };
+
+    total := threads * count;
+    Check("every key was kept ({$threads} threads, {$count} each)", Redactor->Size() - before = total);
+    Check("a key was masked as soon as its thread had registered it", leaks = 0);
+
+    missed := 0;
+    for(i := 0; i < threads; i += 1;) {
+      for(j := 0; j < count; j += 1;) {
+        if(Redactor->Scrub(KeyWorker->Key(i, j))->Find("secret") > -1) {
+          missed += 1;
+        };
+      };
+    };
+    Check("every key is masked afterwards", missed = 0);
+
+    Redactor->Add(KeyWorker->Key(0, 0));
+    Check("a key that is registered twice is kept once", Redactor->Size() - before = total);
+  }
+
+  # one worker's whole path on the calling thread: under a step limit, then under a tool call limit
+  function : WarmUp() ~ Nil {
+    BudgetWorker->Reset();
+    BudgetWorker->New(AgentScope->New()->SetMaxSteps(3)->Child(), 4, 0)->Run(Nil);
+    BudgetWorker->Reset();
+    BudgetWorker->New(AgentScope->New()->SetMaxToolCalls(1)->Child(), 4, 0)->Run(Nil);
+    Check("the warm-up left no scope behind", AgentScope->Current() = Nil);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    AgentScope->Init();
+    WarmUp();
+    TestSteps(12, 8);
+    TestToolCalls(12, 8);
+    TestBoth(4, 6);
+    TestRedactor(8, 40);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

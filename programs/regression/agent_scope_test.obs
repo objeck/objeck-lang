@@ -6,7 +6,10 @@ the agent's own budget still applying, nesting (inner can only tighten), cancell
 exit, an early return and an exception, the trace, threads (no inheritance, Child() charges the parent),
 entering a scope twice, and reuse. Then the cases an independent review found: a Child() entered on its
 parent's own thread, a run started from inside another run (an observer, a tool that runs an agent), an
-observer that raises, calls that were skipped, and a parent entered from inside its own child.
+observer that raises, calls that were skipped, and a parent entered from inside its own child. Then a
+Child() entered inside a scope that is not its parent (limited by both, each charged once, either one's
+cancel stops it, no loop through the second edge) and a Child() whose parent is not entered (the parent's
+left-over cancel token is not inherited, the parent's counters still add up).
 ~#
 use API.Agent;
 use Data.JSON;
@@ -710,6 +713,144 @@ class AgentScopeTest {
     Check("the parent can be entered afterwards", @outer->GetRuns() = 1 & @results->Get(0)->IsCompleted() & AgentScope->Current() = Nil);
   }
 
+  # ---- a Child() entered inside a scope that is not its parent
+
+  function : ChildTwo() ~ Nil {
+    AgentScope->Run(@child, Two() ~ Nil);
+    @seen := AgentScope->Current();
+  }
+
+  function : CancelAroundThenOne() ~ Nil {
+    @outer->Cancel("the scope around the child was cancelled");
+    @results->AddBack(@agent->Run("after the cancel"));
+  }
+
+  function : ChildCancelAround() ~ Nil {
+    AgentScope->Run(@child, CancelAroundThenOne() ~ Nil);
+  }
+
+  function : EnterOuterAgain() ~ Nil {
+    try {
+      AgentScope->Run(@inner, One() ~ Nil);
+    }
+    on(e : Error) {
+      @raised := e->GetMessage();
+    };
+    @seen := AgentScope->Current();
+    @results->AddBack(@agent->Run("in the child"));
+  }
+
+  function : ChildThenOuterAgain() ~ Nil {
+    AgentScope->Run(@child, EnterOuterAgain() ~ Nil);
+  }
+
+  function : TestChildInsideUnrelated() ~ Nil {
+    "a child inside a scope that is not its parent:"->PrintLine();
+    # the scope around is the tighter one
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(2);
+    parent := AgentScope->New()->SetMaxSteps(10);
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("the scope around the child limits it", @results->Size() = 2 & @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps"));
+    Check("the refused run asked the model nothing", @backend->GetAskedCount() = 2);
+    Check("the scope around was charged once", @outer->GetStepsUsed() = 2 & @outer->GetRuns() = 2);
+    Check("the parent was charged once", parent->GetStepsUsed() = 2 & parent->GetRuns() = 2);
+    Check("the child was charged once", @child->GetStepsUsed() = 2 & @child->GetRuns() = 2);
+    Check("the thread was back in the scope around", @seen = @outer);
+    Check("and is in none afterwards", AgentScope->Current() = Nil);
+
+    # the parent is the tighter one
+    @agent := NewAgent(3);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(10);
+    parent := AgentScope->New()->SetMaxSteps(2);
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("the parent still limits it", @results->Size() = 2 & @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps"));
+    Check("both were charged once", @outer->GetStepsUsed() = 2 & parent->GetStepsUsed() = 2);
+
+    # the limit of the scope around runs out in the middle of a run
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(3)->SetMaxToolCalls(5);
+    parent := AgentScope->New()->SetMaxToolCalls(5);
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("a run stops when the scope around runs out", @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps") & @outer->GetStepsUsed() = 3);
+    Check("tool calls are charged to both, once", @outer->GetToolCallsUsed() = 2 & parent->GetToolCallsUsed() = 2 & @child->GetToolCallsUsed() = 2);
+
+    # a child of the scope around itself is not charged twice
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New()->SetMaxSteps(10);
+    @child := @outer->Child();
+    AgentScope->Run(@outer, ChildTwo() ~ Nil);
+    Check("a child inside its own parent charges it once", @outer->GetStepsUsed() = 4 & @child->GetStepsUsed() = 4);
+
+    # cancelling the scope around stops the child's runs
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New();
+    parent := AgentScope->New();
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildCancelAround() ~ Nil);
+    Check("cancelling the scope around stops the child's run", @results->Size() = 1 & Same(@results->Get(0)->GetStopReason(), "cancelled") & @backend->GetAskedCount() = 0);
+
+    # X is a child of Y; Z (a child of an unrelated scope) is entered inside X; Y entered inside Z would be
+    # limited by itself through the scope around Z
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @raised := Nil;
+    @inner := AgentScope->New()->SetMaxSteps(10);
+    @outer := @inner->Child();
+    parent := AgentScope->New();
+    @child := parent->Child();
+    AgentScope->Run(@outer, ChildThenOuterAgain() ~ Nil);
+    Check("a loop through the scope around raises", @raised <> Nil & @raised->Find("parent of") > -1);
+    Check("the thread is still inside the child", @seen = @child);
+    Check("and the run after it is charged to all three, once", @results->Size() = 1 & @results->Get(0)->IsCompleted() & @inner->GetStepsUsed() = 2 & @outer->GetStepsUsed() = 2 & parent->GetStepsUsed() = 2);
+    Check("the scopes were left", AgentScope->Current() = Nil);
+  }
+
+  # ---- a Child() whose parent is not entered
+
+  function : CancelSelf() ~ Nil {
+    AgentScope->Current()->Cancel("cancelled while it was entered");
+  }
+
+  function : TestParentNotEntered() ~ Nil {
+    "a child whose parent is not entered:"->PrintLine();
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    parent := AgentScope->New();
+    AgentScope->Run(parent, CancelSelf() ~ Nil);
+    Check("the parent's last token is cancelled", parent->GetCancel() <> Nil & parent->GetCancel()->IsCancelled());
+    @child := parent->Child();
+    AgentScope->Run(@child, One() ~ Nil);
+    Check("the child does not inherit the left-over token", @results->Size() = 1 & @results->Get(0)->IsCompleted());
+    Check("and its own token is clean", <>@child->GetCancel()->IsCancelled());
+
+    # a parent that is never entered is a shared budget for its children
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    parent := AgentScope->New()->SetMaxSteps(2);
+    @child := parent->Child();
+    AgentScope->Run(@child, One() ~ Nil);
+    @child := parent->Child();
+    AgentScope->Run(@child, One() ~ Nil);
+    Check("children share a parent that is not entered", @results->Get(0)->IsCompleted() & Same(@results->Get(1)->GetStopReason(), "budget_steps") & parent->GetStepsUsed() = 2);
+
+    # an entered parent still cancels its child (on the same thread)
+    @agent := NewAgent(2);
+    @results := Vector->New()<AgentResult>;
+    @outer := AgentScope->New();
+    @child := @outer->Child();
+    AgentScope->Run(@outer, ChildCancelAround() ~ Nil);
+    Check("an entered parent still cancels its child", Same(@results->Get(0)->GetStopReason(), "cancelled"));
+  }
+
   function : Main(args : String[]) ~ Nil {
     @failures := 0;
     TestNoScope();
@@ -726,6 +867,8 @@ class AgentScopeTest {
     TestObserverRaises();
     TestSkippedCalls();
     TestParentInsideChild();
+    TestChildInsideUnrelated();
+    TestParentNotEntered();
 
     if(@failures > 0) {
       "FAIL: {$@failures} check(s)"->PrintLine();

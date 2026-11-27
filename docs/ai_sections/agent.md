@@ -338,6 +338,6 @@ The observer's `OnReply` and `OnToolResult` run as each step happens, so a progr
 | `AgentResult`, `AgentStep`, `AgentToolResult` | the transcript |
 | `AgentSchema` | `Check(schema, value) ~ String`: `Nil` when the value fits, else a message naming the first problem |
 | `AgentTools` | `Calculator()`, `CurrentTime()`, `ReadFile(directory)`, `AddAll(registry, directory)`, `SafePath(directory, path)` |
-| `Redactor` | `Scrub(text)` and `Add(secret)`: mask API keys in text |
+| `Redactor` | `Scrub(text)` and `Add(secret)`: mask API keys in text; both may be called from any thread |
 
 ---
