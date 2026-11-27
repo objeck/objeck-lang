@@ -2679,19 +2679,26 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 #endif
 
 #ifndef _NO_JIT
-  if(instr->GetOperand3()) {
+  // Dispatched on the callee this call resolved to, never on the site. The
+  // site's operands are a word count and a return type, not a method, so
+  // nothing recorded against the site says anything about the next function
+  // called through it: this used to read the site's operand3 and opcode, which
+  // PatchCallSites set when an unrelated method whose ids happened to equal
+  // those operands compiled (see IsCallSite in jit_common.cpp), and which
+  // CheckAutoJit set to -1 when one callee failed to compile; either way every
+  // other function called through the site was compiled on its first call
+  // there, bypassing the auto-JIT threshold. A callee that failed to compile
+  // is not counted again; one with native code runs it.
+  if(!called->GetNativeCode() && called->GetJitState() != StackMethod::JIT_FAILED) {
+    CheckAutoJit(called, instr);
+  }
+  if(called->GetNativeCode()) {
     ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
   }
   else {
-    CheckAutoJit(called, instr);
-    if(instr->GetType() == DYN_MTHD_CALL_JIT) {
-      ProcessJitMethodCall(called, instance, instrs, ip, op_stack, stack_pos);
-    }
-    else {
-      (*stack_frame) = GetStackFrame(called, instance);
-      instrs = (*stack_frame)->method->GetInstructions();
-      ip = 0;
-    }
+    (*stack_frame) = GetStackFrame(called, instance);
+    instrs = (*stack_frame)->method->GetInstructions();
+    ip = 0;
   }
 #else
   ProcessInterpretedMethodCall(called, instance, instrs, ip);

@@ -66,13 +66,15 @@ StackProgram* JitCompiler::program;
 //
 // The table holds, for a (class id, method id) pair, the instructions the walk
 // would have matched, in the order it would have reached them: every MTHD_CALL
-// and DYN_MTHD_CALL (and their *_JIT forms) whose first two operands are that
-// pair. Nothing changes those operands after the program is loaded, and the
-// only change to such an instruction's type is the MTHD_CALL -> MTHD_CALL_JIT
-// rewrite below, which the walk treated as the same site; so the table built
-// once is the set any later walk would find. OBJECK_JIT_PATCH_VERIFY=1 checks
-// exactly that on every call: it makes the old walk as well and stops the VM
-// if the two differ.
+// (and MTHD_CALL_JIT) whose first two operands are that pair. Nothing changes
+// those operands after the program is loaded, and the only change to such an
+// instruction's type is the MTHD_CALL -> MTHD_CALL_JIT rewrite below, which the
+// walk treated as the same site; so the table built once is the set any later
+// walk would find. OBJECK_JIT_PATCH_VERIFY=1 checks exactly that on every
+// call: it makes the walk as well and stops the VM if the two differ. (The
+// walk and the table share IsCallSite, so the check covers the table's
+// bookkeeping -- a site missed, duplicated or out of order -- and not which
+// opcodes count as call sites; that is the one decision below.)
 //
 // Threads: the table is built under call_site_mutex by whichever compiling
 // thread gets there first and published with a release store; it is never
@@ -105,7 +107,19 @@ namespace {
     // two operands happened to match -- a JMP_TABLE (base, range), say -- had
     // its operand3 overwritten. For JMP_TABLE operand3 is default_ip: the
     // default arm of a select was retargeted to instruction 1.
-    return type == MTHD_CALL || type == DYN_MTHD_CALL || type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT;
+    //
+    // And of the calls, only the direct ones. A DYN_MTHD_CALL's first two
+    // operands are the words its arguments take and its return type's code
+    // (Loader: StackInstr(line, DYN_MTHD_CALL, num_params, rtrn_type)); its
+    // target is the function value on the stack. Counted as a call site, a
+    // function-value call taking one word and returning an Int was "a call to"
+    // whatever method has class id 1 and method id INT_TYPE, and compiling
+    // that unrelated method rewrote the site to DYN_MTHD_CALL_JIT with
+    // operand3 = 1: from then on the interpreter compiled every function it
+    // called through the site on its first call there, whatever the auto-JIT
+    // threshold said. A dynamic call is dispatched on its resolved callee's
+    // own state instead (StackInterpreter::ProcessDynamicMethodCall).
+    return type == MTHD_CALL || type == MTHD_CALL_JIT;
   }
 
   // every call site of the program, in class, method and instruction order
@@ -334,12 +348,8 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
     StackInstr* instr = sites[i];
     if(patch_value > 0) {
       // JIT success: rewrite opcode for zero-branch dispatch
-      const InstructionType type = instr->GetType();
-      if(type == MTHD_CALL) {
+      if(instr->GetType() == MTHD_CALL) {
         instr->SetType(MTHD_CALL_JIT);
-      }
-      else if(type == DYN_MTHD_CALL) {
-        instr->SetType(DYN_MTHD_CALL_JIT);
       }
     }
     instr->SetOperand3(patch_value);
