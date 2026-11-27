@@ -685,6 +685,7 @@ std::vector<std::wstring> alt_error_method_names;
   void AnalyzeExpression(Expression* expression, const int depth);
   void AnalyzeLambda(Lambda* param1, const int depth);
   Expression* WrapBareLambdaInFuncRef(Expression* expression, Type* expected, const int depth);
+  Expression* WrapMethodReferenceInFuncRef(Expression* expression, Type* expected, const int depth);
   bool DerivedFuncRefLambdaArg(MethodCall* lambda_inferred_call, Type* resolved_param);
   Type* ResolveAlias(const std::wstring& name, const std::wstring& fn, int ln, int lp);
   Type* ResolveAlias(const std::wstring& name, ParseNode* node) {
