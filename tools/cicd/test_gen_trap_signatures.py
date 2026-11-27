@@ -180,6 +180,49 @@ rows, notes, errors = gen.build_rows(corpus_with(stray), shapes, ids)
 check("a context in a method the library sources do not hold the directive in: an error",
       len(errors) == 1 and errors[0].startswith("GMT_TIME:") and "Stray.Class:Method" in errors[0], errors[:3])
 
+# ------------------------------------------- whether a TRAP leaves a result ----
+# FILE_IN_BYTE is 'TRAP 2' at the end of FileReader->ReadByte() ~ Byte: the handler's
+# word is the method's result. A corpus that did not show it there used to get "no
+# result" with a note; the loader built from that row refuses ReadByte at its RTRN.
+print("generator: a TRAP the corpus does not show leaving its result")
+
+
+def row_of(rows, trap):
+    return next(r for r in rows if r[0] == trap)
+
+
+rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
+check("no image shows FILE_IN_BYTE in its wrapper: the library sources say it leaves one word",
+      not errors and row_of(rows, "FILE_IN_BYTE")[3] == 1 and gen.source_pushes("FILE_IN_BYTE", library) == 1, errors[:3])
+check("and STD_OUT_INT none", row_of(rows, "STD_OUT_INT")[3] == 0 and gen.source_pushes("STD_OUT_INT", library) == 0)
+check("SOCK_UDP_BIND, inside an 'if' of a method that returns a Bool, none (the directive does not end the method)",
+      row_of(rows, "SOCK_UDP_BIND")[3] == 0 and gen.source_pushes("SOCK_UDP_BIND", library) == 0)
+check("INST_STABLE_ID is found under the directive the sources write it as (LOAD_INST_UID)",
+      row_of(rows, "INST_STABLE_ID")[3] == 1 and gen.source_pushes("INST_STABLE_ID", library) == 1)
+check("no row's count is the old default: nothing is assumed",
+      not any("assumed" in n for n in notes), [n for n in notes if "assumed" in n][:3])
+
+# an image that shows the opposite of the sources
+disagree = corpus_with(whole)
+rec = gen.Seen()
+rec.args = [[gen.W_OBJ, set(), True]]
+rec.pushes = {0}
+disagree["FILE_IN_BYTE"] = rec
+rows, notes, errors = gen.build_rows(disagree, shapes, ids)
+check("images that show FILE_IN_BYTE leaving nothing, against the sources: an error",
+      len(errors) == 1 and errors[0].startswith("FILE_IN_BYTE:"), errors[:3])
+
+# a trap neither the corpus, the sources nor OVERRIDES speaks for
+saved = dict(gen.OVERRIDES)
+try:
+    del gen.OVERRIDES["SOCK_DTLS_SRV_CERT"]
+    rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
+    check("SOCK_DTLS_SRV_CERT, which no library writes, without its declaration: an error, not a default",
+          len(errors) == 1 and errors[0].startswith("SOCK_DTLS_SRV_CERT:") and "OVERRIDES" in errors[0], errors[:3])
+finally:
+    gen.OVERRIDES.clear()
+    gen.OVERRIDES.update(saved)
+
 # ------------------------------------------------------------------ --check ----
 print("--check: the committed header and what it must not accept")
 rc, out = run("--check")
@@ -220,6 +263,14 @@ for trap in sorted(gen.LITERAL_COPIES) + ["CPY_CHAR_STR_ARYS"]:
 cases.append(("CPY_INT_STR_ARY with another count", row_cells("CPY_INT_STR_ARY", "true, 3", "true, 4"), "CPY_INT_STR_ARY"))
 cases.append(("CPY_CHAR_STR_ARYS with a fixed count", row_cells("CPY_CHAR_STR_ARYS", "true, -1", "true, 3"), "CPY_CHAR_STR_ARYS"))
 cases.append(("CPY_FLOAT_STR_ARY written TRAP", row_cells("CPY_FLOAT_STR_ARY", "true, 3", "false, 3"), "CPY_FLOAT_STR_ARY"))
+
+# the result words (the cell after the count): what a corpus without the trap's wrapper wrote
+cases.append(("FILE_IN_BYTE leaving no result", row_cells("FILE_IN_BYTE", "false, 2, 1", "false, 2, 0"), "FILE_IN_BYTE"))
+cases.append(("STD_OUT_INT leaving a result", row_cells("STD_OUT_INT", "false, 2, 0", "false, 2, 1"), "STD_OUT_INT"))
+cases.append(("SOCK_DTLS_SRV_CERT, which no library writes, leaving no result",
+              row_cells("SOCK_DTLS_SRV_CERT", "false, 2, 1", "false, 2, 0"), "SOCK_DTLS_SRV_CERT"))
+cases.append(("LOAD_CLS_BY_INST leaving a result, as a TRAP_RTRN would", row_cells("LOAD_CLS_BY_INST", "true, 1, 0", "true, 1, 1"),
+              "LOAD_CLS_BY_INST"))
 
 for name, change, trap in cases:
     changed, problems = check_copy(change)

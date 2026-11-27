@@ -44,6 +44,16 @@ to produce a row with a shorter, non-empty list, which --check accepted and the
 loader then held valid programs to. The generator stops unless the contexts it
 found are exactly the methods the sources hold the directive in, and --check
 compares the committed rows with the sources the same way.
+
+The other is whether a TRAP leaves a result. TRAP_RTRN always does (but see
+OVERRIDES); a TRAP does where the directive is the last statement of a library
+method that returns a value. A trap the corpus did not show in such a method
+used to get "no result" with a note, and --check did not look at the count at
+all, so a corpus without FILE_IN_BYTE's wrapper wrote a row one word short and
+the loader refused File->ReadByte() at its return. The count is now taken, in
+this order, from OVERRIDES, from the corpus, from the library sources; the
+generator stops when none of them says, or when the corpus and the sources
+disagree, and --check holds every TRAP row's count to the sources or OVERRIDES.
 """
 import collections
 import glob
@@ -83,11 +93,20 @@ MAX_ARGS = 8
 #                     method's result (TrapProcessor::FileTempName)
 #   LOAD_CLS_BY_INST  written TRAP_RTRN, but the handler stores the Class object in
 #                     the method's first local and pushes nothing (LoadClsByInst)
+#   SOCK_TCP_SSL_SRV_CERT, SOCK_DTLS_SRV_CERT
+#                     the compiler knows the directives and no library method writes
+#                     them, so neither a corpus nor the sources say what they leave.
+#                     Both handlers pop the server instance and push the certificate's
+#                     subject as a String, or Nil (SockTcpSslCertSrv, SockDtlsCertSrv).
+#                     Their rows said "no result", the old default for a trap never
+#                     seen: one word short of what the handlers do.
 # A "contexts" entry (a list of method names) names where a frame-reading trap may
 # stand when no library method in the corpus holds it; none is needed today.
 OVERRIDES = {
     "FILE_TEMP_NAME": {"pushes": 1, "result": (W_OBJ, {"System.String"}, False)},
     "LOAD_CLS_BY_INST": {"pushes": 0},
+    "SOCK_TCP_SSL_SRV_CERT": {"pushes": 1, "result": (W_OBJ, {"System.String"}, False)},
+    "SOCK_DTLS_SRV_CERT": {"pushes": 1, "result": (W_OBJ, {"System.String"}, False)},
 }
 LITERAL_COPIES = {"CPY_CHAR_STR_ARY": W_CHAR_ARY, "CPY_INT_STR_ARY": W_INT_ARY, "CPY_BOOL_STR_ARY": W_BYTE_ARY,
                   "CPY_BYTE_STR_ARY": W_BYTE_ARY, "CPY_FLOAT_STR_ARY": W_FLOAT_ARY}
@@ -273,6 +292,14 @@ def context_problems(trap, contexts, library):
     if extra:
         said.append("a context in %s, where the library sources do not hold it" % ", ".join(extra))
     return "; ".join(said)
+
+
+def source_pushes(trap, library):
+    """The result words of a TRAP by the library sources: 1 where its directive ends
+    a method that returns a value, 0 where it does not, None where no library method
+    writes it or where the methods that do disagree."""
+    said = set(1 if tail else 0 for _, tail in library.get(trap, []))
+    return said.pop() if len(said) == 1 else None
 
 
 def split_params(name):
@@ -477,7 +504,7 @@ def build_rows(seen, shapes, ids):
                 if (op, n) != (shape["op"], count):
                     problems.append("%s: an image holds %s %d, the compiler writes %s %d" % (trap, op, n, shape["op"], count))
         args = [(W_ANY, set(), False)] * (count - 1)
-        pushes = 1 if shape["op"] == "TRAP_RTRN" else 0
+        pushes = 1 if shape["op"] == "TRAP_RTRN" else None
         result = (W_ANY, set(), False)
         if rec and rec.args is not None and len(rec.args) == count - 1:
             args = [tuple(a) for a in rec.args]
@@ -486,8 +513,19 @@ def build_rows(seen, shapes, ids):
             pushes = max(rec.pushes)
             if rec.result[0]:
                 result = tuple(rec.result)
-        elif shape["op"] == "TRAP" and not rec:
-            problems.append("%s: never seen in a library method: whether it pushes a result is assumed (no)" % trap)
+        if shape["op"] == "TRAP" and "pushes" not in OVERRIDES.get(trap, {}):
+            # Whether a TRAP leaves a result is never assumed: a row one word short
+            # (or long) has the loader refuse the valid method that holds the trap.
+            by_source = source_pushes(trap, library)
+            if pushes is None:
+                pushes = by_source
+            elif by_source is not None and by_source != pushes:
+                errors.append("%s: the images say it leaves %d result word(s), the library sources %d" % (trap, pushes, by_source))
+            if pushes is None:
+                errors.append("%s: nothing says whether it leaves a result: no image holds it in a method that shows it, and %s. "
+                              "Read its handler and declare \"pushes\" in OVERRIDES" %
+                              (trap, "the library methods that write it disagree" if library.get(trap) else "no library method writes it"))
+                pushes = 0
         if trap in OVERRIDES:
             pushes = OVERRIDES[trap].get("pushes", pushes)
             result = OVERRIDES[trap].get("result", result)
@@ -552,6 +590,25 @@ def check():
         text = f.read()
     rows = {m.group(1): (m.group(2) == "true", int(m.group(3)))
             for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", (true|false), (-?\d+),', text)}
+    result_words = {m.group(1): int(m.group(2))
+                    for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", (?:true|false), -?\d+, (\d+),', text)}
+    library = library_traps(set(shapes))
+    # The result words of each row: 1 for a TRAP_RTRN, and for a TRAP what the library
+    # sources say, unless OVERRIDES declares the count. The table generated from a
+    # corpus without a trap's wrapper said "none" for it, and nothing compared that.
+    for trap, shape in sorted(shapes.items()):
+        if trap not in result_words:
+            continue
+        want = OVERRIDES.get(trap, {}).get("pushes")
+        if want is None:
+            want = 1 if shape["op"] == "TRAP_RTRN" else source_pushes(trap, library)
+        if want is None:
+            problems.append("%s: nothing says whether it leaves a result (no library method writes it, or they disagree): "
+                            "declare \"pushes\" in OVERRIDES" % trap)
+        elif result_words[trap] != want:
+            problems.append("%s: trap_signatures.h says it leaves %d result word(s), %s %d" %
+                            (trap, result_words[trap], "OVERRIDES says" if "pushes" in OVERRIDES.get(trap, {}) else
+                             "it is TRAP_RTRN:" if shape["op"] == "TRAP_RTRN" else "the library sources say", want))
     for trap, shape in sorted(shapes.items()):
         if trap not in rows:
             problems.append("%s: the compiler writes it and trap_signatures.h has no row (run gen_trap_signatures.py)" % trap)
@@ -574,7 +631,6 @@ def check():
     # reads the frame or the instance names exactly the methods the library sources
     # hold its directive in, and no other trap names any.
     frames = frame_traps()
-    library = library_traps(set(shapes))
     tails = {m.group(1): (m.group(2), m.group(3) == "true")
              for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", [^\n]*, (nullptr|L"[^"\n]*"), (true|false) \},\n', text)}
     for trap in sorted(rows):
