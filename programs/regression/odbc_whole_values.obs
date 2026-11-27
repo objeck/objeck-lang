@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no objeck_sqlite_test data source
 #~
 # Database.ODBC reads and writes whole values, and says why a SELECT failed.
 #

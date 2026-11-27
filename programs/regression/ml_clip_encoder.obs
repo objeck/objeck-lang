@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx or libobjk_opencv is not deployed
 # EXTRA_LIBS: ml_clip,ml_verify,opencv,onnx,models
 #~
 System.ML.Clip ClipEncoder end to end on a tiny ONNX "image tower", and the pair scoring that feeds

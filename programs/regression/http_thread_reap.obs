@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no /proc/self/maps on this platform
 # EXTRA_LIBS: net,net_server
 use System.IO.Net, System.IO.Filesystem, Web.HTTP.Server;
 

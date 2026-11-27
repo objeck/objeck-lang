@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_lame is not deployed
 #~
 # Audio.Lame->PcmToMp3 encodes PCM to MP3.
 #

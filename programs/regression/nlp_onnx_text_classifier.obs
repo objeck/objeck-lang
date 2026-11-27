@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # TextClassifier: a fine-tuned classifier opened from its model folder, checked against
 # Python.

@@ -307,6 +307,46 @@ static bool SignalDispatchFault(const char* stage)
 #endif
 }
 
+// Test hook: OBJECK_NATIVE_TEST_PAUSE=<point>=<ms>[,<point>=<ms>...] makes a native stop for that long
+// at a named point, so that a test can put another thread's call into a window that is otherwise a few
+// instructions wide (a Close() between a listener's publication and the next thing Listen() does, a
+// read between another read's look ahead and its push back). The points are named where they are used.
+// Unset, it is one read of a cached empty string, and it is called only from paths that are about to
+// wait on the network anyway. As OBJECK_SIGNAL_TEST_FAULT above: for the tests, not an interface.
+static void NativeTestPause(const char* point)
+{
+  static const std::string spec = []() {
+#ifdef _WIN32
+    char value[256] = {0};
+    size_t len = 0;
+    return std::string(!getenv_s(&len, value, sizeof(value), "OBJECK_NATIVE_TEST_PAUSE") ? value : "");
+#else
+    const char* value = std::getenv("OBJECK_NATIVE_TEST_PAUSE");
+    return std::string(value ? value : "");
+#endif
+  }();
+  if(spec.empty()) {
+    return;
+  }
+
+  const std::string key = std::string(point) + "=";
+  size_t at = 0;
+  while(at < spec.size()) {
+    size_t end = spec.find(',', at);
+    if(end == std::string::npos) {
+      end = spec.size();
+    }
+    if(spec.compare(at, key.size(), key) == 0) {
+      const int ms = atoi(spec.substr(at + key.size(), end - at - key.size()).c_str());
+      if(ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+      }
+      return;
+    }
+    at = end + 1;
+  }
+}
+
 // The dispatcher's wake-up (a pipe, or on Windows an event) while StartSignalDispatch owns it: closed
 // when the start is given up, however it is left, and kept only once the dispatcher has it (Release).
 // The thread's start can fail with more than std::system_error -- std::thread allocates its state, so
@@ -4142,9 +4182,37 @@ bool TrapProcessor::StdOutString(StackProgram* program, size_t* inst, size_t* &o
 //
 static const size_t UTF8_TAIL_MAX = 3;
 
+// The values the byte at 'index' (1, 2 or 3) of a UTF-8 character may have, given its lead byte: a
+// continuation byte, 80..BF, except that the SECOND byte is held to less after four lead bytes. E0
+// needs A0..BF (below that the character has a two-byte form), ED needs 80..9F (above that it is a
+// surrogate), F0 needs 90..BF (below that it has a three-byte form) and F4 needs 80..8F (above that it
+// is past U+10FFFF). A byte outside the range does not continue the character: nothing that follows it
+// can make the bytes before it into one.
+static inline void Utf8ByteRange(unsigned char lead, size_t index, unsigned char& lo, unsigned char& hi)
+{
+  lo = 0x80;
+  hi = 0xBF;
+  if(index == 1) {
+    if(lead == 0xE0) {
+      lo = 0xA0;
+    }
+    else if(lead == 0xED) {
+      hi = 0x9F;
+    }
+    else if(lead == 0xF0) {
+      lo = 0x90;
+    }
+    else if(lead == 0xF4) {
+      hi = 0x8F;
+    }
+  }
+}
+
 // The bytes the UTF-8 character that ends [buf, buf + len) still lacks: 0 when the bytes end on a whole
-// character, or on bytes that do not start one. 'tail' is given how many bytes of that character are there.
-static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullptr)
+// character, on bytes that do not start one (a lone continuation byte, C0, C1, F5 and up), or on a
+// prefix that can no longer become one (E0 80: see Utf8ByteRange). 'tail' is given how many bytes of
+// that character are there, and 'lead' its first byte.
+static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullptr, unsigned char* lead = nullptr)
 {
   for(size_t back = 1; back <= 4 && back <= len; ++back) {
     const unsigned char c = (unsigned char)buf[len - back];
@@ -4153,8 +4221,19 @@ static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullpt
     }
     const size_t whole = (c >= 0xC2 && c <= 0xDF) ? 2 : (c >= 0xE0 && c <= 0xEF) ? 3 : (c >= 0xF0 && c <= 0xF4) ? 4 : 1;
     if(whole > back) {
+      if(back > 1) {
+        unsigned char lo, hi;
+        Utf8ByteRange(c, 1, lo, hi);
+        const unsigned char second = (unsigned char)buf[len - back + 1];
+        if(second < lo || second > hi) {
+          return 0;
+        }
+      }
       if(tail) {
         *tail = back;
+      }
+      if(lead) {
+        *lead = c;
       }
       return whole - back;
     }
@@ -4163,40 +4242,54 @@ static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullpt
   return 0;
 }
 
-static inline bool IsUtf8Continuation(int byte)
-{
-  return (byte & 0xC0) == 0x80;
-}
-
 // Completes the character that ends the 'len' bytes just read into 'buf' (room for UTF8_TAIL_MAX more).
-// Only continuation bytes are taken, one at a time: next_continuation(dest) answers true when the
-// stream's next byte is one, which it has then read into 'dest', and false when the stream has no more
-// or its next byte is anything else, which it must leave unread (a FILE gives the byte back with ungetc,
-// a socket looks before it reads, a TLS session keeps it for its next read). The bytes a lead byte
-// announces used to be read whatever they were: after F0 the next three were taken, so a one-byte read
-// of F0 41 42 43 swallowed "ABC" into a character that was never one, and the next read began after
-// them. Returns the new length. No VM heap is touched: callable while parked.
-template<typename NextContinuation>
-static size_t ReadUtf8Tail(char* buf, size_t len, NextContinuation next_continuation)
+// Only bytes that can still belong to that character are taken, one at a time: next_in_range(dest, lo,
+// hi) answers true when the stream's next byte is in [lo, hi], which it has then read into 'dest', and
+// false when the stream has no more or its next byte is anything else, which it must leave unread (a
+// FILE gives the byte back with ungetc, a socket looks before it reads, a TLS session keeps it for its
+// next read). The bytes a lead byte announces used to be read whatever they were: after F0 the next
+// three were taken, so a one-byte read of F0 41 42 43 swallowed "ABC" into a character that was never
+// one, and the next read began after them.
+//
+// The range is Utf8ByteRange's, not every continuation byte. With any continuation byte accepted, a
+// read of E0 took a following 80 and then waited for a third byte, though E0 80 can never be a
+// character: a peer that had written E0 80 and was waiting for its answer was never answered, and both
+// sides waited for good. The 80 is now left in the stream and the read returns (U+FFFD for the E0).
+//
+// What still waits, and has to: a prefix that CAN become a character, on a stream whose writer has
+// not sent the rest and has not closed. Returning half a character is what a read of characters
+// promises not to do; the wait ends when the rest arrives, the stream ends, or the read's own timeout
+// or deadline does.
+//
+// Returns the new length. No VM heap is touched: callable while parked.
+template<typename NextInRange>
+static size_t ReadUtf8Tail(char* buf, size_t len, NextInRange next_in_range)
 {
+  size_t have = 0;
+  unsigned char lead = 0;
   // never more than the room the caller left after 'len' (a lead byte lacks three bytes at most)
-  const size_t lacking = Utf8TailMissing(buf, len);
+  const size_t lacking = Utf8TailMissing(buf, len, &have, &lead);
   const size_t missing = lacking < UTF8_TAIL_MAX ? lacking : UTF8_TAIL_MAX;
   size_t added = 0;
-  while(added < missing && next_continuation(buf[len + added])) {
+  while(added < missing) {
+    unsigned char lo, hi;
+    Utf8ByteRange(lead, have + added, lo, hi);
+    if(!next_in_range(buf[len + added], lo, hi)) {
+      break;
+    }
     ++added;
   }
   return len + added;
 }
 
-// The next byte of a FILE (the console, a file, a FIFO) when it continues a character: see ReadUtf8Tail
-static bool FileNextContinuation(FILE* file, char& dest)
+// The next byte of a FILE (the console, a file, a FIFO) when it is in [lo, hi]: see ReadUtf8Tail
+static bool FileNextInRange(FILE* file, char& dest, unsigned char lo, unsigned char hi)
 {
   const int next = fgetc(file);
   if(next == EOF) {
     return false;
   }
-  if(!IsUtf8Continuation(next)) {
+  if(next < lo || next > hi) {
     ungetc(next, file);
     return false;
   }
@@ -4363,7 +4456,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     {
       read = fread(byte_buffer, 1, num, stdin);
       // never stop inside a character (see ReadUtf8Tail)
-      read = ReadUtf8Tail(byte_buffer, read, [](char& dest) { return FileNextContinuation(stdin, dest); });
+      read = ReadUtf8Tail(byte_buffer, read, [](char& dest, unsigned char lo, unsigned char hi) { return FileNextInRange(stdin, dest, lo, hi); });
       if(read) {
         wide_in = DecodeCharRead(byte_buffer, read, (size_t)num);
       }
@@ -6471,13 +6564,21 @@ static void DtlsPeerPump(DtlsServerCtx* srv, std::unique_lock<std::mutex>& held,
       // close_notify of a client whose connection has just been closed -- is nobody's.
       const unsigned char* head = (const unsigned char*)datagram.data();
       const bool hello = datagram.size() >= 14 && head[0] == 22 && head[3] == 0 && head[4] == 0 && head[13] == 1;
-      if(hello && !srv->closed && waiting < DTLS_PEER_WAITING_MAX) {
-        owner = new DtlsPeer();
-        owner->addr = from;
-        owner->addr_len = from_len;
-        owner->accepted = false;
-        owner->aborted = false;
-        table->peers.push_back(owner);
+      if(hello && waiting < DTLS_PEER_WAITING_MAX) {
+        // 'closed' is written by Close() under the context lock and was read here under the peer
+        // table's alone: two locks, so no order between the write and the read, and a client could
+        // be filed for a server already closed. It is read under the lock that writes it, taken
+        // inside the table's as DtlsPeerAccept takes it, and the client is filed before that lock is
+        // let go: a hello is filed before the server is closed or not at all.
+        std::lock_guard<std::mutex> context(tls_context_lock);
+        if(!srv->closed) {
+          owner = new DtlsPeer();
+          owner->addr = from;
+          owner->addr_len = from_len;
+          owner->accepted = false;
+          owner->aborted = false;
+          table->peers.push_back(owner);
+        }
       }
     }
     if(owner && owner->datagrams.size() < DTLS_PEER_QUEUE_MAX) {
@@ -6857,21 +6958,25 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       // GC promotion fixup relocates it, then re-read after the wait.
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      do {
-        value = IPSecureSocket::ReadByte(sctx, status);
-        if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
-          buffer[index++] = value;
+      {
+        // one read of the session at a time, for the whole line (see SecureSocketCtx::read_lock)
+        std::lock_guard<std::mutex> reading(sctx->read_lock);
+        do {
+          value = IPSecureSocket::ReadByte(sctx, status);
+          if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
+            buffer[index++] = value;
+          }
+          else {
+            end_line = true;
+          }
         }
-        else {
-          end_line = true;
-        }
-      }
-      while(!end_line && index + 1 < capacity);
-      buffer[index] = '\0';
+        while(!end_line && index + 1 < capacity);
+        buffer[index] = '\0';
 
-      // assume LF
-      if(value == '\r') {
-        IPSecureSocket::ReadByte(sctx, status);
+        // assume LF
+        if(value == '\r') {
+          IPSecureSocket::ReadByte(sctx, status);
+        }
       }
       MemoryManager::EndBlocking();
       array = (size_t*)PopInt(op_stack, stack_pos);
@@ -6985,6 +7090,15 @@ static SOCKET DtlsRebind(DtlsServerCtx* srv)
 static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* client_ip,
                       size_t buffer_size, size_t* ip_len)
 {
+#ifndef _WIN32
+  // One Accept at a time. The accept takes the listening socket itself for its client and binds a
+  // new listener, so two threads waiting on the same socket both saw the one ClientHello and both
+  // connected and took that socket: two sessions on one descriptor, closed twice. The second now
+  // waits here, parked, and then on the listener the first one left. (On Windows a client is claimed
+  // under the peer table's lock: see DtlsPeerAccept.)
+  std::lock_guard<std::mutex> turn(srv->accept_turn);
+#endif
+
   // the listener is in use until this returns (see ServerCtxClose)
   ListenerUse<DtlsServerCtx> listening(srv);
   const int fd = listening.Descriptor();
@@ -7010,6 +7124,15 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
   // served, landing after its own socket closed -- is discarded: connecting
   // to its sender made the next handshake wait out its timeout for a hello
   // that sender never sends, while the real next client went unheard.
+  //
+  // The wait is the only thing done to the listener without the context lock. Everything after it --
+  // dropping a datagram, connecting the socket to the client, handing it over -- is done under the
+  // lock and only once the listener is seen to be open and still this descriptor. Close() ends the
+  // listener under that lock, and when an accept does not leave within its grace it closes the
+  // descriptor regardless (ServerCtxClose). An accept that was slow between its wait and its handover
+  // then went on with a number that was no longer its listener's: it connected, and gave its client,
+  // whatever socket another thread had opened with that number meanwhile, and freeing the client,
+  // which had failed because the server was closed, closed that socket.
   struct sockaddr_storage client_addr;
   socklen_t addr_len;
   for(;;) {
@@ -7017,65 +7140,82 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
     addr_len = sizeof(client_addr);
     unsigned char peek[16] = {0};
     const int ret = (int)recvfrom(fd, (char*)peek, sizeof(peek), MSG_PEEK, (struct sockaddr*)&client_addr, &addr_len);
-    // a closed server's listener is shut down, which ends the wait above with nothing read
-    if(ret < 0 || listening.ServerClosed()) {
+    if(ret < 0) {
       return MBEDTLS_ERR_NET_ACCEPT_FAILED;
     }
 
     // DTLS record header: content type 22 (handshake), version, epoch 0, ...;
     // then the handshake message type, 1 (ClientHello), at offset 13
-    if(ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1) {
-      break;
+    const bool hello = ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1;
+    if(hello) {
+      // test point: a ClientHello has been seen and nothing has been done about it yet
+      NativeTestPause("dtls-accept-hello-seen");
     }
 
-    // not a hello: consume it and keep waiting (the loop reads again whatever this returns)
-    char discard[1];
-    (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    // a closed server's listener is shut down, which ends the wait above with nothing read; and a
+    // listener that is no longer this descriptor has been closed: the number is not ours to use
+    if(srv->closed || srv->listen_fd.fd != fd) {
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
+
+    if(!hello) {
+      // not a hello: consume it and keep waiting (the loop reads again whatever this returns)
+      char discard[1];
+      (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+      continue;
+    }
+
+    if(connect(fd, (struct sockaddr*)&client_addr, addr_len) != 0) {
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
+
+    // connect() filters what arrives from now on, but not what is already
+    // queued: a datagram another peer sent before it -- the close_notify of the
+    // client served last, landing after its socket closed -- would be read as
+    // this client's next handshake flight, failing it ("processing of the
+    // ClientHello failed"). Drop every queued datagram that is not this client's.
+    // (Nothing here waits: the lock is held for a few system calls.)
+    for(;;) {
+      fd_set readable;
+      FD_ZERO(&readable);
+      FD_SET(fd, &readable);
+      struct timeval no_wait = { 0, 0 };
+      if(select(fd + 1, &readable, nullptr, nullptr, &no_wait) <= 0) {
+        break;
+      }
+
+      struct sockaddr_storage from;
+      memset(&from, 0, sizeof(from));
+      socklen_t from_len = sizeof(from);
+      char head[1];
+      const int peeked = (int)recvfrom(fd, head, sizeof(head), MSG_PEEK, (struct sockaddr*)&from, &from_len);
+      if(peeked < 0) {
+        break;
+      }
+
+      if(from_len == addr_len && !memcmp(&from, &client_addr, addr_len)) {
+        // this client's: everything after it is filtered by connect()
+        break;
+      }
+
+      char discard[1];
+      (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+    }
+
+    // the connected socket is the client's now, and the server has no listener until one is bound
+    client->net.fd = fd;
+    srv->listen_fd.fd = -1;
+    break;
   }
 
-  if(connect(fd, (struct sockaddr*)&client_addr, addr_len) != 0) {
-    return MBEDTLS_ERR_NET_ACCEPT_FAILED;
-  }
+  // test point: the socket is the client's and there is no new listener yet
+  NativeTestPause("dtls-accept-before-handoff");
 
-  // connect() filters what arrives from now on, but not what is already
-  // queued: a datagram another peer sent before it -- the close_notify of the
-  // client served last, landing after its socket closed -- would be read as
-  // this client's next handshake flight, failing it ("processing of the
-  // ClientHello failed"). Drop every queued datagram that is not this client's.
-  for(;;) {
-    fd_set readable;
-    FD_ZERO(&readable);
-    FD_SET(fd, &readable);
-    struct timeval no_wait = { 0, 0 };
-    if(select(fd + 1, &readable, nullptr, nullptr, &no_wait) <= 0) {
-      break;
-    }
-
-    struct sockaddr_storage from;
-    memset(&from, 0, sizeof(from));
-    socklen_t from_len = sizeof(from);
-    char head[1];
-    const int peeked = (int)recvfrom(fd, head, sizeof(head), MSG_PEEK, (struct sockaddr*)&from, &from_len);
-    if(peeked < 0) {
-      break;
-    }
-
-    if(from_len == addr_len && !memcmp(&from, &client_addr, addr_len)) {
-      // this client's: everything after it is filtered by connect()
-      break;
-    }
-
-    char discard[1];
-    (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
-  }
-
-  // the connected socket is the client's now; listen again on a fresh one, unless the server was
-  // closed meanwhile: then nobody is left to accept on it, and the socket handed over was shut down
-  // with the listener it was (the client is freed by the caller, with it)
-  client->net.fd = fd;
+  // Listen again on a fresh socket, unless the server was closed meanwhile: then nobody is left to
+  // accept on it (the client is freed by the caller, and its socket with it: it is the client's own).
   {
     std::lock_guard<std::mutex> guard(tls_context_lock);
-    srv->listen_fd.fd = -1;
     if(srv->closed) {
       return MBEDTLS_ERR_NET_ACCEPT_FAILED;
     }
@@ -7248,14 +7388,25 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       mbedtls_ssl_conf_own_cert(&srv->conf, &srv->srvcert, &srv->pkey);
 
-      instance[0] = (size_t)srv;
-      instance[1] = 0;
-      instance[2] = 0;
-      // @port: the port bound, which for a port of 0 the system chose
+      // @port: the port bound, which for a port of 0 the system chose. Asked for while the context
+      // is still this thread's alone.
       const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
-      if(bound_port > 0) {
-        instance[6] = bound_port;
+
+      // The object is given its context last, whole, and under the lock every other trap reads it
+      // under: from that moment a Close() on another thread can drop the only reference and free it.
+      // It used to be stored first and asked for its port afterwards, through a pointer a Close() in
+      // between had freed. Nothing below this block touches 'srv'.
+      NativeTestPause("tls-listen-publishing");   // test point: just before the object has its context
+      {
+        std::lock_guard<std::mutex> guard(tls_context_lock);
+        instance[0] = (size_t)srv;
+        instance[1] = 0;
+        instance[2] = 0;
+        if(bound_port > 0) {
+          instance[6] = bound_port;
+        }
       }
+      NativeTestPause("tls-listen-published");    // test point: just after
 
       PushInt(1, op_stack, stack_pos);
       return;
@@ -9418,6 +9569,24 @@ class FileReadPark {
   bool IsParked() const { return parked; }
 };
 
+// Looks one byte ahead, so that IsEoF() is true as soon as the last byte has been read rather than
+// after a read that finds nothing (#1180): for a file on disk only. On a handle that can wait (a FIFO,
+// a terminal: see FileMayBlock) the byte looked for is the writer's NEXT message, and waiting for it
+// stops a conversation: a FIFO writer that sent a line and waits for an acknowledgment before it
+// writes again never got one, because the reader, with its line complete, was waiting in this look
+// ahead and had not returned it. There the end is found by the read that meets it (ReadLine returns
+// Nil), as on a pipe or a socket.
+static void FileLookAhead(FILE* file)
+{
+  if(FileMayBlock(file)) {
+    return;
+  }
+  const int next = fgetc(file);
+  if(next != EOF) {
+    ungetc(next, file);
+  }
+}
+
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -9425,25 +9594,21 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   if(array && instance) {
     array = (size_t*)array[0];
     const NativePath filename = ToNativePath((wchar_t*)(array + 3));
-    // The name need not be a file on disk. Opening a FIFO waits for its writer, and the
-    // look-ahead below then waits for its first byte, with no bound on either: park for
-    // both (the name is C heap by now), with the instance re-rooted on the op_stack, or
-    // a collection on any other thread waits as long.
+    // The name need not be a file on disk. Opening a FIFO waits for its writer, with no
+    // bound: park for it (the name is C heap by now), with the instance re-rooted on the
+    // op_stack, or a collection on any other thread waits as long.
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     FILE* file = File::FileOpen(filename.c_str(), "rb");
     const int open_error = errno;
+    NoteFileOpened(file);
     // look ahead one byte, as FileInString does after each line: an empty file
     // is then at end of file from the start, and ReadLine returns Nil rather
-    // than one empty line (#1180)
+    // than one empty line (#1180). Not on a handle that can wait (see FileLookAhead).
     if(file) {
-      const int next = fgetc(file);
-      if(next != EOF) {
-        ungetc(next, file);
-      }
+      FileLookAhead(file);
     }
     MemoryManager::EndBlocking();
-    NoteFileOpened(file);
     instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!file) {
       SetFileError(instance, open_error);
@@ -9579,23 +9744,20 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
   if(array && instance && instance[0]) {
     FILE* file = (FILE*)instance[0];
     char buffer[MID_BUFFER_MAX] = {0};
-    // The line, and the byte looked at after it, with the thread parked when the file can wait (see
-    // FileMayBlock); the array is re-rooted on the op_stack for that and re-read after. The look ahead
-    // is made here, before the line is stored, so that one park covers both waits.
+    // The line, with the thread parked when the file can wait (see FileMayBlock); the array is
+    // re-rooted on the op_stack for that and re-read after.
     //
-    // Look ahead one byte, so end of file is known as soon as the last line
-    // has been read. Without it IsEoF() stayed false after the final newline,
-    // and the documented `while(line <> Nil)` loop got one extra "" (#1180).
+    // Then, for a file on disk, a look one byte ahead, so end of file is known as soon as the last
+    // line has been read. Without it IsEoF() stayed false after the final newline, and the
+    // documented `while(line <> Nil)` loop got one extra "" (#1180). See FileLookAhead for why not
+    // on a handle that can wait.
     bool has_line;
     PushInt((size_t)array, op_stack, stack_pos);
     {
       FileReadPark park(file);
       has_line = fgets(buffer, MID_BUFFER_MAX - 1, file) != nullptr;
       if(has_line) {
-        const int next = fgetc(file);
-        if(next != EOF) {
-          ungetc(next, file);
-        }
+        FileLookAhead(file);
       }
     }
     array = (size_t*)PopInt(op_stack, stack_pos);
@@ -9806,10 +9968,10 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
     return true;
   }
 
-  // The line, and the byte looked at after it, with the thread parked when the file can wait (see
-  // FileMayBlock): only C++ locals are touched meanwhile. The look ahead is made here, before the line
-  // is decoded, so that one park covers both waits: it tells IsEoF() the file has ended as soon as
-  // the last line is read.
+  // The line, with the thread parked when the file can wait (see FileMayBlock): only C++ locals are
+  // touched meanwhile. Then, for a file on disk, the look one byte ahead that tells IsEoF() the file
+  // has ended as soon as the last line is read (see FileLookAhead for why not on a handle that can
+  // wait).
   std::string line;
   bool read_any = false;
   {
@@ -9823,10 +9985,7 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
       line.push_back((char)c);
     }
     if(read_any) {
-      const int next = fgetc(file);
-      if(next != EOF) {
-        ungetc(next, file);
-      }
+      FileLookAhead(file);
     }
   }
 
@@ -10626,7 +10785,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
         read = 0;
       }
       // never stop inside a character (see ReadUtf8Tail); a failed read is no more bytes
-      read = ReadUtf8Tail(byte_buffer, read, [pipe](char& dest) { return Pipe::ReadContinuationByte(dest, pipe); });
+      read = ReadUtf8Tail(byte_buffer, read, [pipe](char& dest, unsigned char lo, unsigned char hi) { return Pipe::ReadByteInRange(dest, pipe, lo, hi); });
       in = DecodeCharRead(byte_buffer, read, (size_t)num);
 
       // copy and remove file BOM UTF (8, 16, 32)
@@ -10863,8 +11022,8 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     // Never stop inside a character (see ReadUtf8Tail). Only after a whole read: a short one means the
     // peer closed, or the read failed or timed out, and its reason is in 'error' already.
     if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char& dest) {
-        return IPSocket::ReadContinuationByte(dest, sock, error, limits.deadline_ms, limits.read_ms);
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char& dest, unsigned char lo, unsigned char hi) {
+        return IPSocket::ReadByteInRange(dest, sock, lo, hi, error, limits.deadline_ms, limits.read_ms);
       });
     }
     MemoryManager::EndBlocking();
@@ -10978,8 +11137,13 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
     ClearTlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
+    char value;
     MemoryManager::BeginBlocking();
-    const char value = IPSecureSocket::ReadByte(sctx, status);
+    {
+      // one read of the session at a time (see SecureSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      value = IPSecureSocket::ReadByte(sctx, status);
+    }
     MemoryManager::EndBlocking();
     PushInt(value, op_stack, stack_pos);
   }
@@ -11015,14 +11179,18 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
     // A byte is stored and counted only when one arrived (status > 0). The end of the stream (status 0:
     // the peer closed without a close_notify) was counted as a byte: ReadByte answers '\0' for it, so a
     // read at the end of the stream returned 1 and wrote that zero over the caller's element at 'offset'.
-    while(!done && read < num) {
-      const char value = IPSecureSocket::ReadByte(sctx, status);
-      if(status > 0) {
-        temp[read++] = value;
-      }
-      else {
-        done = true;
-        failed = status < 0;
+    {
+      // one read of the session at a time, for all the bytes (see SecureSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      while(!done && read < num) {
+        const char value = IPSecureSocket::ReadByte(sctx, status);
+        if(status > 0) {
+          temp[read++] = value;
+        }
+        else {
+          done = true;
+          failed = status < 0;
+        }
       }
     }
     MemoryManager::EndBlocking();
@@ -11069,24 +11237,34 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     // op_stack so GC promotion fixup relocates it while we wait.
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
-    // never stop inside a character, after a whole read (see SockTcpInCharAry)
-    if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest) {
-        // TLS has no way to look at a byte without reading it: one that does not continue the
-        // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
-        int status;
-        const char next = IPSecureSocket::ReadByte(sctx, status);
-        if(status <= 0) {
-          return false;
-        }
-        if(!IsUtf8Continuation(next)) {
-          sctx->pushback = (unsigned char)next;
-          return false;
-        }
-        dest = next;
-        return true;
-      });
+    int read;
+    {
+      // One read of the session at a time, from its bytes to the byte it may give back. A second
+      // thread reading meanwhile took the byte AFTER the one this read had looked at and not yet
+      // given back, so the two bytes changed places: of F0 41 42, read as one character here and by
+      // ReadByte there, the other thread got 42 and the next read 41.
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+      // never stop inside a character, after a whole read (see SockTcpInCharAry)
+      if(read > 0 && read == num) {
+        read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest, unsigned char lo, unsigned char hi) {
+          // TLS has no way to look at a byte without reading it: one that does not continue the
+          // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
+          int status;
+          const char next = IPSecureSocket::ReadByte(sctx, status);
+          if(status <= 0) {
+            return false;
+          }
+          if((unsigned char)next < lo || (unsigned char)next > hi) {
+            // test point: a byte that belongs to the next read has been taken and not yet given back
+            NativeTestPause("tls-char-before-pushback");
+            sctx->pushback = (unsigned char)next;
+            return false;
+          }
+          dest = next;
+          return true;
+        });
+      }
     }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
@@ -12806,18 +12984,30 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
       srv->peers = new DtlsPeerTable();
 #endif
 
-      instance[0] = (size_t)srv;
-      instance[1] = 0;
-      instance[2] = 0;
       // @port: the port bound, which for a port of 0 the system chose. srv->port
       // follows it too: the wildcard listener each accept binds afresh
       // (DtlsAccept, IPSocket::BindAny(srv->port)) must take this port again,
-      // not another one of the system's choosing.
+      // not another one of the system's choosing. Both while the context is still
+      // this thread's alone.
       const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
       if(bound_port > 0) {
         srv->port = bound_port;
-        instance[6] = bound_port;
       }
+
+      // The object is given its context last, whole, and under the lock every other trap reads it
+      // under (see SecureServerListen): it was stored first, and then read and written through a
+      // pointer that a Close() in between had freed. Nothing below this block touches 'srv'.
+      NativeTestPause("dtls-listen-publishing");   // test point: just before the object has its context
+      {
+        std::lock_guard<std::mutex> guard(tls_context_lock);
+        instance[0] = (size_t)srv;
+        instance[1] = 0;
+        instance[2] = 0;
+        if(bound_port > 0) {
+          instance[6] = bound_port;
+        }
+      }
+      NativeTestPause("dtls-listen-published");    // test point: just after
 
       PushInt(1, op_stack, stack_pos);
       return;
@@ -13244,7 +13434,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     do {
       read = fread(byte_buffer, 1, num, file);
       // never stop inside a character (see ReadUtf8Tail)
-      read = ReadUtf8Tail(byte_buffer, read, [file](char& dest) { return FileNextContinuation(file, dest); });
+      read = ReadUtf8Tail(byte_buffer, read, [file](char& dest, unsigned char lo, unsigned char hi) { return FileNextInRange(file, dest, lo, hi); });
       in = DecodeCharRead(byte_buffer, read, (size_t)num);
 
       // remove file BOM UTF (8, 16, 32)

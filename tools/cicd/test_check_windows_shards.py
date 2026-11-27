@@ -11,7 +11,10 @@ SCRIPT = os.path.join(HERE, "check_windows_shards.py")
 PLATFORM = "windows-x64"
 
 
-def make(tmp, shards, total, tweak=None, logtweak=None):
+T0_SOURCE = "# SKIP_ALLOWED: no GPU" + chr(10) + '"SKIP: no GPU"->PrintLine();' + chr(10)
+
+
+def make(tmp, shards, total, tweak=None, logtweak=None, t0=T0_SOURCE):
     """A complete, passing set of shard results for `total` tests; tweak(i, pass, counts) edits it.
 
     Test t0 can print SKIP: (its source says so) and is the one each pass skips; every other test
@@ -21,7 +24,7 @@ def make(tmp, shards, total, tweak=None, logtweak=None):
     for n in range(total):
         with open(os.path.join(tests, "t%d.obs" % n), "w") as f:
             if n == 0:
-                f.write('"SKIP: no GPU"->PrintLine();' + chr(10))
+                f.write(t0)
     for i in range(shards):
         d = os.path.join(tmp, "shards", "winshard-%s-%d" % (PLATFORM, i))
         os.makedirs(d)
@@ -53,9 +56,9 @@ def run(tests, shards_dir, shards):
 
 
 class Shards(unittest.TestCase):
-    def go(self, tweak=None, shards=4, total=10, expect=0, logtweak=None):
+    def go(self, tweak=None, shards=4, total=10, expect=0, logtweak=None, t0=T0_SOURCE):
         with tempfile.TemporaryDirectory() as tmp:
-            tests, sd = make(tmp, shards, total, tweak, logtweak)
+            tests, sd = make(tmp, shards, total, tweak, logtweak, t0)
             r = run(tests, sd, shards)
             self.assertEqual(r.returncode, expect, r.stdout + r.stderr)
             return r.stdout
@@ -87,6 +90,53 @@ class Shards(unittest.TestCase):
         out = self.go(counts, logtweak=log, expect=1)
         self.assertIn("was skipped, and nothing in it says it can be", out)
         self.assertIn("no test passed", out)
+
+    # A test is allowed to skip by a directive, not by mentioning the marker.
+
+    def test_marker_in_a_comment_is_not_a_declaration(self):
+        # t0 skips (a shared helper printed SKIP: and the test exited 0) but only a comment names it
+        out = self.go(t0='# this test could print "SKIP: no GPU" one day' + chr(10), expect=1)
+        self.assertIn("t0 was skipped, and nothing in it says it can be", out)
+
+    def test_helper_printed_skip_without_directive_fails(self):
+        out = self.go(t0="Setup->Run();" + chr(10), expect=1)
+        self.assertIn("t0 was skipped", out)
+
+    def test_directive_without_a_reason_declares_nothing(self):
+        out = self.go(t0="# SKIP_ALLOWED:" + chr(10) + '"SKIP: x"->PrintLine();' + chr(10), expect=1)
+        self.assertIn("t0 was skipped", out)
+
+    def test_directive_after_the_header_declares_nothing(self):
+        late = chr(10).join(["# filler"] * 25) + chr(10) + "# SKIP_ALLOWED: late" + chr(10) + '"SKIP: x"->PrintLine();' + chr(10)
+        self.assertIn("t0 was skipped", self.go(t0=late, expect=1))
+
+    def test_directive_with_a_helper_that_prints_passes(self):
+        # the declaration is the directive; a helper may print the marker
+        out = self.go(t0="# SKIP_ALLOWED: no GPU" + chr(10) + "Setup->Run();" + chr(10))
+        self.assertIn("Skipped (each declares SKIP_ALLOWED): t0 (no GPU)", out)
+
+    def lint(self, t0):
+        with tempfile.TemporaryDirectory() as tmp:
+            tests, _ = make(tmp, 2, 4, t0=t0)
+            r = subprocess.run([sys.executable, "-I", SCRIPT, "--lint-skips", "--tests-dir", tests], capture_output=True, text=True)
+            return r.returncode, r.stdout
+
+    def test_lint_accepts_a_declared_skip(self):
+        self.assertEqual(self.lint(T0_SOURCE)[0], 0)
+
+    def test_lint_rejects_a_print_with_no_directive(self):
+        rc, out = self.lint('"SKIP: no GPU"->PrintLine();' + chr(10))
+        self.assertEqual(rc, 1)
+        self.assertIn("t0.obs prints SKIP: but has no", out)
+
+    def test_lint_rejects_a_marker_only_in_a_comment(self):
+        rc, out = self.lint('# "SKIP: no GPU" is printed by Setup' + chr(10))
+        self.assertEqual(rc, 0, out)  # a comment prints nothing and declares nothing
+
+    def test_lint_rejects_a_directive_with_nothing_to_print(self):
+        rc, out = self.lint("# SKIP_ALLOWED: no GPU" + chr(10) + "x := 1;" + chr(10))
+        self.assertEqual(rc, 1)
+        self.assertIn("declares SKIP_ALLOWED but no line of it prints SKIP:", out)
 
     def test_skip_of_a_test_that_can_skip_passes(self):
         self.go()  # t0 skips in both passes and says it can

@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # API.Onnx.OnnxRuntime->GetProviders() reaches the native ONNX Runtime.
 #

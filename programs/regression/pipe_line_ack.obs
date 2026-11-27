@@ -1,0 +1,79 @@
+#~
+# A line read from a pipe returns when the line is complete, so the reader can answer it
+#
+# The pipe twin of fifo_line_ack.obs. One side writes "ready", keeps the pipe open and waits for an
+# acknowledgment before it writes again; the other reads the line and acknowledges it. A FileReader on
+# a FIFO did not get through this (it looked one byte ahead after the line, which is the writer's next
+# message); a Pipe's line read never looked ahead, and this keeps it so.
+~#
+
+use System.Concurrency, System.IO;
+
+# creates the pipe, then: writes "ready", waits for "ack", writes "done"
+class AckWriter from Thread {
+	@name : String;
+	@pipe : Pipe;
+	@created : Bool;
+	@acknowledged : String;
+	@finished : Bool;
+
+	New(name : String) {
+		Parent("ack-writer");
+		@name := name;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetAcknowledged() ~ String { return @acknowledged; }
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+		if(@pipe->IsOpen()) {
+			@pipe->WriteString("ready\n");
+			@acknowledged := @pipe->ReadLine();
+			@pipe->WriteString("done\n");
+			# the reader closes first; this end stays open until it has
+			@pipe->ReadLine();
+			@pipe->Close();
+		};
+		@finished := true;
+	}
+}
+
+class PipeLineAck {
+	function : Main(args : String[]) ~ Nil {
+		name := "objeck-pipe-ack-{$Int->Random(100000, 999999)}";
+		writer := AckWriter->New(name);
+		writer->Execute(Nil);
+
+		reader : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			reader := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := reader->IsOpen();
+		};
+		if(<>opened) {
+			"FAIL: the pipe did not connect"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		first := reader->ReadLine();
+		reader->WriteString("ack\n");
+		second := reader->ReadLine();
+		reader->Close();
+
+		for(waited := 0; <>writer->IsFinished() & waited < 5000; waited += 5;) {
+			Thread->Sleep(5);
+		};
+
+		"first='{$first}' second='{$second}' acknowledged='{$(writer->GetAcknowledged())}'"->PrintLine();
+		if(first <> Nil & first->Equals("ready") & second <> Nil & second->Equals("done") & writer->IsFinished() &
+				writer->GetAcknowledged() <> Nil & writer->GetAcknowledged()->Equals("ack")) {
+			"PASS: a line read from a pipe returns when the line is complete"->PrintLine();
+		}
+		else {
+			"FAIL: the acknowledgment protocol over a pipe did not complete"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

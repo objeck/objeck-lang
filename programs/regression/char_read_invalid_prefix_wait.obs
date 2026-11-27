@@ -1,0 +1,317 @@
+#~
+# A Char[] read does not wait for the rest of a "character" that can no longer be one
+#
+# ReadBuffer(offset, num, Char[]) never ends inside a character: when its bytes end part way through
+# one, it reads the bytes that character still lacks. It took any continuation byte (80..BF) as part
+# of the character. But after four lead bytes the SECOND byte is held to less: E0 needs A0..BF, ED
+# needs 80..9F, F0 needs 90..BF and F4 needs 80..8F. So E0 80 can never be a character, and the read
+# that had taken the 80 went on waiting for a third byte. A writer that sends E0 80, keeps its end
+# open and waits for an answer is never answered: both sides wait for good (Codex review round 3,
+# slice E, finding 4).
+#
+# The read now stops at the first byte that cannot continue the character and leaves it in the stream:
+# the lead byte is U+FFFD at once, and the byte after it is the next read's.
+#
+# Here the writer is this program's main thread, which keeps the stream open throughout: each read is
+# made on a thread of its own and has to finish while the writer is still there. The last case is the
+# other side of the rule: a prefix that CAN become a character (E2 82, the euro sign's first two bytes)
+# does wait, and is completed when its last byte arrives.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# one ReadBuffer(0, num, Char[]) of a pipe
+class PipeCharRead from Thread {
+	@pipe : Pipe;
+	@num : Int;
+	@chars : Char[];
+	@got : Int;
+	@finished : Bool;
+
+	New(pipe : Pipe, num : Int) {
+		Parent("pipe-char-read");
+		@pipe := pipe;
+		@num := num;
+		@chars := Char->New[8];
+		@got := -2;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@got := @pipe->ReadBuffer(0, @num, @chars);
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetGot() ~ Int { return @got; }
+	method : public : GetChar(i : Int) ~ Int { return @chars[i]->As(Int); }
+}
+
+# one ReadBuffer(0, num, Char[]) of a TCP socket
+class TcpCharRead from Thread {
+	@socket : TCPSocket;
+	@num : Int;
+	@chars : Char[];
+	@got : Int;
+	@finished : Bool;
+
+	New(socket : TCPSocket, num : Int) {
+		Parent("tcp-char-read");
+		@socket := socket;
+		@num := num;
+		@chars := Char->New[8];
+		@got := -2;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@got := @socket->ReadBuffer(0, @num, @chars);
+		@finished := true;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetGot() ~ Int { return @got; }
+	method : public : GetChar(i : Int) ~ Int { return @chars[i]->As(Int); }
+}
+
+class PrefixPipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("prefix-pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe { return @pipe; }
+}
+
+class PrefixAcceptor from Thread {
+	@server : TCPSocketServer;
+	@socket : TCPSocket;
+
+	New(server : TCPSocketServer) {
+		Parent("prefix-acceptor");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@socket := @server->Accept();
+	}
+
+	method : public : GetSocket() ~ TCPSocket { return @socket; }
+}
+
+class CharReadInvalidPrefixWait {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("pipe")) {
+			"stage: pipe"->ErrorLine();
+			CheckPipe();
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp"->ErrorLine();
+			CheckTcp();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} invalid-prefix Char[] read check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a Char[] read does not wait on a prefix that cannot be a character"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# the lead bytes whose second byte is restricted, each with a continuation byte it cannot take
+	function : Prefix(which : Int) ~ Byte[] {
+		bytes := Byte->New[2];
+		if(which = 0) {
+			bytes[0] := 0xE0; bytes[1] := 0x80;
+		}
+		else if(which = 1) {
+			bytes[0] := 0xED; bytes[1] := 0xA0;
+		}
+		else if(which = 2) {
+			bytes[0] := 0xF0; bytes[1] := 0x80;
+		}
+		else {
+			bytes[0] := 0xF4; bytes[1] := 0x90;
+		};
+		return bytes;
+	}
+
+	function : Name(which : Int) ~ String {
+		names := ["E0 80", "ED A0", "F0 80", "F4 90"];
+		return names[which];
+	}
+
+	function : CheckPipe() ~ Nil {
+		name := "objeck-pipe-prefix-{$Int->Random(100000, 999999)}";
+		owner := PrefixPipeOwner->New(name);
+		owner->Execute(Nil);
+
+		writer : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			writer := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := writer->IsOpen();
+		};
+		owner->Join();
+		reader := owner->GetPipe();
+		if(<>opened | <>reader->IsOpen()) {
+			Check("the pipe connects", false);
+			return;
+		};
+
+		for(which := 0; which < 4; which += 1;) {
+			bytes := Prefix(which);
+			writer->WriteBuffer(0, 2, bytes);
+
+			# the writer stays open and sends nothing more: the read has to return on its own
+			first := PipeCharRead->New(reader, 1);
+			first->Execute(Nil);
+			for(waited := 0; <>first->IsFinished() & waited < 3000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			Check("pipe: a read of 1 from {$Name(which)} returns U+FFFD without waiting for more (got {$(first->GetGot())})",
+				first->IsFinished() & first->GetGot() = 1 & first->GetChar(0) = 0xFFFD);
+			if(<>first->IsFinished()) {
+				# the read is still waiting: nothing below can be trusted, and the next read would queue behind it
+				return;
+			};
+			first->Join();
+
+			# the byte the first read looked at is still in the pipe
+			second := PipeCharRead->New(reader, 1);
+			second->Execute(Nil);
+			for(waited := 0; <>second->IsFinished() & waited < 3000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			Check("pipe: and its second byte is the next read's (got {$(second->GetGot())})",
+				second->IsFinished() & second->GetGot() = 1 & second->GetChar(0) = 0xFFFD);
+			if(<>second->IsFinished()) {
+				return;
+			};
+			second->Join();
+		};
+
+		# a prefix that can become a character waits for the rest
+		euro := Byte->New[3];
+		euro[0] := 0xE2; euro[1] := 0x82; euro[2] := 0xAC;
+		writer->WriteBuffer(0, 2, euro);
+		waiting := PipeCharRead->New(reader, 1);
+		waiting->Execute(Nil);
+		Thread->Sleep(300);
+		still_waiting := <>waiting->IsFinished();
+		writer->WriteBuffer(2, 1, euro);
+		for(waited := 0; <>waiting->IsFinished() & waited < 3000; waited += 5;) {
+			Thread->Sleep(5);
+		};
+		Check("pipe: a read of 1 from E2 82 waits for its last byte and is the euro sign (waited {$still_waiting}, got {$(waiting->GetGot())})",
+			still_waiting & waiting->IsFinished() & waiting->GetGot() = 1 & waiting->GetChar(0) = 0x20AC);
+
+		writer->Close();
+		reader->Close();
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		acceptor := PrefixAcceptor->New(server);
+		acceptor->Execute(Nil);
+		reader := TCPSocket->New("127.0.0.1", server->GetPort());
+		acceptor->Join();
+		writer := acceptor->GetSocket();
+		if(<>reader->IsOpen() | writer = Nil) {
+			Check("the TCP connection is made", false);
+			return;
+		};
+		# long enough that a read which waits is seen to wait, short enough that the test ends
+		reader->SetRecvTimeout(20000);
+
+		for(which := 0; which < 4; which += 1;) {
+			bytes := Prefix(which);
+			writer->WriteBuffer(0, 2, bytes);
+
+			first := TcpCharRead->New(reader, 1);
+			first->Execute(Nil);
+			for(waited := 0; <>first->IsFinished() & waited < 3000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			Check("TCP: a read of 1 from {$Name(which)} returns U+FFFD without waiting for more (got {$(first->GetGot())})",
+				first->IsFinished() & first->GetGot() = 1 & first->GetChar(0) = 0xFFFD);
+			if(<>first->IsFinished()) {
+				return;
+			};
+			first->Join();
+
+			second := TcpCharRead->New(reader, 1);
+			second->Execute(Nil);
+			for(waited := 0; <>second->IsFinished() & waited < 3000; waited += 5;) {
+				Thread->Sleep(5);
+			};
+			Check("TCP: and its second byte is the next read's (got {$(second->GetGot())})",
+				second->IsFinished() & second->GetGot() = 1 & second->GetChar(0) = 0xFFFD);
+			if(<>second->IsFinished()) {
+				return;
+			};
+			second->Join();
+		};
+
+		# both bytes in one read of two: nothing is waited for either
+		bytes := Prefix(0);
+		writer->WriteBuffer(0, 2, bytes);
+		both := TcpCharRead->New(reader, 2);
+		both->Execute(Nil);
+		for(waited := 0; <>both->IsFinished() & waited < 3000; waited += 5;) {
+			Thread->Sleep(5);
+		};
+		Check("TCP: a read of 2 that is E0 80 returns without waiting for a third byte (got {$(both->GetGot())})",
+			both->IsFinished() & both->GetGot() >= 1 & both->GetChar(0) = 0xFFFD);
+		if(<>both->IsFinished()) {
+			return;
+		};
+		both->Join();
+
+		euro := Byte->New[3];
+		euro[0] := 0xE2; euro[1] := 0x82; euro[2] := 0xAC;
+		writer->WriteBuffer(0, 2, euro);
+		waiting := TcpCharRead->New(reader, 1);
+		waiting->Execute(Nil);
+		Thread->Sleep(300);
+		still_waiting := <>waiting->IsFinished();
+		writer->WriteBuffer(2, 1, euro);
+		for(waited := 0; <>waiting->IsFinished() & waited < 3000; waited += 5;) {
+			Thread->Sleep(5);
+		};
+		Check("TCP: a read of 1 from E2 82 waits for its last byte and is the euro sign (waited {$still_waiting}, got {$(waiting->GetGot())})",
+			still_waiting & waiting->IsFinished() & waiting->GetGot() = 1 & waiting->GetChar(0) = 0x20AC);
+
+		writer->Close();
+		reader->Close();
+		server->Close();
+	}
+}

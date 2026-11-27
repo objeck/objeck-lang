@@ -1963,6 +1963,15 @@ jobs:
       - name: The portable-release gate refuses a core binary that is not an ELF file for the target
         run: python3 tools/cicd/test_check_docs_deps.py
 
+      # The Windows verdict allows a skip only for a test that declares "# SKIP_ALLOWED: <reason>";
+      # this keeps the declarations and the sources that print SKIP: in step, and the verdict's fixture
+      # tests (a comment that names the marker, a helper that prints it, a zero-pass run) honest.
+      - name: Skip declarations in programs/regression agree with the tests that print SKIP:
+        run: python3 tools/cicd/check_windows_shards.py --lint-skips --tests-dir programs/regression
+
+      - name: The Windows shard verdict can still detect a bad run
+        run: python3 tools/cicd/test_check_windows_shards.py
+
       # The weekly traffic snapshot (tools/release-stats) merges GitHub's 14-day window into
       # a growing CSV; this checks the parsing and the merge without a network or a token.
       - name: Traffic snapshot merge logic

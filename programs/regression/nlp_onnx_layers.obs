@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed (model checks not run)
 # EXTRA_LIBS: models,opencv,onnx,nlp,nlp_onnx
 #~
 # BertEmbedder layer pooling: the final layer (as always), the sum of the last four hidden

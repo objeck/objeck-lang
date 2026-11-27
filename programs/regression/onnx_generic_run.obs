@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # The generic ONNX run entry point: its refusals, and the tensor bookkeeping
 # around it.

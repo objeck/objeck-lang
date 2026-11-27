@@ -567,6 +567,12 @@ struct SecureSocketCtx {
   // ReadBytes take it first). A Char[] read that completes its last character reads one byte at a time
   // and can find one that belongs to the next character; TLS cannot look at a byte without reading it.
   int pushback;
+  // Held by a read of this session from its first byte to its last, the look ahead that completes a
+  // character and the push back of a byte that was not part of it included (the TCPSecureSocket read
+  // traps in common.cpp). Two threads reading one session otherwise took bytes in between each
+  // other's steps, and 'pushback' was written by one while the other read it. A wait for this lock
+  // is made parked. Close() never takes it: it ends a read by shutting the connection down.
+  std::mutex read_lock;
   // an accepted connection: the server whose configuration (certificate, key, random generator) 'ssl'
   // was set up with and reads for as long as it lives. A reference, given back when this is freed, so
   // closing the listener does not free the configuration under the connections it accepted.
@@ -787,6 +793,10 @@ struct DtlsServerCtx {
 #ifdef _WIN32
   // the clients sharing listen_fd, made by Listen
   DtlsPeerTable* peers;
+#else
+  // one Accept at a time waits on the listener and takes it for its client (DtlsAccept): two that
+  // waited together both saw the same ClientHello and both took the same socket
+  std::mutex accept_turn;
 #endif
 
   DtlsServerCtx() : last_error(0), port(0), bound_len(0), refs(1), accepting(0), closed(false)

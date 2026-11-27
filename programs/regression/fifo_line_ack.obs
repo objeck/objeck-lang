@@ -1,0 +1,57 @@
+#~
+A line read from a FIFO returns when the line is complete, so the reader can answer it.
+
+Driven by run_vm_flag_tests.py (check_fifo_line_ack), POSIX only: the driver makes two
+FIFOs, writes to <data> and reads <ack>.
+
+A FileReader looked one byte ahead after opening a file and after every line, so that
+IsEoF() is true as soon as the last line has been read. On a FIFO the byte it looked for
+is the writer's NEXT message. A writer that sends "ready\n", keeps the FIFO open and waits
+for an acknowledgment before it writes again never got one: ReadLine had its line and was
+waiting in the look ahead, so the program could not send the acknowledgment (Codex review
+round 3, slice E, finding 5). A handle that can wait is no longer looked ahead at; the
+end of a FIFO is found by the read that meets it, as on a pipe or a socket.
+
+  (no argument)          print PASS, so the regression runner can run this file
+  <data> <ack> line      the driver has written "ready\n" already: read it, acknowledge
+                         it on <ack>, and read the "done\n" the driver sends only then
+  <data> <ack> open      the driver has written nothing: say "hello" on <ack> as soon as
+                         <data> is open, which the driver waits for before it writes at
+                         all; then as "line"
+~#
+use System.IO.Filesystem;
+
+class FifoLineAck {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 3) {
+      "PASS: fifo_line_ack"->PrintLine();
+      return;
+    };
+
+    reader := FileReader->New(args[0]);
+    answers := FileWriter->New(args[1]);
+    if(args[2]->Equals("open")) {
+      answers->WriteString("hello\n");
+      answers->Flush();
+    };
+
+    first := reader->ReadLine();
+    answers->WriteString("ack\n");
+    answers->Flush();
+
+    second := reader->ReadLine();
+    third := reader->ReadLine();
+    reader->Close();
+    answers->Close();
+
+    at_end := third = Nil;
+    "first='{$first}' second='{$second}' end={$at_end}"->PrintLine();
+    if(first <> Nil & first->Equals("ready") & second <> Nil & second->Equals("done") & third = Nil) {
+      "PASS: fifo_line_ack protocol"->PrintLine();
+    }
+    else {
+      "FAIL: the lines read from the FIFO are not the ones written"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
