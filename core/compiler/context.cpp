@@ -869,7 +869,10 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
         detail += L"\n\tConvert explicitly, as in value->As(" + left + L")";
       }
 
-      return is_value_arm ? detail : msg + detail;
+      if(is_value_arm) {
+        return detail;
+      }
+      return msg + detail;
     }
   }
 
@@ -7122,7 +7125,7 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
         for(size_t j = 0; j < declarations.size(); ++j) {
           params.push_back(declarations[j]->GetEntry() ? declarations[j]->GetEntry()->GetType() : nullptr);
         }
-        candidates.push_back(params);
+        candidates.push_back(std::move(params));
       }
     }
   }
@@ -7131,7 +7134,7 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
     for(size_t i = 0; i < constructors.size(); ++i) {
       std::vector<Type*> params = constructors[i]->GetDeclarationTypes();
       if(params.size() == arguments.size()) {
-        candidates.push_back(params);
+        candidates.push_back(std::move(params));
       }
     }
   }
@@ -7172,13 +7175,13 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
 
     if(!settled) {
       if(first_error.empty()) {
-        first_error = error;
+        first_error = std::move(error);
       }
       continue;
     }
 
     if(bindings.empty()) {
-      bindings = candidate_bindings;
+      bindings = std::move(candidate_bindings);
       continue;
     }
 
