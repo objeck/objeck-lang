@@ -38,8 +38,9 @@ the same. After the class body the parser writes, as source text parsed by the s
 The derivation is the one `@tool` parameters use (`McpAnalyze`, one new kind `MK_JSONCLS`, and the record-field walk
 factored into `McpAnalyzeFields`), so a json class is also a valid `@tool` parameter and the schemas cannot drift.
 Decisions: no call-site type argument (`)<Weather>` collides with class type arguments); the helpers are named
-`JsonRead_n` so a class that is both json and a tool host has no clash; a json class nested in another must be
-declared above it (the parser has not read a later class yet; the error says so); an optional field is
+`JsonRead_n` so a class that is both json and a tool host has no clash; a json class nested in another may be
+declared above or below it, or in another file (the members are derived once every file is read, as `@tool`
+functions are; a class that holds itself is refused by name); an optional field is
 `anyOf [T, null]` because models write null for what they do not know; the class needs a `New()` with no parameters
 (or none declared); `Ask` goes straight to the backend, so an `AgentScope` does not count it (a limitation).
 A class without `: json` is not touched (byte-identical `.obe`, checked over the regression and deploy corpus).

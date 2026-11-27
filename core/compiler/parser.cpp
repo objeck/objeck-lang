@@ -8068,7 +8068,8 @@ StatementList* Parser::ParseNilGuardBail(int depth)
 
   const std::vector<Statement*> written = bail->GetStatements();
   bool leaves = false;
-  if(!written.empty()) {
+  // a statement that did not parse is null: its syntax error has been reported
+  if(!written.empty() && written.back()) {
     Statement* last = written.back();
     switch(last->GetStatementType()) {
     case RETURN_STMT:
@@ -10678,7 +10679,16 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
         return false;
       }
       element.kind = record->IsJson() ? MK_JSONCLS : MK_RECORD;
-      if(!McpAnalyzeFields(record, element, why, depth)) {
+      // A class may be declared below the class that holds it, so a class can now be reached from
+      // itself. A schema describes a value of a known shape: one that contains itself has none.
+      if(std::find(mcp_class_stack.begin(), mcp_class_stack.end(), record) != mcp_class_stack.end()) {
+        why = L"the class '" + name + L"' holds itself, directly or through its fields, and a JSON Schema describes a value of a known depth: use a JsonElement for the part that repeats";
+        return false;
+      }
+      mcp_class_stack.push_back(record);
+      const bool fields_ok = McpAnalyzeFields(record, element, why, depth);
+      mcp_class_stack.pop_back();
+      if(!fields_ok) {
         return false;
       }
     }
@@ -10688,7 +10698,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       return false;
     }
     else {
-      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those (a class must be a record, or 'class X : json' declared above the class that uses it)";
+      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those (a class must be a record, or 'class X : json')";
       return false;
     }
   }
@@ -11324,7 +11334,10 @@ void Parser::GenerateJsonClass(Class* klass, int line, int depth)
   ty.name = cls;
   ty.text = cls;
   std::wstring why;
-  if(!McpAnalyzeFields(klass, ty, why, 0)) {
+  mcp_class_stack.push_back(klass);
+  const bool fields_ok = McpAnalyzeFields(klass, ty, why, 0);
+  mcp_class_stack.pop_back();
+  if(!fields_ok) {
     // no reason: a field's type is in a file with a syntax error, and that error is the answer
     if(!why.empty()) {
       diagnostics.Error(file_name, line, 1, why);

@@ -1,0 +1,23 @@
+# EXPECT_COMPILE_ERROR: (15,8): Expected expression
+#~
+A syntax error in the last statement of a nil-guard's block is reported as a syntax
+error. The check that the block ends in return, break or continue read the statement
+that did not parse, and obc ended with a segmentation fault (found by the syntax
+mutation run).
+~#
+class BadNilGuardBlockSyntax {
+	function : Find(n : Int) ~ String {
+		return n > 0 ? "found" : Nil;
+	}
+
+	function : Size(n : Int) ~ Int {
+		s := Find(n) ?? {
+			x :=;
+		};
+		return s->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Size(1)->PrintLine();
+	}
+}

@@ -12774,7 +12774,11 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
       ProcessError(entry, L"Variables cannot be initialized at class scope");
     }
 
-    if(statement) {
+    // A value given at class scope has been refused above. It is not analyzed: there is no
+    // method to analyze it in, and the analysis of an assignment reads the current method
+    // (obc ended with a segmentation fault on 'keys : Vector<String> := Vector->New();'
+    // written between two methods).
+    if(statement && (current_method || entry->IsLocal())) {
       entry->WasLoaded();
       AnalyzeStatement(statement, depth);
     }

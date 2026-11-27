@@ -8,14 +8,15 @@ Usage: json_class_diag_test.py <bin_dir>
 <bin_dir> holds obc and obr; the libraries are read from the sibling lib/ directory. No network is used.
 
 Diagnostics (each source is compiled; obc must fail, name the problem and give the right line):
-  no 'use API.LlmUtil;'; a function-typed field; a field that is a plain class; a field that is a json class
-  declared further down; a class that holds itself; a two-dimensional array; a Map with Int keys; a parent
+  no 'use API.LlmUtil;'; a function-typed field; a field that is a plain class; a class that holds itself (and two
+  that hold each other); a two-dimensional array; a Map with Int keys; a parent
   class; a generic class; a constructor that takes parameters and no New(); 'json(x)' naming no field; a class
   with no fields (and one with only a static); 'json' misspelled; a function the class already has
   (JsonSchema, FromJson); Ask without 'use API.AgentJson;'; FromJson on a class that is not json.
 
 Left alone (each source must compile and, run, print what it should):
-  a class without ': json' (its code is unchanged: no JsonSchema is added); a json class in a bundle; a CRLF
+  a class without ': json' (its code is unchanged: no JsonSchema is added); a json class whose field types are
+  declared further down; a json class in a bundle; a CRLF
   file; the optional list spelled over several lines; a json class as the parameter of an '@tool' function (the
   schema the tool gets is the class's).
 """
@@ -39,10 +40,10 @@ BAD = [
      ["the field 'f' of the class 'W'", "function type cannot be a JSON field"], 3),
     ("a field that is a plain class", HEAD + "class Thing {\n  New() {}\n}\nclass W : json {\n  @t : Thing;\n  New() {}\n}\n",
      ["the field 't' of the class 'W'", "'Thing' cannot be a JSON field", "declare it as a record or as 'class Thing : json'"], 6),
-    ("a json class declared further down", HEAD + "class W : json {\n  @p : Later;\n  New() {}\n}\nclass Later : json {\n  @x : Int;\n  New() {}\n}\n",
-     ["the field 'p' of the class 'W'", "'Later'", "declared above the class that uses it"], 3),
     ("a class that holds itself", HEAD + "class W : json {\n  @me : W;\n  New() {}\n}\n",
-     ["the field 'me' of the class 'W'", "declared above"], 3),
+     ["the field 'me' of the class 'W'", "the class 'W' holds itself"], 3),
+    ("two classes that hold each other", HEAD + "class W : json {\n  @v : V;\n  New() {}\n}\nclass V : json {\n  @w : W;\n  New() {}\n}\n",
+     ["the field 'v' of the class 'W'", "the field 'w' of the class 'V'", "the class 'W' holds itself"], 3),
     ("a two-dimensional array", HEAD + "class W : json {\n  @g : Int[,];\n  New() {}\n}\n",
      ["the field 'g'", "two or more dimensions"], 3),
     ("a Map with Int keys", HEAD + "class W : json {\n  @m : Map<IntRef, IntRef>;\n  New() {}\n}\n",
@@ -145,7 +146,28 @@ class T {
 }
 """
 
+LATER = HEAD + """class W : json {
+  @p : Later;
+  @k : Kind;
+  New() {}
+  method : public : X() ~ Int { return @p->X(); }
+  method : public : K() ~ Kind { return @k; }
+  function : Main(args : String[]) ~ Nil {
+    w := W->FromJson(JsonParser->TextToElement("{\\"p\\":{\\"x\\":7},\\"k\\":\\"B\\"}"));
+    ok := w->K() = Kind->B;
+    "{$w->X()} {$ok}"->PrintLine();
+  }
+}
+class Later : json {
+  @x : Int;
+  New() {}
+  method : public : X() ~ Int { return @x; }
+}
+enum Kind { A, B }
+"""
+
 OK = [
+    ("a json class and an enum declared further down", LATER, "7 true", False),
     ("a class without ': json' is unchanged", PLAIN, "plain ok", False),
     ("a json class in a bundle", BUNDLED, "9 1", False),
     ("the same in a CRLF file", BUNDLED, "9 1", True),

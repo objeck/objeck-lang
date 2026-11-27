@@ -149,6 +149,8 @@ class Parser {
   // classes with '@tool' functions, derived when every file has been read; and the files that did not parse
   std::vector<McpPending> mcp_pending;
   std::set<std::wstring> mcp_broken_files;
+  // the records and json classes whose fields are being read (McpAnalyze): one found again holds itself
+  std::vector<Class*> mcp_class_stack;
   // the method being parsed: its type parameters and their bounds, as they erase (#1242)
   std::map<std::wstring, std::wstring> method_generic_bounds;
   // constructor parameters written '@name' that fill the field of that name (field promotion)

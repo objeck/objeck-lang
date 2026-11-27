@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: (11,2): Variables cannot be initialized at class scope
+# EXPECT_ERROR_COUNT: 1
+#~
+A declaration with a value written between two methods is refused, and its value is not
+analyzed: there is no method to analyze it in. obc ended with a segmentation fault here
+(found by the syntax mutation run: a line of a method body moved to class scope).
+~#
+use Collection;
+
+class BadClassScopeInitializer {
+	keys : Vector<String> := Vector->New();
+
+	function : Main(args : String[]) ~ Nil {
+		"not reached"->PrintLine();
+	}
+}
