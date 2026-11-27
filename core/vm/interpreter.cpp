@@ -2416,6 +2416,10 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   delete holder;
   holder = nullptr;
 
+  // the root a raise on this thread registered: now, not in a thread_local
+  // destructor that runs after ThreadFinished (see ReleaseRaisedError)
+  StackInterpreter::ReleaseRaisedError();
+
   // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
   ThreadFinished();
 
@@ -2487,6 +2491,10 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   MemoryManager::RemovePendingThreadRoot(&holder->param);
   delete holder;
   holder = nullptr;
+
+  // the root a raise on this thread registered: now, not in a thread_local
+  // destructor that runs after ThreadFinished (see ReleaseRaisedError)
+  StackInterpreter::ReleaseRaisedError();
 
   // last: nothing of the VM's is touched after this (WaitForThreadsToDrain)
   ThreadFinished();

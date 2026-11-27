@@ -1,0 +1,125 @@
+#~
+# Threads that caught an error end while Main returns
+#
+# An Error a thread raises (or the one GetLastError builds) is kept per thread, in a slot
+# the collector knows as a root. The slot was given back by a C++ thread_local destructor,
+# which runs after the thread's entry function has returned: after the thread has told
+# the VM it is finished. When Main returns the VM waits for exactly that, then leaves, and
+# leaving destroys the collector's table of such roots. A thread descheduled between "I am
+# finished" and its destructor erased from a table that was being, or had been, destroyed.
+# The window is a few instructions wide, so a plain run shows nothing. A VM built to
+# report the order of the two events, with the destructor held back two milliseconds (a
+# thread that lost the processor there), saw the erase come during the destruction of the
+# table in 288 runs of 300, and 6 of those runs ended in SIGSEGV or a corrupt C heap.
+#
+# The root is now given back before the thread reports itself finished. This test is the
+# shape: threads that each caught a raised error are all ending as Main returns, none of
+# them joined. Its assertion is the exit status, as in thread_accept_exit_test; the first
+# part, with the threads joined, checks that a raise on a thread is still caught there.
+~#
+
+use System.Concurrency;
+
+class Raiser from Thread {
+	@caught : Int;
+	@ready : Bool;
+	@wait : Bool;
+
+	New(wait : Bool) {
+		Parent("raiser");
+		@wait := wait;
+	}
+
+	method : public : GetCaught() ~ Int { return @caught; }
+	method : public : IsReady() ~ Bool { return @ready; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : 3) {
+			try {
+				Runtime->Raise(Error->New("raised on a thread"));
+			}
+			on(e : Error) {
+				@caught += 1;
+			};
+		};
+		@ready := true;
+
+		# held here until Main is about to return, so that every thread ends at that moment
+		while(@wait & <>ThreadRaiseExit->Released()) {
+			Thread->Sleep(1);
+		};
+	}
+}
+
+class ThreadRaiseExit {
+	@released : static : Bool;
+	@failures : static : Int;
+
+	function : Released() ~ Bool {
+		return @released;
+	}
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@released := false;
+
+		# Once on this thread first. Threads that make a class's first virtual calls at the
+		# same moment were a fault of their own (virtual_first_call_threads), and this test
+		# is not about it.
+		first := Raiser->New(false);
+		first->Run(Nil);
+		Check("the main thread catches what it raises", first->GetCaught() = 3);
+
+		# joined: each thread catches what it raises
+		joined := Raiser->New[16];
+		each(i : joined) {
+			joined[i] := Raiser->New(false);
+			joined[i]->Execute(Nil);
+		};
+		caught := 0;
+		each(i : joined) {
+			joined[i]->Join();
+			caught += joined[i]->GetCaught();
+		};
+		Check("16 threads each caught the 3 errors they raised", caught = 48);
+
+		# not joined: all of them end as Main returns
+		unjoined := Raiser->New[64];
+		each(i : unjoined) {
+			unjoined[i] := Raiser->New(true);
+			unjoined[i]->Execute(Nil);
+		};
+		ready := 0;
+		waited := 0;
+		while(ready < unjoined->Size() & waited < 10000) {
+			ready := 0;
+			each(i : unjoined) {
+				if(unjoined[i]->IsReady()) {
+					ready += 1;
+				};
+			};
+			Thread->Sleep(5);
+			waited += 5;
+		};
+		Check("64 more threads caught theirs and wait for Main to return", ready = unjoined->Size());
+
+		if(@failures = 0) {
+			"PASS: threads that caught an error end while Main returns"->PrintLine();
+		}
+		else {
+			"FAIL: threads that caught an error end while Main returns ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		@released := true;
+	}
+}
