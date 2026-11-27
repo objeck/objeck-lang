@@ -3,9 +3,20 @@
  <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Objeck — Object-Oriented and Functional Programming Language</title>
-  <meta name="description" content="Objeck is an object-oriented and functional language. Everything you need ships in the box: a standard library with collections, JSON, XML, HTTP, SQL, ML, ONNX inference and agents, plus a compiler, debugger, language server and playground.">
+  <title>Objeck — An Agentic Language and Runtime</title>
+  <meta name="description" content="Objeck is an agentic language and runtime. Declare tools with a doc comment, serve any program over MCP, call servers through typed clients, run agents with budgets and approval, and use local models with no key. Object-oriented, functional and fast.">
   <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://www.objeck.org/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Objeck">
+  <meta property="og:title" content="Objeck — An Agentic Language and Runtime">
+  <meta property="og:description" content="Objeck is an agentic language and runtime. Declare tools with a doc comment, serve any program over MCP, call servers through typed clients, run agents with budgets and approval, and use local models with no key. Object-oriented, functional and fast.">
+  <meta property="og:url" content="https://www.objeck.org/">
+  <meta property="og:image" content="https://www.objeck.org/style/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="style/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="style/site.css">
   <script>document.documentElement.className = "js";</script>
@@ -19,6 +30,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
      <li><a href="start.html">Get started</a></li>
+     <li><a href="agents.html">Agents</a></li>
      <li><a href="learn.html">Learn</a></li>
      <li><a href="docs.html">Docs</a></li>
      <li><a href="libraries.html">Libraries</a></li>
@@ -36,60 +48,84 @@
    <section class="hero" aria-labelledby="hero-title">
     <div class="wrap">
      <div>
-      <h1 id="hero-title"><span>Object-oriented.</span> <span>Functional.</span> <span>Fast.</span></h1>
-      <p class="lead">Everything you need ships in the box.</p>
+      <h1 id="hero-title"><span>An agentic language</span> <span>and runtime.</span></h1>
+      <p class="lead">Tools, agents, MCP and local models are built in. A function is a tool, a program is a server, an agent has a budget.</p>
       <div class="btn-row">
-       <a class="btn btn-primary" href="https://playground.objeck.org">Try it in the playground</a>
-       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang/releases/latest">Download</a>
+       <a class="btn btn-primary" href="agents.html">Build an agent</a>
+       <a class="btn btn-secondary" href="https://playground.objeck.org">Try the playground</a>
       </div>
-      <p class="hero-meta"><a href="readme.html">v<!-- version:start -->2026.11.4<!-- version:end --></a> &middot; Windows, macOS, Linux &middot; x64, ARM64 &middot; <a href="start.html">Install guide</a></p>
+      <p class="hero-also">Object-oriented. Functional. Fast.</p>
+      <p class="hero-meta"><a href="readme.html">v<!-- version:start -->2026.11.4<!-- version:end --></a> &middot; Windows, macOS, Linux &middot; x64, ARM64 &middot; <a href="start.html">Install guide</a> &middot; <a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></p>
      </div>
      <div>
-      <!-- example:lambdas:start -->
-      <pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> Collection;
+      <!-- example:tool:start -->
+      <pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP, <span class="t-cls">Data</span>.JSON;
 
-<span class="t-kw">class</span> <span class="t-cls">Main</span> {
+<span class="t-kw">class</span> <span class="t-cls">Tools</span> {
+  <span class="t-com">#~
+  Greet a person.
+  @tool
+  @readonly
+  @param name who to greet
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Greet</span>(name : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"Hello, {$name}"</span>;
+  }
+
   <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
-    words <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>&gt;;
-    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"compiler"</span>);
-    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"jit"</span>);
-    words<span class="t-op">-&gt;</span>AddBack(<span class="t-str">"collector"</span>);
+    server <span class="t-op">:=</span> <span class="t-cls">McpService</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"greeter"</span>, <span class="t-str">"1.0.0"</span>);
+    <span class="t-cls">Tools</span><span class="t-op">-&gt;</span>McpTools(server);
 
-    lengths <span class="t-op">:=</span> words<span class="t-op">-&gt;</span>Map(\(<span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">IntRef</span> : (w) <span class="t-op">=&gt;</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(w<span class="t-op">-&gt;</span>Size()));
-    <span class="t-kw">each</span>(i : words) {
-      <span class="t-str">"{$(words-&gt;Get(i))}: {$(lengths-&gt;Get(i)-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
+    client <span class="t-op">:=</span> <span class="t-cls">McpClient</span><span class="t-op">-&gt;</span>InProcess(server);
+    client<span class="t-op">-&gt;</span>Initialize(<span class="t-str">"demo"</span>, <span class="t-str">"1.0"</span>);
+    <span class="t-kw">each</span>(tool <span class="t-kw">in</span> client<span class="t-op">-&gt;</span>ListTools()) {
+      <span class="t-str">"{$tool-&gt;GetName()}: {$tool-&gt;GetDescription()}"</span><span class="t-op">-&gt;</span>PrintLine();
+      tool<span class="t-op">-&gt;</span>GetInputSchema()<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
     };
-
-    triple <span class="t-op">:=</span> \(<span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> : (x) <span class="t-op">=&gt;</span> x * <span class="t-num">3</span>;
-    triple(<span class="t-num">14</span>)<span class="t-op">-&gt;</span>PrintLine();
+    client<span class="t-op">-&gt;</span>CallTool(<span class="t-str">"greet"</span>, <span class="t-str">"{\"name\":\"Ada\"}"</span>)<span class="t-op">-&gt;</span>GetText()<span class="t-op">-&gt;</span>PrintLine();
   }
 }</code></pre>
-      <pre class="cmd example-out">$ obc -src lambdas.obs
-$ obr lambdas.obe
-compiler: 8
-jit: 3
-collector: 9
-42</pre>
-      <!-- example:lambdas:end -->
+      <pre class="cmd example-out">$ obc -src tool.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr tool.obe
+greet: Greet a person.
+{"properties":{"name":{"description":"who to greet","type":"string"}},"required":["name"],"type":"object"}
+Hello, Ada</pre>
+      <!-- example:tool:end -->
+      <p class="hero-caption">Serve it to Claude Code or any MCP client with <code>obr --mcp tool.obe</code>.</p>
      </div>
     </div>
    </section>
 
-   <section class="band" aria-labelledby="what-title">
+   <section class="band" aria-labelledby="agents-title">
     <div class="wrap">
-     <h2 id="what-title" class="sr-only">Features</h2>
+     <h2 id="agents-title" class="sr-only">Agents</h2>
+     <ul class="features">
+      <li><h3>Declare tools</h3><p>A doc comment with <code>@tool</code>, <code>@resource</code> or <code>@prompt</code>. The schema comes from the types.</p></li>
+      <li><h3>Serve over MCP</h3><p><code>obr --mcp prog.obe</code>. No server code, stdio or HTTP.</p></li>
+      <li><h3>Typed MCP clients</h3><p>One method per tool. A changed server fails the build.</p></li>
+      <li><h3>Agents with limits</h3><p>Budgets, cancel, approval from effect hints, a trace. <code>AgentScope</code> bounds a whole block.</p></li>
+      <li><h3>Local models</h3><p>Ollama with no key, or Claude, OpenAI and Gemini. Same code.</p></li>
+      <li><h3>Built to run them</h3><p>Collector-cooperative inference, actors with supervision, telemetry.</p></li>
+     </ul>
+     <p class="more"><a href="agents.html">See each one run</a></p>
+    </div>
+   </section>
+
+   <section class="band soft" aria-labelledby="what-title">
+    <div class="wrap">
+     <h2 id="what-title">Underneath: object-oriented, functional, fast</h2>
      <ul class="features">
       <li><h3>Compiled to native code by a JIT</h3><p>Hot methods on AMD64 and ARM64. Call: 26.5 &rarr; 5.5 ns.</p></li>
       <li><h3>SQL in the language</h3><p>Typed in-memory tables, joins, indexes.</p></li>
       <li><h3>Network built in</h3><p>HTTP/1.1, HTTP/2, HTTP/3, WebSocket, TLS, server.</p></li>
-      <li><h3>ML and AI</h3><p>Trees, SVMs, ONNX, OpenCV, LLM clients, MCP, agents.</p></li>
+      <li><h3>ML and AI</h3><p>Trees, SVMs, ONNX, OpenCV, LLM clients, RAG.</p></li>
       <li><h3>Generational GC</h3><p>Nursery, write barrier, parallel marking.</p></li>
       <li><h3>Tooling</h3><p>Language server, debugger, REPL, browser playground.</p></li>
      </ul>
     </div>
    </section>
 
-   <section class="band soft" id="fast" aria-labelledby="perf-title">
+   <section class="band" id="fast" aria-labelledby="perf-title">
     <div class="wrap">
      <h2 id="perf-title">Fast, measured</h2>
      <div class="table-wrap" tabindex="0" role="region" aria-label="Benchmark results">
@@ -132,6 +168,7 @@ collector: 9
    <div class="wrap">
     <nav aria-label="Footer"><ul class="footer-links">
      <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="agents.html">Agents</a></li>
      <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
      <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
      <li><a href="ai_guide.html">AI &amp; ML guide</a></li>

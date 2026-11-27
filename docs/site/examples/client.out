@@ -1,0 +1,5 @@
+$ obc -src client.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr client.obe
+4.50
+12 x tea, rush delivery
+Tool price failed: no such item: coffee

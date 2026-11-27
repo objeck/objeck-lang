@@ -1,0 +1,3 @@
+$ obc -src serve.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr serve.obe
+Serve me: obr --mcp serve.obe

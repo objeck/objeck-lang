@@ -1,0 +1,8 @@
+$ obr --mcp serve.obe
+> {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"claude","version":"1.0"}}}
+< {"id":1,"jsonrpc":"2.0","result":{"capabilities":{"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"Notes","version":"1.0"}}}
+> {"jsonrpc":"2.0","method":"notifications/initialized"}
+> {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"count_words","arguments":{"text":"tools are plain functions"}}}
+< {"id":2,"jsonrpc":"2.0","result":{"content":[{"text":"4","type":"text"}],"isError":false}}
+> {"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"greeting://Ada"}}
+< {"id":3,"jsonrpc":"2.0","result":{"contents":[{"mimeType":"text/plain","text":"Hello, Ada!","uri":"greeting://Ada"}]}}

@@ -26,11 +26,13 @@ Each is built around a program that was compiled and run; the output shown is wh
 | [Editors](../guides/language_server.md) | Language server, debugger |
 | [What is new in v2026.10.3](../guides/whats_new_10_3.md) | Upgrading |
 
-## AI and ML
+## Agents, AI and ML
 
+- [Agents](agents.md): tools, MCP servers and clients, agents with limits, local models
 - [AI and ML guide](../web/ai_guide.html)
 - [Which models run](../MODELS.md)
 - [AI reference](../AI.md)
+- [MCP walkthrough](../MCP_WALKTHROUGH.md)
 
 ## Reference
 

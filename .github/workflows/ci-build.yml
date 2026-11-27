@@ -1612,6 +1612,16 @@ jobs:
         OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
       run: python3 programs/deploy/build_examples.py
 
+    # The samples on objeck.org (docs/site/examples) are compiled and run with the full deploy tree (the ml
+    # sample loads libobjk_ml), and the MCP session the Agents page shows is played against `obr --mcp`.
+    # Linux x64 only, like the step above: the samples are platform-neutral.
+    - name: Site code samples compile, run and print what the pages show
+      if: matrix.platform == 'linux-x64'
+      env:
+        OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
+        LD_LIBRARY_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib/native
+      run: python3 tools/cicd/check_site_examples.py --toolchain core/release/${{ steps.deploy-dir.outputs.dir }}
+
     # ============================================
     # API Documentation (Linux x64 only)
     # ============================================

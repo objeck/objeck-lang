@@ -1,0 +1,156 @@
+use API.MCP, Data.JSON;
+
+class Shop {
+  #~
+  The price of an item.
+  @tool
+  @readonly
+  @param item the item name
+  ~#
+  function : Price(item : String) ~ String {
+    if(item->Equals("tea")) {
+      return "4.50";
+    };
+    Runtime->Raise(Error->New("no such item: {$item}"));
+    return Nil;
+  }
+
+  #~
+  Order more of an item.
+  @tool
+  @param item the item name
+  @param count how many
+  @param rush rush delivery
+  ~#
+  function : Restock(item : String, count : Int, rush : Bool := false) ~ String {
+    speed := "standard";
+    if(rush) {
+      speed := "rush";
+    };
+    return "{$count} x {$item}, {$speed} delivery";
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("shop", "1.0.0");
+    Shop->McpTools(server);
+    client := McpClient->InProcess(server);
+    client->Initialize("demo", "1.0");
+
+    # ShopClient was generated from the server's tools: one typed method per tool
+    shop := ShopClient->New(client);
+    shop->Price("tea")->PrintLine();
+    shop->Restock("tea", 12, true)->PrintLine();
+    if(shop->Price("coffee") = Nil) {
+      shop->GetError()->PrintLine();
+    };
+    # shop->Price("tea", 3);   does not compile
+  }
+}
+
+# ---- generated, not shown on the page ----
+# obr mcp_stubs.obe --cmd "obr --mcp shop.obe" --class ShopClient --out ShopClient.obs
+
+#~
+Typed client of the MCP server 'Shop'. Every method calls one tool and returns the text of its result,
+or Nil with the reason in GetError().
+~#
+class ShopClient {
+  @client : McpClient;
+  @error : String;
+
+  #~
+  Constructor
+  @param client a client that has been initialized
+  ~#
+  New(client : McpClient) {
+    @client := client;
+  }
+
+  #~
+  Why the last call returned Nil
+  @return the reason, Nil after a call that worked
+  ~#
+  method : public : GetError() ~ String {
+    return @error;
+  }
+
+  method : CallText(tool : String, mcp_args : JsonElement) ~ String {
+    @error := Nil;
+    result := @client->CallTool(tool, mcp_args);
+    if(result = Nil) {
+      @error := @client->GetError();
+      return Nil;
+    };
+
+    if(result->IsError()) {
+      @error := result->GetText();
+      return Nil;
+    };
+
+    return result->GetText();
+  }
+
+  method : CallJson(tool : String, mcp_args : JsonElement) ~ JsonElement {
+    @error := Nil;
+    result := @client->CallTool(tool, mcp_args);
+    if(result = Nil) {
+      @error := @client->GetError();
+      return Nil;
+    };
+
+    if(result->IsError()) {
+      @error := result->GetText();
+      return Nil;
+    };
+
+    return result->GetStructured();
+  }
+
+  #~
+  The price of an item.
+  Read-only: the tool does not change anything.
+  @param item the item name
+  @return the text of the result, Nil on failure (see GetError)
+  ~#
+  method : public : Price(item : String) ~ String {
+    mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+    if(item <> Nil) {
+      mcp_args->Insert("item", item);
+    };
+    return CallText("price", mcp_args);
+  }
+
+  #~
+  Order more of an item.
+  @param item the item name
+  @param count how many
+  @return the text of the result, Nil on failure (see GetError)
+  ~#
+  method : public : Restock(item : String, count : Int) ~ String {
+    mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+    if(item <> Nil) {
+      mcp_args->Insert("item", item);
+    };
+    mcp_args->Insert("count", count);
+    return CallText("restock", mcp_args);
+  }
+
+  #~
+  Order more of an item.
+  @param item the item name
+  @param count how many
+  @param rush rush delivery (optional)
+  @return the text of the result, Nil on failure (see GetError)
+  ~#
+  method : public : Restock(item : String, count : Int, rush : Bool) ~ String {
+    mcp_args := JsonElement->New(JsonElement->JsonType->OBJECT);
+    if(item <> Nil) {
+      mcp_args->Insert("item", item);
+    };
+    mcp_args->Insert("count", count);
+    mcp_args->Insert("rush", rush);
+    return CallText("restock", mcp_args);
+  }
+}

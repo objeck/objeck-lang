@@ -1,0 +1,5 @@
+$ obc -src tool.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr tool.obe
+greet: Greet a person.
+{"properties":{"name":{"description":"who to greet","type":"string"}},"required":["name"],"type":"object"}
+Hello, Ada

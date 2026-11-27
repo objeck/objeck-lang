@@ -1,0 +1,32 @@
+use API.Agent, Data.JSON, Collection;
+
+class Demo {
+  @agent : static : Agent;
+
+  function : Main(args : String[]) ~ Nil {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("t1", "clock", "{}"));
+    script->AddBack(AgentReply->Say("It is noon."));
+    script->AddBack(AgentReply->Say("never asked"));
+
+    registry := ToolRegistry->New();
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
+    registry->Add(AgentTool->New("clock", "The time", schema,
+      Func2Ref->New(Demo->Clock(JsonElement) ~ String)<JsonElement, String>));
+    @agent := Agent->New(ScriptedBackend->New(script), registry);
+
+    # two steps for everything inside the block, then no more model calls
+    AgentScope->Run(AgentScope->New()->SetMaxSteps(2), Ask() ~ Nil);
+  }
+
+  function : Ask() ~ Nil {
+    for(i := 1; i <= 3; i += 1;) {
+      result := @agent->Run("question {$i}");
+      "question {$i}: {$result->GetStopReason()}"->PrintLine();
+    };
+  }
+
+  function : Clock(args : JsonElement) ~ String {
+    return "12:00";
+  }
+}

@@ -1,0 +1,62 @@
+use API.MCP, API.Agent, Data.JSON, Collection;
+
+class Tools {
+  #~
+  Add two integers.
+  @tool
+  @readonly
+  ~#
+  function : Add(a : Int, b : Int) ~ Int {
+    return a + b;
+  }
+
+  #~
+  Delete a file.
+  @tool
+  @destructive
+  ~#
+  function : DeleteFile(path : String) ~ String {
+    return "deleted {$path}";
+  }
+}
+
+class Cautious implements AgentApprover {
+  New() {
+  }
+
+  method : public : Approve(call : AgentToolCall, tool : AgentTool) ~ Bool {
+    "asked about {$call->GetName()}: no"->PrintLine();
+    return false;
+  }
+}
+
+class Demo {
+  function : Main(args : String[]) ~ Nil {
+    server := McpService->New("tools", "1.0.0");
+    Tools->McpTools(server);
+    client := McpClient->InProcess(server);
+    client->Initialize("agent", "1.0");
+    registry := ToolRegistry->New();
+    McpAgentTools->AddAll(registry, client);
+
+    # a scripted model: no key, no network
+    calls := Vector->New()<AgentToolCall>;
+    calls->AddBack(AgentToolCall->New("1", "add", JsonParser->TextToElement("{\"a\":17,\"b\":25}")));
+    calls->AddBack(AgentToolCall->New("2", "delete_file", JsonParser->TextToElement("{\"path\":\"old.txt\"}")));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->AskAll(calls));
+    script->AddBack(AgentReply->Say("The sum is 42. I left old.txt alone."));
+
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    agent->SetApprover(Cautious->New())->SetApproveUnlessReadOnly(true);
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(5)->SetMaxToolCalls(4));
+
+    result := agent->Run("Add 17 and 25, then delete old.txt");
+    each(step in result->GetSteps()) {
+      each(r in step->GetResults()) {
+        "{$r->GetToolName()}: {$r->GetStatus()} - {$r->GetContent()}"->PrintLine();
+      };
+    };
+    "{$result->GetText()} ({$result->GetStopReason()})"->PrintLine();
+  }
+}

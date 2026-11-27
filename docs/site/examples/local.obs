@@ -1,0 +1,25 @@
+use API.Agent, Collection;
+
+class Local {
+  function : Main(args : String[]) ~ Nil {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTools->Calculator());
+
+    backend : ChatBackend;
+    if(args->Size() > 0 & args[0]->Equals("ollama")) {
+      # a local model: http://localhost:11434, no key, nothing leaves the machine
+      backend := OllamaBackend->New("llama3.2");
+    }
+    else {
+      script := Vector->New()<AgentReply>;
+      script->AddBack(AgentReply->Ask("c1", "calculator", "{\"expression\":\"17 * 23\"}"));
+      script->AddBack(AgentReply->Say("17 * 23 is 391."));
+      backend := ScriptedBackend->New(script);
+    };
+
+    agent := Agent->New(backend, registry);
+    agent->SetBudget(AgentBudget->New()->SetMaxSteps(4));
+    result := agent->Run("What is 17 * 23?");
+    "{$result->GetText()} ({$result->GetStopReason()}, {$result->GetToolCallCount()} tool call)"->PrintLine();
+  }
+}

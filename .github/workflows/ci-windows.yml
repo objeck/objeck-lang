@@ -836,6 +836,15 @@ jobs:
         if not exist "%BIN%" set BIN=core\release\deploy\bin
         python tools\llm_eval\run_tests.py "%BIN%"
 
+    # The samples on objeck.org (docs/site/examples) are compiled and run here, and the MCP session the
+    # Agents page shows is played against `obr --mcp`, so a page cannot show a program that stopped working.
+    - name: Site code samples compile, run and print what the pages show (Windows)
+      shell: cmd
+      run: |
+        set DIR=core\release\deploy-${{ env.ARCH }}
+        if not exist "%DIR%\bin" set DIR=core\release\deploy
+        python tools\cicd\check_site_examples.py --toolchain "%DIR%"
+
     - name: GC root coverage, 30 seeds (advisory, Windows)
       continue-on-error: true
       timeout-minutes: 20
