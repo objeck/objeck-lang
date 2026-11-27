@@ -14,8 +14,8 @@ Diagnostics (each source is compiled; obc must fail, name the problem and give t
   with a character a tool name cannot have; two tools with one name; '@tool' twice; a name that collides with
   a function the compiler writes; a McpMain(args : String[]) that is a method, that is virtual, or that
   returns a value (the entry 'obr --mcp' starts must be 'function : McpMain(args : String[]) ~ Nil'), in a
-  program that is an MCP server: the file has 'use API.MCP', or some class of the program, in this file or
-  another, has a tagged function.
+  program that is an MCP server: some class of the program, in this file or another, has a tagged function,
+  or the McpMain is a function (a virtual one, or one that returns a value) in a file with 'use API.MCP'.
 
 Left alone (each source must compile and, run, print what it should):
   '@tool' inside a string; in a '//' or '#' or '/* */' comment; in a '#~' comment that is not at the start of a
@@ -24,7 +24,9 @@ Left alone (each source must compile and, run, print what it should):
   megabyte; non-ASCII text in the description and in a string default; a tool in a class with no 'use' lines;
   methods named McpMain with another parameter list; the entry itself; in a program that has nothing to do
   with MCP (no 'use API.MCP', no tagged function, one file or two) a method, a virtual method and a function
-  that returns a value, each named McpMain(args : String[]).
+  that returns a value, each named McpMain(args : String[]); in a client, which imports API.MCP and has no
+  tagged function, an instance method McpMain(args : String[]) (returning a value or Nil, or virtual with an
+  override), called on an object.
 
 Several files (the tools are derived when every file has been read):
   a record declared in a later file than the function that takes it; a syntax error in one file does not hide
@@ -124,10 +126,18 @@ BAD = [
     ("a tagged resource on a method", "class T {\n#~\n@resource a://b\n~#\nmethod : public : F() ~ String { return \"x\"; }\n}\n",
      ["'@tool' marks a function", "a method"], 2),
     # McpMain(args : String[]) is the entry 'obr --mcp' starts, which the VM picks by name and parameter alone
-    ("a McpMain(args : String[]) that is a method", "class T {\n\tNew() {}\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"x\"->PrintLine();\n\t}\n}\n",
+    ("a McpMain(args : String[]) that is a method, in a program with a tool in another class",
+     "class T {\n\tNew() {}\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t\"x\"->PrintLine();\n\t}\n}\nclass Tools {\n#~\n@tool\n~#\nfunction : F() ~ Int { return 1; }\n}\n",
      ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "'function : McpMain(args : String[]) ~ Nil'", "declared as a method"], 3),
-    ("a virtual McpMain(args : String[])", "class T {\n\tmethod : virtual : McpMain(args : String[]) ~ Nil;\n}\n",
+    ("a virtual McpMain(args : String[]), in a program with a resource in another class",
+     "class T {\n\tmethod : virtual : McpMain(args : String[]) ~ Nil;\n}\nclass Tools {\n#~\n@resource a://b\n~#\nfunction : F() ~ String { return \"x\"; }\n}\n",
      ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "declared as a method"], 2),
+    ("a McpMain(args : String[]) that is a method and returns a value, in a program with a prompt in another class",
+     "class T {\n\tNew() {}\n\tmethod : public : McpMain(args : String[]) ~ Int {\n\t\treturn 1;\n\t}\n}\nclass Tools {\n#~\n@prompt\n~#\nfunction : F() ~ String { return \"x\"; }\n}\n",
+     ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "declared as a method"], 3),
+    # a function with the entry's name and parameter in a file that imports API.MCP is a server's entry, written wrongly
+    ("a virtual function McpMain(args : String[])", "class T {\n\tfunction : virtual : McpMain(args : String[]) ~ Nil;\n}\n",
+     ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "it is virtual, so it has no body"], 2),
     ("a McpMain(args : String[]) that returns a value", "class T {\n\tfunction : McpMain(args : System.String[]) ~ Int {\n\t\treturn 1;\n\t}\n}\n",
      ["'McpMain(args : String[])' is the function 'obr --mcp' starts", "it returns a value"], 2),
     ("a McpMain(args : String[]) that is a method, in a class with a tool",
@@ -265,6 +275,40 @@ def main():
         if code == 0:
             code, out = run([obr, obe], env, work)
             check("  and runs", code == 0 and out.strip() == "app", out)
+        # 'use API.MCP' alone does not make a program a server: an MCP client imports it too. Its instance
+        # method McpMain(args : String[]), called on an object, was refused for the import ("declared as a
+        # method, which needs an instance"). With no tagged function in the program it is an ordinary method,
+        # whatever it returns, and so is a virtual one with its override; each compiles and runs.
+        client_head = "use API.MCP, Collection;\n\n"
+        client_main = ("class Go {\n\tfunction : Main(args : String[]) ~ Nil {\n\t\tclient : McpClient;\n\t\trunner := Runner->New();\n"
+                       "\t\t%s\n\t\tif(client = Nil) { \"no server\"->PrintLine(); };\n\t}\n}\n")
+        for label, runner, call, expect in (
+                ("an instance method McpMain(args : String[]) ~ Int",
+                 "class Runner {\n\t@base : Int;\n\tNew() { @base := 40; }\n\tmethod : public : McpMain(args : String[]) ~ Int {\n\t\treturn @base + args->Size();\n\t}\n}\n",
+                 "runner->McpMain(args)->PrintLine();", "40\nno server"),
+                ("an instance method McpMain(args : String[]) ~ Nil",
+                 "class Runner {\n\t@base : Int;\n\tNew() { @base := 41; }\n\tmethod : public : McpMain(args : String[]) ~ Nil {\n\t\t@base->PrintLine();\n\t}\n}\n",
+                 "runner->McpMain(args);", "41\nno server"),
+                ("a virtual McpMain(args : String[]) and its override",
+                 "class Served {\n\tNew() {}\n\tmethod : virtual : public : McpMain(args : String[]) ~ Int;\n}\n"
+                 "class Runner from Served {\n\tNew() { Parent(); }\n\tmethod : public : McpMain(args : String[]) ~ Int {\n\t\treturn 42;\n\t}\n}\n",
+                 "served : Served := runner;\n\t\tserved->McpMain(args)->PrintLine();", "42\nno server")):
+            code, out, obe = compile_text("client", client_head + runner + client_main % call)
+            check("a client that imports API.MCP: %s is an ordinary method" % label, code == 0 and os.path.exists(obe), out)
+            if code == 0:
+                code, out = run([obr, obe], env, work)
+                check("  and runs", code == 0 and out.replace("\r", "").strip() == expect, out)
+        # the same file once a class of the program has a tagged function: a server, and the method is refused
+        code, out, obe = compile_files("client_tagged", [client_head + "class Runner {\n\tNew() {}\n\tmethod : public : McpMain(args : String[]) ~ Int {\n\t\treturn 1;\n\t}\n}\n" +
+                                                         client_main % "runner->McpMain(args)->PrintLine();", tagged_src])
+        at = [l for l in out.splitlines() if "is the function 'obr --mcp' starts" in l]
+        check("the same method is refused once another file has a tagged function, at its own file and line",
+              code != 0 and not os.path.exists(obe) and len(at) == 1 and "declared as a method" in at[0] and "client_tagged_0.obs:(5," in at[0], out)
+        # a function is the shape of an entry: with the import it is a server's entry written wrongly, as before
+        code, out, obe = compile_text("client_function", client_head + "class Runner {\n\tfunction : McpMain(args : String[]) ~ Int {\n\t\treturn 1;\n\t}\n}\n")
+        check("a function McpMain(args : String[]) ~ Int in a file that imports API.MCP is still refused, at line 4",
+              code != 0 and not os.path.exists(obe) and "it returns a value" in out and ":(4," in out, out)
+
         # the reason is not the name of a class: a class called Tagged, a string and a comment that say @tool
         code, out, obe = compile_text("entry_words", "# @tool\n" + method_src + "class Tagged {\n\tfunction : F() ~ String { return \"@tool\"; }\n}\n" + main_src)
         check("a program whose only '@tool' is in a string and a line comment is not a server", code == 0 and os.path.exists(obe), out)

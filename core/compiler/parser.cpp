@@ -2164,14 +2164,19 @@ Lambda* Parser::ParseLambda(int depth, Type* block_type) {
 // other program: 'method : public : McpMain(args : String[]) ~ Int' in an application that has
 // nothing to do with MCP used to be refused for its name. A program is a server when 'obr --mcp'
 // has something to start in it:
-//   * the file that declares the method has 'use API.MCP' (a server written by hand registers its
-//     tools and calls McpServe->Run from its McpMain): reported here, where the method is; or
 //   * some class of the program has an '@tool', '@resource' or '@prompt' function (the compiler
 //     writes an entry for it, and a McpMain the program wrote is started instead of that one):
-//     known when every file has been read, so the error is kept until then (ReportMcpEntries).
-PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message)
+//     known when every file has been read, so the error is kept until then (ReportMcpEntries); or
+//   * the method is a function, in a file that has 'use API.MCP': the entry of a server written
+//     by hand (it registers its tools and calls McpServe->Run), declared with a return value or
+//     without a body. Reported here, where the function is.
+// 'use API.MCP' alone does not make a server. A client imports it too, and its
+// 'method : public : McpMain(args : String[]) ~ Int', called on an object, was refused for the
+// import: an instance method is nothing 'obr --mcp' could have been meant to start, so with no
+// tagged function in the program it is an ordinary method.
+PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int line_num, int line_pos, const std::wstring& message, bool is_function)
 {
-  if(current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end()) {
+  if(is_function && current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end()) {
     diagnostics.Error(file_name, line_num, line_pos, message);
     return;
   }
@@ -2479,7 +2484,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     if(why) {
       RefuseMcpEntry(file_name, line_num, line_pos, std::wstring(L"'McpMain(args : String[])' is the function 'obr --mcp' starts in place of Main, and must be declared 'function : McpMain(args : String[]) ~ Nil'; here ") +
-                        why + L". Declare it that way or give it another name");
+                        why + L". Declare it that way or give it another name", is_function);
     }
   }
 
