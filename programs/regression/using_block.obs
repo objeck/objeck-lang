@@ -1,0 +1,208 @@
+#~
+using(w := E) { ... } (docs/design/USING_BLOCK.md): w->Close() runs when the body
+ends and before every return, break and continue that leaves it, innermost
+resource first. A returned value is computed before the close. Each check records
+the closes in a log and compares it; the program exits 1 on the first mismatch.
+~#
+use System.IO.Filesystem;
+
+class Res {
+	@name : String;
+	@@log : static : String;
+
+	New(name : String) {
+		@name := name;
+	}
+
+	method : public : Close() ~ Nil {
+		@@log += @name;
+		@@log += ",";
+	}
+
+	method : public : Num() ~ Int { return 42; }
+	method : public : Text() ~ String { return "text-" + @name; }
+	method : public : Real() ~ Float { return 2.5; }
+
+	function : Reset() ~ Nil { @@log := ""; }
+	function : Log() ~ String { return @@log; }
+}
+
+class UsingBlock {
+	@@failed : static : Bool;
+
+	function : Check(name : String, expected : String) ~ Nil {
+		got := Res->Log();
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: closes '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+		Res->Reset();
+	}
+
+	function : Fall() ~ Nil {
+		using(r := Res->New("a")) {
+			r->Num();
+		};
+	}
+
+	function : EarlyReturn(flag : Bool) ~ Int {
+		using(r := Res->New("e")) {
+			if(flag) { return r->Num(); };
+			r->Num();
+		};
+		return 0;
+	}
+
+	function : ReturnsLast() ~ Int {
+		using(r := Res->New("l")) {
+			return r->Num();
+		};
+	}
+
+	function : ReturnsString() ~ String {
+		using(r := Res->New("s")) {
+			return r->Text();
+		};
+	}
+
+	function : ReturnsFloat() ~ Float {
+		using(r := Res->New("f")) {
+			return r->Real() * 2.0;
+		};
+	}
+
+	function : ReturnsLiteral() ~ String {
+		using(r := Res->New("lit")) {
+			return "literal";
+		};
+	}
+
+	function : Loop() ~ Int {
+		seen := 0;
+		for(i := 0; i < 4; i += 1;) {
+			using(r := Res->New("i{$i}")) {
+				if(i = 0) { continue; };
+				if(i = 2) { break; };
+				seen += 1;
+			};
+		};
+		return seen;
+	}
+
+	function : InnerLoop() ~ Nil {
+		using(r := Res->New("outer")) {
+			for(i := 0; i < 3; i += 1;) {
+				if(i = 1) { break; };
+			};
+			"after loop"->Size();
+		};
+	}
+
+	function : Nested() ~ Int {
+		using(a := Res->New("a")) {
+			using(b := Res->New("b")) {
+				return a->Num() + b->Num();
+			};
+		};
+	}
+
+	function : Sequential() ~ Nil {
+		using(f := Res->New("one")) { f->Num(); };
+		using(f := Res->New("two")) { f->Num(); };
+	}
+
+	function : DeepReturn() ~ Int {
+		total := 0;
+		for(i := 0; i < 5; i += 1;) {
+			using(r := Res->New("d{$i}")) {
+				j := 0;
+				while(true) {
+					j += 1;
+					if(j = 3) { break; };
+				};
+				total += j;
+				if(i = 1) { return total; };
+			};
+		};
+		return -1;
+	}
+
+	function : WithLeaving() ~ Nil {
+		using(r := Res->New("lv")) {
+			return;
+		};
+		leaving {
+			@@failed := @@failed;
+		};
+	}
+
+	function : Files(path : String) ~ String {
+		using(w := FileWriter->New(path)) {
+			w->WriteString("written by using");
+		};
+		using(r := FileReader->New(path)) {
+			return r->ReadLine();
+		};
+	}
+
+	function : using(n : Int) ~ Int {
+		return n + 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Res->Reset();
+
+		Fall();
+		Check("fall through", "a,");
+
+		if(EarlyReturn(true) <> 42) { "  FAIL: early return value"->PrintLine(); @@failed := true; };
+		Check("early return", "e,");
+		EarlyReturn(false);
+		Check("no early return", "e,");
+
+		if(ReturnsLast() <> 42) { "  FAIL: return value"->PrintLine(); @@failed := true; };
+		Check("return in last statement", "l,");
+
+		if(ReturnsString()->Equals("text-s") = false) { "  FAIL: string return"->PrintLine(); @@failed := true; };
+		Check("string return", "s,");
+
+		if(ReturnsFloat() <> 5.0) { "  FAIL: float return"->PrintLine(); @@failed := true; };
+		Check("float return", "f,");
+
+		if(ReturnsLiteral()->Equals("literal") = false) { "  FAIL: literal return"->PrintLine(); @@failed := true; };
+		Check("literal return", "lit,");
+
+		if(Loop() <> 1) { "  FAIL: loop count"->PrintLine(); @@failed := true; };
+		Check("break and continue", "i0,i1,i2,");
+
+		InnerLoop();
+		Check("a break inside the body does not close", "outer,");
+
+		if(Nested() <> 84) { "  FAIL: nested value"->PrintLine(); @@failed := true; };
+		Check("nested, innermost first", "b,a,");
+
+		Sequential();
+		Check("same name twice in one method", "one,two,");
+
+		if(DeepReturn() <> 6) { "  FAIL: deep return value"->PrintLine(); @@failed := true; };
+		Check("return from a loop in the body", "d0,d1,");
+
+		WithLeaving();
+		Check("return with a leaving block", "lv,");
+
+		text := Files("using_block_test.tmp");
+		if(text->Equals("written by using") = false) { "  FAIL: file round trip '{$text}'"->PrintLine(); @@failed := true; };
+		File->Delete("using_block_test.tmp");
+
+		# 'using' is still an ordinary name
+		using := 5;
+		using := using(using);
+		if(using <> 6) { "  FAIL: using as a name"->PrintLine(); @@failed := true; };
+
+		if(@@failed) {
+			"FAIL: using block"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: using block"->PrintLine();
+	}
+}

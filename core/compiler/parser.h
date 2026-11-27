@@ -372,6 +372,8 @@ class Parser {
   bool IsAssertStatement();
   std::wstring AssertSourceText(int start_line, int start_pos, int end_line, int end_pos);
   Statement* ParseAssert(int depth);
+  // 'using(w := E) { ... }' (contextual)
+  Using* ParseUsing(int depth);
   For* ParseEach(bool reverse, int depth);
   Expression* HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
                                   const int line_num, const int line_pos, int depth);

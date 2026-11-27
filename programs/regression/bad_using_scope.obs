@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: bad_using_scope.obs:(12,3): Undefined variable: 'r'
+class Res {
+	New() {}
+	method : public : Close() ~ Nil {}
+}
+
+class BadUsingScope {
+	function : Main(args : String[]) ~ Nil {
+		using(r := Res->New()) {
+			"inside"->PrintLine();
+		};
+		r->Close();
+	}
+}

@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: bad_using_no_close.obs:(8,3): 'using' closes its resource with 'Close()'
+class Plain {
+	New() {}
+}
+
+class BadUsingNoClose {
+	function : Main(args : String[]) ~ Nil {
+		using(p := Plain->New()) {
+			"inside"->PrintLine();
+		};
+	}
+}

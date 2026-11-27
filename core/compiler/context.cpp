@@ -3028,6 +3028,10 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const in
     case RETURN_STMT:
       return true;
 
+    // the body is the statement's value: it closes on the way out and returns
+    case USING_STMT:
+      return AnalyzeReturnPaths(static_cast<Using*>(last_statement)->GetBody(), depth + 1);
+
     case TRY_STMT: {
       // an error no handler takes is raised again, so only the body and the
       // handlers need to return (#1247)
@@ -3297,6 +3301,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 
     case TRY_STMT:
       AnalyzeTry(static_cast<Try*>(statement), depth);
+      break;
+
+    case USING_STMT:
+      AnalyzeUsing(static_cast<Using*>(statement), depth);
       break;
 
     default:
@@ -8387,6 +8395,29 @@ void ContextAnalyzer::AnalyzeTry(Try* try_stmt, const int depth)
     AnalyzeStatements(try_stmt->GetFinally(), depth + 1);
     finally_loops.pop_back();
   }
+}
+
+/****************************
+ * Analyzes 'using(w := E) { ... }': a scope holding 'w', the body (its own
+ * scope) and the 'w->Close()' that runs when the body is left. The parser
+ * made the same three scopes.
+ ****************************/
+void ContextAnalyzer::AnalyzeUsing(Using* using_stmt, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"using", using_stmt->GetLineNumber(), depth);
+#endif
+
+  current_table->NewScope();
+  ResolveClassEnumType(using_stmt->GetRaiseEntry()->GetType());
+  AnalyzeStatement(using_stmt->GetResource(), depth + 1);
+  AnalyzeStatements(using_stmt->GetBody(), depth + 1);
+  const size_t errors_before_close = diagnostics.ErrorCount();
+  AnalyzeStatements(using_stmt->GetClose(), depth + 1);
+  if(diagnostics.ErrorCount() > errors_before_close) {
+    ProcessError(using_stmt, L"'using' closes its resource with 'Close()': the type of the resource needs a method named 'Close' that takes no arguments");
+  }
+  current_table->PreviousScope();
 }
 
 void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
@@ -14020,6 +14051,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   found_completion.push_back(std::pair<int, std::wstring>(14, L"use"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"leaving"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"assert"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"using"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"virtual"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"Parent"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"from"));

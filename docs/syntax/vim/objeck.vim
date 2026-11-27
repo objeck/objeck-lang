@@ -43,7 +43,7 @@ syn keyword objeckType CharArrayRef FloatArrayRef IntArrayRef StringArrayRef
 syn keyword objeckType Func2Ref Func3Ref Func4Ref FuncRef
 
 " Other keywords
-syn keyword objeckKeyword use leaving assert Parent As TypeOf from implements
+syn keyword objeckKeyword use leaving assert using Parent As TypeOf from implements
 syn keyword objeckKeyword Try Otherwise New
 
 " Constants
