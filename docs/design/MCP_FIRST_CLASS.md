@@ -209,9 +209,10 @@ VM, JIT or GC change (`git diff core/vm` is empty); the compiler changes are in 
    `//`, `#` or `/* */` comment, in a comment cut off by the end of the file, are not tags.
 2. *Parser.* `ParseClass` reads the token's `doc_id` where it meets `function`. A tagged comment before anything
    else (a method, a constructor, a variable, an enum, a class) is an error at the comment.
-3. *Derivation.* At the end of the class, as `GenerateRecordMethods` does for records, `GenerateMcpTools` reads the
+3. *Derivation.* Once every file has been read (so a record or an enum may be declared after the class that
+   takes it, or in a later file; a file with a syntax error is left alone), `GenerateMcpTools` reads the
    comment's description, tags and `@param` lines and the function's declared types (a Declaration's default
-   expression says optional), looks up enums and records among the declarations parsed so far, and writes
+   expression says optional), looks up enums and records among the parsed declarations, and writes
    **ordinary source text**, which the same parser parses with a second scanner and adds to the class:
    `McpTools(service)` (one `McpToolSpec` chain per tool, with `AddSchema` for each parameter's schema),
    `McpTool_<function>(call)` (reads each argument with `GetInt`/`GetString`/..., calls the function, converts its
@@ -233,8 +234,8 @@ VM, JIT or GC change (`git diff core/vm` is empty); the compiler changes are in 
 | Live | `tools/mcp/mcp_live_stub.obs` (a shop server made of three `@tool` functions behind the typed client): Claude `claude-sonnet-5-5` 3 calls, 2 turns, 1,710 input and 316 output tokens, 2.6 s; OpenAI `gpt-5.4-mini` the same 3 calls, 2 turns, 3.5 s; the server's counters show 1 call each, 0 errors, 0 rejected arguments, handler time 0.01 to 0.18 ms. `mcp_canvas.obs` rebuilt on plain `@tool` functions (the switch is gone), headless `--shot`: Claude 35 calls in 4 turns (16,883 input, 3,301 output tokens), GPT 20 calls in 12 turns, 55 calls on one canvas, none refused. One run each: existence proofs, not rates. |
 | RQ6 (re-measured) | `AgentCancel->Cancel` to handler return through the watcher, 60 runs, Windows, a handler that polls every 1 ms: median 17.5 ms, p95 33.4 ms, max 50.9 ms, min 1.0 ms. The distribution is multi-modal (about 2, 17 and 33 ms) because of the Windows timer granularity (about 15 ms); it is an upper bound for the mechanism. Untested on Linux and macOS. RQ5: the library is unchanged since Stage 1 (its measurement stands); the compiler side is rows (b) and (c). |
 
-**Honest limits** (also in the AI guide): enums and records must be declared in the sources being compiled and before
-the class that uses them (library enums are not visible while parsing); an enum cannot be an optional parameter or
+**Honest limits** (also in the AI guide): enums and records must be declared in the sources being compiled, in any
+file and order (library enums are not visible while parsing); an enum cannot be an optional parameter or
 an array element (a default must be a literal; arrays of enums need a helper that cannot hold an enum); multi
 dimensional arrays, `ref` parameters, function types and plain classes are refused; a record result is not
 derived (return `JsonElement`), and a `JsonElement` result declares only `{"type":"object"}` as its output

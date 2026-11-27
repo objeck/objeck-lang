@@ -127,7 +127,7 @@ obr mcp_live_stub.obe openai           gpt-5.4-mini (Completion-&gt;CompleteWith
   the same three calls, calls=3 turns=4</pre>
     <p>The visual version is <code>programs/examples/mcp_canvas.obs</code>: two painters, Claude and an OpenAI model, paint one canvas through MCP tools that are declared with <code>McpToolSpec</code>; the scripted painters call the same server through a generated typed client (<code>obr mcp_canvas.obe --demo</code>, or <code>--stub</code> to print that client).</p>
     <h2 id="what-this-does-not-do-yet">What this does not do yet</h2>
-    <p>Enums and records must be declared in the sources being compiled, before the class that uses them; an enum cannot be an optional parameter (a default must be a literal). A tool's result is text, a <code>JsonElement</code> (structured) or an <code>McpToolResult</code>; a record result and a derived <code>outputSchema</code> beyond "an object" are not derived. The design document has the reasons and the plan.</p>
+    <p>Enums and records must be declared in the sources being compiled (in any file, in any order); an enum cannot be an optional parameter (a default must be a literal). A tool's result is text, a <code>JsonElement</code> (structured) or an <code>McpToolResult</code>; a record result and a derived <code>outputSchema</code> beyond "an object" are not derived. The design document has the reasons and the plan.</p>
 <!-- content:end -->
    </div>
    <nav class="toc" aria-label="On this page">

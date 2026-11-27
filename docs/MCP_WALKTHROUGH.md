@@ -163,6 +163,6 @@ a generated typed client (`obr mcp_canvas.obe --demo`, or `--stub` to print that
 ## What this does not do yet
 
 Enums and records must be declared in the
-sources being compiled, before the class that uses them; an enum cannot be an optional parameter (a default must
+sources being compiled (in any file, in any order); an enum cannot be an optional parameter (a default must
 be a literal). A tool's result is text, a `JsonElement` (structured) or an `McpToolResult`; a record result and a
 derived `outputSchema` beyond "an object" are not derived. The design document has the reasons and the plan.
