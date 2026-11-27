@@ -2765,7 +2765,8 @@ def check_loader_depth_limit(obc, obr, env, bin_dir):
     # The verifier keeps the stack's state for every instruction and compared the
     # deepest with the limit only when the walk was over, so a method that pushes N
     # words cost N * N / 2 states first: 42 GB to refuse 50,000 pushes. obc cannot
-    # write such a method (it builds a long String literal an element at a time), so
+    # write such a method (it builds a long String literal an element at a time, and
+    # an expression that needs more than the limit is its own error: stack_depth.h), so
     # the image is made here: N 'LOAD_INT_LIT 0' and N 'POP_INT' put in front of a
     # function that returns 7. With 1,000 it holds 1,000 words and must load and run;
     # with 1,001 it must be refused; with 400,000 it must be refused at the same
