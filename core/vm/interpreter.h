@@ -73,6 +73,8 @@ namespace Runtime {
     StackMethod* called;
     size_t* self;
     size_t* param;
+    // what the thread's fault is recorded under, and its Join asks by (interpreter.cpp)
+    size_t fault_key;
   };
 
   //
@@ -486,21 +488,22 @@ namespace Runtime {
     // Called by the thread body once Execute returns: true when the thread
     // ended by a fault, which it has then recorded for Join
     static bool ThreadEndedInFault(std::wstring& message);
-    // The registry Thread->Join reads: threads that ended in a fault
+    // The registry Thread->Join reads: threads that ended in a fault. A thread
+    // is known in it by a key the VM gives it when it is started, never by an
+    // id of the system's: NewThreadFaultKey for the thread, BindThreadFaultKey
+    // once its handle exists, ClaimThreadFaultKey by the Join that holds that
+    // handle, before it waits (0: no key, nothing to report).
+    static size_t NewThreadFaultKey();
+    static void BindThreadFaultKey(size_t handle, size_t key);
+    static size_t ClaimThreadFaultKey(size_t handle);
+    // a handle that will never be joined: its key and what was recorded under it go
+    static void ForgetThreadFault(size_t handle);
     static void RecordThreadFault(size_t key, const std::wstring& message);
-    static void ForgetThreadFault(size_t key);
     static void TakeThreadFault(size_t key);
     static size_t ThreadFaultCount();
     static std::wstring LastThreadFault();
     // the fault of the thread this thread last joined ("" when it ended normally)
     static std::wstring& JoinedThreadFault();
-    // the key a thread is known by in that registry: the id Join derives from its handle
-    static size_t CurrentThreadKey();
-#ifdef _WIN32
-    static size_t ThreadKey(HANDLE handle);
-#else
-    static size_t ThreadKey(pthread_t handle);
-#endif
     // Ends this interpreter's run after a fault: releases the frames that remain
     void FinishThreadFault();
     // Prints the thread's fault as the process-ending path prints it

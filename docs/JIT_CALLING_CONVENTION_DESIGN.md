@@ -548,8 +548,12 @@ one difference, the pop takes two words (the func-ref word and the instance belo
 may be Nil for a plain function and is passed through as the callee's `self`). A miss calls
 `JitResolveFuncRefSite`, which looks the target up by the word's ids and fills a record
 through the shared `FillSiteRecord`. The patched opcode `DYN_MTHD_CALL_JIT`, which the
-interpreter writes at a site when a callee with matching operands compiles, is the same
-call; the emitter had no case for it and a method holding one failed to compile.
+interpreter wrote at a site when a callee with matching operands compiled, is the same
+call; the emitter had no case for it and a method holding one failed to compile. (Since
+v2026.11.4's second review nothing writes that opcode: a dynamic call's operands are an
+argument word count and a return type, never a method, so a match was a coincidence. The
+interpreter dispatches a dynamic call on its resolved callee's own state. The emitter's
+case stays for an image that carries the opcode.)
 
 Measured on a kernel of five million iterations, each a bound call to a helper that makes
 one func-ref call (the helper kept out of the inliner, see below), medians of three:

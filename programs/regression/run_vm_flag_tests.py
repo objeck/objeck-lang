@@ -395,6 +395,29 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     or prints a line of the VM's own (out of memory, or the collector's when
     the limit is below the nursery) and exits 1: no signal, no "terminate
     called".
+ 36. A function called through a function value is compiled on its own call
+    count, whatever else was called through the same call site. A dynamic
+    call's operands are the words its arguments take and its return type, not
+    a method, yet the interpreter kept JIT state on the instruction: a callee
+    the JIT refused marked the site, and compiling any method whose class id
+    and method id equalled the site's operands rewrote it; either way every
+    other function called there was compiled on its FIRST call. With
+    OBJECK_JIT_REPORT=1 and the default threshold,
+    jit_dynamic_call_threshold.obs reports Often (24 calls) compiled and Once
+    (one call, after a refused callee) not; and in a generated program with a
+    1010-method class -- method id 1003 is the return-type code of an Int, so
+    for the site whose argument words equal that class's id the two pairs
+    coincide -- none of 48 functions called once each through sites of 1 to 48
+    argument words is compiled, while the class's own methods are.
+ 37. A class's table of resolved virtual calls takes memory in proportion to
+    its entries. Every insert used to copy the whole table and keep the copy it
+    replaced, for readers that might still hold it, until the class was
+    destroyed: N declarations resolved for one receiver class held N(N+1)/2
+    entries. A generated program whose one concrete class overrides 6,000
+    virtual declarations and calls each of them twice through the base type
+    peaked at 1,073 MB (23 MB without the calls); its peak resident size
+    ([gc-stats] peak_rss_bytes) must now be within 32 MB of the same program
+    making no call, with the JIT at its default and off.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -767,6 +790,8 @@ def main():
     check_cpu_count_affinity(obc, obr, env, bin_dir)
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
+    check_dynamic_call_threshold(obc, obr, env, bin_dir)
+    check_virtual_table_memory(obc, obr, env, bin_dir)
 
     check_compiler_fatal(obc, obr, env, bin_dir)
 
@@ -1778,6 +1803,132 @@ def check_jit_off_interprets_native(obc, obr, env, bin_dir):
               f"report={compiled[:8]!r}")
         check(f"the jit-off fixture prints the same under {label} as with the JIT on",
               off_out == on_out, f"off={off_out[-300:]!r} on={on_out[-300:]!r}")
+
+
+def check_dynamic_call_threshold(obc, obr, env, bin_dir):
+    # ---- 36. a dynamic call is compiled on its callee's own count ---------------------
+    report_env = dict(env)
+    for name in ("OBJECK_JIT_DISABLE", "OBJECK_JIT_THRESHOLD"):
+        report_env.pop(name, None)
+    report_env["OBJECK_JIT_REPORT"] = "1"
+
+    dest = compile_fixture(obc, "jit_dynamic_call_threshold", env, bin_dir)
+    if dest:
+        rc, out, err = run([obr, dest], env=report_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        prefix = "[jit] JitDynamicCallThreshold:"
+        lines = [l for l in text.splitlines() if l.startswith(prefix)]
+        check("the dynamic-call fixture passes", rc == 0 and b"PASS: calls through one dynamic site" in out,
+              f"rc={rc} out={out[-200:]!r} stderr={text[-300:]!r}")
+        # the controls: the site's method and the first callee are refused, a hot callee compiles
+        check("the method holding the dynamic call site stays interpreted",
+              any(l.startswith(prefix + "Apply:") and "not compiled" in l for l in lines), f"report={lines!r}")
+        check("the callee the JIT refuses is refused",
+              any(l.startswith(prefix + "Refused:") and "not compiled" in l for l in lines), f"report={lines!r}")
+        check("a function called 24 times through the site is compiled",
+              any(l.startswith(prefix + "Often:") and l.endswith(": compiled") for l in lines), f"report={lines!r}")
+        check("a function called once through the site, after the refused one, is not compiled",
+              not any(l.startswith(prefix + "Once:") for l in lines), f"report={lines!r}")
+
+    # A class with 1010 methods: its method id 1003 is INT_TYPE, the return-type operand of
+    # a function-value call that returns an Int. The call whose argument words equal that
+    # class's id (whatever the linker made it: every count from 1 to 48 has a site) then
+    # carries the same two operands as a direct call to that method would.
+    methods, widths = 1010, 48
+    src_lines = ["class Big {"]
+    for i in range(methods):
+        # a loop: compiled on its first call, and not folded into the caller by obc
+        src_lines.append(f"\tfunction : M{i}(v : Int) ~ Int {{ t := v; for(k := 0; k < 2; k += 1;) {{ t += {i}; }}; return t; }}")
+    src_lines += ["\tfunction : Warm() ~ Int {", "\t\ttotal := 0;"]
+    src_lines += [f"\t\ttotal += M{i}(1);" for i in range(methods)]
+    src_lines += ["\t\treturn total;", "\t}", "}", "class DynSites {"]
+    for w in range(1, widths + 1):
+        params = ", ".join(f"a{k} : Int" for k in range(w))
+        types = ", ".join("Int" for _ in range(w))
+        args = ", ".join("1" for _ in range(w))
+        src_lines.append(f"\tfunction : T{w}({params}) ~ Int {{ return {w}; }}")
+        src_lines.append(f"\tfunction : S{w}(f : ({types}) ~ Int) ~ Int {{ return f({args}); }}")
+    src_lines += ["\tfunction : Main(args : String[]) ~ Nil {", "\t\twarm := Big->Warm();", "\t\ttotal := 0;"]
+    for w in range(1, widths + 1):
+        types = ", ".join("Int" for _ in range(w))
+        src_lines.append(f"\t\ttotal += S{w}(DynSites->T{w}({types}) ~ Int);")
+    src_lines += ['\t\t"PASS: warm={$warm} total={$total}"->PrintLine();', "\t}", "}"]
+
+    work = tempfile.mkdtemp(prefix="objk-dyn-")
+    try:
+        src = os.path.join(work, "dyn_sites.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n".join(src_lines) + "\n")
+        big = os.path.join(work, "dyn_sites.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", big], env=env, cwd=bin_dir)
+        check("the 1010-method program compiles", rc == 0 and os.path.exists(big), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        rc, out, err = run([obr, big], env=report_env, cwd=bin_dir)
+        text = err.decode(errors="replace")
+        expected = f"PASS: warm={methods + sum(2 * i for i in range(methods))} total={sum(range(1, widths + 1))}".encode()
+        check("the 1010-method program passes", rc == 0 and expected in out, f"rc={rc} out={out[-200:]!r} stderr={text[-300:]!r}")
+        compiled = [l for l in text.splitlines() if l.startswith("[jit] ") and l.endswith(": compiled")]
+        # the control: the method whose ids equal a site's operands did compile
+        check("the 1010-method class's method 1003 is compiled",
+              any(l.startswith("[jit] Big:M1003:") for l in compiled), f"compiled={len(compiled)}")
+        once = [l for l in compiled if l.startswith("[jit] DynSites:T")]
+        check("no function called once through a dynamic site is compiled", not once, f"report={once!r}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def check_virtual_table_memory(obc, obr, env, bin_dir):
+    # ---- 37. the virtual-call table of a class is linear in its entries ----------------
+    count = 6000
+    src_lines = ["class Wide {", "\tNew() {", "\t}"]
+    src_lines += [f"\tmethod : virtual : public : M{i}() ~ Int;" for i in range(count)]
+    src_lines += ["}", "class Impl from Wide {", "\tNew() {", "\t\tParent();", "\t}"]
+    src_lines += [f"\tmethod : public : M{i}() ~ Int {{ return {i}; }}" for i in range(count)]
+    src_lines += ["}", "class VirtualMany {", "\tfunction : Touch(b : Wide) ~ Int {", "\t\ttotal := 0;"]
+    src_lines += [f"\t\ttotal += b->M{i}();" for i in range(count)]
+    src_lines += ["\t\treturn total;", "\t}", "\tfunction : Main(args : String[]) ~ Nil {",
+                  "\t\tb : Wide := Impl->New();", "\t\ttotal := 0;",
+                  # twice: the second pass finds every entry the first one added
+                  "\t\tif(args->Size() > 0) {", "\t\t\ttotal += Touch(b);", "\t\t\ttotal += Touch(b);", "\t\t};",
+                  '\t\t"PASS: total={$total}"->PrintLine();', "\t}", "}"]
+
+    stats_env = dict(env)
+    stats_env["OBJECK_GC_STATS"] = "1"
+
+    def peak_of(err):
+        found = re.search(rb"^\[gc-stats\] .*\bpeak_rss_bytes=(\d+)", err, re.M)
+        return int(found.group(1)) if found else None
+
+    work = tempfile.mkdtemp(prefix="objk-virt-")
+    try:
+        src = os.path.join(work, "virtual_many.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n".join(src_lines) + "\n")
+        dest = os.path.join(work, "virtual_many.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("the 6000-declaration program compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        expected = f"PASS: total={2 * sum(range(count))}".encode()
+        limit = 32 * 1024 * 1024
+        for label, flags in (("default", []), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=stats_env, cwd=bin_dir)
+            idle = peak_of(err)
+            check(f"the 6000-declaration program runs with no virtual call ({label})",
+                  rc == 0 and b"PASS: total=0" in out and idle is not None,
+                  f"rc={rc} out={out[-200:]!r} stderr={err[-300:]!r}")
+            rc, out, err = run([obr] + flags + [dest, "resolve"], env=stats_env, cwd=bin_dir)
+            busy = peak_of(err)
+            check(f"6000 virtual declarations resolve on one class, twice over ({label})",
+                  rc == 0 and expected in out and busy is not None,
+                  f"rc={rc} out={out[-200:]!r} stderr={err[-300:]!r}")
+            if idle is not None and busy is not None:
+                check(f"and the table they fill costs under 32 MB of peak resident memory ({label}: "
+                      f"{busy // 1024} KB against {idle // 1024} KB with no call)",
+                      busy - idle < limit, f"idle={idle} busy={busy}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def check_compiler_fatal(obc, obr, env, bin_dir):

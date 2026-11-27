@@ -66,24 +66,33 @@ StackProgram* JitCompiler::program;
 //
 // The table holds, for a (class id, method id) pair, the instructions the walk
 // would have matched, in the order it would have reached them: every MTHD_CALL
-// and DYN_MTHD_CALL (and their *_JIT forms) whose first two operands are that
-// pair. Nothing changes those operands after the program is loaded, and the
-// only change to such an instruction's type is the MTHD_CALL -> MTHD_CALL_JIT
-// rewrite below, which the walk treated as the same site; so the table built
-// once is the set any later walk would find. OBJECK_JIT_PATCH_VERIFY=1 checks
-// exactly that on every call: it makes the old walk as well and stops the VM
-// if the two differ.
+// (and MTHD_CALL_JIT) whose first two operands are that pair. Nothing changes
+// those operands after the program is loaded, and the only change to such an
+// instruction's type is the MTHD_CALL -> MTHD_CALL_JIT rewrite below, which the
+// walk treated as the same site; so the table built once is the set any later
+// walk would find. OBJECK_JIT_PATCH_VERIFY=1 checks exactly that on every
+// call: it makes the walk as well and stops the VM if the two differ. (The
+// walk and the table share IsCallSite, so the check covers the table's
+// bookkeeping -- a site missed, duplicated or out of order -- and not which
+// opcodes count as call sites; that is the one decision below.)
 //
-// Threads: the table is built under call_site_mutex by whichever compiling
-// thread gets there first and published with a release store; it is never
-// changed afterwards, so readers need no lock. The build reads only an
-// instruction's type and first two operands. The operands never change; the
-// type can be rewritten under it by the one patch that runs without the table
-// (the first method's), from MTHD_CALL to MTHD_CALL_JIT, and the build takes
-// either as a call site, the same whole-word read the interpreter makes of a
-// site being patched (see StackInstr in common.h). Every other patch waits for
-// the build. Initialize (program start, and each debugger restart) drops the
-// table with the program it described; no method is being compiled then.
+// Threads: PatchCallSites holds call_site_mutex from its first read of the
+// program to its last store into it, so one thread at a time walks the
+// program, builds the table or rewrites a call site. The walk and the build
+// read each instruction's type, which a patch rewrites (MTHD_CALL ->
+// MTHD_CALL_JIT); before the lock covered the whole function, the first
+// method's patch -- the one that runs without the table -- and a second
+// thread's walk or build could run together, one storing the field the other
+// was reading. The build took either value as a call site, so nothing could go
+// wrong on the machines this runs on, but it was a data race the lock removes
+// for the price of one uncontended lock per compiled method. The table itself
+// is never changed once published. Initialize (program start, and each
+// debugger restart) drops the table with the program it described; no method
+// is being compiled then.
+//
+// What the lock does not cover, and need not: the interpreter executing a
+// call site while it is patched. See PatchCallSites and
+// docs/design/JIT_CALL_SITE_PATCHING.md.
 namespace {
   // the two operands exactly as the walk compared them
   typedef std::pair<long, long> CallSiteKey;
@@ -105,7 +114,19 @@ namespace {
     // two operands happened to match -- a JMP_TABLE (base, range), say -- had
     // its operand3 overwritten. For JMP_TABLE operand3 is default_ip: the
     // default arm of a select was retargeted to instruction 1.
-    return type == MTHD_CALL || type == DYN_MTHD_CALL || type == MTHD_CALL_JIT || type == DYN_MTHD_CALL_JIT;
+    //
+    // And of the calls, only the direct ones. A DYN_MTHD_CALL's first two
+    // operands are the words its arguments take and its return type's code
+    // (Loader: StackInstr(line, DYN_MTHD_CALL, num_params, rtrn_type)); its
+    // target is the function value on the stack. Counted as a call site, a
+    // function-value call taking one word and returning an Int was "a call to"
+    // whatever method has class id 1 and method id INT_TYPE, and compiling
+    // that unrelated method rewrote the site to DYN_MTHD_CALL_JIT with
+    // operand3 = 1: from then on the interpreter compiled every function it
+    // called through the site on its first call there, whatever the auto-JIT
+    // threshold said. A dynamic call is dispatched on its resolved callee's
+    // own state instead (StackInterpreter::ProcessDynamicMethodCall).
+    return type == MTHD_CALL || type == MTHD_CALL_JIT;
   }
 
   // every call site of the program, in class, method and instruction order
@@ -133,19 +154,16 @@ namespace {
     }
   }
 
+  // the caller holds call_site_mutex
   inline const CallSiteTable* GetCallSiteTable(StackProgram* prgm) {
     const CallSiteTable* table = call_site_table.load(std::memory_order_acquire);
     if(!table) {
-      std::lock_guard<std::mutex> lock(call_site_mutex);
-      table = call_site_table.load(std::memory_order_relaxed);
-      if(!table) {
-        CallSiteTable* built = new CallSiteTable;
-        WalkCallSites(prgm, [built](StackInstr* instr) {
-          (*built)[CallSiteKey(instr->GetOperand(), instr->GetOperand2())].push_back(instr);
-        });
-        call_site_table.store(built, std::memory_order_release);
-        table = built;
-      }
+      CallSiteTable* built = new CallSiteTable;
+      WalkCallSites(prgm, [built](StackInstr* instr) {
+        (*built)[CallSiteKey(instr->GetOperand(), instr->GetOperand2())].push_back(instr);
+      });
+      call_site_table.store(built, std::memory_order_release);
+      table = built;
     }
 
     return table;
@@ -291,6 +309,9 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
   const long target_cls_id = callee->GetClass()->GetId();
   const long target_mthd_id = callee->GetId();
 
+  // one walk, table build or patch at a time (see the table's comment)
+  std::unique_lock<std::mutex> lock(call_site_mutex);
+
   // the first method compiled: its sites straight from a walk (see the table's comment)
   std::vector<StackInstr*> first_sites;
   const bool first = call_site_patches.fetch_add(1, std::memory_order_acq_rel) == 0 &&
@@ -324,22 +345,41 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
       }
     });
     if(walked != sites) {
+      // not held through the exit, which destroys the mutex
+      lock.unlock();
       std::wcerr << L">>> Internal error: call-site table and program walk differ for '" << callee->GetName()
                  << L"': " << sites.size() << L" indexed, " << walked.size() << L" walked <<<" << std::endl;
       VmExit(1);
     }
   }
 
+  // The stores below race, formally, with interpreters executing these call
+  // sites on other threads: `type` and `operand3` are plain words (StackInstr
+  // in common.h says why they are not atomics: +1.5% on the interpreted
+  // benchmarks, measured). What makes that safe, on x64's ordering and on
+  // ARM64's weaker one alike:
+  //   - a site's class and method operands are written by the loader before
+  //     any thread runs and never again, so there is no "new opcode, old
+  //     operands" to observe: MTHD_CALL_JIT reads the operands MTHD_CALL read;
+  //   - each store is one aligned word (a 4-byte opcode, a `long`) holding a
+  //     value that is valid by itself, and no reader needs the two to agree:
+  //     MTHD_CALL with operand3 0 or 1, and MTHD_CALL_JIT with either, all
+  //     end in ProcessJitMethodCall or the interpreter for the same callee;
+  //   - the one thing a reader needs before it runs native code is the code
+  //     pointer, and that is not taken from the site: ProcessJitMethodCall
+  //     loads the callee's native_code (acquire; published with release by
+  //     Compile before this function is called). ARM64 may show another core
+  //     the opcode store before the pointer store. That reader finds no code,
+  //     asks TryAutoJitCompile, which waits out this compile (the method is
+  //     JIT_COMPILING until the patch is done) and then reads the pointer
+  //     again, or interprets the call. A stale read costs a slower call, never
+  //     a wrong one.
   for(size_t i = 0; i < sites.size(); ++i) {
     StackInstr* instr = sites[i];
     if(patch_value > 0) {
       // JIT success: rewrite opcode for zero-branch dispatch
-      const InstructionType type = instr->GetType();
-      if(type == MTHD_CALL) {
+      if(instr->GetType() == MTHD_CALL) {
         instr->SetType(MTHD_CALL_JIT);
-      }
-      else if(type == DYN_MTHD_CALL) {
-        instr->SetType(DYN_MTHD_CALL_JIT);
       }
     }
     instr->SetOperand3(patch_value);
@@ -529,6 +569,22 @@ int64_t JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackIn
 }
 
 /**
+ * How StackCallbackBody hands a Nil operand to JitStackCallback when a handler
+ * is active (see its LOAD_ARY_SIZE case). Thrown, not returned: with a
+ * `return` at those fifteen sites GCC allocated the function's registers
+ * differently and every callback, whatever its opcode, ran three instructions
+ * longer (callgrind, Linux x64: a cast 164 -> 167, Map->Insert +0.85%). The
+ * sites are error paths and the catch is one frame up, in the bridge entry
+ * that already catches everything else, so the throw costs nothing until a
+ * program clears a Nil array: with it the callbacks run instruction for
+ * instruction what they ran before.
+ */
+namespace {
+  struct JitNilOperand {
+  };
+}
+
+/**
  * JIT machine code callback: the entry compiled code calls for an opcode it
  * hands to the runtime. The switch is StackCallbackBody; this runs it under
  * the catch the header describes, so an exception never reaches the compiled
@@ -545,6 +601,10 @@ int64_t JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, co
     // the whole of #925. Unguarded, the bridge reports and exits as before.
     return StackCallbackBody(instr_id, instr, cls_id, mthd_id, inst, op_stack,
                              stack_pos, call_stack, call_stack_pos, ip);
+  }
+  catch(const JitNilOperand&) {
+    // a Nil array, lock or string under a handler: the guard stubs' status
+    return JIT_STATUS_NIL_DEREFERENCE;
   }
   catch(const std::bad_alloc&) {
     BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
@@ -688,6 +748,22 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case LOAD_ARY_SIZE: {
     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
     if(!array) {
+      // Under a handler -- a ?-> region, or the sentinel of an isolated thread --
+      // a Nil operand leaves compiled code as the guard stubs' status for a Nil
+      // dereference (JitNilOperand, which JitStackCallback turns into the
+      // status), here and in every case below that is handed Nil: the string
+      // conversions, the thread and lock operations, the four array copies and
+      // the four array clears. Each printed the error and ended the process
+      // whatever was active, where the interpreter's handler for the same
+      // instruction goes through TryErrorRecovery: a ?-> region recovered from
+      // Byte->Clear(Nil) under --jit=off and the program died once the caller
+      // was compiled, and with thread-fault isolation on a worker took the
+      // process with it. The interpreter that owns the handler records the
+      // status and recovers (RecordRecoveredStatus), as it does for a guard
+      // stub's. With no handler the report and the exit below are unchanged.
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -928,6 +1004,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       PushFloat(ParseFloatText(str), op_stack, stack_pos);
     }
     else {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       VmExit(1);
     }
@@ -946,6 +1025,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       PushInt(op_stack, stack_pos, (size_t)ParseIntText((wchar_t*)(str_ptr + 3), static_cast<int>(base)));
     }
     else {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       VmExit(1);
     }
@@ -1018,6 +1100,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case THREAD_JOIN: {
     size_t* instance = inst;
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1043,6 +1128,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     // TaskScope under --jit=1). A second Join of the thread then finds the slot empty and
     // returns, instead of waiting on, or closing, a handle the system may have reused.
     instance[0] = 0;
+    // before the wait, while the handle is this thread's alone (see ClaimThreadFaultKey)
+    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
@@ -1067,6 +1154,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       break;
     }
     instance[0] = 0;
+    // before the join, while the handle is this thread's alone (see ClaimThreadFaultKey)
+    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // see the note above: the handle is read before this thread parks
     MemoryManager::BeginBlocking();
@@ -1080,7 +1169,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
-    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
+    Runtime::StackInterpreter::TakeThreadFault(fault_key);
 #ifdef __linux__
     // the stack the VM allocated for it (ProcessAsyncMethodCall)
     Runtime::ThreadStacks::Release(vm_thread);
@@ -1089,7 +1178,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     MemoryManager::EndBlocking();
 
 #ifdef _WIN32
-    Runtime::StackInterpreter::TakeThreadFault(Runtime::StackInterpreter::ThreadKey(vm_thread));
+    Runtime::StackInterpreter::TakeThreadFault(fault_key);
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a
@@ -1110,6 +1199,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case THREAD_MUTEX: {
     size_t* instance = inst;
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1121,6 +1213,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case CRITICAL_START: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1132,6 +1227,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case CRITICAL_END: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1149,6 +1247,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1181,6 +1282,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1214,6 +1318,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1256,6 +1363,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1282,8 +1392,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_BYTE_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1296,8 +1410,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_CHAR_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1310,8 +1428,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_INT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1324,8 +1446,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_FLOAT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);

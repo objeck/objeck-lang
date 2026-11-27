@@ -1,0 +1,198 @@
+#~
+Thread-fault isolation: a Join reports the fault of the thread it joined, and
+of no other, while other threads start, fault and end around it.
+
+The VM recorded a faulted thread's error under the system's id for the thread
+and Join looked it up by the id of the handle it held. The system gives an id
+out again once its thread can no longer be joined, which with pthreads is the
+moment pthread_join returns: before Join had read the record. A thread started
+in that gap by another thread could take the same id, and on starting it
+dropped what was recorded there (the joined thread's fault was lost), or it
+faulted itself and left its own record to be read. Each thread is now known by
+a key the VM gives it, which Join finds by the handle before it waits.
+
+Every worker here raises an error that carries its own number, so a Join that
+reports another worker's fault is seen, not only one that reports none:
+
+- 150 rounds of eight workers, the odd ones faulting, joined out of order,
+  while two other threads start, fault and join workers of their own without
+  pause;
+- a Thread started a second time before it was joined: the Join reports the
+  second run's outcome, whichever of the two runs faulted.
+
+Runs under the default JIT, OBJECK_JIT_THRESHOLD=1 and --jit=off: the first
+two join from compiled code (the runtime callback), the last from the
+interpreter.
+~#
+use System.Concurrency;
+
+class OwnError from Error {
+	New(message : String) {
+		Parent(message);
+	}
+}
+
+class Numbered from Thread {
+	@number : Int;
+	@faults : Bool;
+
+	New(number : Int, faults : Bool) {
+		Parent("numbered");
+		@number := number;
+		@faults := faults;
+	}
+
+	method : public : Set(number : Int, faults : Bool) ~ Nil {
+		@number := number;
+		@faults := faults;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		if(@faults) {
+			number := @number;
+			Runtime->Raise(OwnError->New("worker {$number}!"));
+		};
+	}
+}
+
+# starts, and joins, workers of its own until told to stop
+class Churn from Thread {
+	@stop : Bool;
+	@wrong : Int;
+	@base : Int;
+
+	New(base : Int) {
+		Parent("churn");
+		@stop := false;
+		@wrong := 0;
+		@base := base;
+	}
+
+	method : public : Stop() ~ Nil {
+		@stop := true;
+	}
+
+	method : public : Wrong() ~ Int {
+		return @wrong;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		number := @base;
+		while(<>@stop) {
+			faults := number % 3 <> 0;
+			w := Numbered->New(number, faults);
+			w->Execute(Nil);
+			w->Join();
+			text := Runtime->GetProperty("runtime.thread.join.fault");
+			if(faults) {
+				if(text->Find("worker {$number}!") < 0) {
+					@wrong += 1;
+				};
+			}
+			else if(text->Size() > 0) {
+				@wrong += 1;
+			};
+			number += 1;
+		};
+	}
+}
+
+class ThreadFaultJoinOwn {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		Runtime->SetProperty("runtime.threads.isolation", "isolate");
+
+		a := Churn->New(1000000);
+		b := Churn->New(2000000);
+		a->Execute(Nil);
+		b->Execute(Nil);
+
+		rounds := 150;
+		width := 8;
+		lost := 0;
+		foreign := 0;
+		spurious := 0;
+		workers := Numbered->New[width];
+		for(round := 0; round < rounds; round += 1;) {
+			for(i := 0; i < width; i += 1;) {
+				number := round * width + i;
+				workers[i] := Numbered->New(number, i % 2 = 1);
+				workers[i]->Execute(Nil);
+			};
+			for(j := 0; j < width; j += 1;) {
+				i := (j * 5 + 3) % width;
+				number := round * width + i;
+				workers[i]->Join();
+				text := Runtime->GetProperty("runtime.thread.join.fault");
+				if(i % 2 = 1) {
+					if(text->Size() = 0) {
+						lost += 1;
+					}
+					else if(text->Find("worker {$number}!") < 0) {
+						foreign += 1;
+					};
+				}
+				else if(text->Size() > 0) {
+					spurious += 1;
+				};
+			};
+		};
+
+		a->Stop();
+		b->Stop();
+		a->Join();
+		b->Join();
+
+		total := rounds * width / 2;
+		if(lost = 0 & foreign = 0 & spurious = 0) {
+			"PASS: {$total} faulted workers each reported their own fault at Join, the others none"->PrintLine();
+		}
+		else {
+			"FAIL: of {$total} faulted workers {$lost} reported no fault and {$foreign} another's; {$spurious} unfaulted workers reported one"->PrintLine();
+			failures += 1;
+		};
+		wrong := a->Wrong() + b->Wrong();
+		if(wrong = 0) {
+			"PASS: and so did the workers the two other threads joined"->PrintLine();
+		}
+		else {
+			"FAIL: {$wrong} Joins on the two other threads reported the wrong outcome"->PrintLine();
+			failures += 1;
+		};
+
+		# started again before it was joined: the Join is the second run's
+		again := 0;
+		for(i := 0; i < 50; i += 1;) {
+			first_faults := i % 2 = 0;
+			t := Numbered->New(5000000 + i, first_faults);
+			t->Execute(Nil);
+			Thread->Sleep(2);
+			t->Set(6000000 + i, <>first_faults);
+			t->Execute(Nil);
+			t->Join();
+			text := Runtime->GetProperty("runtime.thread.join.fault");
+			number := 6000000 + i;
+			if(first_faults) {
+				if(text->Size() > 0) {
+					again += 1;
+				};
+			}
+			else if(text->Find("worker {$number}!") < 0) {
+				again += 1;
+			};
+		};
+		if(again = 0) {
+			"PASS: a Thread started again unjoined reports its second run"->PrintLine();
+		}
+		else {
+			"FAIL: {$again} of 50 restarted Threads reported the wrong run"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			"{$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"thread_fault_join_own: all checks passed"->PrintLine();
+	}
+}

@@ -55,8 +55,13 @@ spawned thread a **sentinel handler at the bottom of its handler stack**:
 - The dispatch loop turns `recovery_ip == THREAD_FAULT_IP` into `halt`. A method compiled on entry returns early
   with the recovery pending; `ExecuteThreadBody` clears it either way.
 - `ExecuteThreadBody` then calls `FinishThreadFault` (releases the entry frame, releases held locks) and records the
-  fault under the OS thread id. `Thread->Join` (interpreter `ThreadJoin` and the JIT's `THREAD_JOIN` callback)
-  derives the same id from the handle it holds (`GetThreadId`, or the `pthread_t` itself) and takes the record.
+  fault under the key the VM gave the thread when it was started (a counter; `NewThreadFaultKey`), which the parent
+  bound to the thread's handle before publishing the handle in the `Thread` object. `Thread->Join` (interpreter
+  `ThreadJoin` and the JIT's `THREAD_JOIN` callback) claims the key by the handle it holds before it waits, and takes
+  the record after. (Until v2026.11.4's second review the key was the OS thread id, `GetThreadId` of the handle or
+  the `pthread_t` itself. An OS id is given out again once its thread can no longer be joined, which with pthreads
+  is when `pthread_join` returns, before `Join` had read the record: a thread started in that gap could drop the
+  record or leave its own. `thread_fault_join_own.obs`.)
 - A real `Try()` inside the worker pushes above the sentinel and recovers as always; the thread is not faulted.
 
 Because the sentinel counts as a handler, `ThreadHasTryHandler()` is true on such a thread, so the places that
@@ -116,5 +121,5 @@ unchanged. `thread_fault_isolation.obs` runs bystanders that allocate throughout
 - **Signal handlers** (`RunSignalMethod`) keep the old behaviour.
 - **Locks other than `critical()`** (a `Condition` waiter that never gets its signal because the signaller died) are
   not tracked; that is the "silent dead worker" hazard above.
-- **Other platforms.** Written for POSIX as well (the registry key is the `pthread_t`); built and run here on Windows
+- **Other platforms.** Written for POSIX as well (the registry key is the VM's own, found by the `pthread_t`); built and run here on Windows
   and compile checked under WSL, but ARM64 and macOS were not run.
