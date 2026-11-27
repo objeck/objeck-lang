@@ -115,7 +115,8 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
     StackProgram::StopSignalDispatch();
     Runtime::StackInterpreter::HaltAllExcept(intpr);
     const bool threads_drained = Runtime::StackInterpreter::WaitForThreadsToDrain(intpr, 2000);
-    if(!StackProgram::WaitSignalDispatchIdle(2000) || !threads_drained) {
+    const bool vm_threads_stopped = StackProgram::WaitSignalDispatchIdle(2000) && threads_drained;
+    if(!vm_threads_stopped) {
       // A thread did not drain -- it is parked in a blocking syscall (a server
       // thread in accept(), a reader in recv()) where it cannot observe Halt, and
       // it is still live. Do not free the program out from under it: anything that
@@ -140,6 +141,19 @@ int Execute(int argc, const char* argv[], size_t gc_threshold)
       }
     }
 #endif
+
+    if(!vm_threads_stopped) {
+      // A VM thread is still live, and not only one parked in a syscall: compiled
+      // code does not observe Halt, so a thread in a compiled loop runs on through
+      // the wait above. Returning from here runs exit(), whose teardown (static
+      // destructors, the C runtime's own) would then run under that thread: two
+      // threads printing in a compiled loop when Main returned ended the process
+      // with an access violation, or the runtime's fast-fail, in about half the runs on
+      // Windows x64. It is the rule VmExit already follows for an error or
+      // Runtime->Exit with another thread registered (#877): flush what the
+      // program wrote and end the process without teardown.
+      MemoryManager::EndProcess(SUCCESS, false);
+    }
 
 #ifdef _SANITIZE
 #ifdef _DEBUG
