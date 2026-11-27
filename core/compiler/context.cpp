@@ -7576,8 +7576,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       }
     }
 
-    // public/private check
-    if(method->GetClass() != current_method->GetClass()) {
+    // public/private check (a statement is analyzed inside a method: AnalyzeDeclaration refuses a value at
+    // class scope without analyzing it, so current_method is set here; the test keeps the checks below
+    // consistent with the lambda test further down, which already allowed for none)
+    if(current_method && method->GetClass() != current_method->GetClass()) {
       const bool check_call_access = method->IsStatic() && method->GetMethodType() == PRIVATE_METHOD;
       if(check_call_access || (!method->IsStatic() && (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD))) {
         bool found = false;
