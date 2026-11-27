@@ -3877,6 +3877,15 @@ void ContextAnalyzer::AnalyzeOtherwiseIntrinsic(MethodCall* method_call, Express
   AnalyzeExpression(default_expr, depth + 1);
 
   Type* recv_type = expression->GetEvalType();
+  // 'p?->Items()[0] ?? -1', 'names[i] ?? "none"': the receiver is the element
+  // the subscript selects. A subscripted call or variable keeps the array's
+  // dimension in its type, and taking that as the result's type made the
+  // expression an array again ('e : Int := p?->Items()[0] ?? -1' was refused
+  // with a dimension mismatch).
+  if(recv_type && recv_type->GetDimension() > 0 && IsScalar(expression, false)) {
+    recv_type = TypeFactory::Instance()->MakeType(recv_type);
+    recv_type->SetDimension(0);
+  }
   Type* default_type = GetExpressionType(default_expr, depth + 1);
 
   if(recv_type && default_type) {

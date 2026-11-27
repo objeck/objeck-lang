@@ -1641,7 +1641,9 @@ static bool ReturnsValueType(MethodCall* method_call)
     rtrn = method_call->GetLibraryMethod()->GetReturn();
   }
 
-  if(!rtrn || rtrn->GetDimension() > 0) {
+  // an array is a reference, unless the call's result is subscripted
+  // ('p?->Items()[0]'): the value is then the element
+  if(!rtrn || (rtrn->GetDimension() > 0 && !method_call->GetCallIndices())) {
     return false;
   }
 
@@ -6254,6 +6256,10 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       new_char_str_count = 0;
     }
     EmitMethodCall(method_call, is_nested);
+    // subscript on the call result: 'provider?->Items()[0]'. The chain loops in
+    // EmitExpression emit it; this one did not, so the array itself was left
+    // where its element was expected.
+    EmitCallIndices(method_call);
     EmitCast(method_call);
     if(CastsCallResult(method_call)) {
       EmitClassCast(method_call);
@@ -6421,6 +6427,9 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
     }
 
     EmitMethodCall(tail_call, is_nested);
+    // subscript on the call result: '(provider ?? fallback)->Items()[0]' (see
+    // EmitTryIntrinsic)
+    EmitCallIndices(tail_call);
     EmitCast(tail_call);
     if(CastsCallResult(tail_call)) {
       EmitClassCast(tail_call);

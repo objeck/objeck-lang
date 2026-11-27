@@ -1,0 +1,185 @@
+#~
+A subscript on a call that follows '?->' or '??' selects the element.
+
+`(provider ?? fallback)->Items()[0]` and `provider?->Items()[0]` left the array
+where its element was expected: the two emitters that continue a call chain
+after '??' and inside a '?->' region skipped the call's subscript, which every
+other chain emits. An Int element read back as the array's address, a Float
+element failed the load-time verifier ("an integer or a reference used as a
+float") at -opt s0 and crashed above it.
+
+`provider?->Items()[0] ?? -1` was also refused ("Dimension size mismatch"): the
+result of '??' took the array's dimension from the subscripted call. It is the
+element, and a real element of 0 is kept (the default replaces a failure, not a
+zero).
+
+Values are checked for Int, Float, Bool, Char, String and object elements, for
+a subscript that is itself such a chain, and for the Nil paths. Exits 1 on a
+mismatch.
+~#
+class Provider {
+	@items : Int[];
+	@names : String[];
+	@floats : Float[];
+	@flags : Bool[];
+	@letters : Char[];
+	@kids : Provider[];
+
+	New(base : Int) {
+		@items := Int->New[3];
+		@items[0] := base;
+		@items[1] := 0;
+		@items[2] := base + 2;
+		@names := String->New[2];
+		@names[0] := "n{$base}";
+		@floats := Float->New[2];
+		@floats[0] := base->As(Float) + 0.5;
+		@floats[1] := 2.25;
+		@flags := Bool->New[2];
+		@flags[1] := true;
+		@letters := Char->New[2];
+		@letters[0] := 'x';
+		@letters[1] := 'y';
+	}
+
+	method : public : Items() ~ Int[] {
+		return @items;
+	}
+
+	method : public : Names() ~ String[] {
+		return @names;
+	}
+
+	method : public : Floats() ~ Float[] {
+		return @floats;
+	}
+
+	method : public : Flags() ~ Bool[] {
+		return @flags;
+	}
+
+	method : public : Letters() ~ Char[] {
+		return @letters;
+	}
+
+	method : public : Kids() ~ Provider[] {
+		return @kids;
+	}
+
+	method : public : MakeKids() ~ Nil {
+		@kids := Provider->New[2];
+		@kids[0] := Provider->New(900);
+	}
+
+	method : public : Self() ~ Provider {
+		return @self;
+	}
+}
+
+class NilSafeCallIndex {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := NilSafeCallIndex->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	method : CheckText(name : String, got : String, want : String) ~ Nil {
+		if(got = Nil | <>got->Equals(want)) {
+			@fails += 1;
+			"FAIL {$name}: '{$got}' (expected '{$want}')"->PrintLine();
+		};
+	}
+
+	method : CheckTrue(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	method : Run() ~ Nil {
+		provider : Provider := Provider->New(42);
+		fallback := Provider->New(7);
+		none : Provider := Nil;
+		provider->MakeKids();
+
+		# after '??'
+		Check("?? Int", (provider ?? fallback)->Items()[0], 42);
+		Check("?? Int, last", (provider ?? fallback)->Items()[2], 44);
+		Check("?? Int, default taken", (none ?? fallback)->Items()[0], 7);
+		CheckText("?? String", (provider ?? fallback)->Names()[0], "n42");
+		CheckText("?? String, default taken", (none ?? fallback)->Names()[0], "n7");
+		f := (provider ?? fallback)->Floats()[0];
+		CheckTrue("?? Float", f = 42.5);
+		f := (none ?? fallback)->Floats()[1];
+		CheckTrue("?? Float, default taken", f = 2.25);
+		CheckTrue("?? Bool, false", <>(provider ?? fallback)->Flags()[0]);
+		CheckTrue("?? Bool, true", (provider ?? fallback)->Flags()[1]);
+		CheckTrue("?? Char", (provider ?? fallback)->Letters()[1] = 'y');
+		Check("?? object element", (provider ?? fallback)->Kids()[0]->Items()[2], 902);
+		Check("?? later link", (provider ?? fallback)->Self()->Items()[2], 44);
+		Check("?? element, then a call", (provider ?? fallback)->Names()[0]->Size(), 3);
+
+		# inside a '?->' region
+		Check("?-> Int", provider?->Items()[0], 42);
+		Check("?-> Int, last", provider?->Items()[2], 44);
+		Check("?-> Int, Nil receiver", none?->Items()[0], 0);
+		CheckText("?-> String", provider?->Names()[0], "n42");
+		CheckTrue("?-> String, Nil receiver", none?->Names()[0] = Nil);
+		g := provider?->Floats()[1];
+		CheckTrue("?-> Float", g = 2.25);
+		CheckTrue("?-> Bool", provider?->Flags()[1]);
+		CheckTrue("?-> Char", provider?->Letters()[0] = 'x');
+		Check("?-> object element", provider?->Kids()[0]->Items()[0], 900);
+		Check("?-> later link", provider?->Self()->Items()[2], 44);
+		Check("?-> element, then a call", provider?->Names()[0]->Size(), 3);
+
+		# a subscript that is such a chain itself
+		Check("nested ??", (provider ?? fallback)->Items()[(provider ?? fallback)->Items()[1] + 2], 44);
+		Check("nested ?->", provider?->Items()[provider?->Items()[1]], 42);
+		Check("nested mixed", (none ?? fallback)->Items()[provider?->Items()[2] - 42], 9);
+
+		# '?->' with a default: the element, or the default on failure only
+		e : Int := provider?->Items()[0] ?? -1;
+		Check("?-> ?? element", e, 42);
+		e := provider?->Items()[1] ?? -1;
+		Check("?-> ?? element of 0 is kept", e, 0);
+		e := none?->Items()[0] ?? -1;
+		Check("?-> ?? Nil receiver", e, -1);
+		e := provider?->Items()[9] ?? -1;
+		Check("?-> ?? out of bounds", e, -1);
+		CheckText("?-> ?? String element", provider?->Names()[0] ?? "none", "n42");
+		CheckText("?-> ?? Nil element", provider?->Names()[1] ?? "none", "none");
+		CheckText("?-> ?? String, Nil receiver", none?->Names()[0] ?? "none", "none");
+		Check("?-> ?? element, then a call", (provider?->Names()[0] ?? "none")->Size(), 3);
+		Check("?-> ?? object element", (provider?->Kids()[1] ?? fallback)->Items()[0], 7);
+		Check("?-> ?? object element, present", (provider?->Kids()[0] ?? fallback)->Items()[0], 900);
+
+		# in a loop, so the JIT compiles the method that holds them
+		total := 0;
+		for(i := 0; i < 2000; i += 1;) {
+			total += (provider ?? fallback)->Items()[i % 3];
+			total += provider?->Items()[i % 3];
+			total += none?->Items()[0] ?? 1;
+		};
+		Check("loop", total, 2 * (667 * 42 + 667 * 0 + 666 * 44) + 2000);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a subscript on a call after '?->' or '??' selects the element"->PrintLine();
+	}
+}
