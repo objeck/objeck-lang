@@ -34,6 +34,7 @@
 
 #include "tree.h"
 #include "emit.h"
+#include <set>
 
 using namespace frontend;
 using namespace backend;

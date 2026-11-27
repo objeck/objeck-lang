@@ -44,9 +44,16 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
   // map and sort values
   int i = 0;
   std::map<INT64_VALUE, StatementList*>::iterator iter;
+  // labels that share an arm ('label 0: label 1: { .. }', '0 | 1 => ..') share its
+  // target: the arm is emitted once (Emit)
+  std::map<StatementList*, int> arm_labels;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     values[i] = iter->first;
-    value_label_map[iter->first] = ++emitter->conditional_label;
+    std::map<StatementList*, int>::iterator arm = arm_labels.find(iter->second);
+    if(arm == arm_labels.end()) {
+      arm = arm_labels.insert(std::pair<StatementList*, int>(iter->second, ++emitter->conditional_label)).first;
+    }
+    value_label_map[iter->first] = arm->second;
     i++;
   }
   // map other
@@ -123,9 +130,19 @@ void SelectArrayTree::Emit()
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
   // write statements
+  //
+  // An arm that several labels name is emitted once, at the first of them. It
+  // used to be emitted once per label, and emitting a tree twice is not
+  // repeatable: a variable's postfix update is taken off its node the first
+  // time (EmitVariable), so the second copy had none. With
+  // `match n { 0 | 1 => i++, other => 0 }` only n = 0 incremented i.
   std::map<INT64_VALUE, StatementList*> label_statements = select->GetLabelStatements();
   std::map<INT64_VALUE, StatementList*>::iterator iter;
+  std::set<StatementList*> emitted_arms;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
+    if(!emitted_arms.insert(iter->second).second) {
+      continue;
+    }
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, (long)value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
     std::vector<Statement*> statements = statement_list->GetStatements();
@@ -4338,10 +4355,16 @@ void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
   cur_line_num = select_stmt->GetLineNumber();
   const auto& label_stmts = select_stmt->GetLabelStatements();
 
-  // assign a target label to each case
+  // assign a target label to each case; labels that share an arm
+  // ('label 0: label 1: { .. }', '0 | 1 => ..') share its target
   std::map<INT64_VALUE, long> value_to_label;
+  std::map<StatementList*, long> arm_labels;
   for(const auto& entry : label_stmts) {
-    value_to_label[entry.first] = ++conditional_label;
+    std::map<StatementList*, long>::iterator arm = arm_labels.find(entry.second);
+    if(arm == arm_labels.end()) {
+      arm = arm_labels.insert(std::pair<StatementList*, long>(entry.second, ++conditional_label)).first;
+    }
+    value_to_label[entry.first] = arm->second;
   }
   long default_label = ++conditional_label;
   long end_label = ++unconditional_label;
@@ -4368,8 +4391,14 @@ void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
       select_stmt, cur_line_num, JMP_TABLE_SLOT, slot_target));
   }
 
-  // case bodies
+  // case bodies: a shared arm once, at the first of its labels (emitting it per
+  // label left every copy but the first without the arm's postfix updates, see
+  // SelectArrayTree::Emit)
+  std::set<StatementList*> emitted_arms;
   for(const auto& entry : label_stmts) {
+    if(!emitted_arms.insert(entry.second).second) {
+      continue;
+    }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
       select_stmt, cur_line_num, LBL, value_to_label[entry.first]));
     for(Statement* stmt : entry.second->GetStatements()) {
