@@ -6441,11 +6441,16 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     // EmitMethodCall instead), as in EmitExpression's chain
     //
     // The arguments are evaluated only for a receiver that is not Nil, so their
-    // postfix updates run here, once they are on the stack and before the call
-    // (BeginConditionalOperand): 'none?->Take(i++)' incremented i though the
-    // call, and its argument, were skipped.
+    // postfix updates are made only then (DeferConditionalOperand):
+    // 'none?->Take(i++)' incremented i though the call, and its argument, were
+    // skipped. They are made at the end of the statement, after the call, as
+    // an unguarded call's are: 'r?->Take(@i++)' ran Take with @i already
+    // updated while they were emitted here, before the call. The flag is set
+    // once the arguments are on the stack, so a call that then raises an error
+    // (recovered below) keeps its arguments' updates.
     PostUpdateQueue outer_post_statements;
     BeginConditionalOperand(outer_post_statements);
+    const size_t arguments_mark = imm_block->GetSize();
     bool arguments_emitted = false;
     if(!ReceiverIsFirstParameter(method_call) && method_call->GetCallingParameters()) {
       const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
@@ -6460,12 +6465,14 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
         }
       }
       new_char_str_count = 0;
-      EndConditionalOperand(outer_post_statements);
+      DeferConditionalOperand(outer_post_statements, region_mark);
       arguments_emitted = true;
     }
     EmitMethodCall(method_call, is_nested);
     if(!arguments_emitted) {
-      EndConditionalOperand(outer_post_statements);
+      // EmitMethodCall emitted the arguments itself, and the call after them:
+      // the flag is set where they start
+      DeferConditionalOperand(outer_post_statements, region_mark, arguments_mark);
     }
     // subscript on the call result: 'provider?->Items()[0]'. The chain loops in
     // EmitExpression emit it; this one did not, so the array itself was left

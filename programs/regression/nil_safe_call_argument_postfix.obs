@@ -1,0 +1,235 @@
+#~
+A postfix update in an argument of a '?->' call takes effect after the call, as
+it does for an unguarded call, and only if the arguments were evaluated.
+
+With @i = 5 and `Take(n) ~ Int { return 10 * n + @i; }`, `r->Take(@i++)` is 55:
+the callee gets the old value and still reads the old field, which changes at
+the end of the statement. `r?->Take(@i++)` was 56: the first fix for a Nil
+receiver (which must make no update) emitted the argument's update before the
+call instead of after it.
+
+The guarded and the unguarded form are compared for a field, a static field
+and an array element the callee can see, with one and with several arguments
+and along a chain. A Nil receiver makes no update. A call that raises an error
+after its arguments were evaluated keeps their updates (the statement goes on,
+with Nil or the default of '??'); an error while the arguments are still being
+evaluated leaves the call's updates unmade. Exits 1 on a mismatch.
+~#
+class Receiver {
+	@i : Int;
+	@cells : Int[];
+	@shared : static : Int;
+
+	New() {
+		@i := 5;
+		@shared := 5;
+		@cells := Int->New[2];
+		@cells[0] := 5;
+	}
+
+	method : public : I() ~ Int {
+		return @i;
+	}
+
+	method : public : Shared() ~ Int {
+		return @shared;
+	}
+
+	method : public : Cell() ~ Int {
+		return @cells[0];
+	}
+
+	# what the callee was passed, and what it reads of the state the argument updates
+	method : public : Take(n : Int) ~ Int {
+		return 10 * n + @i;
+	}
+
+	method : public : TakeShared(n : Int) ~ Int {
+		return 10 * n + @shared;
+	}
+
+	method : public : TakeCell(n : Int) ~ Int {
+		return 10 * n + @cells[0];
+	}
+
+	method : public : TakeTwo(a : Int, b : Int) ~ Int {
+		return 100 * a + 10 * b + @i;
+	}
+
+	method : public : Divide(n : Int, d : Int) ~ Int {
+		return n / d;
+	}
+
+	method : public : Next(n : Int) ~ Receiver {
+		return @self;
+	}
+
+	method : public : Guarded(r : Receiver) ~ Int {
+		return r?->Take(@i++);
+	}
+
+	method : public : Plain(r : Receiver) ~ Int {
+		return r->Take(@i++);
+	}
+
+	method : public : GuardedShared(r : Receiver) ~ Int {
+		return r?->TakeShared(@shared++);
+	}
+
+	method : public : PlainShared(r : Receiver) ~ Int {
+		return r->TakeShared(@shared++);
+	}
+
+	method : public : GuardedCell(r : Receiver) ~ Int {
+		return r?->TakeCell(@cells[0]++);
+	}
+
+	method : public : PlainCell(r : Receiver) ~ Int {
+		return r->TakeCell(@cells[0]++);
+	}
+
+	method : public : GuardedTwo(r : Receiver) ~ Int {
+		return r?->TakeTwo(@i++, @i++);
+	}
+
+	method : public : PlainTwo(r : Receiver) ~ Int {
+		return r->TakeTwo(@i++, @i++);
+	}
+
+	method : public : GuardedChain(r : Receiver) ~ Int {
+		return r?->Next(@i++)->Take(@i++);
+	}
+
+	method : public : PlainChain(r : Receiver) ~ Int {
+		return r->Next(@i++)->Take(@i++);
+	}
+
+	method : public : GuardedDefault(r : Receiver) ~ Int {
+		return r?->Take(@i++) ?? -1;
+	}
+
+	# the call raises once its arguments are on the stack
+	method : public : GuardedRaises(r : Receiver, zero : Int) ~ Int {
+		return r?->Divide(@i++, zero) ?? -1;
+	}
+
+	# the second argument raises: the call's arguments were never all evaluated
+	method : public : GuardedArgumentRaises(r : Receiver, zero : Int) ~ Int {
+		return r?->TakeTwo(@i++, 1 / zero) ?? -1;
+	}
+}
+
+class NilSafeCallArgumentPostfix {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := NilSafeCallArgumentPostfix->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# compiled by the JIT at its default threshold
+	function : Hot(r : Receiver, i : Int) ~ Int {
+		v := r?->Take(i++) ?? -7;
+		return v * 10 + i;
+	}
+
+	method : Run() ~ Nil {
+		none : Receiver;
+
+		# a field: the guarded call is the unguarded one
+		r := Receiver->New();
+		Check("r->Take(@i++)", r->Plain(r), 55);
+		Check("r->Take(@i++), after", r->I(), 6);
+		r := Receiver->New();
+		Check("r?->Take(@i++)", r->Guarded(r), 55);
+		Check("r?->Take(@i++), after", r->I(), 6);
+		Check("none?->Take(@i++)", r->Guarded(none), 0);
+		Check("none?->Take(@i++), after", r->I(), 6);
+
+		# a static field
+		r := Receiver->New();
+		Check("r->TakeShared(@shared++)", r->PlainShared(r), 55);
+		Check("r->TakeShared(@shared++), after", r->Shared(), 6);
+		r := Receiver->New();
+		Check("r?->TakeShared(@shared++)", r->GuardedShared(r), 55);
+		Check("r?->TakeShared(@shared++), after", r->Shared(), 6);
+		Check("none?->TakeShared(@shared++)", r->GuardedShared(none), 0);
+		Check("none?->TakeShared(@shared++), after", r->Shared(), 6);
+
+		# an array element
+		r := Receiver->New();
+		Check("r->TakeCell(@cells[0]++)", r->PlainCell(r), 55);
+		Check("r->TakeCell(@cells[0]++), after", r->Cell(), 6);
+		r := Receiver->New();
+		Check("r?->TakeCell(@cells[0]++)", r->GuardedCell(r), 55);
+		Check("r?->TakeCell(@cells[0]++), after", r->Cell(), 6);
+		Check("none?->TakeCell(@cells[0]++)", r->GuardedCell(none), 0);
+		Check("none?->TakeCell(@cells[0]++), after", r->Cell(), 6);
+
+		# two arguments, and a chain: whatever the unguarded form gives
+		r := Receiver->New();
+		plain := r->PlainTwo(r);
+		plain_after := r->I();
+		r := Receiver->New();
+		Check("r?->TakeTwo(@i++, @i++)", r->GuardedTwo(r), plain);
+		Check("r?->TakeTwo(@i++, @i++), after", r->I(), plain_after);
+		Check("r->TakeTwo(@i++, @i++), after", plain_after, 7);
+		Check("none?->TakeTwo(@i++, @i++), after", r->GuardedTwo(none) + r->I(), 7);
+
+		r := Receiver->New();
+		plain := r->PlainChain(r);
+		plain_after := r->I();
+		r := Receiver->New();
+		Check("r?->Next(@i++)->Take(@i++)", r->GuardedChain(r), plain);
+		Check("r?->Next(@i++)->Take(@i++), after", r->I(), plain_after);
+		Check("r->Next(@i++)->Take(@i++), after", plain_after, 7);
+		Check("none?->Next(@i++)->Take(@i++), after", r->GuardedChain(none) + r->I(), 7);
+
+		# with a default
+		r := Receiver->New();
+		Check("r?->Take(@i++) ?? -1", r->GuardedDefault(r), 55);
+		Check("r?->Take(@i++) ?? -1, after", r->I(), 6);
+		Check("none?->Take(@i++) ?? -1", r->GuardedDefault(none), -1);
+		Check("none?->Take(@i++) ?? -1, after", r->I(), 6);
+
+		# an error in the call, after its arguments: the update is kept
+		r := Receiver->New();
+		Check("r?->Divide(@i++, 0) ?? -1", r->GuardedRaises(r, 0), -1);
+		Check("r?->Divide(@i++, 0) ?? -1, after", r->I(), 6);
+		Check("r?->Divide(@i++, 2) ?? -1", r->GuardedRaises(r, 2), 3);
+		Check("r?->Divide(@i++, 2) ?? -1, after", r->I(), 7);
+		# an error in a later argument: the call's updates are not made
+		r := Receiver->New();
+		Check("r?->TakeTwo(@i++, 1 / 0) ?? -1", r->GuardedArgumentRaises(r, 0), -1);
+		Check("r?->TakeTwo(@i++, 1 / 0) ?? -1, after", r->I(), 5);
+		Check("r?->TakeTwo(@i++, 1 / 1) ?? -1", r->GuardedArgumentRaises(r, 1), 515);
+		Check("r?->TakeTwo(@i++, 1 / 1) ?? -1, after", r->I(), 6);
+
+		# a local, hot
+		r := Receiver->New();
+		total := 0;
+		for(pass := 0; pass < 20000; pass += 1;) {
+			total += Hot(pass % 2 = 0 ? r : none, pass % 5);
+		};
+		Check("hot, receiver", Hot(r, 3), 35 * 10 + 4);
+		Check("hot, Nil", Hot(none, 3), -70 + 3);
+
+		if(@fails = 0) {
+			"PASS: an argument's postfix update is made after a '?->' call"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}
