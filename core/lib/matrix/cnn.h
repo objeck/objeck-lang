@@ -36,6 +36,11 @@
 // std::thread pool, one sample per task, with the matrix multiply inside a task
 // done by Eigen on a single thread.
 //
+// A seeded run repeats bit for bit at a fixed thread count. Two things keep it so: the pool hands
+// each thread a fixed block of the samples (Pool::Work), and the library fixes the cache sizes
+// Eigen blocks a matrix product by rather than let Eigen read them from whichever core runs first
+// (FixEigenCacheSizes in matrix.cpp). A caller that embeds this header elsewhere must do the same.
+//
 // Everything is a template on the scalar, so the same code is the float32 model
 // users train and a float64 model the gradient checks use: central differences
 // in float32 cannot resolve a gradient better than about 1e-3, in float64 they
