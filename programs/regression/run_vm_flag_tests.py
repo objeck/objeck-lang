@@ -2267,6 +2267,48 @@ def changed_program_cases(image):
     cases.append(("a function call with an unknown return type", "function call with an unknown return type",
                   put(code[k][2] + 4, "<i", 7)))
 
+    # --- traps: the instruction and count its id takes (core/shared/trap_signatures.h) ---
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["char"])
+    cases.append(("a trap id changed to one that takes other words", "takes 2 words, not 3",
+                  put(main[k - 1][2], "<q", literal_ids["char"] - 1)))
+    cases.append(("a literal copy written TRAP", "is written TRAP_RTRN", put(main[k][1], "<B", op["TRAP"])))
+
+    # --- a frame holds its declarations ---
+    _, _, frame_at = header("Shape:Fill")
+    cases.append(("a frame smaller than its declarations", "frame size below the method's declarations",
+                  put(frame_at, "<i", 0)))
+
+    # --- function values ---
+    def function_literal(c, k):
+        return is_op(c, k, "LOAD_INT_LIT") and literal(c[k][2]) > (1 << 32)
+    code, k = find("LoaderVerifyControl:AddThree", function_literal)
+    join, j = find("LoaderVerifyControl:Join", function_literal)
+    cases.append(("a function value that names a lambda of another type",
+                  "a function value used with other parameters or another return than its method's",
+                  put(code[k][2], "<q", literal(join[j][2]))))
+    cases.append(("a function value that names no method", "a function value that names no method",
+                  put(code[k][2], "<q", literal(code[k][2]) | 0xFFFF)))
+    code, k = find("LoaderVerifyControl:AddN", lambda c, k: is_op(c, k, "NEW_FUNC_INST"))
+    cases.append(("a closure smaller than its lambda's captures",
+                  "a lambda paired with a closure that was not made for its captures", put(code[k][2], "<i", 0)))
+
+    # --- arrays, locals and fields are read as what they are declared ---
+    code, k = find("LoaderVerifyControl:Low", lambda c, k: is_op(c, k, "LOAD_BYTE_ARY_ELM"))
+    cases.append(("a Byte[] read as an Int[]", "an array of one element type used as an array of another",
+                  put(code[k][1], "<B", op["LOAD_INT_ARY_ELM"])))
+    code, k = find("LoaderVerifyControl:Half", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, locl))
+    cases.append(("a Float local read as an integer", "an integer or a reference read from or stored to a Float local",
+                  put(code[k][1], "<B", op["LOAD_INT_VAR"])))
+    code, k = find("Square:Area", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, inst))
+    cases.append(("an Int field read as a Float", "an instance variable read as another kind than its class declares",
+                  put(code[k][2], "<i", 0)))
+
+    # --- a reference's class: a String's and an IntRef's parameter stores exchanged ---
+    code = code_of("LoaderVerifyControl:Pair")
+    first, second = operand(code[0][2]), operand(code[1][2])
+    cases.append(("two object parameters stored to each other's local", "an object stored to a parameter of another class",
+                  put(code[1][2], "<i", first, put(code[0][2], "<i", second))))
+
     # --- class records ---
     shape = next(c for c in classes if c["name"] == "Shape")
     r = obe_image.Reader(image, shape["start"])
