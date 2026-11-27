@@ -1,0 +1,466 @@
+# EXTRA_LIBS: net,cipher
+#~
+SecureWebSocket (wss) against a scripted TLS server on loopback: the checks of
+websocket_handshake that are about a connection ending early, and the Pong, run
+again over TLS. SecureWebSocket has its own copy of the client code, and a TLS
+read reports the end of the stream differently from a TCP one (an error, not a
+count of zero), so the plain test does not cover it.
+
+  * /good                 a correct handshake connects
+  * /cut-before-blank     every header of a correct reply, then the connection
+                          closes with no blank line: refused
+  * /cut-mid-line         closed in the middle of the last header: refused
+  * /short-header, /short-length-16, /short-payload, /short-ping
+                          a frame cut off part way: nothing is delivered
+  * /eof-after-message    one whole message, then the end: the message, then Nil
+  * /ping-hi, /ping-empty the server reads the client's Pong off the wire: FIN and
+                          opcode 0xA, the mask bit and the length, four mask bytes,
+                          the Ping's payload masked
+  * /echo                 a text and a binary message come back unchanged
+
+The certificate is self-signed (openssl on PATH, as https_deadlines makes it), so the
+test turns certificate checking off for its own process with
+OBJECK_TLS_INSECURE_SKIP_VERIFY. Every connection is on 127.0.0.1.
+~#
+use Collection, System.IO.Net, System.IO.Filesystem, System.Concurrency, Web.HTTP, Cipher;
+
+class SecureScriptedServer {
+	@server : TCPSecureSocketServer;
+	@port : Int;
+	@listening : Bool;
+
+	New(pem : String, key : String) {
+		@server := TCPSecureSocketServer->New(pem, key, "", "127.0.0.1", 0);
+		@listening := @server->Listen();
+		@port := @server->GetPort();
+	}
+
+	method : public : GetPort() ~ Int {
+		return @port;
+	}
+
+	method : public : IsListening() ~ Bool {
+		return @listening;
+	}
+
+	# the value a correct server sends, computed here and not by the library under test
+	function : Accept(key : String) ~ String {
+		combined := "";
+		combined->Append(key);
+		combined->Append("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		return Cipher.Encrypt->Base64(Cipher.Hash->SHA1(combined->ToByteArray()));
+	}
+
+	method : ReadN(client : TCPSecureSocket, buf : Byte[], n : Int) ~ Nil {
+		each(i : n) {
+			buf[i] := client->ReadByte();
+		};
+	}
+
+	# one unmasked server frame with FIN set (payloads here are under 126 bytes)
+	method : WriteFrame(client : TCPSecureSocket, opcode : Int, payload : Byte[]) ~ Nil {
+		length := payload->Size();
+		frame := Byte->New[2 + length];
+		frame[0] := (0x80 + opcode)->As(Byte);
+		frame[1] := length;
+		each(i : length) {
+			frame[2 + i] := payload[i];
+		};
+		client->WriteBuffer(frame);
+	}
+
+	method : SendOnly(client : TCPSecureSocket, raw : Int[]) ~ Nil {
+		bytes := Byte->New[raw->Size()];
+		each(i : raw) {
+			bytes[i] := raw[i]->As(Byte);
+		};
+		client->WriteBuffer(bytes);
+	}
+
+	# reads one masked client frame (under 126 bytes); the opcode goes in head[0]
+	method : ReadFrame(client : TCPSecureSocket, head : Int[]) ~ Byte[] {
+		hdr := Byte->New[2];
+		ReadN(client, hdr, 2);
+		head[0] := (hdr[0] and 0x0f)->As(Int);
+		length := (hdr[1] and 0x7f)->As(Int);
+		mask := Byte->New[4];
+		ReadN(client, mask, 4);
+		payload := Byte->New[length];
+		ReadN(client, payload, length);
+		each(i : length) {
+			payload[i] := (payload[i] xor mask[i % 4])->As(Byte);
+		};
+		return payload;
+	}
+
+	# sends a Ping and judges the client's Pong; the verdict goes back as a text frame
+	method : PingPong(client : TCPSecureSocket, size : Int) ~ Nil {
+		payload := Byte->New[size];
+		each(i : size) {
+			payload[i] := (0x68 + i % 23)->As(Byte);
+		};
+		WriteFrame(client, 9, payload);
+
+		verdict := "pong ok";
+		hdr := Byte->New[2];
+		ReadN(client, hdr, 2);
+		first := (hdr[0] and 0xff)->As(Int);
+		second := (hdr[1] and 0xff)->As(Int);
+		expected := 0x80 + size;
+		if(first <> 0x8a) {
+			verdict := "first byte {$first}, expected 138 (FIN + opcode 0xA)";
+		}
+		else if(second <> expected) {
+			verdict := "second byte {$second}, expected {$expected} (mask bit + length {$size})";
+		}
+		else {
+			mask := Byte->New[4];
+			ReadN(client, mask, 4);
+			body := Byte->New[size];
+			ReadN(client, body, size);
+			each(i : size) {
+				if((body[i] xor mask[i % 4])->As(Byte) <> payload[i]) {
+					verdict := "the unmasked payload differs from the Ping's at byte {$i}";
+				};
+			};
+		};
+
+		WriteFrame(client, 1, verdict->ToByteArray());
+		# hold the connection until the client has read the verdict
+		client->ReadByte();
+	}
+
+	# serves connections one at a time until one asks for /quit
+	method : public : Serve() ~ Nil {
+		running := true;
+		while(running) {
+			client := @server->Accept();
+			if(client = Nil) {
+				return;
+			};
+
+			# the TLS handshake runs in this first read
+			request_line := client->ReadLine();
+			path := "";
+			if(request_line <> Nil) {
+				first := request_line->Find(' ');
+				last := request_line->FindLast(' ');
+				if(first > 0 & last > first) {
+					path := request_line->SubString(first + 1, last - first - 1);
+				};
+			};
+
+			key := "";
+			line := client->ReadLine();
+			while(line <> Nil & line->Size() > 0) {
+				colon := line->Find(':');
+				if(colon > 0) {
+					if(line->SubString(colon)->ToLower()->Trim()->Equals("sec-websocket-key")) {
+						key := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+					};
+				};
+				line := client->ReadLine();
+			};
+
+			accept := Accept(key);
+			ok := "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n";
+
+			if(path->Equals("/quit")) {
+				client->WriteString("{$ok}\r\n");
+				running := false;
+			}
+			else if(path->Equals("/good")) {
+				client->WriteString("{$ok}\r\n");
+				# hold the connection until the client closes
+				client->ReadByte();
+			}
+			else if(path->Equals("/cut-before-blank")) {
+				client->WriteString(ok);
+			}
+			else if(path->Equals("/cut-mid-line")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}");
+			}
+			else if(path->Equals("/short-header")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82]);
+			}
+			else if(path->Equals("/short-length-16")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82, 0x7e, 0x00]);
+			}
+			else if(path->Equals("/short-payload")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x82, 0x05, 0x61, 0x62]);
+			}
+			else if(path->Equals("/short-ping")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x89, 0x02, 0x68]);
+			}
+			else if(path->Equals("/eof-after-message")) {
+				client->WriteString("{$ok}\r\n");
+				SendOnly(client, [0x81, 0x02, 0x68, 0x69]);
+			}
+			else if(path->Equals("/ping-hi")) {
+				client->WriteString("{$ok}\r\n");
+				PingPong(client, 2);
+			}
+			else if(path->Equals("/ping-empty")) {
+				client->WriteString("{$ok}\r\n");
+				PingPong(client, 0);
+			}
+			else if(path->Equals("/echo")) {
+				client->WriteString("{$ok}\r\n");
+				head := Int->New[1];
+				each(i : 2) {
+					payload := ReadFrame(client, head);
+					WriteFrame(client, head[0], payload);
+				};
+				client->ReadByte();
+			};
+
+			client->Close();
+		};
+
+		@server->Close();
+	}
+}
+
+class SecureServerThread from Thread {
+	New() {
+		Parent();
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		arg->As(SecureScriptedServer)->Serve();
+	}
+}
+
+class WebSocketSecureFramesTest {
+	@port : static : Int;
+	@failed : static : Int;
+
+	function : Fail(what : String) ~ Nil {
+		"  FAIL: {$what}"->PrintLine();
+		@failed += 1;
+	}
+
+	function : Open(path : String) ~ SecureWebSocket {
+		return SecureWebSocket->New(Url->New("wss://127.0.0.1:{$@port}{$path}"));
+	}
+
+	function : Accepted(path : String) ~ Nil {
+		ws := Open(path);
+		if(ws->Connect()) {
+			ws->CloseSocket();
+		}
+		else {
+			why := ws->GetStatusMessage();
+			why := why ?? "(no reason)";
+			Fail("{$path}: a correct handshake was refused: {$why}");
+		};
+	}
+
+	function : Refused(path : String, expect : String) ~ Nil {
+		ws := Open(path);
+		if(ws->Connect()) {
+			Fail("{$path}: connected to a server whose handshake is cut off");
+			ws->CloseSocket();
+			return;
+		};
+
+		why := ws->GetStatusMessage();
+		if(why = Nil) {
+			Fail("{$path}: refused without a reason");
+		}
+		else if(why->Find(expect) < 0) {
+			Fail("{$path}: refused with '{$why}', expected a reason holding '{$expect}'");
+		};
+	}
+
+	function : CutFrame(path : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		data := ws->ReadSocketBinary();
+		if(data <> Nil) {
+			size := data->Size();
+			Fail("{$path}: a frame the server never finished was delivered as {$size} byte(s)");
+		};
+
+		msg := ws->GetStatusMessage();
+		if(msg = Nil) {
+			Fail("{$path}: no status message for the lost connection");
+		}
+		else if(msg->Find("before a whole frame arrived") < 0) {
+			Fail("{$path}: status message '{$msg}'");
+		};
+
+		if(ws->ReadSocketText() <> Nil) {
+			Fail("{$path}: a second read returned data");
+		};
+		ws->CloseSocket();
+	}
+
+	function : EndAfterMessage() ~ Nil {
+		ws := Open("/eof-after-message");
+		if(<>ws->Connect()) {
+			Fail("/eof-after-message: the handshake was refused");
+			return;
+		};
+
+		text := ws->ReadSocketText();
+		if(text = Nil) {
+			Fail("/eof-after-message: the whole message was not delivered");
+		}
+		else if(<>text->Equals("hi")) {
+			Fail("/eof-after-message: the message was '{$text}'");
+		};
+
+		again := ws->ReadSocketBinary();
+		if(again <> Nil) {
+			size := again->Size();
+			Fail("/eof-after-message: a second message of {$size} byte(s) was delivered after the connection closed");
+		};
+		ws->CloseSocket();
+	}
+
+	function : Pong(path : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		verdict := ws->ReadSocketText();
+		if(verdict = Nil) {
+			Fail("{$path}: no frame after the Ping");
+		}
+		else if(<>verdict->Equals("pong ok")) {
+			Fail("{$path}: the server read the Pong as: {$verdict}");
+		};
+		ws->CloseSocket();
+	}
+
+	function : Echo() ~ Nil {
+		ws := Open("/echo");
+		if(<>ws->Connect()) {
+			Fail("/echo: the handshake was refused");
+			return;
+		};
+
+		if(<>ws->WriteSocket("still here")) {
+			Fail("/echo: a text write failed");
+		};
+		text := ws->ReadSocketText();
+		if(text = Nil) {
+			Fail("/echo: no text echo");
+		}
+		else if(<>text->Equals("still here")) {
+			Fail("/echo: text echo was '{$text}'");
+		};
+
+		data := Byte->New[100];
+		each(i : data) {
+			data[i] := (i * 7 + 3)->As(Byte);
+		};
+		if(<>ws->WriteSocket(data)) {
+			Fail("/echo: a binary write failed");
+		};
+		back := ws->ReadSocketBinary();
+		if(back = Nil) {
+			Fail("/echo: no binary echo");
+		}
+		else if(back->Size() <> 100) {
+			size := back->Size();
+			Fail("/echo: 100 bytes written, {$size} echoed");
+		}
+		else {
+			each(i : data) {
+				if(back[i] <> data[i]) {
+					Fail("/echo: byte {$i} came back changed");
+				};
+			};
+		};
+		ws->CloseSocket();
+	}
+
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		name := "websocket-secure-{$Runtime->GetProcessId()}";
+		pem := "{$name}-cert.pem";
+		key := "{$name}-key.pem";
+		if(<>MakeServerCert(pem, key, "/CN=objeck-websocket-secure-test", "IP:127.0.0.1")) {
+			"FAIL: openssl could not make the test certificate -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
+
+		server := SecureScriptedServer->New(pem, key);
+		if(<>server->IsListening()) {
+			"FAIL: the scripted TLS server could not listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		@port := server->GetPort();
+
+		thread := SecureServerThread->New();
+		thread->Execute(server);
+
+		Accepted("/good");
+		Refused("/cut-before-blank", "ended before the blank line");
+		Refused("/cut-mid-line", "ended before the blank line");
+		Echo();
+		CutFrame("/short-header");
+		CutFrame("/short-length-16");
+		CutFrame("/short-payload");
+		CutFrame("/short-ping");
+		EndAfterMessage();
+		Pong("/ping-hi");
+		Pong("/ping-empty");
+
+		# a correct server still connects after all of the above, and the server stops
+		Accepted("/quit");
+		thread->Join();
+
+		File->Delete(pem);
+		File->Delete(key);
+
+		if(@failed = 0) {
+			"PASS: SecureWebSocket handshake and frame checks"->PrintLine();
+		}
+		else {
+			"FAIL: {$@failed} SecureWebSocket check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

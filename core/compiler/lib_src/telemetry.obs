@@ -2957,7 +2957,8 @@ bundle System.Telemetry {
 		@last_t : Float;
 		@last_w : Float;
 		@lock : ThreadMutex;
-		@writing : Bool;
+		@gate : ThreadMutex;
+		@writers : Int;
 
 		#~
 		Constructor that retains 4096 samples
@@ -2996,16 +2997,21 @@ bundle System.Telemetry {
 			@last_t := 0.0;
 			@last_w := 0.0;
 			@lock := ThreadMutex->New("telemetry-energy-estimator");
-			@writing := false;
+			@gate := ThreadMutex->New("telemetry-energy-writers");
+			@writers := 0;
 		}
 
 		# A mutex does not hand over to the thread that waited longest (macOS and Linux pthread mutexes do not),
-		# so readers that unlock and lock again in a loop can keep the sampler out forever. The writer says it is
-		# coming; a reader that sees that stands aside, bounded so a flag that is never cleared cannot stop it.
-		# The flag only orders who goes first: the lock still makes every read and write whole.
+		# so readers that unlock and lock again in a loop can keep the sampler out forever. A writer says it is
+		# coming; a reader that sees that stands aside, bounded so a count that is never taken back cannot stop it.
+		# The count only orders who goes first: the lock still makes every read and write whole.
+		#
+		# It is a count of the writers that have arrived and not yet left, kept under its own small lock. It was
+		# one flag, set before the lock and cleared inside it, and with two writers the first to finish cleared
+		# it while the second was still waiting: readers saw no writer and went on taking the lock ahead of it.
 		method : StandAside() ~ Nil {
 			waits := 0;
-			while(@writing & waits < 200) {
+			while(@writers > 0 & waits < 200) {
 				Thread->Sleep(1);
 				waits += 1;
 			};
@@ -3029,10 +3035,14 @@ bundle System.Telemetry {
 		~#
 		method : public : AddSample(seconds : Float, watts : Float) ~ Bool {
 			ok := false;
-			@writing := true;
+			critical(@gate) {
+				@writers += 1;
+			};
 			critical(@lock) {
 				ok := AddSampleLocked(seconds, watts);
-				@writing := false;
+			};
+			critical(@gate) {
+				@writers -= 1;
 			};
 			return ok;
 		}
@@ -3189,7 +3199,7 @@ bundle System.Telemetry {
 		}
 
 		#~
-		Estimated energy between two times, from the retained samples with the end points interpolated. Past the last sample the last reading is held, which is what lets a call that has just returned be priced before the next sample arrives.
+		Estimated energy between two times, from the retained samples with the end points interpolated. Past the last sample the last reading is held, which is what lets a call that has just returned be priced before the next sample arrives. Where samples share a time the power stepped: an interval that starts there starts at the last of them, and one that ends there ends at the first.
 		@param t_from start time in seconds
 		@param t_to end time in seconds
 		@return joules, or NaN if the start is before the first retained sample, there is no sample, or the interval crosses a gap (or a held tail) longer than the maximum gap
@@ -3220,6 +3230,13 @@ bundle System.Telemetry {
 			for(i := 1; i < @size; i += 1;) {
 				t1 := At(i);
 				if(t1 <= t_from) {
+					# Samples may share a time: the power stepped there, and the last of them is
+					# the power from that time on. PowerAtLocked answers with the first, the value
+					# the segment before it ends on, so an interval that starts on the step would
+					# ramp up from the old power (0 W then 100 W at 1 s: 50 J for 1 to 2 s, not 100).
+					if(t1 = t_from) {
+						cur_w := WattsAt(i);
+					};
 					continue;
 				};
 				if(cur_t >= t_to) {

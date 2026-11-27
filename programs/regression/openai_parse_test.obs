@@ -220,6 +220,80 @@ class OpenAIParseTest {
     Check("a second value after white space is Nil", ToolArguments("{\"a\":1} [2]") = Nil);
     Check("trailing text is Nil", ToolArguments("{\"a\":1} done") = Nil);
     Check("a stray closing brace is Nil", ToolArguments("{\"a\":1}}") = Nil);
+
+    TestStrictArguments();
+  }
+
+  # test text with ' for a double quote and ^ for a backslash
+  function : Q(text : String) ~ String {
+    out := "";
+    each(i : text) {
+      c := text->Get(i);
+      if(c->As(Int) = 39) {
+        out->Append('"');
+      }
+      else if(c = '^') {
+        out->Append(92->As(Char));
+      }
+      else {
+        out->Append(c);
+      };
+    };
+    return out;
+  }
+
+  # The arguments are checked against the JSON grammar (RFC 8259) before the forgiving JSON reader
+  # sees them: that reader takes members with no comma between them, a trailing comma and more.
+  function : TestStrictArguments() ~ Nil {
+    "Tool call arguments are strict JSON"->PrintLine();
+
+    valid := ["{'a':1,'b':2}",
+      " {'a' : { 'b' : [ 1 , 2 , { 'c' : null } ] , 'd' : true , 'e' : false } } ",
+      "{'s':'q^' b^^ s^/ ^b^f^n^r^t ^u00e9 ^uD83D^uDE00 ^u00Af'}",
+      "{'n':[0,-0,1e5,1E+5,-1.5e-3,10,0.5,123456789012345678901234567890,2e-7,0e0]}",
+      "{'a':1,'a':2}",
+      "{'':{},'e':[],'x':[[],{}]}",
+      "{'a':[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"];
+    each(i : valid) {
+      text := Q(valid[i]);
+      Check("valid: {$text}", ToolArguments(text) <> Nil);
+    };
+
+    args := ToolArguments(Q("{'s':'a^nb^u0041^'^^'}"));
+    Check("escapes are decoded once", args <> Nil & Same(args->Get("s")->GetString(), Q("a\nbA'^")));
+    args := ToolArguments(Q("{'a':1,'b':{'c':[true,null,-2.5e1]}}"));
+    Check("a nested object reads back", args <> Nil & args->Get("a")->GetInt() = 1 & args->Get("b")->Get("c")->Size() = 3 & args->Get("b")->Get("c")->Get(2)->GetInt() = -25);
+
+    invalid := ["{'a':1 'b':2}", "{'a':1,}", "{'a':[1,2,]}", "{'a':[1 2]}", "{,'a':1}", "{'a':1,,'b':2}",
+      "{'a':[,1]}", "{'a':01}", "{'a':1.}", "{'a':.5}", "{'a':+1}", "{'a':1e}", "{'a':1e+}", "{'a':-}",
+      "{'a':--1}", "{'a':1.2.3}", "{'a':0x10}", "{'a':tru}", "{'a':True}", "{'a':nul}", "{'a':NaN}",
+      "{'a':Infinity}", "{a:1}", "{'a' 1}", "{'a'::1}", "{'a':}", "{'a'}", "{1:2}", "{'a':'x^q'}",
+      "{'a':'^u12G4'}", "{'a':'^u12'}", "{'a':'x}", "{'a':'x^'}", "{'a':1]", "{'a':[1}}", "{'a':[1]",
+      "{'a':{'b':1}", "{'a':1}x", "{'a':1},", "x{'a':1}", "{'a':'tab\traw'}", "{'a':'line\nraw'}",
+      "{'a':undefined}", "{'a':1;'b':2}", "{'a':[1,2}]}", "{'a':'b' 'c':'d'}", "{'a':true false}"];
+    each(i : invalid) {
+      text := Q(invalid[i]);
+      Check("invalid: {$text}", ToolArguments(text) = Nil);
+    };
+    Check("invalid: single-quoted names", ToolArguments("{'a':1}") = Nil);
+
+    # nesting: the check keeps no call stack, and the JSON reader stops at 64 levels
+    opened := "";
+    closing := "";
+    each(i : 60) {
+      opened->Append('[');
+      closing->Append(']');
+    };
+    Check("60 levels parse", ToolArguments(Q("{'a':{$opened}1{$closing}}")) <> Nil);
+    opened := "";
+    closing := "";
+    each(i : 200000) {
+      opened->Append('[');
+      closing->Append(']');
+    };
+    Check("200000 levels, balanced, is Nil and not a crash", ToolArguments(Q("{'a':{$opened}1{$closing}}")) = Nil);
+    Check("200000 levels, never closed, is Nil and not a crash", ToolArguments(Q("{'a':{$opened}1")) = Nil);
+    Check("200000 levels, closed with the wrong bracket, is Nil", ToolArguments(Q("{'a':{$opened}1{$closing}]")) = Nil);
   }
 
   function : TestEmbedding() ~ Nil {

@@ -13,6 +13,11 @@ OBJECK_TLS_INSECURE_SKIP_VERIFY. Covers the whole round trip McpToolBridge->ToOp
     ({role:'tool', tool_call_id, content}) answers each call
   * a reply with no tool calls gives an empty vector
   * a malformed reply is an error (Nil and GetLastError), not a crash
+  * Complete, with text and with an image, reads its reply the way CompleteWithTools does: an
+    HTTP failure is an error whatever its body holds (a gateway's {"message":"Service
+    unavailable"} used to come back as a completion with no choices), and a 2xx body with no
+    'choices' array is not a completion. The failures here are 500, 502 and 401: the HTTPS
+    client retries a 429 or a 503 three times with a doubling delay, seven seconds a call
 ~#
 use API.OpenAI, API.OpenAI.Chat;
 use Data.JSON;
@@ -58,6 +63,18 @@ class ToolCallsMock from HttpsRequestHandler {
 		};
 		if(body->Find("m-error") > -1) {
 			response->SetCodeContent(401, "{\"error\":{\"message\":\"Incorrect API key provided\",\"type\":\"invalid_request_error\"}}");
+			return false;
+		};
+		if(body->Find("m-unavailable") > -1) {
+			response->SetCodeContent(500, "{\"message\":\"Service unavailable\"}");
+			return false;
+		};
+		if(body->Find("m-ok-no-choices") > -1) {
+			response->SetCodeContent(200, "{\"message\":\"Service unavailable\"}");
+			return false;
+		};
+		if(body->Find("m-ok-choices-text") > -1) {
+			response->SetCodeContent(200, "{\"id\":\"chatcmpl-3\",\"object\":\"chat.completion\",\"choices\":\"none\"}");
 			return false;
 		};
 		if(body->Find("m-garbage") > -1) {
@@ -198,6 +215,7 @@ class OpenAIToolCallsTest {
 		TestRequest();
 		TestRoundTrip();
 		TestNoToolCalls();
+		TestPlainComplete();
 		TestMalformed();
 
 		System.IO.Filesystem.File->Delete(cert);
@@ -303,6 +321,61 @@ class OpenAIToolCallsTest {
 			Check("the text is read", Same(choice->GetMessage()->GetSecond(), "The weather is 18C."));
 			Check("the message JSON is available", choice->GetMessageJson() <> Nil);
 		};
+	}
+
+	function : Plain(text : String) ~ Completion {
+		EndPoint->SetLastError(Nil);
+		return Completion->Complete("test-model", Pair->New("user", text)<String, String>, "test-key");
+	}
+
+	function : Image(text : String) ~ Completion {
+		EndPoint->SetLastError(Nil);
+		query := API.OpenAI.ImageQuery->New(text, Web.HTTP.Url->New("https://example.com/cat.png"));
+		return Completion->Complete("test-model", Pair->New("user", query)<String, API.OpenAI.ImageQuery>, "test-key");
+	}
+
+	function : FailsWith(name : String, completion : Completion, message : String) ~ Nil {
+		Check("{$name} gives Nil", completion = Nil);
+		Check("{$name} records '{$message}'", Same(EndPoint->GetLastError(), message));
+	}
+
+	# Complete (text and image) goes through the same reply handling as CompleteWithTools
+	function : TestPlainComplete() ~ Nil {
+		"-- Complete with text"->PrintLine();
+		completion := Plain("m-plain");
+		Check("a completion comes back", completion <> Nil & completion->GetFirstChoice() <> Nil);
+		if(completion <> Nil & completion->GetFirstChoice() <> Nil) {
+			Check("with its text", Same(completion->GetFirstChoice()->GetMessage()->GetSecond(), "The weather is 18C."));
+		};
+		sent := JsonParser->TextToElement(@last_body);
+		Check("the request is the text form", sent <> Nil & Same(sent->Get("messages")->Get(0)->Get("content")->GetString(), "m-plain") & Same(@last_auth, "Bearer test-key"));
+
+		FailsWith("a 500 with a message-only body", Plain("m-unavailable"), "Service unavailable");
+		FailsWith("a 502 whose JSON has a 'choices' array", Plain("m-gateway"), "HTTP 502");
+		FailsWith("a 401 with an error object", Plain("m-error"), "Incorrect API key provided");
+		FailsWith("a 200 with no 'choices'", Plain("m-ok-no-choices"), "Unexpected response: no 'choices' array");
+		FailsWith("a 200 whose 'choices' is not an array", Plain("m-ok-choices-text"), "Unexpected response: no 'choices' array");
+		Check("a 200 that is not JSON gives Nil", Plain("m-garbage") = Nil & EndPoint->GetLastError() <> Nil);
+
+		"-- Complete with an image"->PrintLine();
+		completion := Image("m-plain");
+		Check("a completion comes back", completion <> Nil & completion->GetFirstChoice() <> Nil);
+		sent := JsonParser->TextToElement(@last_body);
+		Check("the request is the image form", sent <> Nil & Same(sent->Get("messages")->Get(0)->Get("content")->Get(1)->Get("type")->GetString(), "image_url"));
+		FailsWith("an image request answered 500", Image("m-unavailable"), "Service unavailable");
+		FailsWith("an image request answered 502", Image("m-gateway"), "HTTP 502");
+		FailsWith("an image request answered 200 with no 'choices'", Image("m-ok-no-choices"), "Unexpected response: no 'choices' array");
+
+		"-- CompleteWithTools and a 200 that is not a completion"->PrintLine();
+		FailsWith("a tools request answered 200 with no 'choices'", Ask("m-ok-no-choices"), "Unexpected response: no 'choices' array");
+		FailsWith("a tools request answered 500", Ask("m-unavailable"), "Service unavailable");
+
+		# nothing is listening here
+		EndPoint->SetBaseUrl("https://localhost:1/v1");
+		completion := Plain("x");
+		Check("a refused connection gives Nil", completion = Nil);
+		Check("and says there was no response", EndPoint->GetLastError() <> Nil & EndPoint->GetLastError()->Find("No response from") > -1);
+		EndPoint->SetBaseUrl("https://localhost:{$@port}/v1");
 	}
 
 	function : TestMalformed() ~ Nil {

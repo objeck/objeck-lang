@@ -7,6 +7,11 @@
 # the '+', "1e5"->GetInt() gave 1, and "1-2" or "01" were accepted. Every AI
 # client parses responses through it; ollama embeddings arrive as -1.2e-05.
 # The stream parser read exponents but accepted "1-2", "01" and "1." as numbers.
+#
+# GetInt() on a number written with a fraction or an exponent truncates toward
+# zero from the digits as written. It went through a Float, so an integer past
+# 2^53 came back rounded (9007199254740993.0 as 9007199254740992) and one that
+# does not fit 64 bits as whatever the processor's conversion leaves.
 
 use Data.JSON;
 use Data.JSON.Stream;
@@ -29,6 +34,7 @@ class JsonNumberGrammar {
 		Invalid();
 		RoundTrip();
 		Extremes();
+		ExactInt();
 		Stream();
 
 		if(@failures = 0) {
@@ -165,6 +171,78 @@ class JsonNumberGrammar {
 				};
 			};
 		};
+	}
+
+	# GetInt() on fraction and exponent spellings: exact, toward zero, 0 when it does not fit
+	method : ExactInt() ~ Nil {
+		lowest := -9223372036854775807 - 1;
+		texts := ["9007199254740993.0", "-9007199254740993.0", "9007199254740993e0", "900719925474099.3e1",
+			"1.9", "-1.9", "0.9", "-0.9", "-0.5", "1e3", "1E3", "1e+3", "12345678901234567e-1",
+			"123456789012345678901234567890e-20", "1e18", "-1e18", "1e-3", "-1e-3", "1e-400", "0.000e5",
+			"0e99999", "-0e99999", "0.0", "-0.0", "9.223372036854775807e18", "9223372036854775807.9",
+			"-9.223372036854775808e18", "-9223372036854775808.999", "922337203685477580.7e1",
+			"0.0000000009223372036854775807e28", "9223372036854775807000e-3", "1.5e1", "15e-1", "0.00015e5",
+			"1.000000000000000000000000000001", "4.9999999999999999999999999", "-4.9999999999999999999999999",
+			"9.223372036854775808e18", "9223372036854775808.0", "-9.223372036854775809e18", "1e19", "-1e19",
+			"1e400", "-1e400", "1E+99999", "123.456e99999", "9.9e18", "-9.9e18", "99999999999999999999.5",
+			"0.1e20", "0.09e20", "10000000000000000000e-1", "100000000000000000000e-2"];
+		ints := [9007199254740993, -9007199254740993, 9007199254740993, 9007199254740993,
+			1, -1, 0, 0, 0, 1000, 1000, 1000, 1234567890123456,
+			1234567890, 1000000000000000000, -1000000000000000000, 0, 0, 0, 0,
+			0, 0, 0, 0, 9223372036854775807, 9223372036854775807,
+			lowest, lowest, 9223372036854775807,
+			9223372036854775807, 9223372036854775807, 15, 1, 15,
+			1, 4, -4,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0,
+			0, 9000000000000000000, 1000000000000000000, 1000000000000000000];
+
+		count := texts->Size();
+		expected := ints->Size();
+		Check(count = expected, "ExactInt has {$count} texts and {$expected} values");
+		each(i : texts) {
+			text := texts[i];
+			want := ints[i];
+			elem := JsonParser->TextToElement(text);
+			if(elem = Nil) {
+				Check(false, "'{$text}' did not parse");
+			}
+			else {
+				got := elem->GetInt();
+				Check(got = want, "'{$text}'->GetInt() = {$got}, expected {$want}");
+			};
+
+			# the same inside a document
+			doc := JsonParser->TextToElement("{\"v\":[{$text}]}");
+			if(doc = Nil) {
+				Check(false, "'{$text}' did not parse in a document");
+			}
+			else {
+				got := doc->Get("v")->Get(0)->GetInt();
+				Check(got = want, "[{$text}] in a document ->GetInt() = {$got}, expected {$want}");
+			};
+		};
+
+		# an integer spelling is unchanged: read whole, and 0 when it does not fit
+		whole := JsonParser->TextToElement("9007199254740993");
+		Check(whole <> Nil, "'9007199254740993' did not parse");
+		if(whole <> Nil) {
+			Check(whole->GetInt() = 9007199254740993, "'9007199254740993'->GetInt()");
+		};
+		wide := JsonParser->TextToElement("99999999999999999999");
+		Check(wide <> Nil, "'99999999999999999999' did not parse");
+		if(wide <> Nil) {
+			got := wide->GetInt();
+			Check(got = 0, "'99999999999999999999'->GetInt() = {$got}, expected 0");
+		};
+
+		# an element built by hand whose text is not a JSON number keeps the float parse
+		built := JsonElement->New(2.5);
+		got := built->GetInt();
+		Check(got = 2, "JsonElement->New(2.5)->GetInt() = {$got}, expected 2");
+		built := JsonElement->New(-7.25);
+		got := built->GetInt();
+		Check(got = -7, "JsonElement->New(-7.25)->GetInt() = {$got}, expected -7");
 	}
 
 	# huge and tiny exponents parse and serialize. GetFloat() is not called on

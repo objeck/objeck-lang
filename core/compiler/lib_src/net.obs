@@ -1945,12 +1945,18 @@ if(ws->Connect()) {
 					# The reply headers, read only for a 101: anything else is refused on
 					# its status line. Header names are matched without regard to case
 					# (RFC 9110 5.1) and a line with no name is skipped. The count is
-					# capped so a peer cannot hold the client here forever.
+					# capped so a peer cannot hold the client here forever. The block ends at
+					# a blank line and only there: a reply that stops before it (the peer
+					# closed, or a read failed) is not a handshake, whatever it held so far.
 					header_max := 256;
 					header_count := 0;
+					header_end := false;
 					if(@status_code = 101) {
 						do {
-							line := socket->ReadLine();
+							line := ReadReplyLine(socket);
+							if(line <> Nil & line->Size() = 0) {
+								header_end := true;
+							};
 							if(line <> Nil & line->Size() > 0) {
 								header_count += 1;
 								index := line->Find(':');
@@ -1969,14 +1975,17 @@ if(ws->Connect()) {
 								};
 							};
 						}
-						while(line <> Nil & line->Size() > 0 & header_count < header_max);
+						while(line <> Nil & header_end = false & header_count < header_max);
 					};
 
 					# RFC 6455 section 4.1: the client fails the connection unless the reply
 					# is a 101 that upgrades to websocket and its Sec-WebSocket-Accept is the
 					# value derived from the key sent above. Why it was refused is left in
 					# GetStatusMessage().
-					if(header_count < header_max) {
+					if(@status_code = 101 & header_end = false & header_count < header_max) {
+						@status_msg := "WebSocket handshake refused: the reply ended before the blank line that ends its headers";
+					}
+					else if(header_count < header_max) {
 						@status_msg := Web.HTTP.WebSocketHandshake->Check(status_line, @response_headers, @request_headers, key);
 					}
 					else {
@@ -2155,10 +2164,70 @@ if(ws->Connect()) {
 			return Nil;
 		}
 
+		# One line of the handshake reply without its line ending, or Nil if the peer
+		# stopped before the line ended: the stream closed, a read failed or timed
+		# out, or a NUL arrived. The socket's ReadLine() cannot be used for this: it
+		# answers "" for a closed connection exactly as for a blank line, so a reply
+		# cut off after its last header read as a complete one. A line longer than
+		# the buffer comes back in pieces, as ReadLine() gives it.
+		method : ReadReplyLine(socket : TCPSocket) ~ String {
+			one := Byte->New[1];
+			text := Byte->New[8192];
+			size := 0;
+			while(size < 8191) {
+				if(socket->ReadBuffer(0, 1, one) <> 1) {
+					return Nil;
+				};
+
+				value := one[0]->As(Int);
+				if(value = 0) {
+					return Nil;
+				};
+
+				# CR is taken with the byte after it (LF), which must arrive too
+				if(value = 13) {
+					if(socket->ReadBuffer(0, 1, one) <> 1) {
+						return Nil;
+					};
+					value := 10;
+				};
+
+				if(value = 10) {
+					if(size = 0) {
+						return "";
+					};
+					return String->New(text, 0, size);
+				};
+
+				text[size] := one[0];
+				size += 1;
+			};
+
+			return String->New(text, 0, size);
+		}
+
+		# Reads exactly 'num' bytes of a frame into 'buffer'. ReadBuffer() answers with
+		# the number of bytes that arrived, which is fewer when the peer closes, the
+		# read fails or it times out part way; the callers ignored that number, so a
+		# frame cut short was delivered as a whole one (its missing bytes zero, or
+		# whatever the last frame left in the header). A short read ends the
+		# connection: what follows on the stream can no longer be told apart.
+		method : ReadExact(num : Int, buffer : Byte[]) ~ Bool {
+			if(@socket->ReadBuffer(0, num, buffer) = num) {
+				return true;
+			};
+
+			@status_msg := "WebSocket connection lost: the peer closed or a read failed before a whole frame arrived";
+			@socket->Close();
+			return false;
+		}
+
 		method : ReadFrame() ~ Byte[] {
 			if(@socket <> Nil) {
 				# read header
-				@socket->ReadBuffer(0, 2, @header);
+				if(<>ReadExact(2, @header)) {
+					return Nil;
+				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 
 				if(@is_debug){
@@ -2174,20 +2243,35 @@ if(ws->Connect()) {
 						@socket->Close();
 						return Nil;
 					};
+					# a control frame carries at most 125 bytes (RFC 6455 section 5.5), so
+					# 126 and 127 are not the extended-length markers here
+					if(payload_length > 125) {
+						@status_msg := "WebSocket frame refused: a control frame longer than 125 bytes";
+						@socket->Close();
+						return Nil;
+					};
 					buffer := Byte->New[payload_length];
 					if(payload_length > 0) {
-						@socket->ReadBuffer(0, payload_length, buffer);
+						if(<>ReadExact(payload_length, buffer)) {
+							return Nil;
+						};
 					};
 
 					if(@is_debug){
 						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
 					};
 
-					@socket->WriteByte(0x8a);
-					@socket->WriteBuffer(buffer);
+					# The Pong is a frame like any other a client sends (section 5.5.3):
+					# FIN and opcode 0xA, the mask bit and the length, a masking key, and
+					# the Ping's payload masked with it. This wrote the opcode byte and
+					# then the payload bare, so the payload's first bytes were read by
+					# the server as an unmasked length and whatever followed as a frame.
+					WriteFrame(buffer, 0, payload_length, 0xa, false);
 
 					# read header
-					@socket->ReadBuffer(0, 2, @header);
+					if(<>ReadExact(2, @header)) {
+						return Nil;
+					};
 					opcode := (@header[0] and 0xff)->As(Byte);
 
 					if(@is_debug){
@@ -2208,7 +2292,9 @@ if(ws->Connect()) {
 					};
 
 					if(payload_length = 126) {
-						@socket->ReadBuffer(0, 2, @header);
+						if(<>ReadExact(2, @header)) {
+							return Nil;
+						};
 
 						if(@is_debug){
 							System.IO.Console->Print("read - length-ext: ")->PrintLine(@header->ToHexString());
@@ -2218,7 +2304,9 @@ if(ws->Connect()) {
 					}
 					else if(payload_length = 127) {
 						buffer := Byte->New[8];
-						@socket->ReadBuffer(0, 8, buffer);
+						if(<>ReadExact(8, buffer)) {
+							return Nil;
+						};
 
 						if(@is_debug){
 							System.IO.Console->Print("read - length-ext: ")->PrintLine(buffer->ToHexString());
@@ -2238,7 +2326,9 @@ if(ws->Connect()) {
 						# read payload
 						buffer := Byte->New[payload_length];
 						if(payload_length > 0) {
-							@socket->ReadBuffer(0, payload_length, buffer);
+							if(<>ReadExact(payload_length, buffer)) {
+								return Nil;
+							};
 						};
 
 						if(opcode = 0x88) {
@@ -2488,7 +2578,9 @@ if(ws->Connect()) {
 				@socket->WriteBuffer(frame);
 
 				# read header
-				@socket->ReadBuffer(0, 2, @header);
+				if(<>ReadExact(2, @header)) {
+					return false;
+				};
 				opcode := (@header[0] and 0xff)->As(Byte);
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
@@ -2501,7 +2593,9 @@ if(ws->Connect()) {
 				};
 				buffer := Byte->New[payload_length];
 				if(payload_length > 0) {
-					@socket->ReadBuffer(0, payload_length, buffer);
+					if(<>ReadExact(payload_length, buffer)) {
+						return false;
+					};
 				};
 
 				if(@is_debug){

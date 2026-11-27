@@ -100,16 +100,41 @@ bundle API.Ollama {
 			return Content(response, url);
 		}
 
+		# The body of an answered request, for the endpoint's parser. The HTTP status is judged
+		# first: only a 2xx reply is the endpoint's answer. Anything else is a failure whatever
+		# its body holds -- a gateway's 502 {"message":"Bad gateway"} is an object with no
+		# 'error', which the /api/show parser took for a model and the chat parser for a reply
+		# -- and the last error is the server's own {"error": ...} message when the body
+		# carries one, otherwise the status.
 		function : private : Content(response : Web.HTTP.Response, url : Url) ~ String {
-			if(response = Nil) {
+			code := 0;
+			if(response <> Nil) {
+				code := response->GetCode();
+			};
+
+			# a refused or dropped connection: no response over HTTP, status 0 over HTTPS
+			if(code = 0) {
 				url_str := url->ToString();
 				SetLastError("no response from {$url_str}");
 				return Nil;
 			};
 
 			content := response->GetContent();
+			if(code < 200 | code >= 300) {
+				if(content <> Nil) {
+					json := JsonParser->TextToElement(content->ToString());
+					if(json <> Nil) {
+						if(json->GetType() = JsonElement->JsonType->OBJECT & json->Has("error")) {
+							ReportError(json);
+							return Nil;
+						};
+					};
+				};
+				SetLastError("request failed (HTTP {$code})");
+				return Nil;
+			};
+
 			if(content = Nil) {
-				code := response->GetCode();
 				SetLastError("empty response (HTTP {$code})");
 				return Nil;
 			};
@@ -746,7 +771,20 @@ if(reply <> Nil) {
 				return Nil;
 			};
 
-			if(<>json->Has("error") & (json->Has("message") | json->Has("response"))) {
+			# a chat reply carries a 'message' object and a generate reply a 'response' string; a
+			# 'message' that is text is how a proxy or a gateway words its own error
+			is_reply := false;
+			if(<>json->Has("error")) {
+				message_json := json->Get("message");
+				if(message_json <> Nil) {
+					is_reply := message_json->GetType() = JsonElement->JsonType->OBJECT;
+				};
+				response_json := json->Get("response");
+				if(response_json <> Nil & is_reply = false) {
+					is_reply := response_json->GetType() = JsonElement->JsonType->STRING;
+				};
+			};
+			if(is_reply) {
 				return Reply->New(json);
 			};
 
@@ -1909,9 +1947,11 @@ if(models <> Nil) {
 		}
 
 		#~
-		Parses a /api/show response body.
+		Parses a /api/show response body. It is a show record if it is an object with at least one of the
+		fields the endpoint documents: modelfile, parameters, template, details, model_info, capabilities,
+		license or system.
 		@param body response text
-		@return model, or Nil with the last error set
+		@return model, or Nil with the last error set for an error body or one that is not a show record
 		~#
 		function : ParseShowResponse(body : String) ~ Model {
 			json := ParseResponse(body);
@@ -1920,6 +1960,19 @@ if(models <> Nil) {
 			};
 
 			if(json->Has("error") | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				ReportError(json);
+				return Nil;
+			};
+
+			# any other object used to be taken for a model with nothing in it
+			fields := ["modelfile", "parameters", "template", "details", "model_info", "capabilities", "license", "system"];
+			found := false;
+			each(i : fields) {
+				if(json->Has(fields[i])) {
+					found := true;
+				};
+			};
+			if(found = false) {
 				ReportError(json);
 				return Nil;
 			};
