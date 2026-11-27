@@ -350,6 +350,23 @@ class ScriptedServer {
 			else if(path->Equals("/cut-after-cr")) {
 				client->WriteString("{$ok}\r");
 			}
+			# A CR that is not followed by LF is not a line ending. Each of these replies is
+			# correct but for one bare CR: in place of the blank line, at the end of the
+			# status line, and at the end of a header line. The client took any byte after a
+			# CR for the LF, so the first of them connected.
+			else if(path->Equals("/bare-cr-blank")) {
+				client->WriteString("{$ok}\rX");
+			}
+			else if(path->Equals("/bare-cr-status")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\rXUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/bare-cr-header")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\rXConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			# lines that end with LF alone are read as before
+			else if(path->Equals("/lf-only")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Accept: {$accept}\n\n");
+			}
 			else if(path->Equals("/flood")) {
 				flood := "HTTP/1.1 101 Switching Protocols\r\n";
 				each(i : 400) {
@@ -821,6 +838,10 @@ class WebSocketHandshakeTest {
 		Refused("/cut-before-blank", "ended before the blank line");
 		Refused("/cut-mid-line", "ended before the blank line");
 		Refused("/cut-after-cr", "ended before the blank line");
+		Refused("/bare-cr-blank", "a carriage return in the reply is not followed by a line feed");
+		Refused("/bare-cr-status", "a carriage return in the reply is not followed by a line feed");
+		Refused("/bare-cr-header", "a carriage return in the reply is not followed by a line feed");
+		Accepted("/lf-only");
 		Refused("/flood", "too many headers");
 
 		Frames();

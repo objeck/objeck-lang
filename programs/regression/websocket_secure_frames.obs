@@ -10,6 +10,8 @@ count of zero), so the plain test does not cover it.
   * /cut-before-blank     every header of a correct reply, then the connection
                           closes with no blank line: refused
   * /cut-mid-line         closed in the middle of the last header: refused
+  * /bare-cr-blank        a CR and an X in place of the blank line: refused (any
+                          byte after a CR was taken for its LF)
   * /short-header, /short-length-16, /short-payload, /short-ping
                           a frame cut off part way: nothing is delivered
   * /eof-after-message    one whole message, then the end: the message, then Nil
@@ -179,6 +181,9 @@ class SecureScriptedServer {
 			}
 			else if(path->Equals("/cut-mid-line")) {
 				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}");
+			}
+			else if(path->Equals("/bare-cr-blank")) {
+				client->WriteString("{$ok}\rX");
 			}
 			else if(path->Equals("/short-header")) {
 				client->WriteString("{$ok}\r\n");
@@ -439,6 +444,7 @@ class WebSocketSecureFramesTest {
 		Accepted("/good");
 		Refused("/cut-before-blank", "ended before the blank line");
 		Refused("/cut-mid-line", "ended before the blank line");
+		Refused("/bare-cr-blank", "a carriage return in the reply is not followed by a line feed");
 		Echo();
 		CutFrame("/short-header");
 		CutFrame("/short-length-16");
