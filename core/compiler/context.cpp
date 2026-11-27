@@ -2731,11 +2731,12 @@ void ContextAnalyzer::TypeMapLiteral(Expression* expression, Type* expected)
     constructor->SetConcreteTypes(concrete);
   }
 
-  // A constructor call with no type arguments and no arguments, as the value of an entry
-  // ('{"k": Vector->New()}'): an entry is an argument of Insert, which gives a constructor
-  // call nothing to infer from. Said here, at the value, and the type arguments the map
-  // wants are filled in so that this is the only error.
-  if(generic && generics[1]->HasGenerics()) {
+  // A constructor call that is the value of an entry and leaves out its type arguments
+  // ('{"odds": Vector->New()}') is stored into the map as its value type, which is declared:
+  // the call takes its type arguments from there, as 'v : Vector<IntRef> := Vector->New();'
+  // takes them from 'v' (InferNewTypeArguments, rule 1). The entries are analyzed later, as the
+  // statements of the literal, so each call is noted with the type it is stored as.
+  if(generic && generics[1]->GetType() == CLASS_TYPE && generics[1]->GetDimension() == 0 && generics[1]->HasGenerics()) {
     const std::vector<Statement*>& entries = static_cast<SequenceExpression*>(expression)->GetStatements();
     for(size_t i = 1; i < entries.size(); ++i) {
       if(entries[i]->GetStatementType() != METHOD_CALL_STMT) {
@@ -2746,23 +2747,11 @@ void ContextAnalyzer::TypeMapLiteral(Expression* expression, Type* expected)
         continue;
       }
 
+      // only the constructed object itself, as for a declared variable (ExpectNewType)
       MethodCall* value = static_cast<MethodCall*>(entry_args->GetExpressions()[1]);
-      if(value->GetCallType() != NEW_INST_CALL || !value->GetConcreteTypes().empty() || value->GetMethodCall() || value->GetCastType() ||
-         (value->GetCallingParameters() && !value->GetCallingParameters()->GetExpressions().empty())) {
-        continue;
+      if(value->GetCallType() == NEW_INST_CALL && value->GetConcreteTypes().empty() && !value->GetMethodCall() && !value->GetCastType()) {
+        expected_entry_types[value] = generics[1];
       }
-
-      std::wstring written;
-      std::vector<Type*> value_concrete;
-      const std::vector<Type*> value_generics = generics[1]->GetGenerics();
-      for(size_t j = 0; j < value_generics.size(); ++j) {
-        written += (j > 0 ? L", " : L"") + DescribeType(value_generics[j]);
-        value_concrete.push_back(TypeFactory::Instance()->MakeType(value_generics[j]));
-      }
-      ProcessError(static_cast<Expression*>(value), L"A constructor call in an entry of a map literal is not given the map's value type, so its type arguments cannot be left out"
-                   L"\n\tWrite them: '" + value->GetVariableName() + L"->New()<" + written +
-                   L">', or assign the object to a declared variable and put the variable in the entry");
-      value->SetConcreteTypes(value_concrete);
     }
   }
 
@@ -7093,11 +7082,24 @@ bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klas
 
   const std::wstring class_name = klass ? klass->GetName() : lib_klass->GetName();
 
-  // 1. the declared type
+  // 1. the declared type: of the variable, field, element or return the call is stored as,
+  // or of the map whose literal has the call as an entry's value
+  Type* declared = nullptr;
   if(expected_new_call == method_call && expected_new_type) {
-    Type* expected = expected_new_type;
+    declared = expected_new_type;
     expected_new_call = nullptr;
     expected_new_type = nullptr;
+  }
+  else {
+    std::map<MethodCall*, Type*>::iterator noted = expected_entry_types.find(method_call);
+    if(noted != expected_entry_types.end()) {
+      declared = noted->second;
+      expected_entry_types.erase(noted);
+    }
+  }
+
+  if(declared) {
+    Type* expected = declared;
 
     Class* expected_klass = nullptr; LibraryClass* expected_lib_klass = nullptr;
     if(ResolveClassEnumType(expected) && GetProgramOrLibraryClass(expected, expected_klass, expected_lib_klass) &&

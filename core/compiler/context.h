@@ -345,6 +345,8 @@ class ContextAnalyzer {
   // the constructor call whose type arguments come from a declared type, and that type
   MethodCall* expected_new_call;
   Type* expected_new_type;
+  // constructor calls written as the value of a map literal's entry, with the map's value type (TypeMapLiteral)
+  std::map<MethodCall*, Type*> expected_entry_types;
   DiagnosticSink diagnostics;
 // the statement, expression or declaration being analyzed: where a name it
   // resolves is written (see CheckAmbiguousUse)

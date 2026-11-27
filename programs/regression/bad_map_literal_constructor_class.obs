@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: (13,53): Generic type mismatch for class 'Collection.Map': expected 2 type parameter(s), got 0
+# EXPECT_ERROR_COUNT: 2
+#~
+A constructor call in a map literal's entry takes its type arguments from the map's value
+type only when it constructs that class. Another class has nothing to infer from, as for
+'v : Vector<IntRef> := Map->New();', and the entry is then refused by both types
+('... is String: Collection.Vector; this one is String: Collection.Map').
+~#
+use Collection;
+
+class BadMapLiteralConstructorClass {
+	function : Main(args : String[]) ~ Nil {
+		groups : Map<String, Vector<IntRef>> := {"evens": Map->New()};
+		groups->Size()->PrintLine();
+	}
+}

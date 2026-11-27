@@ -281,8 +281,8 @@ entry (`An entry of this map literal is String: IntRef; this one is String: Stri
 and the same constant key twice is an error for a map that keeps one value per key. With
 no typed target (an inferred `m := {...}`, an argument, inside `?` or after `??`) the
 literal has no type and the compiler says to declare one. A constructor call that is an
-entry's value is an argument of `Insert`, so its type arguments are written
-(`{"odds": Vector->New()<IntRef>}`; left out, the compiler says so at the value). Tests: `map_literal`, `bad_map_literal_*`.
+entry's value takes its type arguments from the map's value type:
+`groups : Map<String, Vector<IntRef>> := {"evens": Vector->New(), "odds": Vector->New()};`. Tests: `map_literal`, `bad_map_literal_*`.
 ### match, and select as a value
 
 `match` picks an arm by the value of its subject. Used as a value, each arm is an
@@ -559,8 +559,9 @@ A constructor call may leave its type arguments out when the compiler can read t
 It looks in two places, in this order:
 
 1. **The declared type the object is stored into or returned as**, when that is the
-   class being constructed: a declared local, a field, an element of an array, or the
-   method's return type.
+   class being constructed: a declared local, a field, an element of an array, the
+   method's return type, or the value type of the map whose literal has the call as an
+   entry's value (`{"odds": Vector->New()}` for a `Map<String, Vector<IntRef>>`).
 2. **The constructor's arguments**, when the constructors that take that many arguments
    agree on what each type parameter is. A primitive argument is held by its class, as
    it is when the type argument is written (`7` for an `IntRef`).

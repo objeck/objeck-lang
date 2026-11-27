@@ -7,13 +7,8 @@ statements, each checked with 'assert' (whose operands are unboxed too):
   - 'Vector->New()' and 'Map->New()' inferred from a declared target, then filled
     with primitives that are boxed, read back unboxed in calculations and as indices
   - a generic class of the program inferred from its argument
-  - a map literal whose values are collections: a declared local, and a constructor
-    with its type arguments written (a constructor call in an entry is an argument,
-    which is not inferred)
-An array literal is not boxed element by element: 'v : Vector<IntRef> := [1, 2];' is
-refused at the first number (bad_collection_literal_unboxed), and a constructor call
-with no type arguments as an entry's value is refused at the value
-(bad_map_literal_constructor_value).
+  - a map literal whose values are collections: a declared local, a constructor with
+    its type arguments written, and one that takes them from the map's value type
 ~#
 use Collection;
 
@@ -113,10 +108,11 @@ class InteractLiteralsInferenceBoxing {
 		assert bins[7] = 5 : "a holder as an index and as an operand";
 
 		odds : Vector<IntRef> := Vector->New();
-		nested : Map<String, Vector<IntRef>> := {"evens": Vector->New()<IntRef>, "odds": odds};
+		nested : Map<String, Vector<IntRef>> := {"evens": Vector->New()<IntRef>, "odds": odds, "all": Vector->New()};
 		nested->Find("odds")->AddBack(1);
 		nested->Find("evens")->AddBack(2);
-		assert odds->Size() = 1 & nested->Find("evens")->Get(0) = 2 : "a map literal of Vectors";
+		nested->Find("all")->AddBack(3);
+		assert odds->Size() = 1 & nested->Find("evens")->Get(0) = 2 & nested->Find("all")->Get(0) = 3 : "a map literal of Vectors";
 
 		words : Vector<String> := ["b", "a"];
 		lookup : Map<String, Vector<String>> := {"w": words};
