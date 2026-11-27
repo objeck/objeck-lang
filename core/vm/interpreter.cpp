@@ -2767,7 +2767,7 @@ StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, 
        virtual_call->GetInstruction(0)->GetType() == RTRN) {
       UnresolvedVirtualCall(concrete_class, concrete_call, L"the method it resolves to returns no value");
     }
-    concrete_class->AddVirutalMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
+    concrete_class->AddVirtualMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
   }
 #ifdef _DEBUG
   assert(virtual_call);

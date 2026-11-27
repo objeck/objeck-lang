@@ -1546,7 +1546,7 @@ class StackClass {
   // that rehashed the table while another thread walked a bucket sent that thread
   // through freed nodes, and two inserts at once corrupted the table and the C heap.
   // Eight threads making their first calls together crashed about one run in ten under
-  // OBJECK_JIT_THRESHOLD=1 (SIGSEGV in GetVirtualMethod or AddVirutalMethod, or glibc's
+  // OBJECK_JIT_THRESHOLD=1 (SIGSEGV in GetVirtualMethod or AddVirtualMethod, or glibc's
   // "malloc(): unaligned tcache chunk detected").
   //
   // Readers stay lock-free, as a virtual call is too hot for a lock: the table is
@@ -1882,7 +1882,7 @@ class StackClass {
 
   // Safe to call from several threads at once, for the same key or different ones: the
   // first entry for a key stays (two threads that resolved it found the same method).
-  void AddVirutalMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
+  void AddVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
     const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
     std::lock_guard<std::mutex> guard(virtual_methods_lock);
     const VirtualMethodMap* current = virtual_methods.load(std::memory_order_acquire);
