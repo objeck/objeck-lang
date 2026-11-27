@@ -1,0 +1,139 @@
+#~
+One branch of '?' may be Nil when the other is an array of a primitive.
+
+Nil is a value of every array, and `t ? names : Nil` with a String[] has always
+been accepted. With an Int[] (a Float[], Bool[], Char[], Byte[], or a jagged
+array's row) it was refused, "'?' invalid type mismatch": Nil was allowed
+beside a class type only, and an array of a primitive has a primitive's type
+with a dimension. The value is the array's type, as for an object array.
+
+Both branches are taken for each element type, with Nil first and second, as a
+return value, an assignment, an argument and a declared value. A single
+primitive beside Nil is still refused: bad_cond_expr_scalar_or_nil.obs. Exits 1
+on a mismatch.
+~#
+class CondExprArrayOrNil {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := CondExprArrayOrNil->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	function : Ints(present : Bool, values : Int[]) ~ Int[] {
+		return present ? values : Nil;
+	}
+
+	function : IntsNilFirst(absent : Bool, values : Int[]) ~ Int[] {
+		return absent ? Nil : values;
+	}
+
+	function : Floats(present : Bool, values : Float[]) ~ Float[] {
+		return present ? values : Nil;
+	}
+
+	function : Bools(present : Bool, values : Bool[]) ~ Bool[] {
+		return present ? values : Nil;
+	}
+
+	function : Chars(present : Bool, values : Char[]) ~ Char[] {
+		return present ? values : Nil;
+	}
+
+	function : Bytes(absent : Bool, values : Byte[]) ~ Byte[] {
+		return absent ? Nil : values;
+	}
+
+	function : Names(present : Bool, values : String[]) ~ String[] {
+		return present ? values : Nil;
+	}
+
+	function : Row(present : Bool, rows : Int[][]) ~ Int[] {
+		return present ? rows[1] : Nil;
+	}
+
+	function : Grid(present : Bool, cells : Int[,]) ~ Int[,] {
+		return present ? cells : Nil;
+	}
+
+	# -1 for Nil, else the size
+	function : SizeOf(values : Int[]) ~ Int {
+		if(values = Nil) {
+			return -1;
+		};
+		return values->Size();
+	}
+
+	method : Run() ~ Nil {
+		ints := [1, 2, 3];
+		floats := [1.5, 2.5];
+		bools := Bool->New[4];
+		chars := Char->New[5];
+		bytes := Byte->New[6];
+		names := ["a", "b"];
+		rows := Int[]->New[2];
+		rows[0] := [1];
+		rows[1] := [4, 5];
+		cells := Int->New[2, 3];
+		cells[1, 2] := 9;
+
+		Check("Int[], array", Ints(true, ints)->Size(), 3);
+		Check("Int[], Nil", Ints(false, ints) = Nil ? 1 : 0, 1);
+		Check("Int[], Nil first: Nil", IntsNilFirst(true, ints) = Nil ? 1 : 0, 1);
+		Check("Int[], Nil first: array", IntsNilFirst(false, ints)[2], 3);
+
+		f := Floats(true, floats);
+		Check("Float[], array", f->Size() * 10 + (f[1] = 2.5 ? 1 : 0), 21);
+		Check("Float[], Nil", Floats(false, floats) = Nil ? 1 : 0, 1);
+		Check("Bool[], array", Bools(true, bools)->Size(), 4);
+		Check("Bool[], Nil", Bools(false, bools) = Nil ? 1 : 0, 1);
+		Check("Char[], array", Chars(true, chars)->Size(), 5);
+		Check("Char[], Nil", Chars(false, chars) = Nil ? 1 : 0, 1);
+		Check("Byte[], array", Bytes(false, bytes)->Size(), 6);
+		Check("Byte[], Nil", Bytes(true, bytes) = Nil ? 1 : 0, 1);
+		Check("String[], array", Names(true, names)->Size(), 2);
+		Check("String[], Nil", Names(false, names) = Nil ? 1 : 0, 1);
+		Check("row, array", Row(true, rows)[1], 5);
+		Check("row, Nil", Row(false, rows) = Nil ? 1 : 0, 1);
+		grid := Grid(true, cells);
+		Check("Int[,], array", grid[1, 2], 9);
+		Check("Int[,], Nil", Grid(false, cells) = Nil ? 1 : 0, 1);
+
+		# assigned, declared, passed
+		t := true;
+		n := false;
+		chosen := t ? ints : Nil;
+		Check("assigned, array", chosen->Size(), 3);
+		chosen := n ? ints : Nil;
+		Check("assigned, Nil", chosen = Nil ? 1 : 0, 1);
+		declared : Float[] := n ? Nil : floats;
+		Check("declared", declared->Size(), 2);
+		Check("argument, array", SizeOf(t ? ints : Nil), 3);
+		Check("argument, Nil", SizeOf(n ? ints : Nil), -1);
+		Check("argument, Nil first", SizeOf(n ? Nil : ints), 3);
+
+		# in a loop, so the JIT compiles the functions
+		total := 0;
+		for(i := 0; i < 3000; i += 1;) {
+			total += SizeOf(Ints(i % 3 = 0, ints));
+		};
+		Check("loop", total, 1000 * 3 - 2000);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Nil is a branch of '?' beside any array"->PrintLine();
+	}
+}

@@ -3978,9 +3978,13 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
     else if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
       AnalyzeClassCast(if_type, else_conditional, depth + 1);
     }
+    // Nil is a value of every class and of every array. It was accepted beside
+    // an object or an array of objects only: 't ? ints : Nil' with an Int[]
+    // (or any array of a primitive) was refused, though 't ? names : Nil' with
+    // a String[] is not, and 'ints := Nil' is an assignment like any other.
     else if(if_type->GetType() != else_type->GetType() &&
-            !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
-            (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE))) {
+            !((if_type->GetType() == NIL_TYPE && (else_type->GetType() == CLASS_TYPE || value_dimension(else_conditional, else_type) > 0)) ||
+              (else_type->GetType() == NIL_TYPE && (if_type->GetType() == CLASS_TYPE || if_dimension > 0)))) {
       ProcessError(conditional, L"'?' invalid type mismatch");
     }
     // set eval type with the dimension of the value the branches yield. Zeroing it
