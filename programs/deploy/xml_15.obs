@@ -19,7 +19,7 @@
 #     Blork & Freen Instameal: 4.95 (653 in stock)
 #     Grob winglets: 3.56 (44 in stock)
 #   all prices: 14.50 23.99 4.95 3.56
-#   first item in the last section: Blork &amp; Freen Instameal
+#   first item in the second section: Blork &amp; Freen Instameal
 #   built: <order id="1001"><customer>Ada</customer><line sku="123456789" qty="2"/></order>
 ~#
 
@@ -69,12 +69,11 @@ class Xml {
     };
     ""->PrintLine();
 
-    # [last()] and [first()] keep only the last or first match at a level.
-    # They are used rather than a number: in this library [n] keeps the
-    # first n matches, not the nth one -- a known defect.
+    # [n] keeps the nth match at its level (counting from 1), and [first()] and
+    # [last()] the first and last; here, the second section's first item.
     # GetContent returns the text exactly as written, still escaped.
-    names := parser->FindElements("/inventory/section[last()]/item[first()]/name");
-    "first item in the last section: {$(names->Get(0)->GetContent())}"->PrintLine();
+    names := parser->FindElements("/inventory/section[2]/item[1]/name");
+    "first item in the second section: {$(names->Get(0)->GetContent())}"->PrintLine();
 
     # --- build a document ---
     BuildOrder();
