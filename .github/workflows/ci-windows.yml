@@ -1103,6 +1103,18 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_boxing_overloads.py "%BIN%"
 
+    # A constructor call may leave out its type arguments ('Pair->New(a, b)',
+    # 'v : Vector<Foo> := Vector->New();'). For a library class the constructors'
+    # parameter types and the type parameters' bounds are read back from the .obl,
+    # and a second library may have a class of the same short name; this builds two.
+    - name: type arguments are inferred for a library generic class (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_generic_inference.py "%BIN%"
+
     - name: a generic array parameter survives the .obl round trip (Windows)
       working-directory: ./programs/regression
       shell: cmd

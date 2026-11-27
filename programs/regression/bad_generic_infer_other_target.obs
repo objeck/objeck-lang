@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: (11,22): Generic type mismatch for class 'Collection.Vector': expected 1 type parameter(s), got 0
+#~
+A declared type gives a constructor call its type arguments only when it is
+the class being constructed. 'Base' says nothing about what a Vector holds, so
+the call is refused; it is not made a Vector<Base>.
+~#
+use Collection;
+
+class BadGenericInferOtherTarget {
+	function : Main(args : String[]) ~ Nil {
+		anything : Base := Vector->New();
+		anything->GetClassID()->PrintLine();
+	}
+}

@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (19,11): Cannot infer the type arguments of 'Both': type parameter 'T' is both 'System.String' and 'System.IntRef'
+#~
+Two arguments give one type parameter two classes. No common parent is looked
+for: the call is refused, and names both, so the programmer writes the one
+that is meant ('Both->New("a", 7)<Base>').
+~#
+class Both<T> {
+	@first : T;
+	@second : T;
+
+	New(first : T, second : T) {
+		@first := first;
+		@second := second;
+	}
+}
+
+class BadGenericInferConflict {
+	function : Main(args : String[]) ~ Nil {
+		pair := Both->New("a", 7);
+		pair->GetClassID()->PrintLine();
+	}
+}

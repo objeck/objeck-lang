@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (19,12): Cannot infer the type arguments of 'Slot': no argument gives type parameter 'T' a class
+#~
+'Nil' is a value of every class, so it says nothing about a type parameter.
+~#
+class Slot<T> {
+	@value : T;
+
+	New(value : T) {
+		@value := value;
+	}
+
+	method : public : IsEmpty() ~ Bool {
+		return @value = Nil;
+	}
+}
+
+class BadGenericInferNil {
+	function : Main(args : String[]) ~ Nil {
+		empty := Slot->New(Nil);
+		empty->IsEmpty()->PrintLine();
+	}
+}

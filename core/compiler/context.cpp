@@ -6726,6 +6726,299 @@ Type* ContextAnalyzer::BoxedBindingType(Type* type)
 }
 
 /****************************
+ * Notes the declared type a
+ * constructor call is about to
+ * be stored into or returned as,
+ * when the call names a class
+ * and leaves out '<..>'
+ ****************************/
+void ContextAnalyzer::ExpectNewType(Expression* expression, Type* type, bool is_element)
+{
+  expected_new_call = nullptr;
+  expected_new_type = nullptr;
+
+  if(!expression || !type || expression->GetExpressionType() != METHOD_CALL_EXPR) {
+    return;
+  }
+
+  MethodCall* method_call = static_cast<MethodCall*>(expression);
+  // only the constructed object itself: not 'X->New()->Call()' and not a cast of it
+  if(method_call->GetCallType() != NEW_INST_CALL || !method_call->GetConcreteTypes().empty() ||
+     method_call->GetMethodCall() || method_call->GetCastType()) {
+    return;
+  }
+
+  if(type->GetType() != CLASS_TYPE || !type->HasGenerics()) {
+    return;
+  }
+
+  // a plain variable, or one element of an array
+  if((type->GetDimension() > 0) != is_element) {
+    return;
+  }
+
+  expected_new_call = method_call;
+  expected_new_type = type;
+}
+
+/****************************
+ * A type argument as it would
+ * have been written: a class's
+ * own bounded parameter reads as
+ * its bound once it is resolved,
+ * and is put back to its name
+ ****************************/
+Type* ContextAnalyzer::WrittenTypeArgument(Type* type)
+{
+  const std::wstring name = type->GetClassGeneric().empty() ? type->GetName() : type->GetClassGeneric();
+  Type* written = TypeFactory::Instance()->MakeType(CLASS_TYPE, name, type->GetFileName(), type->GetLineNumber(), type->GetLinePosition());
+  if(type->GetType() != CLASS_TYPE) {
+    return TypeFactory::Instance()->MakeType(type);
+  }
+
+  std::vector<Type*> generics = type->GetGenerics();
+  for(size_t i = 0; i < generics.size(); ++i) {
+    generics[i] = WrittenTypeArgument(generics[i]);
+  }
+  written->SetGenerics(generics);
+
+  return written;
+}
+
+/****************************
+ * Binds a class's type parameter
+ * by matching a constructor
+ * parameter's type against the
+ * argument's: 'T' and
+ * 'C<.., T, ..>'
+ ****************************/
+bool ContextAnalyzer::UnifyClassGeneric(Type* param, Type* arg, int arg_dimension, Class* klass, LibraryClass* lib_klass,
+                                        std::vector<Type*> &bindings, std::wstring &error)
+{
+  if(!param || !arg || param->GetType() != CLASS_TYPE) {
+    return true;
+  }
+
+  const std::wstring param_name = param->GetClassGeneric().empty() ? param->GetName() : param->GetClassGeneric();
+  const int index = klass ? klass->GenericIndex(param_name) : lib_klass->GenericIndex(param_name);
+  if(index > -1 && index < (int)bindings.size()) {
+    // 'Nil' and an array say nothing about 'T'
+    if(arg->GetType() == NIL_TYPE || param->GetDimension() != arg_dimension) {
+      return true;
+    }
+
+    Type* scalar = TypeFactory::Instance()->MakeType(arg);
+    scalar->SetDimension(0);
+    // a primitive is held by its class, as it is when the type argument is written
+    Type* boxed = BoxedBindingType(scalar);
+    if(boxed->GetType() != CLASS_TYPE) {
+      return true;
+    }
+
+    // resolving renames a type in place (a bounded parameter reads as its
+    // bound), so the type that is kept is one that was not resolved
+    if(!ResolveClassEnumType(WrittenTypeArgument(boxed))) {
+      return true;
+    }
+    Type* binding = WrittenTypeArgument(boxed);
+
+    if(!bindings[index]) {
+      bindings[index] = binding;
+    }
+    else if(FormatGenericType(bindings[index]) != FormatGenericType(binding)) {
+      error = L"type parameter '" + param_name + L"' is both '" + FormatGenericType(bindings[index]) +
+        L"' and '" + FormatGenericType(binding) + L"'";
+      return false;
+    }
+    return true;
+  }
+
+  // C<.., T, ..>: match the type arguments pairwise, when it is the same class
+  if(arg->GetType() != CLASS_TYPE || param->GetDimension() != arg_dimension) {
+    return true;
+  }
+
+  const std::vector<Type*> param_generics = param->GetGenerics();
+  const std::vector<Type*> arg_generics = arg->GetGenerics();
+  if(param_generics.empty() || param_generics.size() != arg_generics.size()) {
+    return true;
+  }
+
+  Type* param_class = TypeFactory::Instance()->MakeType(CLASS_TYPE, param->GetName());
+  Type* arg_class = TypeFactory::Instance()->MakeType(CLASS_TYPE, arg->GetName());
+  const bool param_found = klass ? ResolveClassEnumType(param_class, klass) : ResolveClassEnumType(param_class);
+  if(!param_found || !ResolveClassEnumType(arg_class) || param_class->GetName() != arg_class->GetName()) {
+    return true;
+  }
+
+  for(size_t i = 0; i < param_generics.size(); ++i) {
+    if(!UnifyClassGeneric(param_generics[i], arg_generics[i], arg_generics[i]->GetDimension(), klass, lib_klass, bindings, error)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
+ * Gives a constructor call of a
+ * generic class the type
+ * arguments that were not
+ * written. In order:
+ *
+ *  1. the declared type the object
+ *     is stored into or returned
+ *     as, when it is the same
+ *     class: 'v : Vector<Foo> :=
+ *     Vector->New();'
+ *  2. the arguments, when one
+ *     constructor takes that many:
+ *     'Pair->New(a, b)'
+ *
+ * The result is set as if '<..>'
+ * had been written, so every check
+ * that follows is the one an
+ * explicit call gets. Returns false
+ * after reporting that the
+ * arguments do not settle them.
+ ****************************/
+bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klass, MethodCall* method_call, const int depth)
+{
+  if(method_call->GetCallType() != NEW_INST_CALL || !method_call->GetConcreteTypes().empty()) {
+    return true;
+  }
+
+  const size_t generic_count = klass ? klass->GetGenericClasses().size() : lib_klass->GetGenericClasses().size();
+  if(!generic_count || (klass && klass->GetAnonymousCall()) || !GetConcreteTypes(method_call).empty()) {
+    return true;
+  }
+
+  const std::wstring class_name = klass ? klass->GetName() : lib_klass->GetName();
+
+  // 1. the declared type
+  if(expected_new_call == method_call && expected_new_type) {
+    Type* expected = expected_new_type;
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
+
+    Class* expected_klass = nullptr; LibraryClass* expected_lib_klass = nullptr;
+    if(ResolveClassEnumType(expected) && GetProgramOrLibraryClass(expected, expected_klass, expected_lib_klass) &&
+       expected_klass == klass && expected_lib_klass == lib_klass && expected->GetGenerics().size() == generic_count) {
+      std::vector<Type*> concrete_types;
+      const std::vector<Type*> expected_generics = expected->GetGenerics();
+      for(size_t i = 0; i < expected_generics.size(); ++i) {
+        concrete_types.push_back(WrittenTypeArgument(expected_generics[i]));
+      }
+      method_call->SetConcreteTypes(concrete_types);
+      return true;
+    }
+  }
+
+  // 2. the arguments
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  if(!call_params || call_params->HasNames()) {
+    return true;
+  }
+
+  const std::vector<Expression*> arguments = call_params->GetExpressions();
+  if(arguments.empty()) {
+    return true;
+  }
+
+  // the parameter types of the constructors that take this many arguments
+  std::vector<std::vector<Type*> > candidates;
+  if(klass) {
+    std::vector<Method*> constructors = klass->GetUnqualifiedMethods(L"New");
+    for(size_t i = 0; i < constructors.size(); ++i) {
+      std::vector<Declaration*> declarations = constructors[i]->GetDeclarations()->GetDeclarations();
+      if(declarations.size() == arguments.size()) {
+        std::vector<Type*> params;
+        for(size_t j = 0; j < declarations.size(); ++j) {
+          params.push_back(declarations[j]->GetEntry() ? declarations[j]->GetEntry()->GetType() : nullptr);
+        }
+        candidates.push_back(params);
+      }
+    }
+  }
+  else {
+    std::vector<LibraryMethod*> constructors = lib_klass->GetUnqualifiedMethods(L"New");
+    for(size_t i = 0; i < constructors.size(); ++i) {
+      std::vector<Type*> params = constructors[i]->GetDeclarationTypes();
+      if(params.size() == arguments.size()) {
+        candidates.push_back(params);
+      }
+    }
+  }
+
+  // none: the call is reported as it always was
+  if(candidates.empty()) {
+    return true;
+  }
+
+  // Each constructor that takes this many arguments is matched against them.
+  // One that leaves a type parameter without a class, or gives one two
+  // classes, says nothing. The type arguments are settled when every
+  // constructor that says something says the same.
+  const std::wstring written = FormatTypeString(class_name) + L"->New(..)<..>";
+  std::wstring first_error;
+  std::vector<Type*> bindings;
+  for(size_t c = 0; c < candidates.size(); ++c) {
+    std::wstring error;
+    std::vector<Type*> candidate_bindings(generic_count, nullptr);
+    const std::vector<Type*> params = candidates[c];
+    bool settled = true;
+    for(size_t i = 0; settled && i < params.size(); ++i) {
+      Type* arg = arguments[i]->GetExpressionType() == LAMBDA_EXPR ? nullptr : GetExpressionType(arguments[i], depth + 1);
+      if(!arg) {
+        continue;
+      }
+      const int arg_dimension = IsScalar(arguments[i]) ? 0 : arg->GetDimension();
+      settled = UnifyClassGeneric(params[i], arg, arg_dimension, klass, lib_klass, candidate_bindings, error);
+    }
+
+    for(size_t i = 0; settled && i < candidate_bindings.size(); ++i) {
+      if(!candidate_bindings[i]) {
+        const std::wstring generic_name = klass ? klass->GetGenericClasses()[i]->GetName() : lib_klass->GetGenericClasses()[i]->GetName();
+        error = L"no argument gives type parameter '" + FormatTypeString(generic_name) + L"' a class";
+        settled = false;
+      }
+    }
+
+    if(!settled) {
+      if(first_error.empty()) {
+        first_error = error;
+      }
+      continue;
+    }
+
+    if(bindings.empty()) {
+      bindings = candidate_bindings;
+      continue;
+    }
+
+    for(size_t i = 0; i < bindings.size(); ++i) {
+      if(FormatGenericType(bindings[i]) != FormatGenericType(candidate_bindings[i])) {
+        const std::wstring generic_name = klass ? klass->GetGenericClasses()[i]->GetName() : lib_klass->GetGenericClasses()[i]->GetName();
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot infer the type arguments of '" + FormatTypeString(class_name) +
+                     L"': its constructors make type parameter '" + FormatTypeString(generic_name) + L"' both '" +
+                     FormatGenericType(bindings[i]) + L"' and '" + FormatGenericType(candidate_bindings[i]) +
+                     L"'\n\tWrite them: " + written);
+        return false;
+      }
+    }
+  }
+
+  if(bindings.empty()) {
+    ProcessError(static_cast<Expression*>(method_call), L"Cannot infer the type arguments of '" + FormatTypeString(class_name) +
+                 L"': " + first_error + L"\n\tWrite them: " + written);
+    return false;
+  }
+
+  method_call->SetConcreteTypes(bindings);
+  return true;
+}
+
+/****************************
  * Resolves method calls
  ****************************/
 Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth, Type* receiver)
@@ -6898,6 +7191,12 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
   if(!TakeParamsAnalyzed(method_call)) {
     AnalyzeExpressions(call_params, depth + 1);
+  }
+
+  // 'Pair->New(a, b)' and 'v : Vector<Foo> := Vector->New()': the type
+  // arguments that were not written
+  if(!InferNewTypeArguments(klass, nullptr, method_call, depth)) {
+    return;
   }
 
   // named arguments bind to the forwarder generated for the call's shape (#1244)
@@ -7684,6 +7983,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   if(!TakeParamsAnalyzed(method_call)) {
     AnalyzeExpressions(call_params, depth + 1);
   }
+
+  // the type arguments that were not written (see the program-class path)
+  if(!InferNewTypeArguments(nullptr, klass, method_call, depth)) {
+    return;
+  }
+
   // named arguments, through the parameter names the .obl records (#1244). The
   // method may be one this class inherits from a library parent.
   if(call_params->HasNames()) {
@@ -9427,7 +9732,11 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       rtrn->SetExpression(wrapped);
       expression = wrapped;
     }
+    // 'return Vector->New();' takes its type arguments from the method's return type
+    ExpectNewType(expression, mthd_type, false);
     AnalyzeExpression(expression, depth + 1);
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
     // Handle string concatenation: replace ADD_EXPR with STR_CONCAT_EXPR
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       expression = expression->GetPreviousExpression();
@@ -9646,7 +9955,13 @@ void ContextAnalyzer::AnalyzeAssignmentBody(Assignment* assignment, StatementTyp
         expression = wrapped;
       }
     }
+    // 'v : Vector<Foo> := Vector->New();' takes its type arguments from 'v'
+    if(type == ASSIGN_STMT && variable && variable->GetEntry()) {
+      ExpectNewType(expression, variable->GetEntry()->GetType(), variable->GetIndices() != nullptr);
+    }
     AnalyzeExpression(expression, depth + 1);
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       expression = expression->GetPreviousExpression();
       assignment->SetExpression(expression);

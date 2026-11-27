@@ -1,0 +1,119 @@
+# EXTRA_LIBS: gen_collect
+#~
+The type-argument inference example of docs/FEATURES.md, kept compiling and
+running: one small class written with every type argument spelled out, as it
+had to be before v2026.11.4, and again with the ones the compiler can read
+from the declared type or the constructor's arguments left out. The two
+versions must print the same report; the test exits 1 unless they do.
+~#
+use Collection;
+
+#
+# Before: each 'New' repeats the type the field, the local or the return
+# type already states
+#
+class ScoresBefore {
+	@names : Vector<String>;
+	@by_name : Map<String, IntRef>;
+
+	New() {
+		@names := Vector->New()<String>;
+		@by_name := Map->New()<String, IntRef>;
+	}
+
+	method : public : Add(name : String, score : Int) ~ Nil {
+		@names->AddBack(name);
+		@by_name->Insert(name, score);
+	}
+
+	method : public : Best() ~ Pair<String, IntRef> {
+		best := Pair->New("", IntRef->New(-1))<String, IntRef>;
+		each(name in @names) {
+			score := @by_name->Find(name);
+			if(score > best->GetSecond()) {
+				best := Pair->New(name, score)<String, IntRef>;
+			};
+		};
+		return best;
+	}
+
+	method : public : Above(limit : Int) ~ Vector<String> {
+		above := Vector->New()<String>;
+		each(name in @names) {
+			if(@by_name->Find(name) > limit) {
+				above->AddBack(name);
+			};
+		};
+		return above;
+	}
+}
+
+#
+# After: the fields give 'New' its type arguments, and so do the arguments
+# of 'Pair->New' and the local's declared type
+#
+class ScoresAfter {
+	@names : Vector<String>;
+	@by_name : Map<String, IntRef>;
+
+	New() {
+		@names := Vector->New();
+		@by_name := Map->New();
+	}
+
+	method : public : Add(name : String, score : Int) ~ Nil {
+		@names->AddBack(name);
+		@by_name->Insert(name, score);
+	}
+
+	method : public : Best() ~ Pair<String, IntRef> {
+		best := Pair->New("", -1);
+		each(name in @names) {
+			score := @by_name->Find(name);
+			if(score > best->GetSecond()) {
+				best := Pair->New(name, score);
+			};
+		};
+		return best;
+	}
+
+	method : public : Above(limit : Int) ~ Vector<String> {
+		above : Vector<String> := Vector->New();
+		each(name in @names) {
+			if(@by_name->Find(name) > limit) {
+				above->AddBack(name);
+			};
+		};
+		return above;
+	}
+}
+
+class GenericInferenceBeforeAfter {
+	function : Main(args : String[]) ~ Nil {
+		before := ScoresBefore->New();
+		before->Add("ada", 91);
+		before->Add("lin", 78);
+		before->Add("sol", 96);
+		before_best := before->Best();
+		before_report := before_best->GetFirst() + " " + before_best->GetSecond()->Get()->ToString() + " " +
+			before->Above(80)->Size()->ToString();
+
+		after := ScoresAfter->New();
+		after->Add("ada", 91);
+		after->Add("lin", 78);
+		after->Add("sol", 96);
+		after_best := after->Best();
+		after_report := after_best->GetFirst() + " " + after_best->GetSecond()->Get()->ToString() + " " +
+			after->Above(80)->Size()->ToString();
+
+		"best and count above 80: {$after_report}"->PrintLine();
+
+		if(after_report->Equals(before_report) & after_report->Equals("sol 96 2")) {
+			"PASS: type-argument inference before and after"->PrintLine();
+		}
+		else {
+			"FAIL: type-argument inference before and after: '{$before_report}' and '{$after_report}'"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

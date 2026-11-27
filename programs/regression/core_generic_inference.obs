@@ -1,0 +1,306 @@
+# EXTRA_LIBS: gen_collect
+#~
+Type arguments a constructor call leaves out are inferred, in this order:
+
+  1. from the declared type the new object is stored into or returned as,
+     when it is the same class:
+       v : Vector<String> := Vector->New();     a declared local
+       @names := Vector->New();                 a field
+       slots[0] := Vector->New();               an element of an array
+       return Vector->New();                    a declared return type
+  2. from the constructor's arguments, when the constructors that take that
+     many arguments agree:
+       Pair->New("k", 7)                        Pair<String, IntRef>
+       Cell->New(other_cell)                    Cell<Cell<String>>
+
+A call that writes '<..>' means what it always did. Inference only gives a
+call the type arguments it would have had written, so everything after it --
+overload resolution, bounds, the checks on the assignment -- is the code an
+explicit call runs. bad_generic_infer_*.obs hold the calls that are refused.
+
+Each check adds to 'bad'; the test exits 1 when one fails.
+~#
+use Collection;
+
+class Cell<V> {
+	@v : V;
+
+	New(v : V) {
+		@v := v;
+	}
+
+	method : public : Get() ~ V {
+		return @v;
+	}
+}
+
+# a bounded parameter, and fields that are generic in the class's own parameters
+class Shelf<T : Stringify> {
+	@items : Vector<T>;
+	@index : Map<String, T>;
+
+	New() {
+		@items := Vector->New();
+		@index := Map->New();
+	}
+
+	method : public : Add(t : T) ~ Nil {
+		@items->AddBack(t);
+		@index->Insert(t->ToString(), t);
+	}
+
+	method : public : Size() ~ Int {
+		return @items->Size();
+	}
+
+	method : public : Has(key : String) ~ Bool {
+		return @index->Has(key);
+	}
+
+	# from the return type, and from the argument: both are Cell<T>
+	method : public : Wrap(t : T) ~ Cell<T> {
+		return Cell->New(t);
+	}
+
+	method : public : WrapLocal(t : T) ~ Cell<T> {
+		cell := Cell->New(t);
+		return cell;
+	}
+
+	method : public : Copy() ~ Vector<T> {
+		out : Vector<T> := Vector->New();
+		each(item in @items) {
+			out->AddBack(item);
+		};
+		return out;
+	}
+}
+
+class Sorted<K : Compare, V> {
+	@map : Map<K, V>;
+	@keys : Vector<K>;
+
+	New() {
+		@map := Map->New();
+		@keys := Vector->New();
+	}
+
+	method : public : Put(k : K, v : V) ~ Nil {
+		@map->Insert(k, v);
+		@keys->AddBack(k);
+	}
+
+	method : public : Get(k : K) ~ V {
+		return @map->Find(k);
+	}
+
+	method : public : Count() ~ Int {
+		return @keys->Size();
+	}
+}
+
+# two constructors that take two arguments and agree on what T is
+class Tagged<T> {
+	@value : T;
+	@count : Int;
+
+	New(value : T, count : Int) {
+		@value := value;
+		@count := count;
+	}
+
+	New(value : T, tag : String) {
+		@value := value;
+		@count := tag->Size();
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+
+	method : public : Count() ~ Int {
+		return @count;
+	}
+}
+
+class CoreGenericInference {
+	@names : Vector<String>;
+	@counts : Map<String, IntRef>;
+
+	New() {
+		@names := Vector->New();
+		@counts := Map->New();
+	}
+
+	method : public : Fields() ~ Int {
+		@names->AddBack("a");
+		@names->AddBack("b");
+		@counts->Insert("a", 3);
+		bad := Check(@names->Size() = 2, "field: Vector<String>");
+		bad += Check(@counts->Find("a")->Get() = 3, "field: Map<String, IntRef>");
+		return bad;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		bad += CoreGenericInference->New()->Fields();
+		bad += Locals();
+		bad += Returns();
+		bad += Arguments();
+		bad += OwnParameters();
+		bad += ExplicitStillWins();
+
+		if(bad = 0) {
+			"PASS: type-argument inference"->PrintLine();
+		}
+		else {
+			"FAIL: type-argument inference ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  failed: {$what}"->ErrorLine();
+		return 1;
+	}
+
+	function : Locals() ~ Int {
+		bad := 0;
+
+		# declared and built on one line
+		words : Vector<String> := Vector->New();
+		words->AddBack("one");
+		bad += Check(words->Get(0)->Size() = 3, "local: declared with its value");
+
+		# declared, built later
+		later : Hash<String, IntRef>;
+		later := Hash->New();
+		later->Insert("k", 9);
+		bad += Check(later->Find("k")->Get() = 9, "local: declared first");
+
+		# a local that already has its type, built again
+		again := Vector->New()<FloatRef>;
+		again->AddBack(1.5);
+		again := Vector->New();
+		bad += Check(again->Size() = 0, "local: built again");
+		again->AddBack(2.5);
+		bad += Check(again->Get(0)->Get() = 2.5, "local: built again holds a FloatRef");
+
+		# nested type arguments
+		pairs : Vector<Pair<IntRef, String>> := Vector->New();
+		pairs->AddBack(Pair->New(1, "x"));
+		bad += Check(pairs->Get(0)->GetSecond()->Equals("x"), "local: nested type arguments");
+
+		# an element of an array of a generic class
+		slots := Vector->New[2]<String>;
+		slots[0] := Vector->New();
+		slots[1] := Vector->New();
+		slots[1]->AddBack("s");
+		bad += Check(slots[0]->Size() = 0 & slots[1]->Size() = 1, "local: an array element");
+
+		# a constructor with arguments, typed by the target
+		copy : Vector<String> := Vector->New(words);
+		bad += Check(copy->Size() = 1, "local: a constructor with arguments, typed by the target");
+
+		return bad;
+	}
+
+	function : MakeNames() ~ Vector<String> {
+		return Vector->New();
+	}
+
+	function : MakeLookup() ~ Hash<String, IntRef> {
+		lookup : Hash<String, IntRef> := Hash->New();
+		lookup->Insert("one", 1);
+		return lookup;
+	}
+
+	function : Returns() ~ Int {
+		names := MakeNames();
+		names->AddBack("n");
+		bad := Check(names->Get(0)->Equals("n"), "return: Vector<String>");
+		bad += Check(MakeLookup()->Find("one")->Get() = 1, "return: Hash<String, IntRef>");
+		return bad;
+	}
+
+	function : Arguments() ~ Int {
+		bad := 0;
+
+		# an object, a String and a primitive (held by its class, as when '<IntRef>' is written)
+		text := Cell->New("text");
+		bad += Check(text->Get()->Size() = 4, "arguments: Cell<String>");
+
+		number := Cell->New(42);
+		bad += Check(number->Get() + 1 = 43, "arguments: Cell<IntRef> from an Int");
+
+		ratio := Cell->New(0.5);
+		bad += Check(ratio->Get() * 2.0 = 1.0, "arguments: Cell<FloatRef> from a Float");
+
+		flag := Cell->New(true);
+		bad += Check(flag->Get()->Get(), "arguments: Cell<BoolRef> from a Bool");
+
+		# a generic argument keeps its own type arguments
+		nested := Cell->New(text);
+		bad += Check(nested->Get()->Get()->Equals("text"), "arguments: Cell<Cell<String>>");
+
+		# two parameters
+		pair := Pair->New("key", 7);
+		bad += Check(pair->GetFirst()->Equals("key") & pair->GetSecond()->Get() = 7, "arguments: Pair<String, IntRef>");
+
+		holder := Pair->New(IntRef->New(3), text);
+		bad += Check(holder->GetSecond()->Get()->Equals("text"), "arguments: Pair<IntRef, Cell<String>>");
+
+		# the target decides when it is declared: a Base second, not a String
+		wide : Pair<String, Base> := Pair->New("key", "value");
+		bad += Check(wide->GetSecond()->As(String)->Equals("value"), "arguments: the declared target wins");
+
+		# two constructors of two arguments: both make T a String, and the call picks one
+		counted := Tagged->New("solo", 4);
+		bad += Check(counted->Value()->Equals("solo") & counted->Count() = 4, "arguments: Tagged<String>, the Int constructor");
+
+		labelled := Tagged->New("solo", "label");
+		bad += Check(labelled->Value()->Equals("solo") & labelled->Count() = 5, "arguments: Tagged<String>, the String constructor");
+
+		many := Vector->New()<String>;
+		many->AddBack("first");
+		many->AddBack("second");
+
+		# a library class with two one-argument constructors
+		copied := Vector->New(many);
+		bad += Check(copied->Get(1)->Equals("second"), "arguments: Vector<String> from a Vector<String>");
+
+		return bad;
+	}
+
+	function : OwnParameters() ~ Int {
+		bad := 0;
+
+		shelf : Shelf<String> := Shelf->New();
+		shelf->Add("a");
+		shelf->Add("b");
+		bad += Check(shelf->Size() = 2 & shelf->Has("b"), "own parameters: fields of Vector<T> and Map<String, T>");
+		bad += Check(shelf->Wrap("w")->Get()->Equals("w"), "own parameters: return Cell->New(t)");
+		bad += Check(shelf->WrapLocal("l")->Get()->Equals("l"), "own parameters: cell := Cell->New(t)");
+		bad += Check(shelf->Copy()->Size() = 2, "own parameters: a local Vector<T>");
+
+		sorted : Sorted<String, IntRef> := Sorted->New();
+		sorted->Put("k", 9);
+		bad += Check(sorted->Get("k")->Get() = 9 & sorted->Count() = 1, "own parameters: a bounded K");
+
+		return bad;
+	}
+
+	function : ExplicitStillWins() ~ Int {
+		# written type arguments are not second-guessed by the arguments
+		wide := Cell->New("text")<Base>;
+		bad := Check(wide->Get()->As(String)->Equals("text"), "explicit: Cell<Base> holding a String");
+
+		explicit := Pair->New(1, "x")<IntRef, String>;
+		bad += Check(explicit->GetFirst()->Get() = 1, "explicit: Pair<IntRef, String>");
+		return bad;
+	}
+}
