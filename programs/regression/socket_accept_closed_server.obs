@@ -1,0 +1,128 @@
+#~
+# Accept() on a TCPSocketServer that is not open answers Nil; it used to end the process
+#
+# The VM's accept pushed its result only when the server socket was open. For a closed
+# one (or one whose bind failed) it pushed nothing, and the caller popped a result that
+# was never there: with the operand stack empty that read the word below the stack, and
+# the process died of SIGSEGV (exit 139 on Linux), compiled or interpreted.
+#
+# A server's accept loop meets this whenever another thread closes the socket between
+# the loop's "stopped?" test and its next Accept():
+#
+#     while(<>@stop) {                  # accept thread: not stopped ...
+#                                       # main thread: @stop := true; @server->Close();
+#         client := @server->Accept();  # ... so it accepts, on a closed socket
+#
+# which is WebServer->Stop() from a program's main thread while the accept thread is on
+# its way back from the last connection (the accept thread has to lose the processor at
+# that one point, so it is rare). The race needs no timing here: the socket is closed
+# first and Accept() called after, on the main thread and on a thread of its own, which
+# is the server loop's shape with the order fixed.
+~#
+
+use System.Concurrency, System.IO.Net;
+
+# Waits until told the server is closed, then accepts from it as a server loop would
+class LateAcceptor from Thread {
+	@server : TCPSocketServer;
+	@go : Bool;
+	@accepted : Int;
+	@finished : Bool;
+
+	New(server : TCPSocketServer) {
+		Parent("late-acceptor");
+		@server := server;
+	}
+
+	method : public : Go() ~ Nil { @go := true; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetAccepted() ~ Int { return @accepted; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(<>@go) {
+			Thread->Sleep(5);
+		};
+
+		each(i : 8) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				@accepted += 1;
+			};
+		};
+		@finished := true;
+	}
+}
+
+class SocketAcceptClosedServer {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# one accept from a closed server, in a method whose operand stack is empty at the call
+	function : AcceptOnce(server : TCPSocketServer) ~ TCPSocket {
+		client := server->Accept();
+		return client;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# closed after listening: the accept loop's race, in a fixed order
+		server := TCPSocketServer->New(0);
+		Check("the server listens", server->Listen(4));
+		server->Close();
+
+		accepted := 0;
+		each(i : 8) {
+			if(AcceptOnce(server) <> Nil) {
+				accepted += 1;
+			};
+		};
+		Check("Accept() on a closed server answers Nil ({$accepted} of 8 did not)", accepted = 0);
+		Check("Listen() on a closed server answers false", <>server->Listen(4));
+
+		# closed twice, then accepted from again
+		server->Close();
+		Check("Accept() after a second Close() answers Nil", server->Accept() = Nil);
+
+		# the same on a thread of its own: the server loop's shape
+		second := TCPSocketServer->New(0);
+		Check("a second server listens", second->Listen(4));
+		acceptor := LateAcceptor->New(second);
+		acceptor->Execute(Nil);
+		second->Close();
+		acceptor->Go();
+		acceptor->Join();
+		Check("the accepting thread ran to its end", acceptor->IsFinished());
+		Check("its Accept() calls on the closed server answered Nil", acceptor->GetAccepted() = 0);
+
+		# a server that is open still accepts
+		live := TCPSocketServer->New(0);
+		Check("a third server listens", live->Listen(4));
+		sock := TCPSocket->New("127.0.0.1", live->GetPort());
+		Check("a client connects to it", sock->IsOpen());
+		client := live->Accept();
+		Check("Accept() on an open server answers the client", client <> Nil & client->IsOpen());
+		if(client <> Nil) {
+			client->Close();
+		};
+		sock->Close();
+		live->Close();
+
+		if(@failures = 0) {
+			"PASS: accept on a closed server"->PrintLine();
+		}
+		else {
+			"FAIL: accept on a closed server ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
