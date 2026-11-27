@@ -529,6 +529,22 @@ int64_t JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackIn
 }
 
 /**
+ * How StackCallbackBody hands a Nil operand to JitStackCallback when a handler
+ * is active (see its LOAD_ARY_SIZE case). Thrown, not returned: with a
+ * `return` at those fifteen sites GCC allocated the function's registers
+ * differently and every callback, whatever its opcode, ran three instructions
+ * longer (callgrind, Linux x64: a cast 164 -> 167, Map->Insert +0.85%). The
+ * sites are error paths and the catch is one frame up, in the bridge entry
+ * that already catches everything else, so the throw costs nothing until a
+ * program clears a Nil array: with it the callbacks run instruction for
+ * instruction what they ran before.
+ */
+namespace {
+  struct JitNilOperand {
+  };
+}
+
+/**
  * JIT machine code callback: the entry compiled code calls for an opcode it
  * hands to the runtime. The switch is StackCallbackBody; this runs it under
  * the catch the header describes, so an exception never reaches the compiled
@@ -545,6 +561,10 @@ int64_t JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, co
     // the whole of #925. Unguarded, the bridge reports and exits as before.
     return StackCallbackBody(instr_id, instr, cls_id, mthd_id, inst, op_stack,
                              stack_pos, call_stack, call_stack_pos, ip);
+  }
+  catch(const JitNilOperand&) {
+    // a Nil array, lock or string under a handler: the guard stubs' status
+    return JIT_STATUS_NIL_DEREFERENCE;
   }
   catch(const std::bad_alloc&) {
     BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
@@ -688,6 +708,22 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case LOAD_ARY_SIZE: {
     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
     if(!array) {
+      // Under a handler -- a ?-> region, or the sentinel of an isolated thread --
+      // a Nil operand leaves compiled code as the guard stubs' status for a Nil
+      // dereference (JitNilOperand, which JitStackCallback turns into the
+      // status), here and in every case below that is handed Nil: the string
+      // conversions, the thread and lock operations, the four array copies and
+      // the four array clears. Each printed the error and ended the process
+      // whatever was active, where the interpreter's handler for the same
+      // instruction goes through TryErrorRecovery: a ?-> region recovered from
+      // Byte->Clear(Nil) under --jit=off and the program died once the caller
+      // was compiled, and with thread-fault isolation on a worker took the
+      // process with it. The interpreter that owns the handler records the
+      // status and recovers (RecordRecoveredStatus), as it does for a guard
+      // stub's. With no handler the report and the exit below are unchanged.
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -928,6 +964,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       PushFloat(ParseFloatText(str), op_stack, stack_pos);
     }
     else {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       VmExit(1);
     }
@@ -946,6 +985,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       PushInt(op_stack, stack_pos, (size_t)ParseIntText((wchar_t*)(str_ptr + 3), static_cast<int>(base)));
     }
     else {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       VmExit(1);
     }
@@ -1018,6 +1060,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case THREAD_JOIN: {
     size_t* instance = inst;
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1110,6 +1155,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case THREAD_MUTEX: {
     size_t* instance = inst;
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1121,6 +1169,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case CRITICAL_START: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1132,6 +1183,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case CRITICAL_END: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
     if(!instance) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1149,6 +1203,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1181,6 +1238,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1214,6 +1274,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1256,6 +1319,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
     if(!src_array || !dest_array) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1282,8 +1348,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_BYTE_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1296,8 +1366,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_CHAR_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1310,8 +1384,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_INT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
@@ -1324,8 +1402,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case ZERO_FLOAT_ARY: {
     size_t* array_ptr = (size_t*)PopInt(op_stack, stack_pos);
-    // clearing a Nil array is a runtime error, as copying from one is above
+    // clearing a Nil array is a runtime error, as copying from one is above:
+    // recoverable under a handler (see LOAD_ARY_SIZE)
     if(!array_ptr) {
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        throw JitNilOperand();
+      }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
