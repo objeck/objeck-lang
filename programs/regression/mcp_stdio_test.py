@@ -239,6 +239,31 @@ def review_stdio(obr, obe, env, work, init, check):
     check("a cancellation written on the line after its request is heard: none of %d calls is answered" % pairs, not answered, answered[:10])
     check("and none is left working when the input ends (%.1f s)" % elapsed, status == 0 and elapsed < 10, (status, elapsed))
 
+    # ---- cancelled while its arguments are checked, and the check then rejects them ----
+    # 'bulk' takes a list of integers. 100,000 of them with a string last take a good part of a second to check
+    # and are then rejected. The reader has reserved the id and reads the cancellation on the next line long
+    # before that. A cancelled request gets no reply, also when what it would have got is "invalid arguments".
+    def bulk(id_, last):
+        return {"jsonrpc": "2.0", "id": id_, "method": "tools/call", "params": {"name": "bulk", "arguments": {"items": [7] * 100000 + [last]}}}
+
+    d = Server(obr, obe, env, work)
+    d.call(1, "initialize", init)
+    d.send(bulk(70, "last"))
+    r = d.recv(60)
+    check("a call whose last list item is a string is answered with an isError result when nobody cancels",
+          r and r.get("id") == 70 and r.get("result", {}).get("isError") is True, str(r)[:200])
+    d.send_raw(line(bulk(71, "last")) + line(cancel(71)))
+    r = d.call(2, "ping", timeout=60)
+    check("the server read the call and its cancellation", r and r["result"] == {}, str(r)[:200])
+    check("cancelled while its arguments were checked, the rejected call is not answered", d.quiet(3.0))
+    r = d.call(71, "tools/call", {"name": "add", "arguments": {"a": 40, "b": 2}})
+    check("and its id is free", r and r.get("result", {}).get("content", [{}])[0].get("text") == "42", str(r)[:200])
+    for n, (what, params) in enumerate([("no name", {}), ("an unknown tool", {"name": "nope"}), ("arguments that are not an object", {"name": "add", "arguments": [1]})]):
+        d.send({"jsonrpc": "2.0", "id": 80 + n, "method": "tools/call", "params": params})
+        r = d.recv(15)
+        check("%s is still answered with an error when nobody cancels" % what, r and r.get("id") == 80 + n and "error" in r, str(r)[:200])
+    check("the server ends when standard input does", d.close() == 0)
+
 
 def review_http(obr, obe, env, work, init, check):
     """Streamable HTTP: request ids are a session's own, and a session begins with an initialize that was answered."""
@@ -406,7 +431,7 @@ def main():
         check("ping", r and r["result"] == {}, r)
         r = s.call(11, "tools/list")
         names = [t["name"] for t in r["result"]["tools"]] if r else []
-        check("tools/list", names == ["add", "fails", "raises", "echo", "repeat", "slow"], r)
+        check("tools/list", names == ["add", "fails", "raises", "echo", "repeat", "slow", "bulk"], r)
         r = s.call(12, "tools/call", {"name": "add", "arguments": {"a": 40, "b": 2}})
         check("tools/call", r and r["result"]["content"][0]["text"] == "42" and r["result"]["isError"] is False, r)
         r = s.call(13, "resources/list")

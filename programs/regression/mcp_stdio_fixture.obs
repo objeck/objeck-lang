@@ -84,6 +84,8 @@ class McpStdioFixture {
 		server->AddTool("echo", "Echo a text and count its characters", "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}", Func2Ref->New(McpStdioFixture->Echo(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
 		server->AddTool("repeat", "Return count characters", "{\"type\":\"object\",\"properties\":{\"count\":{\"type\":\"integer\"}},\"required\":[\"count\"]}", Func2Ref->New(McpStdioFixture->Repeat(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
 		server->AddTool("slow", "Works until cancelled", "{\"type\":\"object\",\"properties\":{}}", Func2Ref->New(McpStdioFixture->Slow(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+		# a list that takes a while to check: for a cancellation that arrives while the arguments are checked
+		server->AddTool("bulk", "Takes a list of integers", "{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}}}", Func2Ref->New(McpStdioFixture->Add(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
 		server->AddResource(McpResource->New("notes://readme", "readme", "The readme", "text/plain", "hello readme"));
 		server->AddResource(McpResource->New("notes://{name}", "note", "A note", "text/plain", Func2Ref->New(McpStdioFixture->ReadNotes(String) ~ McpContents)<String, McpContents>));
 		prompt := McpPrompt->New("greet", "Greet someone", Func2Ref->New(McpStdioFixture->Greet(McpCall) ~ McpPromptResult)<McpCall, McpPromptResult>);
@@ -109,7 +111,7 @@ class McpStdioFixture {
 
 		ok := Check("server name", client->GetServerName()->Equals("stdio-fixture")) & ok;
 		tools := client->ListTools();
-		ok := Check("tools/list", tools <> Nil & tools->Size() = 6) & ok;
+		ok := Check("tools/list", tools <> Nil & tools->Size() = 7) & ok;
 		result := client->CallTool("add", "{\"a\":40,\"b\":2}");
 		ok := Check("tools/call", result <> Nil & result->GetText()->Equals("42")) & ok;
 		result := client->CallTool("fails", "{}");
