@@ -3311,6 +3311,67 @@ scope->GetStepsUsed()->PrintLine();
 		}
 	}
 
+	# The workers that were not waited for to their end, of every agent. A thread that is never joined
+	# keeps its stack (POSIX) or its handle (Windows) for the life of the process, so each is joined once
+	# it has finished: when any agent next starts a worker or ends a run. The list used to be the agent's
+	# own, and an agent that is used once, or whose run ended in an error, never came back to it. One that
+	# never finishes stays on the list; nothing else is kept, so the list is as long as the number of
+	# workers still running.
+	class : private : AgentReaper {
+		@workers : static : Vector<AgentWorker>;
+		@lock : static : ThreadMutex;
+
+		# makes the list; called from Agent's constructor, so before any worker exists
+		function : Init() ~ Nil {
+			if(@lock = Nil) {
+				@workers := Vector->New()<AgentWorker>;
+				@lock := ThreadMutex->New("agent_reaper");
+			};
+		}
+
+		# takes a worker that is still running
+		function : Keep(worker : AgentWorker) ~ Nil {
+			Init();
+			critical(@lock) {
+				@workers->AddBack(worker);
+			};
+		}
+
+		# joins the workers that have finished; those still running stay
+		function : Reap() ~ Nil {
+			if(@lock = Nil) {
+				return;
+			};
+
+			done : Vector<AgentWorker>;
+			critical(@lock) {
+				i := 0;
+				while(i < @workers->Size()) {
+					worker := @workers->Get(i);
+					if(worker->IsFinished()) {
+						if(done = Nil) {
+							done := Vector->New()<AgentWorker>;
+						};
+						done->AddBack(worker);
+						@workers->Remove(i);
+					}
+					else {
+						i += 1;
+					};
+				};
+			};
+
+			# outside the lock: a finished worker is at its last statement, but a join is still a wait
+			if(done <> Nil) {
+				i := 0;
+				while(i < done->Size()) {
+					done->Get(i)->Join();
+					i += 1;
+				};
+			};
+		}
+	}
+
 	#~
 	The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back,
 	until the model answers without a tool call, the step limit is reached or the backend fails. The
@@ -3362,7 +3423,6 @@ result->GetText()->PrintLine();
 		@scope : AgentScope;
 		@scope_spent : Bool;
 		@wall_charged : Int;
-		@orphans : Vector<AgentWorker>;
 
 		#~
 		Constructor
@@ -3379,6 +3439,7 @@ result->GetText()->PrintLine();
 			@max_result_chars := 20000;
 			@approve_all := false;
 			@tool_mode := AgentTool->Mode->IN_THREAD;
+			AgentReaper->Init();
 		}
 
 		#~
@@ -4013,34 +4074,18 @@ result->GetText()->PrintLine();
 			};
 		}
 
-		# Joins the abandoned workers that have finished since: a thread that is never joined keeps its stack
-		# and its handle for the life of the process. One that never finishes stays on the list.
+		# Joins the abandoned workers that have finished since, this agent's and any other's: see AgentReaper
 		method : Reap() ~ Nil {
-			if(@orphans <> Nil) {
-				i := 0;
-				while(i < @orphans->Size()) {
-					worker := @orphans->Get(i);
-					if(worker->IsFinished()) {
-						worker->Join();
-						@orphans->Remove(i);
-					}
-					else {
-						i += 1;
-					};
-				};
-			};
+			AgentReaper->Reap();
 		}
 
-		# ends the wait for a worker: joined now when it has finished, else kept for Reap
+		# ends the wait for a worker: joined now when it has finished, else kept for the reaper
 		method : Release(worker : AgentWorker) ~ Nil {
 			if(worker->IsFinished()) {
 				worker->Join();
 			}
 			else {
-				if(@orphans = Nil) {
-					@orphans := Vector->New()<AgentWorker>;
-				};
-				@orphans->AddBack(worker);
+				AgentReaper->Keep(worker);
 			};
 		}
 
