@@ -150,12 +150,16 @@ class TelemetryEnergyWritersTest {
 		"  info: {$writers_count} writers and {$readers_count} readers: {$want} writes in {$writers_ms} ms, {$reads_during} reads while they wrote, {$reads} reads in all"->ErrorLine();
 		Check("the readers are let in once the writers are done", kept_out = false);
 		count := est->GetCount();
-		Check("every write is counted: {$count} of {$want} + 2", count = want + 2);
+		"  info: {$count} of {$want} + 2 writes counted"->ErrorLine();
+		Check("every write is counted", count = want + 2);
 		joules := est->GetJoules();
-		Check("the total is exact: 2 W for 1 s, then nothing (got {$joules} J)", joules = 2.0);
+		"  info: got {$joules} J"->ErrorLine();
+		Check("the total is exact: 2 W for 1 s, then nothing", joules = 2.0);
 		peak := est->GetPeakWatts();
-		Check("the peak is the largest sample (got {$peak} W)", peak = 3.0);
-		Check("no read saw a half-written estimator ({$bad} bad of {$reads})", bad = 0 & reads > 0);
+		"  info: got {$peak} W"->ErrorLine();
+		Check("the peak is the largest sample", peak = 3.0);
+		"  info: {$bad} bad of {$reads} reads"->ErrorLine();
+		Check("no read saw a half-written estimator", bad = 0 & reads > 0);
 
 		if(@failures > 0) {
 			"telemetry_energy_writers: {$@failures} failure(s)"->PrintLine();

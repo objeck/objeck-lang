@@ -112,7 +112,7 @@ class AgentCancelSharedParentsTest {
     @level := 0;
     Descend();
 
-    "  200 checks and a reason: {$@check_ms} ms; one run of two steps: {$@run_ms} ms"->PrintLine();
+    "  200 checks and a reason: {$@check_ms} ms; one run of two steps: {$@run_ms} ms"->ErrorLine();
     Check("the nest is as deep as asked", @scopes->Size() = @depth);
     Check("nothing is cancelled to begin with", <>@before);
     Check("200 checks of the innermost token take under 5 s", @check_ms < 5000);
