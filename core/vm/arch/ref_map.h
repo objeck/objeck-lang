@@ -2953,8 +2953,11 @@
       // room writes beyond the reserved stack. The compiler cannot get near it: it
       // refuses nesting far below the limit, and a String literal, the one construct
       // that put a word on the stack for each of its elements, is built an element at
-      // a time past 512 of them (STRING_LITERAL_STACK_MAX; one of 999 strings used to
-      // compile and be refused here). So this only refuses a crafted image.
+      // a time past 6 of them (STRING_LITERAL_STACK_MAX; one of 999 strings used to
+      // compile and be refused here, and one of 512 under 496 waiting arguments).
+      // What is left is the arguments of nested calls waiting for the innermost one:
+      // obc does not count them, so thirty-three calls of 31 Ints each, nested, are
+      // refused here (1,023 words; the stack has 1,024).
       if(verify) {
         size_t deepest = 0;
         for(long ip = 0; ip < count; ++ip) {

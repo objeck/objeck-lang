@@ -4727,9 +4727,11 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     // then the array, and one trap fills it (CPY_CHAR_STR_ARYS). A method has room
     // for about 1,000 words there, and the loader refuses one that holds more
     // (RefMap, MAX_OPERAND_GROWTH), so a literal of 999 strings compiled and then
-    // would not load. A long one is built in a hidden local instead, an element at
-    // a time, as a literal with a variable in it is (AnalyzeDynamicArray): the
-    // stack holds one string however long the literal is.
+    // would not load, and so did one of 512 under 496 waiting arguments. All but
+    // the shortest (STRING_LITERAL_STACK_MAX says why 6) are built in a hidden
+    // local instead, an element at a time, as a literal with a variable in it is
+    // (AnalyzeDynamicArray): the stack holds one string however long the literal
+    // is and whatever waits under it.
     if(all_elements.size() > STRING_LITERAL_STACK_MAX && current_method && current_table) {
       Type* tmp_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
       tmp_type->SetDimension(array->GetDimension());
