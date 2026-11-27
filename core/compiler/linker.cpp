@@ -51,6 +51,8 @@
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 
+#include <set>
+
 #ifdef _DIAG_LIB
 #include <cstdio>
 #include <cstdlib>
@@ -61,6 +63,34 @@
 #endif
 
 using namespace instructions;
+
+/****************************
+ * True for a 'consts' group read back from a library (see linker.h)
+ ****************************/
+bool LibraryEnum::IsConsts()
+{
+  if(offset >= 0) {
+    return false;
+  }
+
+  std::set<INT64_VALUE> ids;
+  for(auto& pair : items) {
+    ids.insert(pair.second->GetId());
+  }
+
+  if(ids.size() != items.size()) {
+    return true;
+  }
+
+  INT64_VALUE expected = offset;
+  for(const INT64_VALUE id : ids) {
+    if(id != expected++) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 #ifdef _DIAG_LIB
 /****************************
