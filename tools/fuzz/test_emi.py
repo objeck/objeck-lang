@@ -349,5 +349,66 @@ class ToolchainEmiTest(unittest.TestCase):
         self.assertEqual(tripped, 2 * checked)
 
 
+class GateIntegrityTest(unittest.TestCase):
+    """Exit status when EMI compared nothing. No build: obc and obr are a script that fails."""
+
+    MAIN = 'class T {\n  function : Main(args : String[]) ~ Nil {\n    x := 1;\n    if(x = 1) { "a"->PrintLine(); };\n  }\n}\n'
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.tests = os.path.join(self.tmp.name, "t")
+        os.makedirs(self.tests)
+        self.fake = os.path.join(self.tmp.name, "fake.py")
+        with open(self.fake, "w") as f:
+            f.write("import sys\nsys.exit(1)\n")
+
+    def write(self, name, text):
+        with open(os.path.join(self.tests, name + ".obs"), "w") as f:
+            f.write(text)
+
+    def run_emi(self, *extra):
+        import contextlib
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = emi.main(["--bin", self.tmp.name, "--tests-dir", self.tests, "--obc", self.fake, "--obr", self.fake,
+                           "--out", os.path.join(self.tmp.name, "out"), "--variants", "2"] + list(extra))
+        return rc, out.getvalue() + err.getvalue()
+
+    def test_requested_tests_none_eligible_fails(self):
+        self.write("bad", "# EXPECT_COMPILE_ERROR: x\n" + self.MAIN)
+        rc, text = self.run_emi("--tests", "bad")
+        self.assertEqual(rc, 2, text)
+        self.assertIn("none of the 1 requested test(s) is eligible", text)
+
+    def test_whole_suite_below_the_floor_fails(self):
+        self.write("one", self.MAIN)
+        rc, text = self.run_emi()
+        self.assertEqual(rc, 2, text)
+        self.assertIn("below the floor of %d" % emi.MIN_ELIGIBLE_WHOLE_SUITE, text)
+
+    def test_whole_suite_with_nothing_eligible_fails_even_with_floor_zero(self):
+        self.write("bad", "# EXPECT_COMPILE_ERROR: x\n" + self.MAIN)
+        rc, text = self.run_emi("--min-eligible", "0")
+        self.assertEqual(rc, 2, text)
+
+    def test_zero_effective_comparisons_fails(self):
+        self.write("one", self.MAIN)
+        rc, text = self.run_emi("--min-eligible", "0")  # the fake compiler refuses every program
+        self.assertEqual(rc, 3, text)
+        self.assertIn("ZERO effective comparisons", text)
+
+    def test_the_repository_suite_meets_its_own_floor(self):
+        eligible = []
+        for f in sorted(os.listdir(emi.REG_DIR)):
+            if f.endswith(".obs"):
+                with open(os.path.join(emi.REG_DIR, f), encoding="utf-8", errors="replace") as fh:
+                    if not emi.eligibility(f[:-4], fh.read()):
+                        eligible.append(f)
+        self.assertGreaterEqual(len(eligible), emi.MIN_ELIGIBLE_WHOLE_SUITE,
+                                "the repository's own suite is below the floor the whole-suite run enforces")
+
+
 if __name__ == "__main__":
     unittest.main()

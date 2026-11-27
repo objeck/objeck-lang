@@ -1979,6 +1979,20 @@ jobs:
       - name: The Windows shard verdict can still detect a bad run
         run: python3 tools/cicd/test_check_windows_shards.py
 
+      # Every gate has to prove its cases ran. gate_manifest.py builds the per-test manifest the
+      # release gates (verify_platform.sh/.cmd) record and compare against the previous gate's;
+      # skip_allowlist.json is the one reviewed list of skips a gate accepts, kept in step with the
+      # "# SKIP_ALLOWED:" headers and the VERIFY_SKIP / GC_STRESS_SKIP markers by `lint`. The tests are
+      # fixture logs: a missing test, a lost PASS, an unlisted skip, "counts not found" on exit 0.
+      - name: Gate manifests and the skip allowlist agree with the tests
+        run: |
+          python3 tools/cicd/gate_manifest.py lint
+          python3 tools/cicd/test_gate_manifest.py
+
+      # emi.py exits non-zero when nothing was eligible or nothing was compared; no build.
+      - name: EMI cannot pass on zero effective comparisons
+        run: python3 tools/fuzz/test_emi.py GateIntegrityTest
+
       # The weekly traffic snapshot (tools/release-stats) merges GitHub's 14-day window into
       # a growing CSV; this checks the parsing and the merge without a network or a token.
       - name: Traffic snapshot merge logic
