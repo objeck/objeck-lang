@@ -11,7 +11,9 @@ The parser is recursive, and nesting past what the stack can hold used to end ob
 that error lands is not a fixed depth: the limit is a stack budget, so the level at which it trips moves
 with the platform, the compiler and the size of the parser's stack frames, which change whenever the parser
 does. This test therefore pins no level and no column. For each shape of nesting (parentheses, blocks,
-calls, array subscripts, unary operators, generic types) at 100, 250, 500 and 5000 levels it requires that
+calls, array subscripts, unary operators, generic types, array literals) at 100, 250, 500 and 5000 levels,
+and for array literals at 100,000 levels as well (each '[' of '[[[[...' is a call of the parser, and that
+function was the one without the check: obc ended with a segmentation fault), it requires that
 
   * obc answers within the time limit,
   * it either compiles the program or refuses it (an exit status obc gives on purpose; never a signal or
@@ -56,12 +58,18 @@ def unary(n):
     return "x := " + "-(" * n + "1" + ")" * n + ";\n\t\tx->PrintLine();", 3
 
 
+def literals(n):
+    return "x := " + "[" * n + "1" + "]" * n + ";\n\t\t(x = Nil)->PrintLine();", 3
+
+
 def generics(n):
     return "v : " + "Vector<" * n + "IntRef" + ">" * n + ";\n\t\t(v = Nil)->PrintLine();", 3
 
 
 SHAPES = [("parentheses", parentheses, True), ("blocks", blocks, True), ("calls", calls, False), ("array subscripts", subscripts, False),
-          ("unary operators", unary, False), ("generic types", generics, False)]
+          ("unary operators", unary, False), ("generic types", generics, False), ("array literals", literals, False)]
+# levels a shape is tried at beyond LEVELS
+DEEPER = {"array literals": [100000]}
 
 
 def program(body):
@@ -87,7 +95,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="nesting-") as work:
         for shape, build, shallow_compiles in SHAPES:
             refused_at = None
-            for levels in LEVELS:
+            for levels in LEVELS + DEEPER.get(shape, []):
                 body, line_in_main = build(levels)
                 src = os.path.join(work, "nest.obs")
                 with open(src, "w", encoding="utf-8") as f:

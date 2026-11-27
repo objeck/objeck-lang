@@ -5549,6 +5549,8 @@ PARSER_NO_INLINE Expression* Parser::ParseMapLiteral(int depth)
  * Parses a static array
  ****************************/
 StaticArray* Parser::ParseStaticArray(int depth) {
+  // each '[' of '[[[[...' is a call of this function
+  CheckDepth(depth);
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
