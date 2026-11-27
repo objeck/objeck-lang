@@ -3947,8 +3947,19 @@ result->GetText()->PrintLine();
 					Reap();
 					worker := AgentWorker->New(slot)->ForModel(@backend, Snapshot(), tools);
 					worker->Execute(Nil);
-					how := Await(slot, limit);
-					Release(worker);
+					how : String;
+					try {
+						how := Await(slot, limit);
+					}
+					finally {
+						# The wait can end in an error: a cancel or the deadline is traced as a halt, and a
+						# sink or an observer may raise. The worker is running all the same, so it is cut
+						# loose and kept for Reap like any other that was not waited for to its end
+						if(how = Nil) {
+							slot->Abandon();
+						};
+						Release(worker);
+					};
 					if(how->Equals("done")) {
 						reply := slot->GetReply();
 						@last_error := slot->GetFailure();
@@ -4352,8 +4363,18 @@ result->GetText()->PrintLine();
 				worker := AgentWorker->New(slot);
 				worker->ForTool(tool, call->GetArguments(), @token);
 				worker->Execute(Nil);
-				how := Await(slot, limit);
-				Release(worker);
+				waited := false;
+				try {
+					how := Await(slot, limit);
+					waited := true;
+				}
+				finally {
+					# see ModelCall: an error out of the wait must not lose the worker
+					if(<>waited) {
+						slot->Abandon();
+					};
+					Release(worker);
+				};
 				if(how->Equals("done")) {
 					failure := slot->GetFailure();
 					output := slot->GetText();
