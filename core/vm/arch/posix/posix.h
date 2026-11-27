@@ -1522,15 +1522,8 @@ class IPSecureSocket {
     return total;
   }
 
-  static void Close(SecureSocketCtx* sctx) {
-    TlsLibraryLock library_lock;
-    if(sctx) {
-      if(!sctx->send_closed) {
-        mbedtls_ssl_close_notify(&sctx->ssl);
-      }
-      delete sctx;
-    }
-  }
+  // Closing is the trap's (TlsSocketDetach and TlsSocketFinish in common.cpp): a context is freed by
+  // its last user, which a Close(sctx) here that deleted it could not know.
 
   // Ends this side's sending and leaves the session open for reading: the
   // close_notify alert tells the peer no more data follows (its read ends

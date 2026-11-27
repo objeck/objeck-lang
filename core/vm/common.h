@@ -560,6 +560,10 @@ struct SecureSocketCtx {
   // was set up with and reads for as long as it lives. A reference, given back when this is freed, so
   // closing the listener does not free the configuration under the connections it accepted.
   SecureServerCtx* server;
+  // the traps using this context now (TlsSocketUse), and whether its socket object has been closed:
+  // freed when it is closed and nobody is using it. Under the lock in common.cpp.
+  int users;
+  bool closed;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -573,7 +577,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false), pushback(-1), server(nullptr) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false), pushback(-1), server(nullptr), users(0), closed(false) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);

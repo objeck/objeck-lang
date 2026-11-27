@@ -6144,6 +6144,87 @@ class TlsServerUse {
   }
 };
 
+static void TlsSocketRelease(SecureSocketCtx* sctx)
+{
+  bool last;
+  {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    last = --sctx->users == 0 && sctx->closed;
+  }
+  if(last) {
+    delete sctx;
+  }
+}
+
+// A TLS connection's context for as long as a trap uses it, or nullptr when the socket has none (it
+// never connected, or it has been closed). ShutdownSend() copied the pointer out of the object and
+// then waited, for the collector and for the TLS library; Close() on another thread deleted the
+// context meanwhile, and the same held for a read or a write that Close() was meant to end.
+class TlsSocketUse {
+  SecureSocketCtx* sctx;
+
+ public:
+  explicit TlsSocketUse(const size_t* instance) : sctx(nullptr) {
+    if(instance) {
+      std::lock_guard<std::mutex> guard(tls_context_lock);
+      sctx = (SecureSocketCtx*)instance[0];
+      if(sctx) {
+        ++sctx->users;
+      }
+    }
+  }
+
+  ~TlsSocketUse() {
+    if(sctx) {
+      TlsSocketRelease(sctx);
+    }
+  }
+
+  TlsSocketUse(const TlsSocketUse&) = delete;
+  TlsSocketUse& operator=(const TlsSocketUse&) = delete;
+
+  SecureSocketCtx* Get() const { return sctx; }
+};
+
+// Close(), first half: takes the context out of the socket object, which from here on has none, and
+// marks it closed. The caller is counted as a user until TlsSocketFinish. Not a wait: call it before
+// parking, while the object can be written.
+static SecureSocketCtx* TlsSocketDetach(size_t* instance)
+{
+  std::lock_guard<std::mutex> guard(tls_context_lock);
+  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  instance[0] = instance[1] = instance[2] = instance[3] = 0;
+  if(sctx) {
+    sctx->closed = true;
+    ++sctx->users;
+  }
+  return sctx;
+}
+
+// Close(), second half, which can wait (call it parked). With nobody else using the context this is the
+// close it always was: the close_notify alert, unless ShutdownSend already sent it, and the free. With
+// another thread inside a read or a write on it, the alert cannot be sent (one session is not to be
+// driven by two threads at once): the connection is shut down instead, which ends that thread's wait,
+// and the context is freed when the last of them lets go.
+static void TlsSocketFinish(SecureSocketCtx* sctx)
+{
+  bool alone;
+  {
+    std::lock_guard<std::mutex> guard(tls_context_lock);
+    alone = sctx->users == 1;
+  }
+  if(alone) {
+    TlsLibraryLock library_lock;
+    if(!sctx->send_closed) {
+      mbedtls_ssl_close_notify(&sctx->ssl);
+    }
+  }
+  else {
+    shutdown((SOCKET)sctx->net.fd, 2 /* SHUT_RDWR, SD_BOTH */);
+  }
+  TlsSocketRelease(sctx);
+}
+
 bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* pem_file_array = (size_t*)PopInt(op_stack, stack_pos);
@@ -6167,7 +6248,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     // is waiting for that collection, nothing moves again. Only C locals are
     // touched while parked; the instance ref is re-rooted on the op_stack so GC
     // promotion fixup relocates it, then re-read after the wait.
-    SecureSocketCtx* old_sctx = (SecureSocketCtx*)instance[0];
+    SecureSocketCtx* old_sctx = TlsSocketDetach(instance);
     SecureSocketCtx* sctx = nullptr;
     // instance[7] holds the connect timeout in ms (0 = none), instance[8] the deadline in ms
     // from now (0 = none) and instance[9] the read timeout in ms (0 = the default): the
@@ -6181,7 +6262,9 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
-    IPSecureSocket::Close(old_sctx);
+    if(old_sctx) {
+      TlsSocketFinish(old_sctx);
+    }
     const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, connect_ms, deadline_ms, read_ms);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -6233,7 +6316,11 @@ static bool TlsCertNameText(size_t* instance, bool subject, std::wstring& text)
     mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, subject ? &cert->subject : &cert->issuer);
   }
   else {
-    const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&((SecureSocketCtx*)instance[0])->ssl);
+    TlsSocketUse use(instance);
+    if(!use.Get()) {
+      return false;
+    }
+    const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&use.Get()->ssl);
     if(!cert) {
       return false;
     }
@@ -6275,20 +6362,21 @@ bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  // the object has no context from here on (see TlsSocketDetach); the context is freed below, or by
+  // the last thread still inside a read or a write on it
+  SecureSocketCtx* sctx = TlsSocketDetach(instance);
 
 #ifdef _DEBUG
   std::wcout << L"# socket close: sctx=" << sctx << L"("
     << (size_t)sctx << L") #" << std::endl;
 #endif
-  // the close_notify alert is a write, which can block on a full send buffer;
-  // park for it (sctx is C heap, the instance ref is re-rooted)
-  PushInt((size_t)instance, op_stack, stack_pos);
-  MemoryManager::BeginBlocking();
-  IPSecureSocket::Close(sctx);
-  MemoryManager::EndBlocking();
-  instance = (size_t*)PopInt(op_stack, stack_pos);
-  instance[0] = instance[1] = instance[2] = instance[3] = 0;
+  if(sctx) {
+    // the close_notify alert is a write, which can block on a full send buffer;
+    // park for it (sctx is C heap, and the object is not touched again)
+    MemoryManager::BeginBlocking();
+    TlsSocketFinish(sctx);
+    MemoryManager::EndBlocking();
+  }
 
   return true;
 }
@@ -6298,7 +6386,8 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    TlsSocketUse use(instance);
+    SecureSocketCtx* sctx = use.Get();
     if(instance[3] && sctx) {
       ClearTlsError();
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
@@ -6318,7 +6407,8 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     char buffer[MID_BUFFER_MAX] = {0};
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    TlsSocketUse use(instance);
+    SecureSocketCtx* sctx = use.Get();
     int status;
     if(instance[3] && sctx) {
       ClearTlsError();
@@ -6738,8 +6828,9 @@ bool TrapProcessor::SockTcpSslSelect(StackProgram* program, size_t* inst, size_t
    const bool is_write = (bool)PopInt(op_stack, stack_pos);
    size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-   if(instance && instance[0]) {
-      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+   TlsSocketUse use(instance);
+   if(use.Get()) {
+      SecureSocketCtx* sctx = use.Get();
       PushInt(ssl_ready_for_io(sctx, is_write), op_stack, stack_pos);
       return true;
    }
@@ -7016,7 +7107,8 @@ bool TrapProcessor::SockTcpSetDeadline(StackProgram* program, size_t* inst, size
     const long long deadline_ms = ms > 0 ? SocketNowMs() + ms : 0;
     StackClass* cls = MemoryManager::GetClass(instance);
     if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocket") {
-      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+      TlsSocketUse use(instance);
+      SecureSocketCtx* sctx = use.Get();
       if(sctx && instance[3]) {
         sctx->deadline_ms = deadline_ms;
       }
@@ -7041,7 +7133,10 @@ bool TrapProcessor::SockTcpShutdownSend(StackProgram* program, size_t* inst, siz
   if(instance) {
     StackClass* cls = MemoryManager::GetClass(instance);
     if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocket") {
-      SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+      // held until the alert has gone out: Close() on another thread waits for this to let go
+      // rather than freeing the context under it (see TlsSocketUse)
+      TlsSocketUse use(instance);
+      SecureSocketCtx* sctx = use.Get();
       if(sctx && instance[3]) {
         // the close_notify alert is a write, which can block on a full send buffer;
         // park for it (sctx is C heap)
@@ -7089,7 +7184,8 @@ bool TrapProcessor::SockTcpSslSetKeepAlive(StackProgram* program, size_t* inst, 
 {
   const bool enable = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetKeepAlive(sctx, enable) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7098,7 +7194,8 @@ bool TrapProcessor::SockTcpSslSetNoDelay(StackProgram* program, size_t* inst, si
 {
   const bool enable = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetNoDelay(sctx, enable) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7107,7 +7204,8 @@ bool TrapProcessor::SockTcpSslSetRecvTimeout(StackProgram* program, size_t* inst
 {
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetRecvTimeout(sctx, ms) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7116,7 +7214,8 @@ bool TrapProcessor::SockTcpSslSetSendTimeout(StackProgram* program, size_t* inst
 {
   const int ms = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetSendTimeout(sctx, ms) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7125,7 +7224,8 @@ bool TrapProcessor::SockTcpSslSetRcvBuf(StackProgram* program, size_t* inst, siz
 {
   const int bytes = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetRecvBufSize(sctx, bytes) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7134,7 +7234,8 @@ bool TrapProcessor::SockTcpSslSetSndBuf(StackProgram* program, size_t* inst, siz
 {
   const int bytes = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetSendBufSize(sctx, bytes) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7143,7 +7244,8 @@ bool TrapProcessor::SockTcpSslSetMinTLS(StackProgram* program, size_t* inst, siz
 {
   const int ver = (int)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetMinTLSVersion(sctx, ver) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7152,7 +7254,8 @@ bool TrapProcessor::SockTcpSslSetVerifyPeer(StackProgram* program, size_t* inst,
 {
   const bool strict = (bool)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   PushInt(IPSecureSocket::SetVerifyPeer(sctx, strict) ? 1 : 0, op_stack, stack_pos);
   return true;
 }
@@ -7160,7 +7263,8 @@ bool TrapProcessor::SockTcpSslSetVerifyPeer(StackProgram* program, size_t* inst,
 bool TrapProcessor::SockTcpSslGetFingerprint(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = instance ? (SecureSocketCtx*)instance[0] : nullptr;
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
   const std::string fp = IPSecureSocket::GetCertFingerprint(sctx);
   if(!fp.empty()) {
     const std::wstring wfp = BytesToUnicode(fp);
@@ -10401,8 +10505,9 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   // a socket whose connect failed has no context: there is nothing to read
   // or write (this used it, and crashed), and its reason stays reported
-  if(instance && instance[0]) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
+  if(sctx) {
     ClearTlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
@@ -10426,8 +10531,9 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockTcpSslInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearTlsError();
 
     // blocking read; park for the duration. Bytes land in a temp C buffer (a
@@ -10481,8 +10587,9 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockTcpSslInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearTlsError();
     char* byte_buffer = new char[(size_t)num + UTF8_TAIL_MAX + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
@@ -10536,8 +10643,9 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   // a socket whose connect failed has no context: there is nothing to read
   // or write (this used it, and crashed), and its reason stays reported
-  if(instance && instance[0]) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
+  if(sctx) {
     ClearTlsError();
     // a TLS write can block on a full send buffer; park so STW GC can proceed
     MemoryManager::BeginBlocking();
@@ -10560,8 +10668,9 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockTcpSslInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearTlsError();
     // a TLS write can block on a full send buffer; park for the duration. Data
     // is staged in a temp C buffer first -- a parked thread's GC array can be
@@ -10589,8 +10698,9 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // no context: the connect failed (see SockTcpSslInByte)
-  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+  TlsSocketUse use(instance);
+  SecureSocketCtx* sctx = use.Get();
+  if(array && sctx && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     ClearTlsError();
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer

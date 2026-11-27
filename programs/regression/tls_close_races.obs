@@ -1,0 +1,396 @@
+#~
+# Closing a TLS server or a TLS socket while other threads are using it
+#
+# A TLS server object and a TLS socket object point to a context on the C heap, and Close() freed it
+# whoever else was using it (Codex review round 2, slice 5, findings 1 and 2):
+#
+# - TCPSecureSocketServer->Close() while threads are in Accept(), which is how a server is stopped: an
+#   accept that had its connection went on to set the session up with the freed server context.
+# - the connections a server accepted read the server's TLS configuration for as long as they live,
+#   so every one still open when the listener closed ran on freed memory from then on.
+# - TCPSecureSocket->Close() while another thread is in a read on the socket (how a blocked reader is
+#   told to stop) or in CloseGracefully(), which sends its close_notify and then reads: the other
+#   thread came back to a freed context. On Linux the blocked read did not even come back: close()
+#   does not end a recv() in progress, so it waited out its receive timeout first.
+#
+# A context is now counted and freed by its last user: the listener's Close() ends the listening
+# descriptor and lets the accepts and the accepted connections keep the configuration; a socket's
+# Close() shuts the connection down under a thread that is using it and lets that thread free it.
+#
+# What can be asserted here is behaviour: every accept ends when the server is closed, the accepted
+# connections still work after it, a blocked read ends at once when its socket is closed, and nothing
+# crashes over many rounds. The VM before the change does not survive this program on Linux: the
+# accepted connections stop carrying data once their listener is closed and the run ends in glibc's
+# "double free or corruption" abort, or, built with AddressSanitizer, in a SEGV inside mbedTLS as it
+# reads the freed configuration. An AddressSanitizer build with the change runs it clean.
+#
+# With an argument it is the number of rounds of each part (default 6 and 40), for a soak.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# accepts until the server is closed; reads one byte from each connection (which runs its handshake)
+# and keeps the connection open
+class Acceptor from Thread {
+	@server : TCPSecureSocketServer;
+	@kept : TCPSecureSocket[];
+	@served : Int;
+	@finished : Bool;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("acceptor");
+		@server := server;
+		@kept := TCPSecureSocket->New[8];
+	}
+
+	# the i-th connection this thread accepted, or Nil
+	method : public : GetKept(i : Int) ~ TCPSecureSocket { return @kept[i]; }
+	method : public : GetServed() ~ Int { return @served; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		done := false;
+		while(<>done) {
+			socket := @server->Accept();
+			if(socket = Nil) {
+				done := true;
+			}
+			else {
+				socket->SetRecvTimeout(10000);
+				socket->ReadByte();
+				if(@served < @kept->Size()) {
+					@kept[@served] := socket;
+				};
+				@served += 1;
+			};
+		};
+		@finished := true;
+	}
+}
+
+# the other end of the connections of part two: accepts, reads until the client is gone, closes
+class Peer from Thread {
+	@server : TCPSecureSocketServer;
+	@finished : Bool;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("peer");
+		@server := server;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		done := false;
+		while(<>done) {
+			socket := @server->Accept();
+			if(socket = Nil) {
+				done := true;
+			}
+			else {
+				socket->SetRecvTimeout(10000);
+				buffer := Byte->New[16];
+				socket->ReadBuffer(0, 1, buffer);
+				socket->Close();
+			};
+		};
+		@finished := true;
+	}
+}
+
+# one read of a socket, which waits: the peer sends nothing
+class BlockedReader from Thread {
+	@socket : TCPSecureSocket;
+	@started : Bool;
+	@finished : Bool;
+
+	New(socket : TCPSecureSocket) {
+		Parent("blocked-reader");
+		@socket := socket;
+	}
+
+	method : public : IsStarted() ~ Bool { return @started; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		buffer := Byte->New[16];
+		@started := true;
+		@socket->ReadBuffer(0, 4, buffer);
+		@finished := true;
+	}
+}
+
+class Gate {
+	@open : Bool;
+	New() {}
+	method : public : Open() ~ Nil { @open := true; }
+	method : public : IsOpen() ~ Bool { return @open; }
+}
+
+# closes a socket when the gate opens: gracefully (close_notify, then reads until the peer is gone) or at once
+class Closer from Thread {
+	@socket : TCPSecureSocket;
+	@gate : Gate;
+	@graceful : Bool;
+	@finished : Bool;
+
+	New(socket : TCPSecureSocket, gate : Gate, graceful : Bool) {
+		Parent("closer");
+		@socket := socket;
+		@gate := gate;
+		@graceful := graceful;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		while(<>@gate->IsOpen()) {
+		};
+		if(@graceful) {
+			@socket->CloseGracefully(200);
+		}
+		else {
+			@socket->Close();
+		};
+		@finished := true;
+	}
+}
+
+class TlsCloseRaces {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+		server_rounds := 6;
+		socket_rounds := 40;
+		if(args->Size() > 0) {
+			server_rounds := args[0]->ToInt();
+			socket_rounds := server_rounds;
+		};
+
+		cert := "tls-close-races-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "tls-close-races-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+		}
+		else {
+			"stage: server"->ErrorLine();
+			CheckServerClose(cert, key, server_rounds);
+			"stage: socket"->ErrorLine();
+			CheckSocketClose(cert, key, socket_rounds);
+		};
+		File->Delete(cert);
+		File->Delete(key);
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} TLS close check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: TLS servers and sockets can be closed under the threads that use them"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# the listener closed while four threads are in Accept() and three accepted connections are open
+	function : CheckServerClose(cert : String, key : String, rounds : Int) ~ Nil {
+		accepts_ended := 0;
+		sessions_worked := 0;
+		connected := 0;
+		for(round := 0; round < rounds; round += 1;) {
+			server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+			if(<>server->Listen()) {
+				Check("the TLS server listens (round {$round})", false);
+				return;
+			};
+			port := server->GetPort();
+
+			acceptors := Acceptor->New[4];
+			each(i : acceptors) {
+				acceptors[i] := Acceptor->New(server);
+				acceptors[i]->Execute(Nil);
+			};
+
+			# three connections: each is accepted by some thread, which then goes back to Accept()
+			clients := TCPSecureSocket->New[3];
+			each(i : clients) {
+				clients[i] := TCPSecureSocket->New("127.0.0.1", port, cert);
+				if(clients[i]->IsOpen()) {
+					clients[i]->SetRecvTimeout(10000);
+					clients[i]->WriteByte(0x41);
+					connected += 1;
+				};
+			};
+			served := 0;
+			for(waited := 0; served < 3 & waited < 10000; waited += 5;) {
+				Thread->Sleep(5);
+				served := 0;
+				each(i : acceptors) {
+					served += acceptors[i]->GetServed();
+				};
+			};
+			# every thread is in Accept() by now, or about to be
+			Thread->Sleep(20);
+
+			server->Close();
+
+			ended := true;
+			each(i : acceptors) {
+				for(waited := 0; <>acceptors[i]->IsFinished() & waited < 5000; waited += 5;) {
+					Thread->Sleep(5);
+				};
+				ended := ended & acceptors[i]->IsFinished();
+			};
+			if(ended) {
+				accepts_ended += 1;
+				each(i : acceptors) {
+					acceptors[i]->Join();
+				};
+			};
+
+			# the accepted connections outlive their listener: a byte each way through every one
+			worked := 0;
+			each(i : acceptors) {
+				for(j := 0; j < 8; j += 1;) {
+					kept := acceptors[i]->GetKept(j);
+					if(kept <> Nil) {
+						kept->WriteByte(0x42);
+					};
+				};
+			};
+			each(i : clients) {
+				if(clients[i]->IsOpen()) {
+					answer := clients[i]->ReadByte();
+					if(answer = 0x42) {
+						worked += 1;
+					};
+					clients[i]->Close();
+				};
+			};
+			each(i : acceptors) {
+				for(j := 0; j < 8; j += 1;) {
+					kept := acceptors[i]->GetKept(j);
+					if(kept <> Nil) {
+						kept->Close();
+					};
+				};
+			};
+			if(worked = 3) {
+				sessions_worked += 1;
+			};
+		};
+		Check("every client connected ({$connected} of {$(rounds * 3)})", connected = rounds * 3);
+		Check("closing the server ended every Accept() in progress ({$accepts_ended} of {$rounds} rounds)", accepts_ended = rounds);
+		Check("the connections it had accepted still worked afterwards ({$sessions_worked} of {$rounds} rounds)", sessions_worked = rounds);
+	}
+
+	function : CheckSocketClose(cert : String, key : String, rounds : Int) ~ Nil {
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Check("the TLS server listens", false);
+			return;
+		};
+		port := server->GetPort();
+		peer := Peer->New(server);
+		peer->Execute(Nil);
+
+		# a read in progress when the socket is closed: it ends, promptly (its own timeout is 20 seconds)
+		read_ended := 0;
+		slowest := 0;
+		for(round := 0; round < rounds; round += 1;) {
+			client := TCPSecureSocket->New("127.0.0.1", port, cert);
+			if(client->IsOpen()) {
+				client->SetRecvTimeout(20000);
+				reader := BlockedReader->New(client);
+				reader->Execute(Nil);
+				for(waited := 0; <>reader->IsStarted() & waited < 5000; waited += 1;) {
+					Thread->Sleep(1);
+				};
+				# in the read by now: sometimes just entering it, sometimes waiting in it
+				Thread->Sleep((round % 4) * 5);
+				client->Close();
+				took := 0;
+				while(<>reader->IsFinished() & took < 5000) {
+					Thread->Sleep(5);
+					took += 5;
+				};
+				if(reader->IsFinished()) {
+					read_ended += 1;
+					reader->Join();
+				};
+				if(took > slowest) {
+					slowest := took;
+				};
+			};
+		};
+		Check("closing a socket ended the read in progress on it ({$read_ended} of {$rounds} rounds, slowest {$slowest} ms)", read_ended = rounds);
+
+		# CloseGracefully() on one thread and Close() on another, started together
+		both_ended := 0;
+		for(round := 0; round < rounds; round += 1;) {
+			client := TCPSecureSocket->New("127.0.0.1", port, cert);
+			if(client->IsOpen()) {
+				gate := Gate->New();
+				graceful := Closer->New(client, gate, true);
+				abrupt := Closer->New(client, gate, false);
+				graceful->Execute(Nil);
+				abrupt->Execute(Nil);
+				Thread->Sleep(2);
+				gate->Open();
+				for(waited := 0; (<>graceful->IsFinished() | <>abrupt->IsFinished()) & waited < 5000; waited += 2;) {
+					Thread->Sleep(2);
+				};
+				if(graceful->IsFinished() & abrupt->IsFinished()) {
+					both_ended += 1;
+					graceful->Join();
+					abrupt->Join();
+				};
+			};
+		};
+		Check("CloseGracefully() racing Close() ended both ({$both_ended} of {$rounds} rounds)", both_ended = rounds);
+
+		server->Close();
+		for(waited := 0; <>peer->IsFinished() & waited < 15000; waited += 5;) {
+			Thread->Sleep(5);
+		};
+		Check("the peer's accept loop ended", peer->IsFinished());
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}
