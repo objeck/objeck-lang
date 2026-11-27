@@ -1,5 +1,5 @@
 {
-	"version": "0.0.0",
+	"version": "2026.11.4",
 	"class-details": {
 		"API.Agent.Agent": {
 			"description": "The loop. Run sends the prompt, runs the tool calls the model asks for and sends the results back, until the model answers without a tool call, the step limit is reached or the backend fails. The conversation is kept, so Run can be called again to carry on; Reset starts over.\n\nEvery call goes through the same gates, in order: the tool must exist (unknown otherwise), the registry's allow and deny lists must permit it (denied), the arguments must satisfy the tool's schema (invalid), a dangerous tool, a tool whose destructive hint is true, any tool when SetApproveAll is on, and any tool not known to be read-only when SetApproveUnlessReadOnly is on, must be approved (refused), and the handler runs with its errors caught (error) and its time measured (timeout). Whatever goes wrong becomes an error result the model can read and the loop carries on.",
@@ -25639,10 +25639,16 @@
 			}
 		},
 		"System.Utility.CodeFormatter": {
-			"description": "Code formatter",
+			"description": "Code formatter. Formats Objeck source text: indentation, one statement to a line, spacing around operators. The text it returns has the same tokens as the text it was given, so it compiles to the same program; formatting its own output changes nothing.",
 			"functions": {
 				"Format": {
-					"descriptions": ["****\n\n```method : public : native : Format(source:String, is_color:Bool) ~ String```\n\n\n\nsource: String\n\nis_color: Bool\n\nreturn: String\n\n```\nopts := Map->New()<String, String>;\nopts->Insert(\"ident-space\", \"3\");\nformatter := CodeFormatter->New(opts);\nsrc := \"class Foo{method:public:Bar()~Nil{x:=1;}}\";\nformatter->Format(src, false)->PrintLine();\n```"]
+					"descriptions": ["**Formats source code**\n\n```method : public : Format(source:String) ~ String```\n\n\n\nsource: String\n\nreturn: String\n\n```\nopts := Map->New()<String, String>;\nopts->Insert(\"ident-space\", \"3\");\nformatter := CodeFormatter->New(opts);\nformatter->Format(\"class Foo{method:public:Bar()~Nil{x:=1;}}\")->PrintLine();\n```", "**Formats source code, optionally with ANSI colors for a terminal**\n\n```method : public : Format(source:String, is_color:Bool) ~ String```\n\n\n\nsource: String\n\nis_color: Bool\n\nreturn: String\n\n```\nopts := Map->New()<String, String>;\nopts->Insert(\"ident-space\", \"3\");\nformatter := CodeFormatter->New(opts);\nsrc := \"class Foo{method:public:Bar()~Nil{x:=1;}}\";\nformatter->Format(src, false)->PrintLine();\n```"]
+				},
+				"IndentFor": {
+					"descriptions": ["**The whitespace written before a line at a nesting depth**\n\n```method : public : IndentFor(depth:Int) ~ String```\n\n\n\ndepth: Int\n\nreturn: String"]
+				},
+				"LineDepths": {
+					"descriptions": ["**The nesting depth each line of the source is indented to**\n\n```method : public : LineDepths(source:String, line_count:Int) ~ Int[]```\n\n\n\nsource: String\n\nline_count: Int\n\nreturn: Int[]"]
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(options:Map&lt;String,String&gt;)```\n\n\n\noptions: Map&lt;String,String&gt;\n\n```\nopts := Map->New()<String, String>;\nopts->Insert(\"ident-space\", \"2\");\nopts->Insert(\"trim-trailing\", \"true\");\nformatter := CodeFormatter->New(opts);\n```"]
