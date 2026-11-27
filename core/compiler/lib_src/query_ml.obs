@@ -616,8 +616,7 @@ catalog->Query("select run, fold, count(*) from predictions where actual = true 
 				return false;
 			};
 
-			each(g : groups) {
-				group := groups[g];
+			each(group in groups) {
 				if(group <> Nil) {
 					values := Compare->New[5];
 					values[0] := run;

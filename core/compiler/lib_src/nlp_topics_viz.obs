@@ -473,7 +473,7 @@ System.IO.Filesystem.FileWriter->WriteFile("topics.svg", svg);
 		@return true on success, false for a bad argument or an unwritable file
 		~#
 		function : SaveReport(lda : Lda, corpus : TopicCorpus, topic : Int, lambda : Float, top_n : Int, path : String) ~ Bool {
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return false;
 			};
 

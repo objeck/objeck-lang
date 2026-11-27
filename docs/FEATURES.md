@@ -47,6 +47,57 @@ interface Color {
 }
 ```
 
+### Field Accessors
+
+`@x : get : T` writes the getter and `@x : get set : T` the getter and the setter;
+`get` and `set` are contextual words (a type named `get` is still a type), and a comma
+list shares the modifier. The getter is `Get` plus the field in PascalCase (the 2,000
+hand-written accessors in the libraries and examples follow this: `input_tokens` is
+`GetInputTokens`, `capacity` is `GetCapacity`); a `Bool` is `Is` plus the name, a
+leading `is_` or `has_` is the prefix itself (`is_error` is `IsError`, `has_uses` is
+`HasUses`); the setter is `Set` plus the name without `is_`/`has_`. A method of the
+same name written by hand wins. Instance fields of a class only.
+
+```ruby
+# before
+@input_tokens : Int;
+method : public : GetInputTokens() ~ Int { return @input_tokens; }
+@model : String;
+method : public : GetModel() ~ String { return @model; }
+method : public : SetModel(value : String) ~ Nil { @model := value; }
+# after
+@input_tokens : get : Int;
+@model : get set : String;
+```
+Test: `field_accessors`. The generated methods are made by the compiler, so the
+source-text doc tools (code_doc, `doc_coverage.py`) do not list them yet.
+### Constructor Field Promotion
+
+In a constructor, a parameter written `@name` where the class has **already declared**
+the field `@name` fills that field: the parameter is `name` (and the argument's name
+for a named call), and the body starts with `@name := name` (after a leading
+`Parent(..)`). Defaults and named arguments work as for any parameter. A `@name`
+parameter with no field of that name is unchanged (the older style in
+`programs/tests/prgm10.obs`). Before this, `New(@a : Int) {}` made a parameter that
+shadowed the field, and the field stayed 0.
+
+```ruby
+# before
+class Point {
+  @x : Int;
+  @y : Int;
+  New(x : Int, y : Int) { @x := x; @y := y; }
+}
+# after
+class Point {
+  @x : Int;
+  @y : Int;
+  New(@x : Int, @y : Int) {}
+}
+```
+Test: `ctor_field_promotion`.
+
+
 ### Default and Named Arguments
 Trailing parameters can have default values. An argument can be passed by name,
 `name: value`, after any positional ones. Named arguments may come in any order,
@@ -97,6 +148,34 @@ row := ["id", x, 2.5, true];           # Base[]: String, IntRef, FloatRef, BoolR
 PrintEach([name, title->ToUpper()]);   # the variadic idiom: an array at the call site
 ```
 
+#### Collection literals
+
+An array literal takes the type of its target when the target is a `Vector`,
+`CompareVector`, `IntVector` or `FloatVector` (a declaration or assignment target
+or a `return`): it is the array those classes' constructors already accept, so the
+`->New(..)<T>` and an `AddBack` per element are not written.
+
+```ruby
+# before
+v := Vector->New()<IntRef>;
+v->AddBack(IntRef->New(1));
+v->AddBack(IntRef->New(2));
+# after
+v : Vector<IntRef> := [IntRef->New(1), IntRef->New(2)];
+nums : IntVector := [4, 5, 6];
+```
+
+It is exactly `Vector->New([..])<IntRef>`; elements of the wrong type give that
+call's error. For a `Vector` or `CompareVector` of a holder, the numbers of the literal
+are boxed as that holder, by the rule that boxes an argument:
+`v : Vector<IntRef> := [1, n, n + 1];` is `[IntRef->New(1), IntRef->New(n), ...]`, a
+`Float` for an `IntRef` is truncated as `r : IntRef := 2.75;` is, and a `Bool` is boxed
+only as a `BoolRef` (`[1, true]` for a `Vector<IntRef>` is an error at the literal).
+For a `Vector` of function values, an element that names a function is a method
+reference: `steps : Vector<Func2Ref<String, String>> := [Text->Upper, Text->Twice];`. The literal is not typed by a call argument (overloads are chosen
+before a target is known): assign it to a typed variable first. A map has its own
+literal, `{key: value, ...}` (see Map literals). Test: `collection_literals`.
+
 ### Jagged Arrays
 `T[][]` is an array of `T[]` rows of any length, at any depth:
 ```ruby
@@ -110,6 +189,151 @@ triangle := [[1], [1, 1], [1, 2, 1]]; # a ragged literal is an Int[][]
 function : Sum(rows : Int[][]) ~ Int { ... }
 ```
 See [JAGGED_ARRAYS_DESIGN.md](JAGGED_ARRAYS_DESIGN.md).
+
+### The binding type test
+
+`if(value is Type name) { ... }` runs the block when the value is a `Type` (or a
+subclass, or a class that implements it), with `name` bound to the value as that type:
+```ruby
+# before
+if(part->TypeOf(TextPart)) {
+  text_part := part->As(TextPart);
+  json->Insert("text", text_part->GetText());
+}
+else if(part->TypeOf(ImagePart)) {
+  image_part := part->As(ImagePart);
+  json->Insert("pixels", image_part->Pixels());
+};
+
+# after
+if(part is TextPart p) {
+  json->Insert("text", p->GetText());
+}
+else if(part is ImagePart p) {
+  json->Insert("pixels", p->Pixels());
+};
+```
+The name belongs to the block (each branch can reuse it; it is not visible in `else` or
+after the `if`) and is declared as `name : Type` is. The test is the whole condition of
+the `if`. A value that is more than a variable (`items->Get(i) is TextPart t`) is
+evaluated once. Nil is of no type: the test is false, where a bare `Nil->TypeOf(T)` is a
+runtime error. It compiles to `if(value <> Nil & value->TypeOf(Type)) { name :=
+value->As(Type); ... }`. `is` is a keyword only in this position. Tests:
+`type_test_binding`, `bad_type_test_*`.
+### JSON literals
+
+`json{ ... }` builds a `Data.JSON.JsonElement` where it is written (link the `json`
+library):
+```ruby
+# before
+request := JsonElement->New(JsonElement->JsonType->OBJECT);
+request->Insert("model", model);
+request->Insert("max_tokens", max_tokens);
+messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+user := JsonElement->New(JsonElement->JsonType->OBJECT);
+user->Insert("role", "user");
+user->Insert("content", prompt);
+messages->Add(user);
+request->Insert("messages", messages);
+request->Insert("stop", JsonElement->New(JsonElement->JsonType->NULL));
+
+# after
+request := json{
+  "model": model,
+  "max_tokens": max_tokens,
+  "messages": [{"role": "user", "content": prompt}],
+  "stop": Nil
+};
+request->ToString()->PrintLine();
+# {"max_tokens":256,"messages":[{"content":"Hi","role":"user"}],"model":"m-1","stop":null}
+```
+A member's name is any String expression. A value is any expression `JsonElement` has an
+`Insert` for (a String, Int, Float, Bool or JsonElement), a nested `{ }` or `[ ]`, or
+`Nil` for null; names and values are evaluated once, in the order written. Anything else
+is a compile error at the value: `The value of a JSON member is a String, Int, Float,
+Bool, Nil, JsonElement, or a nested { } or [ ]; this one is Collection.Vector`. A holder
+(`IntRef`, `FloatRef`, `BoolRef`) is unboxed, as it is for any `Insert`. The literal is an
+object at the top; an array is written inside one or built with `JsonElement->New`. It
+compiles to the `New`, `Insert` and `Add` calls shown above. `json` is a keyword only
+before `{`. Tests: `json_literal`, `bad_json_literal_*`.
+### Map literals
+
+`{key: value, ...}` builds a map where it is written. Its type comes from its target: a
+declared variable or field, an assignment, or a `return`:
+```ruby
+# before
+status := Map->New()<IntRef, String>;
+status->Insert(200, "OK");
+status->Insert(404, "Not Found");
+status->Insert(500, "Server Error");
+
+# after
+status : Map<IntRef, String> := {200: "OK", 404: "Not Found", 500: "Server Error"};
+status->Find(404)->PrintLine();   # Not Found
+
+function : Limits() ~ Hash<String, FloatRef> {
+  return {"low": 0.25, "high": 4.0};
+}
+@cache := {};                      # the empty map, of the field's type
+```
+The targets are `Map`, `Hash`, `OrderedHash`, `MultiMap`, `MultiHash`, `BiMap` and
+`IntMap`. Each entry is an `Insert(key, value)` in the order written, so keys and values
+are checked and boxed as `Insert` does; an entry of the wrong type is an error at the
+entry (`An entry of this map literal is String: IntRef; this one is String: String`),
+and the same constant key twice is an error for a map that keeps one value per key. With
+no typed target (an inferred `m := {...}`, an argument, inside `?` or after `??`) the
+literal has no type and the compiler says to declare one. A constructor call that is an
+entry's value takes its type arguments from the map's value type:
+`groups : Map<String, Vector<IntRef>> := {"evens": Vector->New(), "odds": Vector->New()};`. Tests: `map_literal`, `bad_map_literal_*`.
+### match, and select as a value
+
+`match` picks an arm by the value of its subject. Used as a value, each arm is an
+expression; used as a statement, each arm is a block. Patterns are what `select` labels
+are (integers, characters, strings, enum items), `|` joins several, and `other` takes
+the rest:
+```ruby
+enum Color { Red, Green, Blue }
+
+# before
+function : Name(c : Color) ~ String {
+  select(c) {
+    label Color->Red: { return "red"; }
+    label Color->Green: { return "green"; }
+    label Color->Blue: { return "blue"; }
+  };
+  return "";
+}
+
+# after
+function : Name(c : Color) ~ String {
+  return match c { Color->Red => "red", Color->Green => "green", Color->Blue => "blue" };
+}
+
+match c {                               # the statement form
+  Color->Red | Color->Green => { "warm"->PrintLine(); }
+  Color->Blue => { "cool"->PrintLine(); }
+};
+```
+On an enum, every pattern must be an item of that enum, and without `other` the patterns
+must name every item. Leaving `Green` and `Blue` out of the first example is a compile
+error at the `match`:
+```
+This 'match' does not cover every item of 'Color', missing: Green, Blue
+	Add an arm for each missing item, or an 'other' arm.
+```
+so adding an item to an enum points at every `match` that has to change. A value form on
+an Int, Char or String needs `other`; its arms agree in type as the branches of `?` do
+(an Int arm and a Float arm are an error, not a conversion). `select` is a value too,
+with its own spelling: `select(n) { label 0: "none"  label 1: "one"  label 2, 3: "few"
+other: "many" }`.
+
+The subject is evaluated once and only the arm taken is evaluated, where the expression
+stands: inside `&`, `?` or a loop condition a `match` runs only when it is reached. It
+compiles to the `select` statement it stands for (a dense table stays a jump table).
+`match` is a keyword only before its subject, which starts with a name (`match kind {`,
+`match item->GetKind() {`); elsewhere it is an ordinary name. A method whose last
+statement is a `match` statement still needs `other` or a `return` after it, as after a
+`select`. Tests: `match_value`, `match_statement`, `select_value`, `bad_match_*`.
 
 ### Type Inference
 ```ruby
@@ -142,6 +366,27 @@ n->PrintLine();              # 3
 the nearest. To hide an outer name, declare the inner one with its type. Declaring a
 name twice in one block is the error `Variable already defined in this scope`. Tests:
 `block_local_shadowing`, `bad_local_redeclared_in_block`, `bad_local_redeclares_parameter`.
+### Nil-guard and bail
+
+`x := E ?? return V;` (also `?? break;` and `?? continue;`) leaves when `E` is `Nil`, and
+otherwise binds `x` to the value. The block form `x := E ?? { ...; return V };`, and `x ?? { ...; return };`
+for a variable you already have, run a block that must end in `return`, `break`, `continue`
+or `Runtime->Exit(..)` (a block that can fall through would leave `x` Nil, so it is an error).
+It is only a spelling of `x := E;` followed by `if(x = Nil) { ... }`; the value form
+`a ?? b` is unchanged. The guard belongs to an assignment or declaration statement, not to an
+argument.
+
+```ruby
+# before
+x := Find(v, i);
+if(x = Nil) { return -1; };
+return x->Get();
+# after
+x := Find(v, i) ?? return -1;
+return x->Get();
+```
+Test: `nil_guard`, `bad_nil_guard_*`.
+
 
 ### Nil Safety
 `value->TypeOf(Type)` is false when the value is `Nil` (Nil is of no type), and
@@ -311,6 +556,85 @@ map->Insert(408, "Sunnyvale");
 map->ToString()->PrintLine();
 ```
 
+#### Type-argument inference
+A constructor call may leave its type arguments out when the compiler can read them.
+It looks in two places, in this order:
+
+1. **The declared type the object is stored into or returned as**, when that is the
+   class being constructed: a declared local, a field, an element of an array, the
+   method's return type, or the value type of the map whose literal has the call as an
+   entry's value (`{"odds": Vector->New()}` for a `Map<String, Vector<IntRef>>`).
+2. **The constructor's arguments**, when the constructors that take that many arguments
+   agree on what each type parameter is. A primitive argument is held by its class, as
+   it is when the type argument is written (`7` for an `IntRef`).
+
+```ruby
+class Scores {
+  @names : Vector<String>;
+  @by_name : Map<String, IntRef>;
+
+  New() {
+    @names := Vector->New();                  # Vector<String>, from the field
+    @by_name := Map->New();                   # Map<String, IntRef>
+  }
+
+  method : public : Best() ~ Pair<String, IntRef> {
+    best := Pair->New("", -1);                # Pair<String, IntRef>, from the arguments
+    each(name in @names) {
+      score := @by_name->Find(name);
+      if(score > best->GetSecond()) {
+        best := Pair->New(name, score);
+      };
+    };
+    return best;
+  }
+
+  method : public : Above(limit : Int) ~ Vector<String> {
+    above : Vector<String> := Vector->New();  # from the declared local
+    ...
+    return above;
+  }
+}
+```
+
+Before, each of those calls repeated a type the line already stated:
+
+```ruby
+@names := Vector->New()<String>;
+@by_name := Map->New()<String, IntRef>;
+best := Pair->New("", IntRef->New(-1))<String, IntRef>;
+above := Vector->New()<String>;
+```
+
+Both versions are in `programs/regression/generic_inference_before_after.obs`, which
+runs them side by side and prints:
+
+```
+best and count above 80: sol 96 2
+PASS: type-argument inference before and after
+```
+
+The compiler only fills in what would have been written, so every check that follows is
+the one an explicit call gets: overload resolution, the type parameter's bounds and the
+match between the object and where it is stored. Written type arguments mean what they
+always did (`Cell->New("text")<Base>` is a `Cell<Base>`), and a declared target is used
+before the arguments (`wide : Pair<String, Base> := Pair->New("key", "value");`).
+
+A call is refused, never guessed, when:
+
+| call | reported as |
+|---|---|
+| `items := Vector->New();` (no declared type, no arguments) | `Generic type mismatch for class 'Collection.Vector': expected 1 type parameter(s), got 0` |
+| `anything : Base := Vector->New();` (the target is another class) | the same |
+| `Both->New("a", 7)` with `New(first : T, second : T)` | `Cannot infer the type arguments of 'Both': type parameter 'T' is both 'System.String' and 'System.IntRef'` |
+| `Slot->New(Nil)` | `Cannot infer the type arguments of 'Slot': no argument gives type parameter 'T' a class` |
+| `Tagged->New(words)` with `New(value : T)` and `New(values : Vector<T>)` | `Cannot infer the type arguments of 'Tagged': its constructors make type parameter 'T' both 'Collection.Vector<System.String>' and 'System.String'` |
+
+Each message ends `Write them: Class->New(..)<..>`. No common parent class is looked for,
+and one constructor is not preferred over another. A constructor call passed as an
+argument (`Take(Vector->New())`) is not inferred from the parameter; write the type
+arguments or use a declared local.
+
 #### Type-parameter bounds
 A type parameter can require an interface bound (`T : Bound`); a concrete argument
 must implement it. Multiple bounds combine with `&`, and a bound may be generic
@@ -368,12 +692,106 @@ An inferred lambda for a type parameter must return an object. See
 [METHOD_GENERICS_DESIGN.md](METHOD_GENERICS_DESIGN.md).
 
 ### Type Boxing
+A generic class holds objects, so a number in a collection is held by its *holder*
+class: `IntRef` for an `Int`, `FloatRef` for a `Float`, `BoolRef` for a `Bool`,
+`CharRef` for a `Char`, `ByteRef` for a `Byte`. The compiler moves a value in and out
+of its holder for you:
+
 ```ruby
 list := Collection.List->New()<IntRef>;
 list->AddBack(17);
 list->AddFront(4);
 (list->Back() + list->Front())->PrintLine();
 ```
+
+```ruby
+@counts : Map<String, IntRef>;
+@recent : Vector<IntRef>;
+@weights : Vector<FloatRef>;
+
+count := 1;
+if(@counts->Has(word)) {
+  count := @counts->Find(word) + 1;       # unboxed for the '+'
+};
+@counts->Insert(word, count);             # boxed: IntRef->New(count)
+@recent->AddBack(count);
+@weights->AddBack(weight);
+
+total := 0.0;
+each(i : @recent) {
+  total += @recent->Get(i) * @weights->Get(i);   # an IntRef and a FloatRef: Int made Float
+};
+bins[@recent->Get(i)] += 1;               # an index
+return @counts->Find(word);               # returned as an Int
+```
+
+Written out by hand, as it had to be where the compiler did not do it:
+
+```ruby
+count := @counts->Find(word)->Get() + 1;
+@counts->Insert(word, IntRef->New(count));
+@recent->AddBack(IntRef->New(count));
+@weights->AddBack(FloatRef->New(weight));
+total += @recent->Get(i)->Get()->As(Float) * @weights->Get(i)->Get();
+bins[@recent->Get(i)->Get()] += 1;
+return @counts->Find(word)->Get();
+```
+
+Both versions are in `programs/regression/boxing_before_after.obs`, which runs them
+side by side and prints:
+
+```
+red 3, weighted 15.750000, seen once 3
+PASS: boxing before and after
+```
+
+The rules:
+
+1. **Boxing.** A primitive where a holder is wanted is `Holder->New(value)`. It is
+   allowed exactly when the primitive could be assigned to the holder's own primitive:
+   `Byte`, `Char`, `Int` and `Float` convert among themselves, and a `Bool` is only a
+   `Bool`. So `r : FloatRef := 3;` holds 3.0, `r : IntRef := 2.75;` holds 2 (as
+   `i : Int := 2.75;` does), and `r : BoolRef := 1;` is an error.
+2. **Unboxing.** A holder where a primitive is wanted is `holder->Get()`, followed by
+   the same conversion: an `IntRef` for a `Float` is the `Int` made a `Float`, a
+   `FloatRef` for an `Int` is truncated, and a `BoolRef` is never a number. It applies to
+   an assignment, a `return`, an argument (of a method, a function or a function value),
+   an operand of a calculation, an array index, a `select` and a condition
+   (`if(flags->Get(i))`). Boxing also applies to the numbers of a collection literal for a
+   `Vector` of a holder (`v : Vector<IntRef> := [1, 2, 3];`).
+3. **The value unboxed is the one the expression ends in**: for
+   `order->Lines()->Get(0)` it is what `Get(0)` returned.
+4. **Overloads.** A parameter is matched best by an argument of its type, then by one
+   that converts to it (`Int` for `Float`), then by one that is boxed or unboxed to it
+   (`Int` and `IntRef`), then by one that is converted and boxed or unboxed (`Int` and
+   `FloatRef`). The method that is called fits every argument at least as well as each
+   other method does; the order the methods are declared in does not matter.
+
+   ```ruby
+   function : Show(v : IntRef) ~ Nil { ... }
+   function : Show(v : Float) ~ Nil { ... }
+
+   Show(3.5);              # Show(Float): its own type
+   Show(3);                # Show(Float): an Int converts before it is boxed
+   Show(IntRef->New(3));   # Show(IntRef)
+   ```
+
+   When no method is the best the call is refused; write the conversion to choose:
+
+   ```ruby
+   function : Pick(a : IntRef, b : Int) ~ String { ... }
+   function : Pick(a : Int, b : IntRef) ~ String { ... }
+
+   Pick(1, 2);               # error: Ambiguous function/method call: 'Pick(..)' boxes or
+                             #        unboxes an argument to fit, and more than one method
+                             #        fits as well
+   Pick(IntRef->New(1), 2);  # the first
+   ```
+5. **A holder is still an object where an object is wanted.** `r : IntRef :=
+   list->Get(0);` stores the holder itself, `r = Nil` compares it with `Nil`, and
+   `each(value in ints)` gives the holders. A holder that is `Nil` has no value:
+   unboxing it is the run-time error calling `Get()` on it is
+   (`counts->Find("missing")` for a key that is not there).
 
 ### Static Import
 ```ruby
@@ -451,6 +869,29 @@ function : Mk(n : Int) ~ FuncRef<IntRef> {
 The verbose form with an explicit annotation is still supported and equivalent:
 `FuncRef->New(\() ~ IntRef : () => x)<IntRef>`.
 
+#### Method references without ceremony
+
+Where a function value is wanted, a static function can be named by itself:
+`Class->Function`. The compiler reads the signature from the function and builds
+the `FuncRef`, `Func2Ref`, `Func3Ref` or `Func4Ref` the long form would have built;
+the compiled program is byte-for-byte the same.
+
+```ruby
+# before
+registry->Add(AgentTool->New("get_weather", "Get the weather", schema,
+  Func2Ref->New(AgentTour->Weather(JsonElement) ~ String)<JsonElement, String>));
+# after
+registry->Add(AgentTool->New("get_weather", "Get the weather", schema, AgentTour->Weather));
+```
+
+It works as a declaration or assignment target, a `return`, a call argument, a
+collection element (`fs->AddBack(Text->Upper)`) and an element of a collection literal
+for a `Vector` of function values (`[Text->Upper, Text->Twice]`). Rules: the name must be a single, non-virtual static function
+(an overloaded name is an error that asks for the full form); the arguments and the
+return must be plain classes (a function over `Int`, an array or a generic class
+needs the full form, as the long form itself does); at most three arguments. An enum
+item or a constant named the same way keeps its meaning. Test: `method_ref_sugar`.
+
 #### Lambdas with parameters
 
 The shorthand is zero-parameter only. A lambda that takes arguments uses the
@@ -509,10 +950,33 @@ Captures are **by copy**, taken when the lambda is created:
   Rebinding the local (`c := Counter->New();`) does not change which object
   the lambda uses.
 
-Not available in lambda bodies yet: `self`, `@field` access, and calling an
-instance method of the enclosing class without a receiver (`Inc()`), which is
-rejected with "Cannot reference an instance method from this context". Capture
-the object in a local and call through it instead.
+**Fields and `@self` (a lambda in an instance method).** A lambda written in an
+instance method captures the instance it was created in, so its body may read and
+write the instance's fields and name the instance:
+
+```ruby
+# before: copy the field into a local (a later write is not seen), call through a local
+method : Incrementer() ~ FuncRef<IntRef> {
+  me := @self;                       # was not allowed in a lambda
+  ...
+}
+# after
+method : Incrementer() ~ FuncRef<IntRef> {
+  return \() => { @count += 1; return IntRef->New(@count); };
+}
+method : Caller() ~ FuncRef<IntRef> {
+  return \() => @self->Bump();       # an instance method, through the instance
+}
+```
+
+Unlike a captured local, a field is **not** copied: it is read and written through
+the captured instance, so a write in the lambda is a write to the field, the method
+sees it, and the lambda sees the method's later writes. The lambda keeps the
+instance alive. Limits: only a lambda directly in an instance method (not one
+inside another lambda, and not one in a function); an instance method of the class
+is called with `@self->Name(..)`, never as a bare `Name(..)` (still rejected, with
+a message that says so); `@field` inside a `"{$ ...}"` interpolation in a lambda is
+still rejected. Test: `lambda_self_fields`.
 
 ### First-Class Functions
 
@@ -586,8 +1050,9 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 `self`, `parent` and `value` are **not** reserved as identifiers. The capitalized
 `Byte`, `Int`, `Float`, `Char`, `Bool`, `Nil`, `New`, `Parent`, `As` and `TypeOf` are
 keywords of the scanner too (`ident_map` in `scanner.cpp`), so they cannot name a
-variable either. `ref`, `try`, `on`, `finally` and `out` are **contextual**: a keyword
-only where the grammar expects it, so they remain usable as names.
+variable either. `ref`, `try`, `on`, `finally`, `out`, `is`, `json`, `match`, `spawn`, `assert`,
+`using`, `prompt`, `agent`, `get` and `set` are **contextual**: a keyword only where the grammar
+expects it, so they remain usable as names.
 
 ---
 
@@ -778,6 +1243,96 @@ class CalculateThread from Thread {
   }
 }
 ```
+
+### Threads from a block: `spawn`
+
+`spawn { ... }` runs the block on a new thread. The expression is the thread, already
+started, so it can be kept and joined:
+
+```ruby
+use Collection;
+use System.Concurrency;
+
+totals := Map->New()<String, IntRef>;
+mutex := ThreadMutex->New("totals");
+
+workers := Vector->New()<Thread>;
+each(text in texts) {
+  workers->AddBack(spawn {
+    words := text->Split(' ');
+    critical(mutex) {
+      totals->Insert(text, IntRef->New(words->Size()));
+    };
+  });
+};
+
+each(worker in workers) {
+  worker->Join();
+};
+```
+
+The block uses the locals it names. Before `spawn`, the same work took a class per kind
+of thread, with its values packed into one object for `Execute(param : Base)` and cast
+back out in `Run`:
+
+```ruby
+class CountWords from Thread {
+  New() {
+    Parent("count-words");
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+    args := param->As(Triplet<String, Map<String, IntRef>, ThreadMutex>);
+    text := args->GetFirst();
+    totals := args->GetSecond();
+    mutex := args->GetThird();
+
+    words := text->Split(' ');
+    critical(mutex) {
+      totals->Insert(text, IntRef->New(words->Size()));
+    };
+  }
+}
+
+worker := CountWords->New();
+worker->Execute(Triplet->New(text, totals, mutex)<String, Map<String, IntRef>, ThreadMutex>);
+```
+
+Both forms are in `programs/regression/spawn_before_after.obs`, which runs them side by
+side and prints:
+
+```
+3 words: one two three
+2 words: four five
+4 words: six seven eight nine
+PASS: spawn before and after
+```
+
+What a block may do, and what it holds:
+
+- **It holds values, not variables.** Each local the block names is copied when the
+  thread starts. An object is shared with the creator (guard it with a `ThreadMutex`
+  when both sides write); an `Int`, `Float`, `Bool`, `Char` or `Byte` is the thread's own
+  copy, so a write to it in the block is not seen outside, and a loop that spawns gives
+  each thread the loop variable's value at that turn.
+- **It follows a lambda's rules**, because that is what it is compiled to: it may call
+  functions by name and methods on an object it captured (`me := @self; spawn {
+  me->Step(); }`), but not a method with no receiver. In an instance method the block
+  reads and writes `@fields` and names `@self` as a lambda there does (`spawn {
+  @self->Step(); }`); the thread shares the instance, so guard what both sides write.
+- **`return;` ends the thread.** A value has nowhere to go: `return 5;` is a compile
+  error (`A 'spawn' block does not return a value`). Hand a result back through an object
+  the block shares.
+- **The thread is named for where it was started**, `spawn:<file>:<line>`
+  (`worker->GetName()`), which is the name the runtime's diagnostics print.
+- `spawn` may be nested, and used in a function, a method or a lambda. It may not be used
+  in a method of an anonymous class.
+- `spawn` is a word of the language only in front of a `{`: a variable, parameter or
+  method named `spawn` still compiles.
+
+Nothing in the VM or the JIT is new. The parser writes `spawn { body }` out as an
+anonymous `Thread` class whose `Run` calls a lambda holding `body`, so the captured
+values live in the lambda's closure, where the collector already traces them.
 
 ### Structured Concurrency
 

@@ -43,11 +43,18 @@ bundle System.Actor {
 		@next : Int;
 		@line : Vector<IntRef>;
 
+		#~
+		Creates an empty line
+		~#
 		New() {
 			@next := 0;
 			@line := Vector->New()<IntRef>;
 		}
 
+		#~
+		Takes the next ticket and joins the back of the line
+		@return the ticket number, to pass to IsHead and Leave
+		~#
 		method : public : Join() ~ Int {
 			t := @next;
 			@next += 1;
@@ -55,21 +62,38 @@ bundle System.Actor {
 			return t;
 		}
 
+		#~
+		Says whether a ticket is at the front of the line
+		@param t a ticket from Join
+		@return true if the line is not empty and t is first in it
+		~#
 		method : public : IsHead(t : Int) ~ Bool {
-			if(@line->Size() = 0) {
+			if(@line->IsEmpty()) {
 				return false;
 			};
 			return @line->Get(0)->Get() = t;
 		}
 
+		#~
+		Says whether nobody is waiting
+		@return true when the line is empty
+		~#
 		method : public : IsEmpty() ~ Bool {
-			return @line->Size() = 0;
+			return @line->IsEmpty();
 		}
 
+		#~
+		Number of waiters
+		@return the count
+		~#
 		method : public : Size() ~ Int {
 			return @line->Size();
 		}
 
+		#~
+		Takes a ticket out of the line, wherever it is; does nothing if it is not there
+		@param t a ticket from Join
+		~#
 		method : public : Leave(t : Int) ~ Nil {
 			i := 0;
 			found := false;
@@ -152,6 +176,11 @@ box->Receive(100)->ToString()->PrintLine();  # a
 			Init(capacity, policy);
 		}
 
+		#~
+		Sets up the queue, the locks and the counters. A negative capacity becomes 0 (unbounded).
+		@param capacity most items queued at once
+		@param policy what to do with an item that arrives when the mailbox is full
+		~#
 		method : Init(capacity : Int, policy : Mailbox->Policy) ~ Nil {
 			@mutex := ThreadMutex->New("mailbox");
 			@not_full := Condition->New();
@@ -167,11 +196,19 @@ box->Receive(100)->ToString()->PrintLine();  # a
 			@rejected := 0;
 		}
 
+		#~
+		Says whether one more item fits
+		@return true when the mailbox is unbounded or has fewer items than its capacity
+		~#
 		method : HasRoom() ~ Bool {
 			return @capacity <= 0 | @items->Size() < @capacity;
 		}
 
 		# the caller holds the mutex
+		#~
+		Appends an item and wakes the receivers
+		@param item the item to queue
+		~#
 		method : Push(item : System.Base) ~ Nil {
 			@items->AddBack(item);
 			@sent += 1;
@@ -470,8 +507,7 @@ box->Receive(100)->ToString()->PrintLine();  # a
 				};
 				@not_full->Broadcast();
 			};
-			each(i : taken) {
-				item := taken->Get(i);
+			each(item in taken) {
 				if(item->TypeOf(Mail)) {
 					item->As(Mail)->Discarded();
 				};
@@ -501,6 +537,11 @@ box->Receive(100)->ToString()->PrintLine();  # a
 		@kind : ExitReason->Kind;
 		@error : String;
 
+		#~
+		Creates a reason; use Normal, Stopped, Killed or Failed instead
+		@param kind the kind of exit
+		@param error the error message, Nil unless the kind is FAILED
+		~#
 		New(kind : ExitReason->Kind, error : String) {
 			@kind := kind;
 			@error := error;
@@ -611,6 +652,13 @@ box->Receive(100)->ToString()->PrintLine();  # a
 		@error : String;
 		@id : Int;
 
+		#~
+		Creates a result
+		@param status how the call ended
+		@param value the answer, Nil unless OK
+		@param error the message for a call that did not succeed, Nil for OK
+		@param id the call correlation id
+		~#
 		New(status : CallResult->Status, value : System.Base, error : String, id : Int) {
 			@status := status;
 			@value := value;
@@ -670,6 +718,11 @@ box->Receive(100)->ToString()->PrintLine();  # a
 		@id : Int;
 		@target : Actor;
 
+		#~
+		Creates a pending call slot
+		@param target the actor called, told about an answer that comes late; may be Nil
+		@param id the call correlation id
+		~#
 		New(target : Actor, id : Int) {
 			@mutex := ThreadMutex->New("call");
 			@changed := Condition->New();
@@ -678,10 +731,19 @@ box->Receive(100)->ToString()->PrintLine();  # a
 			@target := target;
 		}
 
+		#~
+		The call correlation id
+		@return the id
+		~#
 		method : public : GetId() ~ Int {
 			return @id;
 		}
 
+		#~
+		Gives the answer if the call is still pending. An answer to a call that timed out is dropped and counted by the target actor.
+		@param value the answer
+		@return true if the waiting caller will get it
+		~#
 		method : public : Answer(value : System.Base) ~ Bool {
 			accepted := false;
 			late := false;
@@ -702,6 +764,11 @@ box->Receive(100)->ToString()->PrintLine();  # a
 			return accepted;
 		}
 
+		#~
+		Fails the call if it is still pending
+		@param error the message the caller sees
+		@return true if the call was still pending
+		~#
 		method : public : Fail(error : String) ~ Bool {
 			accepted := false;
 			critical(@mutex) {
@@ -715,6 +782,10 @@ box->Receive(100)->ToString()->PrintLine();  # a
 			return accepted;
 		}
 
+		#~
+		Says whether nobody has answered, failed or abandoned the call yet
+		@return true while pending
+		~#
 		method : public : IsPending() ~ Bool {
 			v := false;
 			critical(@mutex) {
@@ -724,6 +795,11 @@ box->Receive(100)->ToString()->PrintLine();  # a
 		}
 
 		# waits for the answer; timeout -1 waits without limit
+		#~
+		Waits for the answer, the failure, or the timeout; a timeout marks the call abandoned
+		@param timeout how long to wait, in milliseconds: -1 forever, 0 not at all
+		@return OK with the value, FAILED with the message, or TIMED_OUT
+		~#
 		method : public : Await(timeout : Int) ~ CallResult {
 			deadline := timeout < 0 ? -1 : ActorClock->Now() + timeout;
 			status := CallResult->Status->OK;
@@ -787,6 +863,15 @@ box->Receive(100)->ToString()->PrintLine();  # a
 		@source : Actor;
 		@reason : ExitReason;
 
+		#~
+		Creates mail; use Data, Down or Exit, or Actor->Call, instead
+		@param kind the kind of mail
+		@param payload what it carries, Nil for a notice
+		@param sender who sent it, or Nil
+		@param slot the call slot of a CALL, Nil otherwise
+		@param source the actor a DOWN or EXIT is about, Nil otherwise
+		@param reason why that actor ended, Nil otherwise
+		~#
 		New(kind : Mail->Kind, payload : System.Base, sender : Actor, slot : CallSlot, source : Actor, reason : ExitReason) {
 			@kind := kind;
 			@payload := payload;
@@ -972,11 +1057,20 @@ class Counter implements ActorBehavior {
 	class : private : ActorThread from Thread {
 		@actor : Actor;
 
+		#~
+		Creates the thread of an actor
+		@param name the thread name
+		@param actor the actor whose receive loop it runs
+		~#
 		New(name : String, actor : Actor) {
 			Parent(name);
 			@actor := actor;
 		}
 
+		#~
+		Runs the actor receive loop until the actor ends
+		@param param not used
+		~#
 		method : public : Run(param : System.Base) ~ Nil {
 			@actor->Loop();
 		}
@@ -1035,6 +1129,12 @@ a->Join()->ToString()->PrintLine();   # stopped
 			Init(name, behavior, mailbox);
 		}
 
+		#~
+		Sets up the actor fields. A Nil name becomes actor and a Nil mailbox becomes an unbounded one.
+		@param name a name for logs and failure messages
+		@param behavior what the actor does
+		@param mailbox the actor mailbox, or Nil
+		~#
 		method : Init(name : String, behavior : ActorBehavior, mailbox : Mailbox) ~ Nil {
 			@name := name = Nil ? "actor" : name;
 			@behavior := behavior;
@@ -1479,6 +1579,10 @@ a->Join()->ToString()->PrintLine();   # stopped
 			};
 		}
 
+		#~
+		Says whether Kill was called
+		@return true once killed
+		~#
 		method : IsKilled() ~ Bool {
 			v := false;
 			critical(@lock) {
@@ -1487,6 +1591,10 @@ a->Join()->ToString()->PrintLine();   # stopped
 			return v;
 		}
 
+		#~
+		Says whether the actor receives EXIT mail instead of failing when a link ends abnormally
+		@return the trap-exits flag
+		~#
 		method : Traps() ~ Bool {
 			v := false;
 			critical(@lock) {
@@ -1495,6 +1603,11 @@ a->Join()->ToString()->PrintLine();   # stopped
 			return v;
 		}
 
+		#~
+		Makes the message of an error for a failure reason
+		@param e the error, may be Nil
+		@return the error message, or error when there is none
+		~#
 		method : Describe(e : Error) ~ String {
 			if(e = Nil | e->GetMessage() = Nil) {
 				return "error";
@@ -1602,6 +1715,10 @@ a->Join()->ToString()->PrintLine();   # stopped
 		}
 
 		# records the reason, closes the mailbox, tells the watchers and the links, then wakes the joiners
+		#~
+		Ends the actor: records the reason, closes the mailbox and throws away what is queued, sends DOWN to the monitors and an exit notice to the links, then wakes the joiners
+		@param reason why the actor ended
+		~#
 		method : Finish(reason : ExitReason) ~ Nil {
 			mons : Vector<Mailbox>;
 			lnks : Vector<Actor>;
@@ -1752,6 +1869,12 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		@actor : Actor;
 		@restarts : Int;
 
+		#~
+		Creates a snapshot
+		@param id the child id
+		@param actor the running incarnation, or Nil
+		@param restarts how many times the child was restarted
+		~#
 		New(id : String, actor : Actor, restarts : Int) {
 			@id := id;
 			@actor := actor;
@@ -1797,27 +1920,50 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		@actor : Actor;
 		@restarts : Int;
 
+		#~
+		Creates the state of a child that has not started yet
+		@param spec the child spec
+		~#
 		New(spec : ChildSpec) {
 			@spec := spec;
 			@restarts := 0;
 		}
 
+		#~
+		The child spec
+		@return the spec
+		~#
 		method : public : GetSpec() ~ ChildSpec {
 			return @spec;
 		}
 
+		#~
+		The running incarnation
+		@return the actor, Nil when the child is not running
+		~#
 		method : public : GetActor() ~ Actor {
 			return @actor;
 		}
 
+		#~
+		Records the running incarnation
+		@param actor the actor, or Nil when the child ended
+		~#
 		method : public : SetActor(actor : Actor) ~ Nil {
 			@actor := actor;
 		}
 
+		#~
+		How many times the child was restarted
+		@return the count
+		~#
 		method : public : GetRestarts() ~ Int {
 			return @restarts;
 		}
 
+		#~
+		Counts one more restart
+		~#
 		method : public : AddRestart() ~ Nil {
 			@restarts += 1;
 		}
@@ -1829,20 +1975,38 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		@spec : ChildSpec;
 		@id : String;
 
+		#~
+		Creates a request
+		@param op the request: 1 add a child, 2 remove one, 3 list the children, 4 total restarts, 5 a child actor
+		@param spec the child to add, Nil for other requests
+		@param id the child to remove or look up, Nil for other requests
+		~#
 		New(op : Int, spec : ChildSpec, id : String) {
 			@op := op;
 			@spec := spec;
 			@id := id;
 		}
 
+		#~
+		The request code
+		@return the code
+		~#
 		method : public : GetOp() ~ Int {
 			return @op;
 		}
 
+		#~
+		The child to add
+		@return the spec, Nil for other requests
+		~#
 		method : public : GetSpec() ~ ChildSpec {
 			return @spec;
 		}
 
+		#~
+		The child to remove or look up
+		@return the id, Nil for other requests
+		~#
 		method : public : GetId() ~ String {
 			return @id;
 		}
@@ -1907,6 +2071,10 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			};
 		}
 
+		#~
+		Takes the actor, makes it trap exits so a child ending arrives as mail, and starts the children in order
+		@param me the supervisor actor
+		~#
 		method : public : Init(me : Actor) ~ Nil {
 			@me := me;
 			me->SetTrapExits(true);
@@ -1915,6 +2083,11 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			};
 		}
 
+		#~
+		Looks up a child by id
+		@param id the child id
+		@return the child state, Nil if there is none
+		~#
 		method : Find(id : String) ~ ChildState {
 			each(i : @states) {
 				if(@states->Get(i)->GetSpec()->GetId()->Equals(id)) {
@@ -1924,6 +2097,11 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			return Nil;
 		}
 
+		#~
+		Finds the child that runs an actor
+		@param actor the actor to look for
+		@return its index in the start order, -1 if no child runs it
+		~#
 		method : IndexOfActor(actor : Actor) ~ Int {
 			each(i : @states) {
 				if(@states->Get(i)->GetActor() = actor) {
@@ -1933,6 +2111,10 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			return -1;
 		}
 
+		#~
+		Builds a new incarnation of a child from its factory, monitors it, starts it and waits up to 30 seconds for its Init to finish. Raises an error if the factory returns Nil.
+		@param state the child to start
+		~#
 		method : StartChild(state : ChildState) ~ Nil {
 			spec := state->GetSpec();
 			behavior := spec->GetFactory()->Create();
@@ -1948,6 +2130,10 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		}
 
 		# stops a child with its shutdown timeout, then kills it; a child that will not end is abandoned
+		#~
+		Stops the actor of a child, if any, and forgets it
+		@param state the child to stop
+		~#
 		method : StopChild(state : ChildState) ~ Nil {
 			child := state->GetActor();
 			if(child = Nil) {
@@ -1969,10 +2155,20 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			};
 		}
 
+		#~
+		How long a killed child gets to end before it is abandoned
+		@return 100, in milliseconds
+		~#
 		function : KILL_GRACE() ~ Int {
 			return 100;
 		}
 
+		#~
+		Handles a child DOWN notice or a request from the supervisor API; always keeps running
+		@param me the supervisor actor
+		@param mail the mail
+		@return true
+		~#
 		method : public : Handle(me : Actor, mail : Mail) ~ Bool {
 			kind := mail->GetKind();
 			if(kind = Mail->Kind->DOWN) {
@@ -1987,6 +2183,10 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			return true;
 		}
 
+		#~
+		Runs a request: add a child, remove one, list them, count restarts or find a child actor; answers the call
+		@param mail the CALL mail carrying a SupervisorCommand
+		~#
 		method : OnCommand(mail : Mail) ~ Nil {
 			cmd := mail->GetPayload()->As(SupervisorCommand);
 			op := cmd->GetOp();
@@ -2021,8 +2221,7 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			}
 			else if(op = 3) {
 				info := Vector->New()<ChildInfo>;
-				each(i : @states) {
-					s := @states->Get(i);
+				each(s in @states) {
 					info->AddBack(ChildInfo->New(s->GetSpec()->GetId(), s->GetActor(), s->GetRestarts()));
 				};
 				mail->Answer(info);
@@ -2045,6 +2244,11 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		}
 
 		# a child ended: restart it and its peers as the strategy and its policy say
+		#~
+		Handles the end of a child: applies its restart policy and the strategy, and stops, forgets or restarts the affected children
+		@param source the actor that ended
+		@param reason why it ended
+		~#
 		method : OnDown(source : Actor, reason : ExitReason) ~ Nil {
 			index := IndexOfActor(source);
 			if(index < 0) {
@@ -2112,6 +2316,11 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		}
 
 		# restart intensity: more than max_restarts restarts inside the window fails the supervisor
+		#~
+		Records a restart and raises an error when the restarts in the window exceed the limit
+		@param id the child that ended
+		@param reason why it ended
+		~#
 		method : CountRestart(id : String, reason : ExitReason) ~ Nil {
 			now := ActorClock->Now();
 			kept := Vector->New()<IntRef>;
@@ -2128,6 +2337,11 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			};
 		}
 
+		#~
+		Stops every child, last started first
+		@param me the supervisor actor
+		@param reason why the supervisor ends
+		~#
 		method : public : Terminate(me : Actor, reason : ExitReason) ~ Nil {
 			i := @states->Size() - 1;
 			while(i >= 0) {
@@ -2155,6 +2369,13 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 		@period : Int;
 		@specs : Vector<ChildSpec>;
 
+		#~
+		Creates a factory
+		@param strategy what to restart when a child ends
+		@param max_restarts most restarts allowed in the period
+		@param period_seconds the length of the window, in seconds
+		@param specs the children, in start order
+		~#
 		New(strategy : SupervisorStrategy->Kind, max_restarts : Int, period_seconds : Int, specs : Vector<ChildSpec>) {
 			@strategy := strategy;
 			@max_restarts := max_restarts;
@@ -2162,6 +2383,10 @@ spec := ChildSpec->New("worker", WorkerFactory->New(), ChildSpec->Restart->TRANS
 			@specs := specs;
 		}
 
+		#~
+		Makes a new supervisor behavior with the same design
+		@return the behavior
+		~#
 		method : public : Create() ~ ActorBehavior {
 			return SupervisorBehavior->New(@strategy, @max_restarts, @period, @specs);
 		}

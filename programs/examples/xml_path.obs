@@ -42,8 +42,7 @@ bundle Default {
 				# get all prices
 				results := parser->FindElements("/inventory/section/item/price");
 				if(results <> Nil) {
-					each(i : results) {					
-						element := results->Get(i);
+					each(element in results) {					
 						element->GetContent()->PrintLine();
 					};
 				};

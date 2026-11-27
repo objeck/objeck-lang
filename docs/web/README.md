@@ -8,6 +8,7 @@ Source files for [objeck.org](https://www.objeck.org) — the static landing sit
 web/
 ├── index.html             # Home page (hand-written <main>; the example and release strip are filled in)
 ├── start.html             # Get started        } from docs/site/*.md
+├── agents.html            # Agents (tested examples: docs/site/examples)
 ├── learn.html             # Learn              }
 ├── community.html         # Community          }
 ├── libraries.html         # Libraries, generated from core/compiler/build_libs.sh and lib_src
@@ -15,7 +16,8 @@ web/
 ├── guides.html, guide_*.html  # The guides, from docs/guides
 ├── getting_started.html, ai_guide.html, readme.html   # hand-written, wrapped by the generator
 ├── favicon.ico, robots.txt
-└── style/                 # site.css (the style sheet), site.js (menu button), logos, favicon
+└── style/                 # site.css (the style sheet), site.js (menu button), logos, favicon,
+                           # social-card.png (link previews; tools/docs/make_social_card.py)
 ```
 
 ## Generated pages
@@ -23,7 +25,7 @@ web/
 `python tools/docs/guides_to_html.py` writes every page except the hand-written bodies; `--check` fails if a page is out of date (CI runs it). The same script owns the chrome of every page (head, top navigation, section list, breadcrumbs, footer), so a menu change is made once in the script. For the four hand-written pages it keeps the `<main>` content and rewrites everything around it, fills `<!-- version:start -->` and `<!-- release:start -->` regions from `core/shared/version.h` and `CHANGELOG.md`, and highlights their code blocks. Edit the Markdown or the hand-written body, not the chrome.
 
 - **Libraries**: `LIBS` in the script gives each library one line; the script stops if a library in `build_libs.sh` has no entry or an entry has no library.
-- **Code samples**: files in [`docs/site/examples`](../site/examples/) with the output they printed (`NAME.out`); pages use `{{example:NAME}}`. `python tools/cicd/check_site_examples.py --toolchain DIR` compiles and runs them; `--update` rewrites the `.out` files.
+- **Code samples**: files in [`docs/site/examples`](../site/examples/) with the output they printed (`NAME.out`); pages use `{{example:NAME}}`. `python tools/cicd/check_site_examples.py --toolchain DIR` compiles and runs them; `--update` rewrites the `.out` files. A sample that is an MCP server may have `NAME.mcp` (the requests a client sends); the checker plays them against `obr --mcp` and the page shows the session with `{{mcp:NAME}}`. Code after a `# ---- generated, not shown on the page ----` line compiles with the sample but is left off the page. The hero sample (`tool`) is also written into the top of the repository `README.md` by the generator.
 - **Highlighting** is done at generation time by `tools/docs/objeck_highlight.py`, which reads its keyword lists from the VS Code grammar; `python tools/docs/test_objeck_highlight.py` tests it. No JavaScript is involved.
 - **Style**: `style/site.css` is dark by default and light for `prefers-color-scheme: light`; `style/styles.css` is a stub that imports it, so old cached pages keep working.
 

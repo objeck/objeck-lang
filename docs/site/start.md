@@ -38,6 +38,7 @@ Libraries are named at compile time, for example `obc -src app.obs -lib json,net
 
 ## Next
 
+- [Agents](agents.md): declare a tool, serve it over MCP, run an agent
 - [Quick start tour](../web/getting_started.html)
 - [Guides](../guides/README.md)
 - [AI and ML guide](../web/ai_guide.html)

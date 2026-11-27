@@ -1,0 +1,132 @@
+# EXTRA_LIBS: mcp,agent,agent_json,mcp_agent,llm_util,regex,net,net_server,cipher,misc
+#~
+An agent declaration, a prompt literal and a typed result ('class Name : json') in one
+program, against a scripted model (no key, no network):
+  - the declared agent's instructions are a prompt literal with a parameter in a hole
+  - Name->Ask(agent, prompt-literal text) returns the typed object, and the model was
+    asked once with the instructions the declaration gave
+  - a 'class : json' whose fields are a json class, a record-like json class and an enum
+    that are all declared BELOW it (the members are derived once every file is read)
+  - a '@tool' function that takes a json class declared below it, offered to the model
+    by the declared agent and called with an object the model sent
+  - field accessors on a json class: the getters the compiler writes read what FromJson set
+~#
+
+use API.MCP, API.Agent, API.LlmUtil, API.AgentJson, Data.JSON, Collection;
+
+# its field types are declared further down
+class Report : json(remark) {
+	@city : get : String;
+	@reading : get : Reading;
+	@outlook : get : Outlook;
+	@stations : get : Vector<Station>;
+	@remark : get : String;
+
+	New() {
+	}
+}
+
+class Desk {
+	#~
+	File a reading for a station.
+	@tool
+	@param station the station that took it
+	@param degrees the temperature
+	~#
+	function : FileReading(station : Station, degrees : Float) ~ String {
+		name := station->GetName();
+		height := station->GetHeight();
+		return "filed {$degrees} for {$name} at {$height} m";
+	}
+}
+
+agent Forecaster(script : Vector<AgentReply>, region : String, words : Int) {
+	backend : ScriptedBackend->New(script);
+	instructions : prompt "You forecast for {region} in at most {words : Int} words."->ToString();
+	tools : Desk;
+	budget { steps : 6; tool_calls : 4; }
+}
+
+enum Outlook { FAIR, STORM }
+
+class Reading : json {
+	@degrees : get : Float;
+	@humid : get : Int;
+
+	New() {
+	}
+}
+
+class Station : json {
+	@name : get : String;
+	@height : get : Int;
+
+	New() {
+	}
+}
+
+class InteractAgentPromptJson {
+	@@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"FAIL: {$name}"->PrintLine();
+			@@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# the typed result, asked of the declared agent with a prompt literal
+		script := Vector->New()<AgentReply>;
+		script->AddBack(AgentReply->Say("{\"city\":\"Oslo\",\"reading\":{\"degrees\":-3.5,\"humid\":80},\"outlook\":\"STORM\",\"stations\":[{\"name\":\"Blindern\",\"height\":94},{\"name\":\"Tryvann\",\"height\":514}]}"));
+		forecaster := Forecaster->Build(script, "the north", 30);
+		Check("the instructions are the prompt literal, with the parameters",
+			forecaster->GetConversation()->GetSystem()->Equals("You forecast for <region>the north</region> in at most 30 words."));
+
+		city := "Oslo";
+		days := 2;
+		question := prompt "Report on {city} for the next {days : Int} days.";
+		report := Report->Ask(forecaster, question->ToString());
+		Check("the city", report->GetCity()->Equals("Oslo"));
+		Check("a nested json class declared below", report->GetReading()->GetDegrees() = -3.5 & report->GetReading()->GetHumid() = 80);
+		Check("an enum declared below", report->GetOutlook() = Outlook->STORM);
+		Check("a Vector of a json class declared below", report->GetStations()->Size() = 2 & report->GetStations()->Get(1)->GetHeight() = 514);
+		Check("an optional field left out is Nil", report->GetRemark() = Nil);
+
+		# the schema names the nested class's fields
+		schema := Report->JsonSchema()->ToString();
+		Check("the schema has the nested fields", schema->Has("degrees") & schema->Has("height") & schema->Has("STORM"));
+
+		# the tool takes a json class: the model sends the object, the function gets a Station
+		calls := Vector->New()<AgentReply>;
+		calls->AddBack(AgentReply->Ask("1", "file_reading", "{\"station\":{\"name\":\"Blindern\",\"height\":94},\"degrees\":-3.5}"));
+		calls->AddBack(AgentReply->Say("Filed."));
+		clerk := Forecaster->Build(calls, "the coast", 10);
+		result := clerk->Run("File the Blindern reading.");
+		filed := "";
+		each(step in result->GetSteps()) {
+			each(outcome in step->GetResults()) {
+				filed := outcome->GetContent();
+			};
+		};
+		Check("the tool was called with the object: '{$filed}'", filed->Has("for Blindern at 94 m"));
+		Check("the run completed", result->GetText()->Equals("Filed."));
+
+		# a value that does not fit is refused by name, through the nested class
+		refused := "";
+		try {
+			Report->FromJson(JsonParser->TextToElement("{\"city\":\"Oslo\",\"reading\":{\"degrees\":\"cold\",\"humid\":80},\"outlook\":\"FAIR\",\"stations\":[]}"));
+		}
+		on(e : Error) {
+			refused := e->GetMessage();
+		};
+		Check("a bad nested field is named: '{$refused}'", refused->Has("degrees"));
+
+		if(@@failed = 0) {
+			"PASS: agent declaration, prompt literal and typed result"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

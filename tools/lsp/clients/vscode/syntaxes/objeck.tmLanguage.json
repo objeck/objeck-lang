@@ -6,10 +6,19 @@
 			"include": "#comments"
 		},
 		{
+			"include": "#prompt-literals"
+		},
+		{
 			"include": "#strings"
 		},
 		{
+			"include": "#agent-declarations"
+		},
+		{
 			"include": "#storage-modifiers"
+		},
+		{
+			"include": "#json-class"
 		},
 		{
 			"include": "#entities"
@@ -62,6 +71,19 @@
 					"name": "comment.line.objeck"
 				}]
 		},
+		"json-class": {
+			"patterns": [
+				{
+					"comment": "class Name : json -- the compiler writes the schema and the reader (docs/design/AGENT_SYNTAX.md)",
+					"match": "\\b(class)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*(json)\\b",
+					"captures": {
+						"1": { "name": "storage.type.class.objeck" },
+						"2": { "name": "entity.name.class.objeck" },
+						"3": { "name": "punctuation.separator.objeck" },
+						"4": { "name": "storage.modifier.json.objeck" }
+					}
+				}]
+		},
 		"entities": {
 			"patterns": [
 				{
@@ -107,7 +129,22 @@
 		"keywords": {
 			"patterns": [
 				{
-					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|for|each|reverse|label|return|critical|from|implements|virtual)\\b",
+					"comment": "contextual: 'if(value is Type name) { ... }'",
+					"match": "\\bis(?=\\s+[A-Za-z_][\\w.]*\\s+[A-Za-z_]\\w*\\s*\\))",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"comment": "contextual: 'json{ ... }', a JSON literal",
+					"match": "\\bjson(?=\\s*\\{)",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"comment": "contextual: 'match subject { pattern => ... }'",
+					"match": "\\bmatch(?=\\s+[A-Za-z_@])",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|for|each|reverse|label|return|critical|spawn|from|implements|virtual)\\b",
 					"name": "keyword.control.objeck"
 				},
 				{
@@ -145,6 +182,101 @@
 				{
 					"name": "storage.modifier.objeck",
 					"match": "\\b(public|private|static|native|virtual)\\b"
+				}
+			]
+		},
+		"agent-declarations": {
+			"comment": "agent Name(...) { backend : ...; ... }: 'agent' is a word only at the start of a declaration; the setting names are words only inside its braces (docs/design/AGENT_SYNTAX.md)",
+			"begin": "^\\s*(agent)\\s+([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[({])",
+			"beginCaptures": {
+				"1": {
+					"name": "entity.name.type.class"
+				},
+				"2": {
+					"name": "entity.name.type.agent.objeck"
+				}
+			},
+			"end": "(?<=\\})",
+			"patterns": [
+				{
+					"include": "#agent-braces"
+				},
+				{
+					"include": "$self"
+				}
+			]
+		},
+		"agent-braces": {
+			"begin": "\\{",
+			"end": "\\}",
+			"patterns": [
+				{
+					"name": "keyword.other.agent-setting.objeck",
+					"match": "\\b(backend|instructions|tools|mcp|allow|deny|trace)(?=\\s*:(?!=))"
+				},
+				{
+					"name": "keyword.other.agent-setting.objeck",
+					"match": "\\b(budget)(?=\\s*\\{)"
+				},
+				{
+					"name": "variable.parameter.agent-limit.objeck",
+					"match": "\\b(steps|tokens|tool_calls|model_calls|wall_ms|model_call_ms|cost)(?=\\s*:(?!=))"
+				},
+				{
+					"include": "#agent-braces"
+				},
+				{
+					"include": "$self"
+				}
+			]
+		},
+		"prompt-literals": {
+			"comment": "prompt \"...\": 'prompt' is a word only before a string; {name} and {name : Type} are holes, {{ and }} literal braces (docs/design/AGENT_SYNTAX.md)",
+			"begin": "\\b(prompt)(\\s*)(\")",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.prompt.objeck"
+				},
+				"3": {
+					"name": "string.quoted.double.objeck"
+				}
+			},
+			"end": "\"",
+			"endCaptures": {
+				"0": {
+					"name": "string.quoted.double.objeck"
+				}
+			},
+			"contentName": "string.quoted.double.objeck",
+			"patterns": [
+				{
+					"name": "constant.character.escape.objeck",
+					"match": "\\\\."
+				},
+				{
+					"name": "constant.character.escape.objeck",
+					"match": "\\{\\{|\\}\\}"
+				},
+				{
+					"name": "meta.interpolation.objeck",
+					"match": "\\{\\$[^}\"]*\\}"
+				},
+				{
+					"match": "(\\{)\\s*(@?[A-Za-z_][A-Za-z0-9_]*)\\s*(?:(:)\\s*(String|Int|Float|Bool|Char|Byte)\\s*)?(\\})",
+					"captures": {
+						"1": {
+							"name": "punctuation.section.embedded.begin.objeck"
+						},
+						"2": {
+							"name": "variable.parameter.prompt-hole.objeck"
+						},
+						"4": {
+							"name": "storage.type.objeck"
+						},
+						"5": {
+							"name": "punctuation.section.embedded.end.objeck"
+						}
+					}
 				}
 			]
 		},

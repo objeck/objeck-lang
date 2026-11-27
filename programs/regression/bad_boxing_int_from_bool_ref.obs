@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (14,10): Invalid cast with classes: System.Int and System.BoolRef
+# EXPECT_ERROR_COUNT: 1
+#~
+A BoolRef is never a number: returned from a method that returns an Int it is
+refused, at the 'return', as a Bool is.
+~#
+use Collection;
+
+class BadBoxingIntFromBoolRef {
+	function : First(flags : Vector<BoolRef>) ~ Int {
+		if(flags->IsEmpty()) {
+			return 0;
+		};
+		return flags->Get(0);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		flags := Vector->New()<BoolRef>;
+		flags->AddBack(true);
+		First(flags)->PrintLine();
+	}
+}

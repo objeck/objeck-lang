@@ -1,0 +1,123 @@
+#~
+Method references, 'using', the nil-guard, 'spawn' and 'match' in one flow:
+  - 'Class->Function' added to an inferred Vector of function values, and written
+    in a collection literal for one, and called
+  - a 'using' whose resource may be Nil, guarded in the body: 'found := r ?? return -1;'
+    returns from a method that ends in the 'using'; a Nil resource is not closed
+  - each function value captured by a 'spawn' block that opens a resource with 'using'
+    on its own thread and reports through a 'match' value; every resource is closed
+~#
+use Collection;
+use System.Concurrency;
+
+class Res {
+	@@closed : static : Int;
+	@@mutex : static : ThreadMutex;
+	@name : String;
+
+	New(name : String) {
+		@name := name;
+	}
+
+	function : Init() ~ Nil {
+		@@mutex := ThreadMutex->New("res");
+		@@closed := 0;
+	}
+
+	method : public : Close() ~ Nil {
+		critical(@@mutex) {
+			@@closed += 1;
+		};
+	}
+
+	method : public : Name() ~ String {
+		return @name;
+	}
+
+	function : Closed() ~ Int {
+		return @@closed;
+	}
+
+	function : Open(name : String) ~ Res {
+		if(name->Size() = 0) {
+			return Nil;
+		};
+		return Res->New(name);
+	}
+}
+
+class InteractMethodRefsUsingSpawn {
+	function : Upper(s : String) ~ String {
+		return s->ToUpper();
+	}
+
+	function : Twice(s : String) ~ String {
+		return s + s;
+	}
+
+	function : Length(name : String) ~ Int {
+		using(r := Res->Open(name)) {
+			found := r ?? return -1;
+			return found->Name()->Size();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Res->Init();
+
+		steps : Vector<Func2Ref<String, String>> := Vector->New();
+		steps->AddBack(InteractMethodRefsUsingSpawn->Upper);
+		steps->AddBack(InteractMethodRefsUsingSpawn->Twice);
+		text := "ab";
+		each(step in steps) {
+			text := step->Get()(text);
+		};
+		assert text->Equals("ABAB") : "method references in an inferred Vector";
+
+		same : Vector<Func2Ref<String, String>> := [InteractMethodRefsUsingSpawn->Upper, InteractMethodRefsUsingSpawn->Twice];
+		again := "cd";
+		each(step in same) {
+			again := step->Get()(again);
+		};
+		assert again->Equals("CDCD") : "method references in a collection literal";
+
+		assert Length("abc") = 3 : "a using that returns its value";
+		assert Res->Closed() = 1 : "the resource was closed";
+		assert Length("") = -1 : "a Nil resource, guarded";
+		assert Res->Closed() = 1 : "a Nil resource is not closed";
+
+		results := Vector->New()<String>;
+		mutex := ThreadMutex->New("results");
+		workers : Vector<Thread> := Vector->New();
+		for(round := 0; round < 8; round += 1;) {
+			each(step in steps) {
+				workers->AddBack(spawn {
+					using(r := Res->Open("thread")) {
+						value := step->Get()(r->Name());
+						word := match value->Size() { 6 => "six", 12 => "twelve", other => value };
+						critical(mutex) {
+							results->AddBack(word);
+						};
+					};
+				});
+			};
+		};
+		each(worker in workers) {
+			worker->Join();
+		};
+
+		six := 0;
+		twelve := 0;
+		each(result in results) {
+			match result {
+				"six" => { six += 1; }
+				"twelve" => { twelve += 1; }
+				other => { "unexpected: {$result}"->PrintLine(); }
+			};
+		};
+		assert six = 8 & twelve = 8 : "each thread called its own function value";
+		assert Res->Closed() = 17 : "every thread closed its resource";
+
+		"PASS: method references, using, the nil-guard, spawn and match"->PrintLine();
+	}
+}

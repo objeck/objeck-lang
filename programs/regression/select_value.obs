@@ -1,0 +1,128 @@
+#~
+'select' used as a value, a table of values:
+`x := select(subject) { label a, b: value  label c: value  other: value };`
+The labels are the ones a `select` statement takes; each is followed by a value
+instead of a block, and the whole is the value of the label that matches. It has
+to yield a value whatever the subject is, so it needs `other` unless the subject
+is an enum and the labels name every item. Covers the same ground as the
+statement it replaces: `label X: { return "..."; }` for each X.
+~#
+use Collection;
+
+enum Token {
+	Number,
+	Word,
+	Plus,
+	Minus,
+	End
+}
+
+class SelectValue {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := SelectValue->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	# the statement form this replaces
+	function : NameLong(t : Token) ~ String {
+		select(t) {
+			label Token->Number: {
+				return "number";
+			}
+
+			label Token->Word: {
+				return "word";
+			}
+
+			label Token->Plus:
+			label Token->Minus: {
+				return "operator";
+			}
+
+			other: {
+				return "end";
+			}
+		};
+	}
+
+	function : Name(t : Token) ~ String {
+		return select(t) {
+			label Token->Number: "number"
+			label Token->Word: "word"
+			label Token->Plus, Token->Minus: "operator"
+			label Token->End: "end"
+		};
+	}
+
+	function : Count(n : Int) ~ String {
+		return select(n) {
+			label 0: "none"
+			label 1: "one"
+			label 2, 3: "few"
+			other: "many"
+		};
+	}
+
+	function : Scale(unit : String, value : Float) ~ Float {
+		return value * select(unit) {
+			label "km": 1000.0;
+			label "m": 1.0;
+			label "cm": 0.01;
+			other: 0.0;
+		};
+	}
+
+	function : Precedence(c : Char) ~ Int {
+		return select(c) { label '+', '-': 1  label '*', '/': 2  label '^': 3  other: 0 };
+	}
+
+	method : Run() ~ Nil {
+		same := true;
+		each(k : 5) {
+			t := k->As(Token);
+			if(<>Name(t)->Equals(NameLong(t))) {
+				same := false;
+			};
+		};
+		Check("same as the statement", same & Name(Token->Minus)->Equals("operator") & Name(Token->End)->Equals("end"));
+
+		Check("int", Count(0)->Equals("none") & Count(1)->Equals("one") & Count(2)->Equals("few") & Count(3)->Equals("few") & Count(4)->Equals("many"));
+		Check("string and float", Scale("km", 2.5) = 2500.0 & Scale("cm", 200.0) = 2.0 & Scale("mile", 1.0) = 0.0);
+		Check("char", Precedence('+') = 1 & Precedence('/') = 2 & Precedence('^') = 3 & Precedence('x') = 0);
+
+		# as an argument, and with a call on the value
+		names := Vector->New()<String>;
+		each(k : 4) {
+			names->AddBack(select(k) { label 0: "zero" label 1: "one" other: "many" });
+		};
+		Check("argument", names->Get(0)->Equals("zero") & names->Get(1)->Equals("one") & names->Get(3)->Equals("many"));
+		k := 2;
+		Check("call on value", select(k) { label 2: "two" other: "" }->Size() = 3);
+
+		# 'match' and 'select' values together
+		t := Token->Plus;
+		mixed := select(k) { label 2: match t { Token->Plus => "+", Token->Minus => "-", other => "?" }  other: "" };
+		Check("with match", mixed->Equals("+"));
+
+		if(@fails = 0) {
+			"PASS: select value"->PrintLine();
+		}
+		else {
+			"FAIL: select value"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

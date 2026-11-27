@@ -62,11 +62,11 @@ def compile_one(args):
     m = re.search(r"# EXTRA_LIBS:\s*(\S+)", text)
     if m:
         libs += "," + m.group(1)
-    variants = [("s3", ["-opt", "s3"]), ("s0", ["-opt", "s0"])]
+    # every level for every program: a pass that only -opt s1 and s2 end with, or that a later
+    # level's pass happens to repair, writes an image the other levels never show
+    variants = [(opt, ["-opt", opt]) for opt in ("s3", "s0", "s1", "s2")]
     if idx % 4 == 0:
         variants.append(("dbg", ["-debug"]))
-    if idx % 3 == 0:
-        variants += [("s1", ["-opt", "s1"]), ("s2", ["-opt", "s2"])]
     made = 0
     for tag, flags in variants:
         dest = os.path.join(out, "img", "%05d__%s.obe" % (idx, tag))
@@ -102,7 +102,7 @@ for lib, names in sorted(by_file.items()):
             f.write("class Cover {\n  function : Main(args : String[]) ~ Nil {\n" +
                     "".join("    v%d : %s;\n" % (i, n) for i, n in enumerate(keep)) + "  }\n}\n")
         ok = True
-        for opt in ("s0", "s3"):
+        for opt in ("s0", "s1", "s2", "s3"):
             dest = src[:-4] + "__%s.obe" % opt
             p = subprocess.run([obc, "-src", src, "-lib", ALL, "-opt", opt, "-dest", dest], capture_output=True,
                                env=env, timeout=900)
@@ -128,6 +128,12 @@ for lib, names in sorted(by_file.items()):
         have = {c["name"] for c in obe_image.parse(image)[1]}
         linked += sum(1 for n in keep if n.split("<")[0] in have)
 print("library classes documented %d, linked whole %d" % (documented, linked))
+# The whole-library half can stop running without a refusal to show for it: an API index
+# whose classes name no library file puts every class in one program, which does not compile.
+cover_failed = documented > 0 and linked == 0
+if cover_failed:
+    print("  NO LIBRARY LINKED WHOLE: the index names %d library file(s) for %d classes; "
+          "the libraries' own code was not loaded" % (len([f for f in by_file if f]), documented))
 
 # ---- load every image ----
 files = []
@@ -157,4 +163,4 @@ with ThreadPoolExecutor(jobs) as ex:
 print("images loaded %d, refused or failing %d" % (len(files), refused))
 for rule, n in rules.most_common():
     print("%6d  %s" % (n, rule))
-sys.exit(1 if refused else 0)
+sys.exit(1 if refused or cover_failed else 0)

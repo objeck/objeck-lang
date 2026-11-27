@@ -1,0 +1,78 @@
+#~
+Nil-guard-and-bail: `x := E ?? return V;`, `?? break;`, `?? continue;` and the block form
+`x := E ?? { ...; return V };` / `x ?? { ...; Runtime->Exit(1) };` are statements that
+leave when E (or x) is Nil, and otherwise leave x bound to a non-Nil value. They are
+`x := E;` followed by `if(x = Nil) { ... }`; the existing `a ?? b` (a default value) is
+unchanged. The block must end in return, break, continue or Runtime->Exit.
+~#
+use Collection;
+
+class NilGuard {
+	function : Find(v : Vector<IntRef>, i : Int) ~ IntRef {
+		if(i < v->Size()) { return v->Get(i); };
+		return Nil;
+	}
+
+	function : First(v : Vector<IntRef>, i : Int) ~ Int {
+		x := Find(v, i) ?? return -1;
+		return x->Get();
+	}
+
+	function : Block(v : Vector<IntRef>, i : Int) ~ Int {
+		x := Find(v, i) ?? {
+			"missing"->PrintLine();
+			return -2
+		};
+		return x->Get() * 10;
+	}
+
+	function : Plain(v : Vector<IntRef>, i : Int) ~ Int {
+		x := Find(v, i);
+		x ?? { return -3 };
+		return x->Get() + 1;
+	}
+
+	function : Loop(v : Vector<IntRef>) ~ Int {
+		total := 0;
+		each(i : 4) {
+			x := Find(v, i) ?? continue;
+			total += x->Get();
+		};
+		each(i : 10) {
+			y := Find(v, i) ?? break;
+			total += 100;
+		};
+		return total;
+	}
+
+	function : Default(v : Vector<IntRef>, i : Int) ~ Int {
+		# the value form of ?? is unchanged
+		x := Find(v, i) ?? IntRef->New(7);
+		return x->Get();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		v := Vector->New()<IntRef>;
+		v->AddBack(IntRef->New(1));
+		v->AddBack(IntRef->New(2));
+
+		if(First(v, 1) <> 2) { "FAIL return present"->PrintLine(); pass := false; };
+		if(First(v, 5) <> -1) { "FAIL return absent"->PrintLine(); pass := false; };
+		if(Block(v, 0) <> 10) { "FAIL block present"->PrintLine(); pass := false; };
+		if(Block(v, 9) <> -2) { "FAIL block absent"->PrintLine(); pass := false; };
+		if(Plain(v, 1) <> 3) { "FAIL statement present"->PrintLine(); pass := false; };
+		if(Plain(v, 4) <> -3) { "FAIL statement absent"->PrintLine(); pass := false; };
+		# continue skips the two missing slots, break stops at the first missing one
+		if(Loop(v) <> 3 + 200) { "FAIL loop"->PrintLine(); pass := false; };
+		if(Default(v, 0) <> 1 | Default(v, 8) <> 7) { "FAIL default form"->PrintLine(); pass := false; };
+
+		if(pass) {
+			"PASS: nil guard"->PrintLine();
+		}
+		else {
+			"FAIL: nil guard"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -36,6 +36,13 @@
 
 using namespace frontend;
 
+// a function that must not be merged into its caller: see the note above Parser::ParseNilGuardStatement
+#if defined(_MSC_VER)
+#define PARSER_NO_INLINE __declspec(noinline)
+#else
+#define PARSER_NO_INLINE __attribute__((noinline))
+#endif
+
 #define SECOND_INDEX 1
 #define THIRD_INDEX 2
 #define DEFAULT_BUNDLE_NAME L"Default"
@@ -82,7 +89,7 @@ public:
  * Turns tokens into trees
  ****************************/
 enum McpKind {
-    MK_INT, MK_FLOAT, MK_BOOL, MK_BYTE, MK_CHAR, MK_STRING, MK_JSON, MK_ENUM, MK_RECORD, MK_ARRAY, MK_VECTOR, MK_MAP, MK_CALL
+    MK_INT, MK_FLOAT, MK_BOOL, MK_BYTE, MK_CHAR, MK_STRING, MK_JSON, MK_ENUM, MK_RECORD, MK_JSONCLS, MK_ARRAY, MK_VECTOR, MK_MAP, MK_CALL
 };
 
 
@@ -93,6 +100,7 @@ struct McpTy {
   std::wstring name;                // an enum or a record, as written in the source
   std::vector<std::wstring> items;  // the items of an enum, the fields of a record (in order)
   std::vector<McpTy> kids;          // the element of an array, Vector or Map; the types of a record's fields
+  std::vector<bool> optional;       // a 'class : json' class: which fields are optional (same order as items)
   std::wstring text;                // the type as Objeck source text
 };
 
@@ -103,12 +111,37 @@ struct McpCandidate {
   ToolDoc doc;
 };
 
-// a class with tagged functions, waiting for every file to be read
+// a class with tagged functions or a 'class : json', waiting for every file to be read
 struct McpPending {
   Class* klass;
   ParsedBundle* bundle;
   std::vector<McpCandidate> tools;
   bool uses_mcp;   // its file has 'use API.MCP'
+  bool is_json = false;                 // a 'class : json': its JsonSchema, JsonFill, FromJson and Ask are derived too
+  int json_line = 0;
+  std::vector<std::wstring> lib_uses;   // the 'use' names of its file
+};
+
+
+// One piece of the user's own text in an 'agent' declaration (docs/design/AGENT_SYNTAX.md): the parameter list
+// or an expression, read in place by a second scanner started at (line, pos) of 'text'; or, with 'name' set, a
+// class named in 'tools', which is put at (line, pos).
+struct AgentSplice {
+  std::wstring file_name;
+  std::wstring text;
+  std::wstring name;
+  std::wstring what;
+  int line = 0;
+  int pos = 0;
+};
+
+// a class named in 'tools' of an 'agent' declaration, checked when every file has been parsed
+struct AgentToolClass {
+  std::wstring file_name;
+  std::wstring class_name;
+  std::wstring agent_name;
+  int line = 0;
+  int pos = 0;
 };
 
 
@@ -123,9 +156,21 @@ class Parser {
   // classes with '@tool' functions, derived when every file has been read; and the files that did not parse
   std::vector<McpPending> mcp_pending;
   std::set<std::wstring> mcp_broken_files;
+  // the records and json classes whose fields are being read (McpAnalyze): one found again holds itself
+  std::vector<Class*> mcp_class_stack;
   // the method being parsed: its type parameters and their bounds, as they erase (#1242)
   std::map<std::wstring, std::wstring> method_generic_bounds;
+  // constructor parameters written '@name' that fill the field of that name (field promotion)
+  std::vector<std::wstring> promoted_fields;
+  bool ClassDeclaresField(const std::wstring& name);
+  // 'x := E ?? return V;' / 'x := E ?? { ...; return };': the statements that run when E is Nil,
+  // taken by the assignment that owns the expression (see ParseNilGuardBail, ParseAssignment)
+  StatementList* nil_guard_bail = nullptr;
+  StatementList* ParseNilGuardBail(int depth);
+  If* MakeNilGuard(Variable* target, StatementList* bail);
   Method* prev_method;
+  // true while the class of a 'spawn' is being parsed
+  bool spawn_class;
   Scanner* scanner;
   SymbolTableManager* symbol_table;
   std::map<ScannerTokenType, std::wstring> error_msgs;
@@ -149,6 +194,10 @@ class Parser {
   // the copies back after a statement with 'ref' arguments (#1243)
   std::vector<Statement*> trailing_statements;
   int hidden_local_id = 0;
+  // above zero while the condition of an 'if' is read: 'is' ends a name there
+  int in_if_condition = 0;
+  // true while the type of 'value is Type name' is read: its name ends before 'name'
+  bool in_type_test_type = false;
   // set once the scanner has rejected a token: the parse is skipped ahead to
   // the next ';', and what it reports at the end of the file after that is
   // the same mistake again (a skipped '{' or '}' leaves a block unbalanced)
@@ -186,6 +235,12 @@ class Parser {
     ~ChainScope() { ref = saved; }
   };
   void CheckDepth(int depth);
+  // branches of ParseStatement and ParseIf kept out of their stack frames
+  Statement* ParseNilGuardStatement(int line_num, int line_pos, int depth);
+  Statement* ParseMatchStatement(int line_num, int line_pos, int depth);
+  bool IsTypeTestStart();
+  bool DeclareTypeTestName(SymbolEntry* bind_entry, Assignment* bind_assign);
+  void PrependTypeTestBinding(StatementList* if_statements, SymbolEntry* bind_entry, Assignment* bind_assign);
   void CheckChain();
 
   // true for a token that can only begin a declaration, never appear inside a body
@@ -310,18 +365,48 @@ class Parser {
   void ParseBundle(int depth);
   Class* ParseClass(const std::wstring& bundle_id, int depth);
   void GenerateRecordMethods(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
+  void GenerateFieldAccessors(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth);
   // '@tool' functions (docs/design/MCP_FIRST_CLASS.md): the functions written for a class that has some
   void GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bool uses_mcp, int depth);
   void GeneratePendingMcpTools();
-  void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth);
+  void McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by = nullptr);
+  bool McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth);
+  void GenerateJsonClass(Class* klass, int line, int depth);
   bool McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth);
   Enum* McpFindEnum(const std::wstring& name);
   Class* McpFindClass(const std::wstring& name);
   // a tagged doc comment before something that is not a function
   void RejectToolDoc(const wchar_t* what);
+  // 'prompt "..."' (docs/design/AGENT_SYNTAX.md): the word 'prompt' directly before a string literal
+  inline bool IsPromptLiteral() {
+    return Match(TOKEN_IDENT) && (Match(TOKEN_CHAR_STRING_LIT, 1) || Match(TOKEN_BAD_CHAR_STRING_LIT, 1)) &&
+           scanner->GetToken()->GetIdentifier() == L"prompt";
+  }
+  Expression* ParsePromptLiteral(int depth);
+  // 'agent Name {' or 'agent Name(' where a class may be declared (docs/design/AGENT_SYNTAX.md)
+  inline bool IsAgentDeclaration() {
+    return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, 1) && (Match(TOKEN_OPEN_BRACE, 2) || Match(TOKEN_OPEN_PAREN, 2)) &&
+           scanner->GetToken()->GetIdentifier() == L"agent";
+  }
+  // the pieces of the 'agent' declaration being parsed; null at any other time
+  std::vector<AgentSplice>* agent_splices = nullptr;
+  // a placeholder for one of those pieces, in the class written for the declaration
+  inline bool IsAgentSplice() {
+    return agent_splices && IsAgentSpliceName();
+  }
+  // Out of line on purpose: the token's text is a copy, and inline the copy would sit in the frame of each
+  // caller, which are the functions that recurse once per nesting level (the nesting limit is a stack budget).
+  bool IsAgentSpliceName();
+  Class* ParseAgent(const std::wstring& bundle_name, int depth);
+  Expression* ParseAgentSplice(DeclarationList** declarations, int depth);
+  Statement* ParseAgentName(int depth);
+  std::vector<AgentToolClass> agent_tool_classes;
+  void CheckAgentToolClasses();
   Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
-  Lambda* ParseLambda(int depth);
+  Lambda* ParseLambda(int depth, Type* block_type = nullptr);
+  bool IsSpawn();
+  MethodCall* ParseSpawn(int depth);
   Variable* ParseVariable(IdentifierContext &context, int depth);
   std::vector<Type*> ParseGenericTypes(int depth);
   std::vector<Class*> ParseGenericClasses(const std::wstring &bundle_name, int depth);
@@ -335,6 +420,8 @@ class Parser {
   Statement* ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth);
   Statement* ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth);
   void TakePendingStatements(StatementList* statements);
+  // the hidden local a SequenceExpression leaves its value in
+  SymbolEntry* AddHiddenLocal(const std::wstring& what, std::wstring& ident, int line_num, int line_pos);
   void TakeTrailingStatements(StatementList* statements, Statement* statement);
   Expression* ParseReferenceArgument(Expression* expression);
   void CheckStatementSeparator(Statement* statement);
@@ -346,10 +433,28 @@ class Parser {
   Statement* ParseControlFlowStatement(int line_num, int line_pos, const std::wstring& file_name, int depth);
   Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
+  // 'json{"name": value, "list": [a, b], "inner": {...}}': a Data.JSON.JsonElement built in place
+  bool IsJsonLiteralStart();
+  Expression* ParseJsonObject(int depth);
+  Expression* ParseJsonArray(int depth);
+  Expression* ParseJsonValue(int depth);
+  Expression* MakeJsonElement(const std::wstring& json_type, int line_num, int line_pos);
+  SequenceExpression* MakeJsonContainer(const std::wstring& json_type, std::wstring& ident, int line_num, int line_pos);
+  // '{key: value, ...}': a Map or Hash, typed by what it is assigned to
+  Expression* ParseMapLiteral(int depth);
   If* ParseIf(int depth);
+  // 'if(value is Type name) { ... }': the test, and the declaration of 'name' its block starts with
+  Expression* ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth);
   DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);
   Select* ParseSelect(int depth);
+  // 'match subject { pattern | pattern => ..., other => ... }' and 'select' as a value
+  bool IsMatchStart();
+  Select* ParseMatch(bool is_statement, std::wstring& value_ident, int depth);
+  Expression* ParseMatchExpression(int depth);
+  Expression* ParseSelectExpression(int depth);
+  StatementList* MakeValueArm(const std::wstring& value_ident, Expression* value, int line_num, int line_pos);
+  Expression* MakeValueSelect(Select* select, const std::wstring& value_ident, int line_num, int line_pos);
   Enum* ParseEnum(int depth);
   Alias* ParseLambdas(int depth);
   Enum* ParseConsts(int depth);
@@ -358,6 +463,13 @@ class Parser {
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   Try* ParseTry(int depth);
+  // 'assert E : "label";' (contextual): desugars to a check that calls System.Test->Fail
+  Expression* ClonePureOperand(Expression* expression, const std::wstring& file_name, int line_num, int line_pos);
+  bool IsAssertStatement();
+  std::wstring AssertSourceText(int start_line, int start_pos, int end_line, int end_pos);
+  Statement* ParseAssert(int depth);
+  // 'using(w := E) { ... }' (contextual)
+  Using* ParseUsing(int depth);
   For* ParseEach(bool reverse, int depth);
   Expression* HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
                                   const int line_num, const int line_pos, int depth);
@@ -388,6 +500,7 @@ class Parser {
     LoadErrorCodes();
     current_class = nullptr;
     current_method = prev_method = nullptr;
+    spawn_class = false;
     pending_generic_closes = 0;
     is_semi_colon = false;
   }

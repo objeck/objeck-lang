@@ -15,8 +15,7 @@ bundle Default {
 								custom_fields := result->Get("customFieldValues");
 								if(custom_fields <> Nil & custom_fields->GetType() = JsonElement->JsonType->ARRAY) {
 									IO.Console->Print("field count=")->PrintLine(custom_fields->Size());										
-									each(i : custom_fields) {
-										custom_field := custom_fields->Get(i);
+									each(custom_field in custom_fields) {
 										if(custom_field <> Nil & custom_field->GetType() = JsonElement->JsonType->OBJECT) {								
 											# get id
 											id := custom_field->Get("customfieldId");

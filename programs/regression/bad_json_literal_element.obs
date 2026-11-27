@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: (12,33): An element of a JSON array is a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]; this one is Collection.Vector
+# EXPECT_ERROR_COUNT: 1
+#~
+An element of an array in a JSON literal is one JsonElement has an Add for.
+~#
+use Collection;
+use Data.JSON;
+
+class BadJsonLiteralElement {
+	function : Main(args : String[]) ~ Nil {
+		names := Vector->New()<String>;
+		request := json{"tags": ["a", names]};
+		request->ToString()->PrintLine();
+	}
+}

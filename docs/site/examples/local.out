@@ -1,0 +1,3 @@
+$ obc -src local.obs -lib agent,json,net,cipher,misc
+$ obr local.obe
+17 * 23 is 391. (completed, 1 tool call)

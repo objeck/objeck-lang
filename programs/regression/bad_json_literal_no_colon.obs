@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: (11,28): Expected ':' after the name of a JSON member
+# EXPECT_ERROR_COUNT: 1
+#~
+A member is a name, a colon and a value.
+~#
+use Collection;
+use Data.JSON;
+
+class BadJsonLiteralNoColon {
+	function : Main(args : String[]) ~ Nil {
+		request := json{"model" "m"};
+		request->ToString()->PrintLine();
+	}
+}

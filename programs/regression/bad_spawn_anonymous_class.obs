@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: (14,15): 'spawn' cannot be used in a method of an anonymous class
+#~
+'spawn' is written out as an anonymous Thread class, and anonymous classes do
+not nest: a 'spawn' in a method of one is refused where it is written.
+~#
+use System.Concurrency;
+
+class BadSpawnAnonymousClass {
+	function : Main(args : String[]) ~ Nil {
+		runner := Base->New() {
+			New() { Parent(); }
+
+			method : public : Go() ~ Nil {
+				worker := spawn {
+					"never compiled"->PrintLine();
+				};
+				worker->Join();
+			}
+		};
+		runner->GetClassID()->PrintLine();
+	}
+}

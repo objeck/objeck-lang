@@ -83,10 +83,21 @@ bundle API.MCP {
 
 	# Builds JSON-RPC 2.0 messages
 	class : private : McpMessage {
+		#~
+		Makes a JSON null, the id an error reply carries when the request's id is unknown
+		@return a JSON null element
+		~#
 		function : NullId() ~ JsonElement {
 			return JsonElement->New(JsonElement->JsonType->NULL);
 		}
 
+		#~
+		Builds a JSON-RPC 2.0 error reply
+		@param id id of the request being answered; Nil is sent as JSON null
+		@param code JSON-RPC error code
+		@param message error text
+		@return the reply object
+		~#
 		function : Error(id : JsonElement, code : Int, message : String) ~ JsonElement {
 			reply := JsonElement->New(JsonElement->JsonType->OBJECT);
 			reply->Insert("jsonrpc", "2.0");
@@ -104,6 +115,12 @@ bundle API.MCP {
 			return reply;
 		}
 
+		#~
+		Builds a JSON-RPC 2.0 success reply
+		@param id id of the request being answered
+		@param result the result value
+		@return the reply object
+		~#
 		function : Result(id : JsonElement, result : JsonElement) ~ JsonElement {
 			reply := JsonElement->New(JsonElement->JsonType->OBJECT);
 			reply->Insert("jsonrpc", "2.0");
@@ -112,6 +129,12 @@ bundle API.MCP {
 			return reply;
 		}
 
+		#~
+		Builds a JSON-RPC 2.0 notification, a message with no id that is never answered
+		@param rpc method name
+		@param params the parameters object, Nil to leave "params" out
+		@return the notification object
+		~#
 		function : Notification(rpc : String, params : JsonElement) ~ JsonElement {
 			note := JsonElement->New(JsonElement->JsonType->OBJECT);
 			note->Insert("jsonrpc", "2.0");
@@ -122,6 +145,13 @@ bundle API.MCP {
 			return note;
 		}
 
+		#~
+		Builds a JSON-RPC 2.0 request
+		@param id numeric request id
+		@param rpc method name
+		@param params the parameters object, Nil to leave "params" out
+		@return the request object
+		~#
 		function : Request(id : Int, rpc : String, params : JsonElement) ~ JsonElement {
 			request := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request->Insert("jsonrpc", "2.0");
@@ -133,6 +163,12 @@ bundle API.MCP {
 			return request;
 		}
 
+		#~
+		Reads a string field of a JSON object
+		@param json the object
+		@param name field name
+		@return the field's text, Nil when json is not an object or the field is absent or is not a string
+		~#
 		# a string field, Nil when absent or not a string
 		function : Str(json : JsonElement, name : String) ~ String {
 			if(json = Nil | json->GetType() <> JsonElement->JsonType->OBJECT) {
@@ -146,6 +182,11 @@ bundle API.MCP {
 			return elem->GetString();
 		}
 
+		#~
+		Says whether a value can be a JSON-RPC request id, which is a string or a number
+		@param id the value, may be Nil
+		@return true for a string or a number, false for Nil or any other type
+		~#
 		function : IsId(id : JsonElement) ~ Bool {
 			if(id = Nil) {
 				return false;
@@ -153,6 +194,11 @@ bundle API.MCP {
 			return id->GetType() = JsonElement->JsonType->STRING | id->GetType() = JsonElement->JsonType->NUMBER;
 		}
 
+		#~
+		Parses the text of a message
+		@param text message text
+		@return the parsed element, Nil for Nil, empty or non-JSON text
+		~#
 		# Parses a message, Nil for text that is not JSON. The parser reads a bare word as a string and
 		# ignores what follows the first value, so the first and last characters are checked as well, and
 		# an object, array or string must end where the text does: one message, nothing after it
@@ -162,7 +208,7 @@ bundle API.MCP {
 			};
 
 			trimmed := text->Trim();
-			if(trimmed->Size() = 0) {
+			if(trimmed->IsEmpty()) {
 				return Nil;
 			};
 
@@ -229,11 +275,21 @@ bundle API.MCP {
 			return false;
 		}
 
+		#~
+		Gets the text from an offset to its end
+		@param text the text
+		@param offset index of the first character to keep
+		@return the rest of the text
+		~#
 		# the text from an offset to its end
 		function : Tail(text : String, offset : Int) ~ String {
 			return text->SubString(offset, text->Size() - offset);
 		}
 
+		#~
+		Makes an empty JSON object
+		@return the object
+		~#
 		function : EmptyObject() ~ JsonElement {
 			return JsonElement->New(JsonElement->JsonType->OBJECT);
 		}
@@ -243,6 +299,9 @@ bundle API.MCP {
 	A place the server writes the messages it sends on its own: progress notifications, and every reply on the stdio transport
 	~#
 	class McpSink {
+		#~
+		Constructor
+		~#
 		New() {
 		}
 
@@ -260,12 +319,19 @@ bundle API.MCP {
 		@messages : Vector<String>;
 		@mutex : ThreadMutex;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 			@messages := Vector->New()<String>;
 			@mutex := ThreadMutex->New("mcp_collector");
 		}
 
+		#~
+		Adds the message to the collected list, holding the lock
+		@param message message text
+		~#
 		method : public : Send(message : String) ~ Nil {
 			critical(@mutex) {
 				@messages->AddBack(message);
@@ -302,11 +368,18 @@ bundle API.MCP {
 	class McpStdoutSink from McpSink {
 		@mutex : ThreadMutex;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 			@mutex := ThreadMutex->New("mcp_stdout");
 		}
 
+		#~
+		Writes the message and a newline to standard output and flushes it, holding the lock
+		@param message message text, one line
+		~#
 		method : public : Send(message : String) ~ Nil {
 			critical(@mutex) {
 				System.IO.Console->WriteString(message);
@@ -572,9 +645,7 @@ bundle API.MCP {
 		@param text the text
 		~#
 		method : public : AddText(text : String) ~ Nil {
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 			item := JsonElement->New(JsonElement->JsonType->OBJECT);
 			item->Insert("type", "text");
 			item->Insert("text", text);
@@ -724,9 +795,7 @@ bundle API.MCP {
 		New(name : String, arguments : JsonElement, id : JsonElement, token : JsonElement, sink : McpSink) {
 			@name := name;
 			@arguments := arguments;
-			if(@arguments = Nil) {
-				@arguments := McpMessage->EmptyObject();
-			};
+			@arguments := @arguments ?? McpMessage->EmptyObject();
 			@id := id;
 			@token := token;
 			@sink := sink;
@@ -891,9 +960,7 @@ bundle API.MCP {
 			@name := name;
 			@description := description;
 			@schema := schema;
-			if(@schema = Nil) {
-				@schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
-			};
+			@schema := @schema ?? JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
 			@handler := handler;
 		}
 
@@ -1017,6 +1084,11 @@ bundle API.MCP {
 			return @open_world = 1;
 		}
 
+		#~
+		Converts a hint value to the form the tool stores it in
+		@param value the hint
+		@return 1 for true, 2 for false (0 is kept for "not stated")
+		~#
 		# 1 for true, 2 for false
 		function : Hint(value : Bool) ~ Int {
 			if(value) {
@@ -1102,6 +1174,13 @@ bundle API.MCP {
 			return json;
 		}
 
+		#~
+		Copies one boolean annotation of a tools/list entry onto a tool. A value that is absent or is not JSON true or false leaves the hint unstated
+		@param notes the annotations object
+		@param key annotation name, such as readOnlyHint
+		@param tool the tool to set
+		@param which 0 for the read-only hint, 1 destructive, 2 idempotent, anything else open-world
+		~#
 		# copies one boolean annotation; anything but a JSON true or false is "not stated"
 		function : ReadHint(notes : JsonElement, key : String, tool : McpTool, which : Int) ~ Nil {
 			value := notes->Get(key);
@@ -1276,12 +1355,21 @@ bundle API.MCP {
 		@service : McpService;
 		@address : String;
 
+		#~
+		Constructor
+		@param service the server that is starting its HTTP transport
+		@param address the address shown in the announcement
+		~#
 		New(service : McpService, address : String) {
 			Parent();
 			@service := service;
 			@address := address;
 		}
 
+		#~
+		Polls the service about every 10 ms, for up to roughly 5 seconds, until it reports a bound port, then writes "mcp: serving http://address:port/" to standard error. Writes nothing if no port is bound in that time
+		@param arg not used
+		~#
 		method : public : Run(arg : System.Base) ~ Nil {
 			for(waited := 0; waited < 500; waited += 1;) {
 				port := @service->GetBoundPort();
@@ -1369,7 +1457,7 @@ bundle API.MCP {
 					};
 
 					end : Int;
-					if(literal->Size() = 0) {
+					if(literal->IsEmpty()) {
 						end := uri->Size();
 					}
 					else {
@@ -1544,9 +1632,7 @@ bundle API.MCP {
 		~#
 		function : FromJson(json : JsonElement) ~ McpResource {
 			uri := McpMessage->Str(json, "uri");
-			if(uri = Nil) {
-				uri := McpMessage->Str(json, "uriTemplate");
-			};
+			uri := uri ?? McpMessage->Str(json, "uriTemplate");
 			if(uri = Nil) {
 				return Nil;
 			};
@@ -1783,6 +1869,14 @@ bundle API.MCP {
 		@scope : String;
 		@slot : McpCall;
 
+		#~
+		Constructor
+		@param service the server that handles the message
+		@param root the message
+		@param sink where the reply is sent
+		@param scope a name for the connection or session, Nil for none
+		@param slot the call the request id is reserved under, Nil for none
+		~#
 		New(service : McpService, root : JsonElement, sink : McpSink, scope : String, slot : McpCall) {
 			@service := service;
 			@root := root;
@@ -1791,6 +1885,9 @@ bundle API.MCP {
 			@slot := slot;
 		}
 
+		#~
+		Handles the message and sends the reply through the sink when there is one. A failure is written to standard error. The service is told the job is done in either case
+		~#
 		method : public : Run() ~ Nil {
 			try {
 				reply := @service->HandleReserved(@root, @sink, @scope, @slot);
@@ -1810,11 +1907,19 @@ bundle API.MCP {
 	class : private : McpWorker from Thread {
 		@service : McpService;
 
+		#~
+		Constructor
+		@param service the server whose jobs the thread runs
+		~#
 		New(service : McpService) {
 			Parent();
 			@service := service;
 		}
 
+		#~
+		Runs the McpJob passed as the argument
+		@param arg the McpJob
+		~#
 		method : public : Run(arg : System.Base) ~ Nil {
 			job := arg->As(McpJob);
 			while(job <> Nil) {
@@ -1961,11 +2066,15 @@ bundle API.MCP {
 			return result;
 		}
 
+		#~
+		Adds one call to a tool's counters, creating them on first use
+		@param name tool name
+		@param kind 0 for a call that worked, 1 for a handler error, 2 for arguments that were rejected, 3 for a cancelled call
+		@param ms time spent in the handler, in milliseconds
+		~#
 		method : Count(name : String, kind : Int, ms : Float) ~ Nil {
 			critical(@mutex) {
-				if(@stats = Nil) {
-					@stats := Hash->New()<String, McpToolStat>;
-				};
+				@stats := @stats ?? Hash->New()<String, McpToolStat>;
 				stat := @stats->Find(name);
 				if(stat = Nil) {
 					stat := McpToolStat->New();
@@ -2311,7 +2420,7 @@ bundle API.MCP {
 			};
 
 			rpc := McpMessage->Str(root, "method");
-			if(rpc = Nil | rpc->Size() = 0) {
+			if(rpc = Nil | rpc->IsEmpty()) {
 				return McpMessage->Error(id, McpProtocol->InvalidRequest(), "Invalid Request: rpc must be a non-empty string");
 			};
 
@@ -2323,9 +2432,7 @@ bundle API.MCP {
 				return Nil;
 			};
 
-			if(params = Nil) {
-				params := McpMessage->EmptyObject();
-			};
+			params := params ?? McpMessage->EmptyObject();
 
 			# whatever a handler or a malformed argument does, the server answers and goes on
 			reply : JsonElement;
@@ -2346,6 +2453,11 @@ bundle API.MCP {
 			return reply;
 		}
 
+		#~
+		Handles a notification. Only notifications/cancelled does anything: it cancels the in-flight call whose id is the requestId. Nothing is ever answered
+		@param rpc method name
+		@param params the parameters object
+		~#
 		# a notification: nothing is answered, whatever it is
 		method : Notify(rpc : String, params : JsonElement, scope : String) ~ Nil {
 			if(rpc->Equals("notifications/cancelled")) {
@@ -2363,6 +2475,16 @@ bundle API.MCP {
 			};
 		}
 
+		#~
+		Routes a request to its handler by method name: initialize, ping, tools/list, tools/call, resources/list, resources/templates/list, resources/read, prompts/list or prompts/get
+		@param id the request id
+		@param rpc method name
+		@param params the parameters object
+		@param sink where progress notifications go
+		@param scope a name for the connection or session, Nil for none
+		@param slot the call the request id is reserved under, Nil for none
+		@return the reply, a method-not-found error for any other method, Nil for a call the client cancelled
+		~#
 		method : Dispatch(id : JsonElement, rpc : String, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			if(rpc->Equals("initialize")) {
 				return Initialize(id, params);
@@ -2423,6 +2545,12 @@ bundle API.MCP {
 			return McpMessage->Error(id, McpProtocol->MethodNotFound(), "Method not found: {$rpc}");
 		}
 
+		#~
+		Answers initialize. The protocol version is the one requested when this server speaks it, else its latest. The capabilities name only the tools, resources and prompts that were registered
+		@param id the request id
+		@param params the parameters object
+		@return the reply, an invalid-params error when protocolVersion, capabilities or clientInfo is missing
+		~#
 		method : Initialize(id : JsonElement, params : JsonElement) ~ JsonElement {
 			requested := McpMessage->Str(params, "protocolVersion");
 			if(requested = Nil) {
@@ -2475,6 +2603,15 @@ bundle API.MCP {
 			return McpMessage->Result(id, result);
 		}
 
+		#~
+		Answers tools/call. Arguments are checked against the tool's input schema first. A bad argument, a handler failure or a Nil result becomes a result with isError set, which the model can read; only a missing name, an unknown tool or arguments that are not an object are protocol errors. The call is registered as in flight while the handler runs so a cancellation can reach it
+		@param id the request id
+		@param params the parameters object: name, arguments and an optional _meta progressToken
+		@param sink where progress notifications go
+		@param scope a name for the connection or session, Nil for none
+		@param slot the call the request id is reserved under, Nil for none
+		@return the reply, Nil when the client cancelled the call
+		~#
 		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			name := McpMessage->Str(params, "name");
 			if(name = Nil) {
@@ -2574,9 +2711,7 @@ bundle API.MCP {
 				return Nil;
 			};
 
-			if(result = Nil) {
-				result := McpToolResult->Error("Tool {$name} returned no result");
-			};
+			result := result ?? McpToolResult->Error("Tool {$name} returned no result");
 
 			if(timer <> Nil) {
 				kind := 0;
@@ -2588,6 +2723,12 @@ bundle API.MCP {
 			return McpMessage->Result(id, result->ToJson());
 		}
 
+		#~
+		Answers resources/read with the first resource whose URI matches
+		@param id the request id
+		@param params the parameters object, with the uri
+		@return the reply with the contents, a resource-not-found error (-32002, with the uri as data) when nothing matches or the resource returns Nil, an internal error when the read fails
+		~#
 		method : ReadResource(id : JsonElement, params : JsonElement) ~ JsonElement {
 			uri := McpMessage->Str(params, "uri");
 			if(uri = Nil) {
@@ -2648,6 +2789,12 @@ bundle API.MCP {
 			return McpMessage->Result(id, result);
 		}
 
+		#~
+		Answers prompts/get
+		@param id the request id
+		@param params the parameters object: name and optional arguments
+		@return the prompt's messages, an invalid-params error for a missing name, an unknown prompt or a missing required argument, an internal error when the handler fails or returns Nil
+		~#
 		method : GetPrompt(id : JsonElement, params : JsonElement) ~ JsonElement {
 			name := McpMessage->Str(params, "name");
 			if(name = Nil) {
@@ -2792,9 +2939,17 @@ bundle API.MCP {
 		@total_ms : Float;
 		@max_ms : Float;
 
+		#~
+		Constructor
+		~#
 		New() {
 		}
 
+		#~
+		Counts one call
+		@param kind 1 for a handler error, 2 for rejected arguments, 3 for a cancellation; any other value is a call that worked
+		@param ms time spent in the handler, in milliseconds
+		~#
 		method : public : Add(kind : Int, ms : Float) ~ Nil {
 			@calls += 1;
 			if(kind = 1) {
@@ -2813,6 +2968,10 @@ bundle API.MCP {
 			};
 		}
 
+		#~
+		Converts the counters to JSON
+		@return object with calls, errors, invalid, cancelled, total_ms and max_ms
+		~#
 		method : public : ToJson() ~ JsonElement {
 			json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			json->Insert("calls", @calls);
@@ -2829,6 +2988,12 @@ bundle API.MCP {
 	# and the limits the schemas this library writes carry ("enum", "minimum" and "maximum" for a Byte, "minLength"
 	# and "maxLength" for a Char, the "items" of an array). What a schema advertises is what a handler may rely on
 	class : private : McpSchema {
+		#~
+		Checks arguments against the input schema: the required names, and the type, enum and array item type of each property that was given. Anything else in the schema is ignored
+		@param schema the tool's JSON Schema object
+		@param args the arguments object
+		@return Nil when the arguments fit (or the schema is not an object), else what is wrong
+		~#
 		# Nil when the arguments fit, else what is wrong
 		function : Check(schema : JsonElement, args : JsonElement) ~ String {
 			if(schema = Nil | schema->GetType() <> JsonElement->JsonType->OBJECT) {
@@ -2869,6 +3034,12 @@ bundle API.MCP {
 			return Nil;
 		}
 
+		#~
+		Checks a value against a property's "enum", "minimum" and "maximum", "minLength" and "maxLength", and an array against the type of its "items"
+		@param prop the property's schema
+		@param value the argument value
+		@return Nil when the value fits, else what is wrong
+		~#
 		# Nil when the value meets the property's "enum", "minimum" and "maximum", "minLength" and "maxLength" and
 		# array "items", else what is wrong
 		function : Constraint(prop : JsonElement, value : JsonElement) ~ String {
@@ -2958,6 +3129,12 @@ bundle API.MCP {
 			return Nil;
 		}
 
+		#~
+		Says whether a value has a JSON Schema type. An integer is a number with no '.', 'e' or 'E' in its text
+		@param kind schema type: string, number, integer, boolean, object, array or null
+		@param value the value
+		@return true when it fits; an unknown type name always fits
+		~#
 		function : Fits(kind : String, value : JsonElement) ~ Bool {
 			type := value->GetType();
 			if(kind->Equals("string")) {
@@ -2995,6 +3172,9 @@ bundle API.MCP {
 	class McpHttpHandler from Web.HTTP.Server.HttpRequestHandler {
 		@service : static : McpService;
 
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 		}
@@ -3006,12 +3186,23 @@ bundle API.MCP {
 			@service := service;
 		}
 
+		#~
+		Refuses GET with 405 and an Allow header of POST, DELETE
+		@param request the request
+		@param response the response
+		@return false
+		~#
 		method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			response->SetHeader("Allow", "POST, DELETE");
 			response->SetCodeContent(405, "");
 			return false;
 		}
 
+		#~
+		Ends a session: 200 when the Mcp-Session-Id header names a known session, 404 when it does not, 403 for an Origin that is not allowed
+		@param request the request
+		@param response the response
+		~#
 		method : ProcessDelete(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Nil {
 			if(@service = Nil | <>@service->IsOriginAllowed(request->GetHeader("origin"))) {
 				response->SetCodeContent(403, "");
@@ -3027,6 +3218,12 @@ bundle API.MCP {
 			};
 		}
 
+		#~
+		Handles one JSON-RPC message. It answers 503 when no server is set, 403 for an Origin that is not allowed, 400 for an unsupported MCP-Protocol-Version, bad JSON or a missing session header, 404 for an unknown session, 202 with no body when the message needs no reply, else the reply as application/json (400 when it is a parse or invalid-request error). A successful initialize also returns a new Mcp-Session-Id when sessions are on
+		@param request the request
+		@param response the response
+		@return false
+		~#
 		method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
 			if(@service = Nil) {
 				response->SetCodeContent(503, "");
@@ -3105,6 +3302,9 @@ bundle API.MCP {
 	How a client reaches a server. A transport sends one JSON-RPC message and returns the reply text, or sends one that has no reply
 	~#
 	class McpTransport {
+		#~
+		Constructor
+		~#
 		New() {
 		}
 
@@ -3160,20 +3360,41 @@ bundle API.MCP {
 			@scope := "in-process-{$System.Runtime->GetUuid()}";
 		}
 
+		#~
+		Handles the request in the server and returns its reply
+		@param message the request, as JSON text
+		@param id the request id, as JSON text; not used
+		@return the reply as JSON text, Nil when the server sends none
+		~#
 		method : public : Request(message : String, id : String) ~ String {
 			return @service->Handle(message, @sink, @scope);
 		}
 
+		#~
+		Handles the notification in the server; nothing comes back
+		@param message the notification, as JSON text
+		~#
 		method : public : Notify(message : String) ~ Nil {
 			@service->Handle(message, @sink, @scope);
 		}
 
+		#~
+		Does nothing: a call in the same process needs no negotiated revision
+		@param version revision date string; not used
+		~#
 		method : public : SetProtocolVersion(version : String) ~ Nil {
 		}
 
+		#~
+		Does nothing
+		~#
 		method : public : Close() ~ Nil {
 		}
 
+		#~
+		Gets why the last call failed
+		@return Nil: a call in the same process has no transport error
+		~#
 		method : public : GetError() ~ String {
 			return Nil;
 		}
@@ -3208,6 +3429,12 @@ bundle API.MCP {
 			@client->AddHeader("Accept", "application/json, text/event-stream");
 		}
 
+		#~
+		Posts the request and reads the reply, which may be application/json or a server-sent event stream. Keeps the Mcp-Session-Id the server hands out the first time it is seen and sends it from then on. On failure GetError() says why
+		@param message the request, as JSON text
+		@param id the request id, as JSON text; picks the event that carries the reply
+		@return the reply as JSON text, Nil on failure or when the reply has no body
+		~#
 		method : public : Request(message : String, id : String) ~ String {
 			@last_error := Nil;
 			response := Post(message);
@@ -3237,11 +3464,20 @@ bundle API.MCP {
 			return text;
 		}
 
+		#~
+		Posts the notification; a failure is kept for GetError()
+		@param message the notification, as JSON text
+		~#
 		method : public : Notify(message : String) ~ Nil {
 			@last_error := Nil;
 			Post(message);
 		}
 
+		#~
+		Posts one message to the URL as application/json. A 200 or 202 is accepted, and so is a 400 whose body carries a JSON-RPC "error"; any other status or no response sets the error
+		@param message the message, as JSON text
+		@return the response, Nil on failure
+		~#
 		method : Post(message : String) ~ Web.HTTP.Response {
 			response := @client->Post(Web.HTTP.Url->New(@url), message->ToByteArray(), "application/json");
 			if(response = Nil) {
@@ -3267,6 +3503,12 @@ bundle API.MCP {
 			return response;
 		}
 
+		#~
+		Reads a server-sent event stream and takes the data of the event whose JSON-RPC id equals the request id; the data lines of an event are joined, and an event ends at a blank line
+		@param text the stream
+		@param id the request id, as JSON text
+		@return that event's JSON text, Nil when no event answers the request
+		~#
 		# the data of the event that carries the reply to the request
 		method : FromEvents(text : String, id : String) ~ String {
 			lines := text->ReplaceAll("\r", "");
@@ -3288,7 +3530,7 @@ bundle API.MCP {
 					};
 					data += value;
 				}
-				else if(line->Size() = 0 & data->Size() > 0) {
+				else if(line->IsEmpty() & data->Size() > 0) {
 					json := JsonParser->TextToElement(data);
 					data := "";
 					if(json <> Nil & json->Has("id") & json->Get("id")->ToString()->Equals(id)) {
@@ -3306,10 +3548,17 @@ bundle API.MCP {
 			return Nil;
 		}
 
+		#~
+		Sends the revision as the MCP-Protocol-Version header on every later request
+		@param version revision date string
+		~#
 		method : public : SetProtocolVersion(version : String) ~ Nil {
 			@client->AddHeader("MCP-Protocol-Version", version);
 		}
 
+		#~
+		Ends the session with a DELETE when the server gave one, and forgets it
+		~#
 		method : public : Close() ~ Nil {
 			if(@session <> Nil) {
 				@client->Delete(Web.HTTP.Url->New(@url));
@@ -3317,6 +3566,10 @@ bundle API.MCP {
 			@session := Nil;
 		}
 
+		#~
+		Gets why the last call failed
+		@return reason, Nil if it did not
+		~#
 		method : public : GetError() ~ String {
 			return @last_error;
 		}
@@ -3344,6 +3597,12 @@ bundle API.MCP {
 			@command := command;
 		}
 
+		#~
+		Runs the server for one request. An initialize request is kept and sent as it is. For any other request the stored initialize (under the id "mcp-handshake"), the initialized notification and the request are all sent, since the server starts afresh each time. On failure GetError() says why
+		@param message the request, as JSON text
+		@param id the request id, as JSON text
+		@return the reply as JSON text, Nil on failure, including a request sent before initialize
+		~#
 		method : public : Request(message : String, id : String) ~ String {
 			@last_error := Nil;
 			root := JsonParser->TextToElement(message);
@@ -3371,10 +3630,20 @@ bundle API.MCP {
 			return Run(input, id);
 		}
 
+		#~
+		Does nothing: a notification only means something to a conversation that stays open
+		@param message the notification, as JSON text; not used
+		~#
 		method : public : Notify(message : String) ~ Nil {
 			# nothing to send: a notification only means something to a conversation
 		}
 
+		#~
+		Writes the input to a temporary file, runs the command with that file as its standard input, deletes the file and looks for the output line whose JSON-RPC id equals the request id
+		@param input the lines to send: one JSON message per line
+		@param id the request id, as JSON text
+		@return that line, Nil when the command could not be run, printed nothing or gave no reply to the request (GetError() says which)
+		~#
 		method : Run(input : String, id : String) ~ String {
 			@serial += 1;
 			path := "{$System.Runtime->GetTempDir()}/mcp_{$System.Runtime->GetProcessId()}_{$@serial}.in";
@@ -3410,12 +3679,23 @@ bundle API.MCP {
 			return Nil;
 		}
 
+		#~
+		Does nothing: the handshake is replayed from the stored initialize request
+		@param version revision date string; not used
+		~#
 		method : public : SetProtocolVersion(version : String) ~ Nil {
 		}
 
+		#~
+		Does nothing: no process is kept open
+		~#
 		method : public : Close() ~ Nil {
 		}
 
+		#~
+		Gets why the last call failed
+		@return reason, Nil if it did not
+		~#
 		method : public : GetError() ~ String {
 			return @last_error;
 		}
@@ -3694,6 +3974,12 @@ bundle API.MCP {
 			return ListResources("resources/templates/list", "resourceTemplates");
 		}
 
+		#~
+		Lists resources or templates with one request
+		@param rpc method name, resources/list or resources/templates/list
+		@param field name of the array in the result
+		@return the entries that could be read, Nil on failure
+		~#
 		method : ListResources(rpc : String, field : String) ~ Vector<McpResource> {
 			result := Call(rpc, Nil);
 			if(result = Nil) {
@@ -3789,6 +4075,12 @@ bundle API.MCP {
 			@transport->Close();
 		}
 
+		#~
+		Makes one request and takes its result. The error and its code are cleared first and are set when the transport gives no reply, the reply is not a JSON object, it carries an error or it has no result
+		@param rpc method name
+		@param params the parameters object, Nil for none
+		@return the result object, Nil on failure (see GetError and GetErrorCode)
+		~#
 		# one request; the result object, or Nil with the error kept
 		method : Call(rpc : String, params : JsonElement) ~ JsonElement {
 			@error := Nil;
@@ -3801,9 +4093,7 @@ bundle API.MCP {
 			text := @transport->Request(McpMessage->Request(id, rpc, params)->ToString(), id->ToString());
 			if(text = Nil) {
 				reason := @transport->GetError();
-				if(reason = Nil) {
-					reason := "no reply to {$rpc}";
-				};
+				reason := reason ?? "no reply to {$rpc}";
 				Fail(0, reason);
 				return Nil;
 			};
@@ -3840,9 +4130,7 @@ bundle API.MCP {
 				};
 
 				message := McpMessage->Str(err, "message");
-				if(message = Nil) {
-					message := "error";
-				};
+				message := message ?? "error";
 				Fail(code, message);
 				return Nil;
 			};
@@ -3855,6 +4143,11 @@ bundle API.MCP {
 			return result;
 		}
 
+		#~
+		Keeps why the last call failed
+		@param code the error code, 0 for a transport failure
+		@param reason error text
+		~#
 		method : Fail(code : Int, reason : String) ~ Nil {
 			@error_code := code;
 			@error := reason;
@@ -3891,9 +4184,7 @@ bundle API.MCP {
 		New(client : McpClient) {
 			@client := client;
 			@tools := client->ListTools();
-			if(@tools = Nil) {
-				@tools := Vector->New()<McpTool>;
-			};
+			@tools := @tools ?? Vector->New()<McpTool>;
 		}
 
 		#~
@@ -3973,12 +4264,15 @@ bundle API.MCP {
 			};
 
 			description := tool->GetDescription();
-			if(description = Nil) {
-				description := "";
-			};
+			description := description ?? "";
 			return FunctionType->New(tool->GetName(), params, required_names, description);
 		}
 
+		#~
+		Maps one property of an input schema to a parameter type: number, integer, object and boolean map to their types, anything else to a string. An array maps to its item type as an array
+		@param prop the property's schema
+		@return the parameter type
+		~#
 		method : ToParameterType(prop : JsonElement) ~ ParameterType {
 			kind := McpMessage->Str(prop, "type");
 			description := McpMessage->Str(prop, "description");
@@ -4046,10 +4340,14 @@ bundle API.MCP {
 		@clients : static : Hash<String, McpClient>;
 		@count : static : Int;
 
+		#~
+		Makes a function that calls a tool through a client. The client is kept under a key so the lambda only has to carry the key
+		@param client the client
+		@param name tool name
+		@return a function from the model's arguments to {"result": text} or {"error": text}
+		~#
 		function : Make(client : McpClient, name : String) ~ Func2Ref<JsonElement, JsonElement> {
-			if(@clients = Nil) {
-				@clients := Hash->New()<String, McpClient>;
-			};
+			@clients := @clients ?? Hash->New()<String, McpClient>;
 
 			@count += 1;
 			key := "{$@count}:{$name}";
@@ -4057,6 +4355,12 @@ bundle API.MCP {
 			return Func2Ref->New(\(input) => McpBridgeFunction->Invoke(key, input))<JsonElement, JsonElement>;
 		}
 
+		#~
+		Calls the tool named in the key through the client it was registered with
+		@param key the key Make made
+		@param input the model's arguments; Nil is treated as an empty object
+		@return an object with "result" (the text), or "error" for a failed call, a tool that reported an error, or a client that is gone
+		~#
 		function : Invoke(key : String, input : JsonElement) ~ JsonElement {
 			reply := JsonElement->New(JsonElement->JsonType->OBJECT);
 			client := @clients->Find(key);
@@ -4066,9 +4370,7 @@ bundle API.MCP {
 			};
 
 			name := McpMessage->Tail(key, key->Find(':') + 1);
-			if(input = Nil) {
-				input := McpMessage->EmptyObject();
-			};
+			input := input ?? McpMessage->EmptyObject();
 
 			result := client->CallTool(name, input);
 			if(result = Nil) {
@@ -4172,10 +4474,26 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return AddSchemaElement(name, schema, description, required);
 		}
 
+		#~
+		Adds a parameter whose schema comes from an Objeck type name
+		@param name parameter name
+		@param type the Objeck type
+		@param description what it means; Nil or empty for none
+		@param required true when the call must give it
+		@return self for chaining
+		~#
 		method : AddParam(name : String, type : String, description : String, required : Bool) ~ McpToolSpec {
 			return AddSchemaElement(name, McpToolSpec->SchemaFor(type), description, required);
 		}
 
+		#~
+		Adds a parameter with its schema, noting a description in it and listing the name as required when asked
+		@param name parameter name
+		@param schema the parameter's schema object, which is changed
+		@param description what it means; Nil or empty for none
+		@param required true when the call must give it
+		@return self for chaining
+		~#
 		method : AddSchemaElement(name : String, schema : JsonElement, description : String, required : Bool) ~ McpToolSpec {
 			if(description <> Nil & description->Size() > 0) {
 				schema->Insert("description", description);
@@ -4414,6 +4732,11 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 				type->Equals("IntRef") | type->Equals("FloatRef") | type->Equals("BoolRef") | type->Equals("CharRef") | type->Equals("ByteRef");
 		}
 
+		#~
+		Brings a type name to one spelling: the Collection, Data.JSON and System namespaces are dropped, a "|" between type arguments becomes a comma and spaces are removed
+		@param type the type name
+		@return the normalized text
+		~#
 		# The type as written in source and as reflection spells it (System.Introspection reports Collection.Map<String|IntRef>) both reach the same text: no namespace, a comma between type arguments, no spaces
 		function : Normalize(type : String) ~ String {
 			return type->Trim()->ReplaceAll("|", ",")->ReplaceAll(", ", ",")->ReplaceAll("Collection.", "")->ReplaceAll("Data.JSON.", "")->ReplaceAll("System.", "");
@@ -4487,7 +4810,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 		@return Objeck source text
 		~#
 		function : Generate(server_name : String, server_version : String, tools : Vector<McpTool>, class_name : String) ~ String {
-			if(class_name = Nil | class_name->Size() = 0) {
+			if(class_name = Nil | class_name->IsEmpty()) {
 				class_name := McpStubGenerator->ClassName(server_name);
 			};
 
@@ -4531,6 +4854,12 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return out;
 		}
 
+		#~
+		Appends the methods of one tool to the stub class: required parameters first, in the order of the schema's required list, then optional ones by name. A tool whose name or argument cannot be written in source is left out with a comment saying why
+		@param out text being built
+		@param tool the tool
+		@param used method names already taken, to which this tool's name is added
+		~#
 		function : EmitTool(out : String, tool : McpTool, used : Vector<String>) ~ Nil {
 			name := tool->GetName();
 			if(<>McpStubGenerator->IsSafe(name, true)) {
@@ -4633,6 +4962,19 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			};
 		}
 
+		#~
+		Appends one method of the stub class, with its doc block
+		@param out text being built
+		@param mname method name
+		@param tool the tool the method calls
+		@param optional true to include the optional parameters
+		@param structured true to write the variant that returns the structured result as JSON
+		@param json_names argument names as the tool knows them
+		@param var_names parameter names in the stub
+		@param types Objeck types of the parameters
+		@param docs descriptions of the parameters
+		@param required "1" for a required parameter, "0" for an optional one, one per parameter
+		~#
 		function : EmitMethod(out : String, mname : String, tool : McpTool, optional : Bool, structured : Bool,
 				json_names : Vector<String>, var_names : Vector<String>, types : Vector<String>, docs : Vector<String>, required : Vector<String>) ~ Nil {
 			out->Append("\n\t#~\n");
@@ -4710,6 +5052,13 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			out->Append("\", mcp_args);\n\t}\n");
 		}
 
+		#~
+		Appends the statement that puts one parameter into the argument object. An Int, Float or Bool is always put in; any other type only when it is not Nil
+		@param out text being built
+		@param json_name argument name as the tool knows it
+		@param var_name parameter name in the stub
+		@param type Objeck type of the parameter
+		~#
 		function : EmitInsert(out : String, json_name : String, var_name : String, type : String) ~ Nil {
 			if(type->Equals("Int") | type->Equals("Float") | type->Equals("Bool")) {
 				out->Append("\t\tmcp_args->Insert(\"");
@@ -4790,6 +5139,11 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return "JsonElement";
 		}
 
+		#~
+		Writes the doc text of a parameter: its description, then the values a string may take
+		@param prop the property's schema
+		@return the text, "the argument" when the schema says nothing
+		~#
 		# the description of a parameter, and the values a string may take
 		function : ParamDoc(prop : JsonElement) ~ String {
 			text := String->New();
@@ -4812,18 +5166,28 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 				};
 			};
 
-			if(text->Size() = 0) {
+			if(text->IsEmpty()) {
 				text->Append("the argument");
 			};
 			return text;
 		}
 
+		#~
+		Makes text safe for a doc block: the comment terminator is broken up and line breaks become spaces
+		@param text the text
+		@return one trimmed line
+		~#
 		# one line of comment text that cannot end the comment
 		function : DocText(text : String) ~ String {
 			flat := text->ReplaceAll("~#", "~ #")->ReplaceAll("\r", " ")->ReplaceAll("\n", " ");
 			return flat->Trim();
 		}
 
+		#~
+		Makes text safe for a line comment or a string literal: line breaks become spaces and double quotes become single quotes
+		@param text the text, may be Nil
+		@return the text, empty for Nil
+		~#
 		# text for a '#' comment or a string literal that cannot break out of it
 		function : Plain(text : String) ~ String {
 			if(text = Nil) {
@@ -4832,18 +5196,28 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return text->ReplaceAll("\r", " ")->ReplaceAll("\n", " ")->ReplaceAll("\"", "'");
 		}
 
+		#~
+		Says whether a character is an ASCII letter or digit
+		@param c the character
+		@return true for a letter or digit
+		~#
 		function : Alnum(c : Char) ~ Bool {
 			return (c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9');
 		}
 
+		#~
+		Says whether a name can go into a string literal and a method or parameter name: letters, digits, underscore and hyphen, and a dot for a tool name
+		@param name the name
+		@param is_tool true for a tool name, which may also hold a dot
+		@return true when it is safe, false for Nil, empty or other characters
+		~#
 		# letters, digits, underscore and hyphen (and a dot for a tool name) only, so the name fits a string literal and a method name
 		function : IsSafe(name : String, is_tool : Bool) ~ Bool {
-			if(name = Nil | name->Size() = 0) {
+			if(name = Nil | name->IsEmpty()) {
 				return false;
 			};
 
-			each(i : name) {
-				c := name->Get(i);
+			each(c in name) {
 				if(<>McpStubGenerator->Alnum(c) & c <> '_' & c <> '-' & (<>is_tool | c <> '.')) {
 					return false;
 				};
@@ -4851,6 +5225,12 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return true;
 		}
 
+		#~
+		Says whether a list holds a name
+		@param list the names
+		@param name the name to look for
+		@return true when found
+		~#
 		function : Contains(list : Vector<String>, name : String) ~ Bool {
 			each(i : list) {
 				if(list->Get(i)->Equals(name)) {
@@ -4860,6 +5240,12 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return false;
 		}
 
+		#~
+		Says whether a name is in use in the stub class: already used, or one of its own methods (New, GetError, CallText, CallJson)
+		@param used names already taken
+		@param name the name to check
+		@return true when taken
+		~#
 		function : Taken(used : Vector<String>, name : String) ~ Bool {
 			if(McpStubGenerator->Contains(used, name)) {
 				return true;
@@ -4867,19 +5253,29 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return name->Equals("New") | name->Equals("GetError") | name->Equals("CallText") | name->Equals("CallJson");
 		}
 
+		#~
+		Makes a class name from a server name: the words joined, each starting with a capital, then "Client"; "McpClient" when no word is left
+		@param server_name the server's name
+		@return the class name
+		~#
 		# server name to a class name: words joined, each starting with a capital, then "Client"
 		function : ClassName(server_name : String) ~ String {
 			base := McpStubGenerator->Pascal(server_name);
-			if(base->Size() = 0) {
+			if(base->IsEmpty()) {
 				base := "Mcp";
 			};
 			return base + "Client";
 		}
 
+		#~
+		Makes a method name from a tool name; weather_forecast and getForecast become WeatherForecast and GetForecast, and a name that starts with a digit gets "Tool" in front. "Tool" when no word is left
+		@param name the tool's name
+		@return the method name
+		~#
 		# tool name to a method name: weather_forecast and weather-forecast become WeatherForecast, getForecast becomes GetForecast
 		function : MethodName(name : String) ~ String {
 			mname := McpStubGenerator->Pascal(name);
-			if(mname->Size() = 0) {
+			if(mname->IsEmpty()) {
 				mname := "Tool";
 			};
 			c := mname->Get(0);
@@ -4889,6 +5285,11 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return mname;
 		}
 
+		#~
+		Joins the letters and digits of a name into words that start with a capital; any other character starts a new word
+		@param name the name, may be Nil
+		@return the joined text, empty for Nil
+		~#
 		function : Pascal(name : String) ~ String {
 			out := String->New();
 			if(name = Nil) {
@@ -4896,8 +5297,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			};
 
 			upper := true;
-			each(i : name) {
-				c := name->Get(i);
+			each(c in name) {
 				if(McpStubGenerator->Alnum(c)) {
 					if(upper & c >= 'a' & c <= 'z') {
 						out->Append(c->ToUpper());
@@ -4914,6 +5314,12 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return out;
 		}
 
+		#~
+		Makes a parameter name from an argument name: camel case becomes snake case, other characters become underscores, a name that is empty or starts with a digit gets "arg_" in front, and a keyword or a name already taken gets underscores added
+		@param name the argument's name
+		@param taken parameter names already used
+		@return the parameter name
+		~#
 		# argument name to a parameter name: maxResults becomes max_results; keywords and the stub's own names get an underscore
 		function : VarName(name : String, taken : Vector<String>) ~ String {
 			out := String->New();
@@ -4937,7 +5343,7 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			};
 
 			result := out->ToString();
-			if(result->Size() = 0 | (result->Get(0) >= '0' & result->Get(0) <= '9')) {
+			if(result->IsEmpty() | (result->Get(0) >= '0' & result->Get(0) <= '9')) {
 				result := "arg_" + result;
 			};
 
@@ -4947,6 +5353,11 @@ spec->AddTo(service, Func2Ref->New(Calc->Add(McpCall) ~ McpToolResult)<McpCall, 
 			return result;
 		}
 
+		#~
+		Says whether a name is a keyword of the language or a name the generated code uses itself
+		@param name the name
+		@return true when it cannot be used as a parameter name
+		~#
 		function : Reserved(name : String) ~ Bool {
 			words := "and,not,or,xor,virtual,if,else,do,while,break,continue,use,bundle,native,static,public,private,class,record,interface,alias,readonly,implements,function,mname,select,other,enum,consts,for,each,in,reverse,label,return,leaving,from,true,false,critical,mcp_args,mcp_list,mcp_i,result,tool"->Split(',');
 			each(i : words) {

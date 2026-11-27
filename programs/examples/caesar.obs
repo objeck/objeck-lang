@@ -3,8 +3,7 @@ class Caesar {
 		offset := offset % 26 + 26;
 		encoded := "";
 		enc := enc->ToLower();
-		each(i : enc) {
-			c := enc->Get(i);
+		each(c in enc) {
 			if(c->IsChar()) {
 				j := (c - 'a' + offset) % 26;
 				encoded->Append(j + 'a');

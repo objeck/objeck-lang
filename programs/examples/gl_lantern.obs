@@ -1039,8 +1039,7 @@ class Lantern {
 			};
 		};
 
-		each(i : @monsters) {
-			monster := @monsters[i];
+		each(monster in @monsters) {
 			if(monster->Update(delta, here, @scene)) {
 				touching := true;
 			};
@@ -1167,8 +1166,7 @@ class Lantern {
 			return;
 		};
 
-		each(i : @shades) {
-			shade := @shades[i];
+		each(shade in @shades) {
 			if(shade->IsAlive() & shade->GetProp() = prop) {
 				shade->Kill();
 				@kills += 1;
@@ -1180,8 +1178,7 @@ class Lantern {
 
 		# Monsters take two. Owns() rather than a prop comparison because a
 		# monster is four props and a shot at its head should count.
-		each(i : @monsters) {
-			monster := @monsters[i];
+		each(monster in @monsters) {
 			if(monster->IsAlive() & monster->Owns(prop)) {
 				if(monster->Hit()) {
 					@kills += 1;
@@ -1195,8 +1192,7 @@ class Lantern {
 
 	method : TakeNearbyRelic() ~ Nil {
 		here := @camera->GetPosition();
-		each(i : @relics) {
-			relic := @relics[i];
+		each(relic in @relics) {
 			if(<>relic->IsTaken() & relic->GroundDistance(here) < 1.3) {
 				relic->Take();
 				@carried += 1;

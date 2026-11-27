@@ -6,6 +6,17 @@
   <title>Libraries — Objeck Language</title>
   <meta name="description" content="Every library that ships with Objeck, one line each, generated from the repository: collections, data, networking, LLM clients, ML, graphics.">
   <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://www.objeck.org/libraries.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Objeck">
+  <meta property="og:title" content="Libraries — Objeck Language">
+  <meta property="og:description" content="Every library that ships with Objeck, one line each, generated from the repository: collections, data, networking, LLM clients, ML, graphics.">
+  <meta property="og:url" content="https://www.objeck.org/libraries.html">
+  <meta property="og:image" content="https://www.objeck.org/style/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="style/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="style/site.css">
   <script>document.documentElement.className = "js";</script>
@@ -19,6 +30,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
      <li><a href="start.html">Get started</a></li>
+     <li><a href="agents.html">Agents</a></li>
      <li><a href="learn.html">Learn</a></li>
      <li><a href="docs.html">Docs</a></li>
      <li><a href="libraries.html" aria-current="page">Libraries</a></li>
@@ -37,7 +49,7 @@
    <div class="content">
 <!-- content:start -->
     <h1 class="page-title">Libraries</h1>
-<p class="page-lead">63 libraries, generated from <code>core/compiler/build_libs.sh</code> and the sources. Pass them to <code>obc -lib</code>; a library's own dependencies are not added for you. <a href="https://www.objeck.org/api/latest/index.html" target="_blank" rel="noopener">API reference</a>.</p>
+<p class="page-lead">64 libraries, generated from <code>core/compiler/build_libs.sh</code> and the sources. Pass them to <code>obc -lib</code>; a library's own dependencies are not added for you. <a href="https://www.objeck.org/api/latest/index.html" target="_blank" rel="noopener">API reference</a>.</p>
 <pre class="cmd">obc -src app.obs -lib json,net,cipher</pre>
 <h2 id="in-practice">In practice</h2>
 <h3>JSON</h3><pre aria-label="Objeck example program"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">Data</span>.JSON;
@@ -196,6 +208,7 @@ $ obr threads.obe
  <tbody>
   <tr><td data-label="Library"><code>-lib actor_agents</code></td><td data-label="What it gives you">Run an agent as a supervised actor.</td><td data-label="Namespaces" class="ns"><code>System.Actor</code></td></tr>
   <tr><td data-label="Library"><code>-lib agent</code></td><td data-label="What it gives you">A provider-neutral tool-use loop: an agent that calls the functions you give it.</td><td data-label="Namespaces" class="ns"><code>API.Agent</code></td></tr>
+  <tr><td data-label="Library"><code>-lib agent_json</code></td><td data-label="What it gives you">Typed answers from an agent's model: the run-time half of `class Name : json`.</td><td data-label="Namespaces" class="ns"><code>API.AgentJson</code></td></tr>
   <tr><td data-label="Library"><code>-lib ai_hub</code></td><td data-label="What it gives you">Download models from the Hugging Face Hub into a local cache.</td><td data-label="Namespaces" class="ns"><code>System.AI.Hub</code></td></tr>
   <tr><td data-label="Library"><code>-lib anthropic</code></td><td data-label="What it gives you">Anthropic Messages API client.</td><td data-label="Namespaces" class="ns"><code>API.Anthropic</code></td></tr>
   <tr><td data-label="Library"><code>-lib gemini</code></td><td data-label="What it gives you">Google Gemini client, including tuning and corpora.</td><td data-label="Namespaces" class="ns"><code>API.Google.Gemini</code>, <code>API.Google.Gemini.Corpus</code>, <code>API.Google.Gemini.Tuning</code></td></tr>
@@ -257,6 +270,7 @@ $ obr threads.obe
    <div class="wrap">
     <nav aria-label="Footer"><ul class="footer-links">
      <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="agents.html">Agents</a></li>
      <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
      <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
      <li><a href="ai_guide.html">AI &amp; ML guide</a></li>

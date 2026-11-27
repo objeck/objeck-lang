@@ -1,0 +1,14 @@
+# EXTRA_LIBS: llm_util,regex
+# EXPECT_COMPILE_ERROR: (11,25): The prompt hole '{ratio : Int}' declares Int, but 'ratio' is Float
+# EXPECT_ERROR_COUNT: 1
+#~
+A hole declared with a type its variable does not have is a compile error at the hole: no
+conversion is applied, so an Int declared for a Float is refused (docs/design/AGENT_SYNTAX.md).
+~#
+class BadPromptHoleType {
+	function : Main(args : String[]) ~ Nil {
+		ratio := 0.5;
+		p := prompt "Scale by {ratio : Int} percent.";
+		p->ToString()->PrintLine();
+	}
+}

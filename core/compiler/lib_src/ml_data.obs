@@ -957,7 +957,7 @@ if(test_x = Nil) {
 		@return one index per data row; a class unseen at Fit becomes -1.0
 		~#
 		method : public : TransformLabels(table : CsvTable) ~ Float[] {
-			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->Size() = 0) {
+			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->IsEmpty()) {
 				return Nil;
 			};
 
@@ -999,7 +999,7 @@ if(test_x = Nil) {
 		@return one value per data row, or Nil when unfitted or the label is missing
 		~#
 		method : public : TransformLabelsBinary(table : CsvTable, negative : String) ~ Float[] {
-			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->Size() = 0) {
+			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->IsEmpty()) {
 				return Nil;
 			};
 
@@ -2580,7 +2580,7 @@ each(f : folds) {
 
 		#~
 		Cross-validation whose folds are stratified by a key of your choosing.
-		
+
 		The overload above stratifies by the binary label, which keeps the
 		positive rate steady across folds but says nothing about what the
 		positives are made of. When the positive class is a union of rare
@@ -2588,7 +2588,7 @@ each(f : folds) {
 		can be balanced on the label and still hold none of a sub-population that
 		only has a few dozen members. Pass those category codes as strata and
 		each fold keeps their proportions too.
-		
+
 		strata is a fold-assignment key only. The model still fits and scores
 		against y, so the metrics are unchanged.
 		@param model anything that fits on Bool labels and scores rows
@@ -2755,7 +2755,7 @@ each(f : folds) {
 		#~
 		The original row index of each row of the test split, in the order the
 		test matrix holds them.
-		
+
 		Needed to map a fold score back to the record it belongs to, which is how
 		an out-of-fold score vector is assembled. Split builds the test matrix by
 		walking rows 0..n against a membership mask, so these come back ASCENDING
@@ -3066,7 +3066,7 @@ cm := ConfusionMatrix->New(flags, labels);
 
 		#~
 		Real negatives wrongly flagged, over all real negatives.
-		
+
 		The number to compare against an intended budget. A threshold picked to
 		hold a budget on one sample has no obligation to hold it on another, and
 		this is how far it drifted.
@@ -3083,7 +3083,7 @@ cm := ConfusionMatrix->New(flags, labels);
 
 		#~
 		Alerts that were real, over all alerts raised.
-		
+
 		Measured on this sample, so it carries this sample's class balance. When
 		the deployment balance differs -- and for rare events it usually does --
 		the precision an operator would see is different, and follows from the
@@ -3101,7 +3101,7 @@ cm := ConfusionMatrix->New(flags, labels);
 
 		#~
 		Correct decisions over all decisions.
-		
+
 		Included for completeness and deliberately not the number to report when
 		one class dominates: predicting the majority for everything scores well
 		here while detecting nothing.
@@ -3300,7 +3300,7 @@ cm := ConfusionMatrix->New(flags, labels);
 
 		#~
 		Resamples the metric could actually be computed on.
-		
+
 		Below GetReps when some resample drew a single class. Worth checking on
 		rare positives: at a few dozen positives in a large sample, a noticeable
 		share of resamples can miss them entirely.
@@ -3345,13 +3345,13 @@ cm := ConfusionMatrix->New(flags, labels);
 
 		#~
 		One out-of-fold score per input row, in input row order.
-		
+
 		Each score comes from the fold model that did NOT train on that row, so
 		the vector can be thresholded as a whole without leaking a row into its
 		own score. That is what makes it the right input for choosing an
 		operating point: ThresholdAtFpr over these scores picks a threshold
 		honestly, and it can then be applied unchanged to held-out data.
-		
+
 		Reported separately from the per-fold means because they answer different
 		questions. The fold means say how much the estimate moves between folds;
 		the pooled vector gives one curve over every row, which is what a single

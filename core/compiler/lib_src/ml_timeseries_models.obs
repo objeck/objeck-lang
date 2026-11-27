@@ -58,7 +58,7 @@ bundle System.ML.TimeSeries {
 		@return false when the forecast could not be made; GetError() says why
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		method : public : GetError() ~ String {

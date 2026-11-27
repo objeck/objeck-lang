@@ -1,0 +1,142 @@
+#~
+using(w := E) { ... } is exception safe (docs/design/USING_BLOCK.md): when an error
+unwinds past the block the resource is still closed, then the error goes on. If
+Close() itself fails after a normal body its error propagates; if the body had already
+failed, the body's error wins and Close()'s is dropped. A Nil resource is not closed.
+~#
+class Res {
+	@name : String;
+	@bad_close : Bool;
+	@@log : static : String;
+
+	New(name : String, bad_close : Bool) {
+		@name := name;
+		@bad_close := bad_close;
+	}
+
+	method : public : Close() ~ Nil {
+		@@log += @name;
+		@@log += ",";
+		if(@bad_close) {
+			missing : Res;
+			missing->Close2();
+		};
+	}
+
+	method : public : Close2() ~ Nil { @name := @name + ""; }
+
+	function : Reset() ~ Nil { @@log := ""; }
+	function : Log() ~ String { return @@log; }
+	function : NilRes() ~ Res { return Nil; }
+}
+
+class UsingBlockErrors {
+	@@failed : static : Bool;
+
+	function : Expect(name : String, got : String, expected : String) ~ Nil {
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: got '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+		Res->Reset();
+	}
+
+	function : Boom() ~ Nil {
+		a := Int->New[1];
+		a[5] := 1;
+	}
+
+	function : BodyRaises() ~ String {
+		try {
+			using(r := Res->New("body", false)) {
+				Boom();
+				"not reached"->PrintLine();
+			};
+		}
+		on(e : System.IndexError) {
+			return "index";
+		};
+		return "none";
+	}
+
+	function : CloseRaises() ~ String {
+		try {
+			using(r := Res->New("close", true)) {
+				r->Close2();
+			};
+		}
+		on(e : System.NilError) {
+			return "nil";
+		};
+		return "none";
+	}
+
+	function : BothRaise() ~ String {
+		try {
+			using(r := Res->New("both", true)) {
+				Boom();
+			};
+		}
+		on(e : System.IndexError) {
+			return "index";
+		}
+		on(e : System.NilError) {
+			return "nil";
+		};
+		return "none";
+	}
+
+	function : NestedRaises() ~ String {
+		try {
+			using(a := Res->New("outer", false)) {
+				using(b := Res->New("inner", false)) {
+					Boom();
+				};
+			};
+		}
+		on(e : System.IndexError) {
+			return "index";
+		};
+		return "none";
+	}
+
+	function : ReturnInside() ~ Int {
+		using(r := Res->New("ret", false)) {
+			return 7;
+		};
+	}
+
+	function : NilResource() ~ Int {
+		using(r := Res->NilRes()) {
+			return 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Res->Reset();
+		r := BodyRaises(); l := Res->Log(); Res->Reset();
+		Expect("body raises: error goes on", r, "index");
+		Expect("body raises: resource closed", l, "body,");
+		r := CloseRaises(); l := Res->Log(); Res->Reset();
+		Expect("close raises after a normal body", r, "nil");
+		Expect("close raises: close ran", l, "close,");
+		r := BothRaise(); l := Res->Log(); Res->Reset();
+		Expect("both raise: the body's error wins", r, "index");
+		Expect("both raise: close ran", l, "both,");
+		r := NestedRaises(); l := Res->Log(); Res->Reset();
+		Expect("nested: error goes on", r, "index");
+		Expect("nested: innermost closes first", l, "inner,outer,");
+		n := ReturnInside(); l := Res->Log(); Res->Reset();
+		Expect("return inside", n->ToString(), "7");
+		Expect("return inside: closed once", l, "ret,");
+		n := NilResource(); l := Res->Log(); Res->Reset();
+		Expect("a Nil resource is not closed", n->ToString(), "1");
+		Expect("a Nil resource: nothing logged", l, "");
+
+		if(@@failed) {
+			"FAIL: using block errors"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: using block errors"->PrintLine();
+	}
+}

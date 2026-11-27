@@ -1,0 +1,30 @@
+# EXPECT_COMPILE_ERROR: (26,12): Variable already defined in this scope: 't'
+# EXPECT_ERROR_COUNT: 1
+#~
+The bound name is declared in the block as `name : Type` is, so the block cannot declare the name again.
+A variable of an enclosing block may have the name: the bound one hides it in the block (see interact_type_test_shadow).
+~#
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part {
+	New() {
+		Parent();
+	}
+
+	method : public : Size() ~ Int {
+		return 4;
+	}
+}
+
+class BadTypeTestNameTaken {
+	function : Main(args : String[]) ~ Nil {
+		p : Part := TextPart->New();
+		if(p is TextPart t) {
+			t : Int := 3;
+			t->PrintLine();
+		};
+	}
+}

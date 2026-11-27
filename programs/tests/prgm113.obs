@@ -25,8 +25,7 @@ bundle RegEx {
 		
 			index := 0;
 			concat_count := 0;
-			each(i : @input) {
-				char := @input->Get(i);
+			each(char in @input) {
 				select(char) {
 					label '*': {
 						if(concat_count = 0) {
@@ -73,8 +72,7 @@ bundle RegEx {
 				return;
 			};
 			
-			each(i : input) {
-				value := input[i];
+			each(value in input) {
 				select(value) {
 					label TokenType->ZERO_MORE: {
 						'*'->PrintLine();

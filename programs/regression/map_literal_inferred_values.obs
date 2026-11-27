@@ -1,0 +1,71 @@
+#~
+A constructor call that is the value of a map literal's entry takes its type arguments
+from the map's value type, as 'v : Vector<IntRef> := Vector->New();' takes them from 'v':
+  groups : Map<String, Vector<IntRef>> := {"evens": Vector->New(), "odds": Vector->New()};
+For a field, a returned literal, a nested map, with the type arguments written on one
+entry and left out on the next, and with a constructor that has arguments (a Pair from
+its arguments, a Vector from an array). The collector runs while the maps are filled.
+~#
+use Collection;
+
+class Groups {
+	@groups : Map<String, Vector<IntRef>>;
+
+	New() {
+		@groups := {"evens": Vector->New(), "odds": Vector->New()};
+	}
+
+	method : public : Add(n : Int) ~ Nil {
+		@groups->Find(n % 2 = 0 ? "evens" : "odds")->AddBack(n);
+	}
+
+	method : public : Count(key : String) ~ Int {
+		return @groups->Find(key)->Size();
+	}
+
+	method : public : Sum(key : String) ~ Int {
+		sum := 0;
+		each(n in @groups->Find(key)) {
+			sum += n;
+		};
+		return sum;
+	}
+}
+
+class MapLiteralInferredValues {
+	function : Index() ~ Hash<String, Map<String, IntRef>> {
+		return {"a": Map->New(), "b": Map->New()<String, IntRef>};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		groups := Groups->New();
+		for(i := 1; i <= 20000; i += 1;) {
+			groups->Add(i);
+			# garbage, so that collections run while the Vectors grow
+			text := "n{$i}";
+			text->Size();
+		};
+		assert groups->Count("evens") = 10000 & groups->Count("odds") = 10000 : "a field's literal of inferred Vectors";
+		assert groups->Sum("evens") = 100010000 : "what the inferred Vector holds";
+		assert groups->Sum("odds") = 100000000;
+
+		index := Index();
+		index->Find("a")->Insert("k", 5);
+		index->Find("b")->Insert("k", 6);
+		assert index->Find("a")->Find("k") = 5 & index->Find("b")->Find("k") = 6 : "a returned literal: inferred and written";
+
+		pairs : Map<String, Pair<String, IntRef>> := {"p": Pair->New("x", 1)};
+		assert pairs->Find("p")->GetSecond() = 1 : "a constructor with arguments";
+
+		seeded : Map<String, Vector<String>> := {"s": Vector->New(["a", "b"])};
+		assert seeded->Find("s")->Size() = 2 : "a constructor given an array";
+
+		nested : Map<String, Map<String, Vector<IntRef>>> := {"outer": Map->New()};
+		inner : Map<String, Vector<IntRef>> := {"inner": Vector->New()};
+		nested->Insert("other", inner);
+		nested->Find("other")->Find("inner")->AddBack(9);
+		assert nested->Find("outer")->Size() = 0 & inner->Find("inner")->Get(0) = 9 : "a map of maps of Vectors";
+
+		"PASS: constructor calls in a map literal take the map's value type"->PrintLine();
+	}
+}

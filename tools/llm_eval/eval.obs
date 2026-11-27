@@ -38,14 +38,13 @@ class Eval {
 		};
 
 		tasks := TaskSuite->Select(tasks, EvalArgs->Value(args, "--ids", Nil), EvalArgs->Value(args, "--categories", Nil));
-		if(tasks->Size() = 0) {
+		if(tasks->IsEmpty()) {
 			">>> no task matches --ids / --categories"->ErrorLine();
 			Runtime->Exit(1);
 		};
 
 		if(EvalArgs->Has(args, "--list")) {
-			each(i : tasks) {
-				task := tasks->Get(i);
+			each(task in tasks) {
 				"{$task->GetId()}\t{$task->GetCategory()}\tdifficulty {$task->GetDifficulty()}"->PrintLine();
 			};
 			return;
@@ -66,9 +65,7 @@ class Eval {
 		"{$tasks->Size()} tasks x {$per_task} attempts = {$tasks->Size() * per_task} calls to {$model->GetName()}"->PrintLine();
 
 		work := EvalArgs->Value(args, "--workdir", Nil);
-		if(work = Nil) {
-			work := "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_{$Runtime->GetProcessId()}";
-		};
+		work := work ?? "{$Runtime->GetTempDir()}{$Directory->GetSlash()}llm_eval_{$Runtime->GetProcessId()}";
 
 		sandbox := Sandbox->New(work);
 		sandbox->SetKeepFiles(EvalArgs->Has(args, "--keep-files"));
@@ -89,9 +86,7 @@ class Eval {
 		results := runner->Run();
 
 		prefix := EvalArgs->Value(args, "--out", Nil);
-		if(prefix = Nil) {
-			prefix := "llm_eval_{$EvalText->SafeName(model->GetName())}";
-		};
+		prefix := prefix ?? "llm_eval_{$EvalText->SafeName(model->GetName())}";
 
 		all := Vector->New()<ModelResults>;
 		comparison : ModelComparison;

@@ -10,7 +10,7 @@ Streaming JSON parser for processing large documents without loading the full tr
 bundle Data.JSON.Stream {
 	#~
 	Event driven stream JSON parser
-	
+
 	```
 stream := FileReader->New(filename);
 if(stream->IsOpen()) {
@@ -199,7 +199,7 @@ stream->Close();
 
 		method : native : Transition() ~ Nil {
 			string_buffer : String;
-			num_buffer : String;		
+			num_buffer : String;
 
 			if(@level < 0) {
 				SetError("invalid json");
@@ -216,7 +216,7 @@ stream->Close();
 				else if(@cur_char = '[') {
 					@type := StreamParser->Type->ARRAY;
 					@level += 1;
-					@is_delim := true;				
+					@is_delim := true;
 				}
 				else if(@cur_char = '}' ) {
 					if(num_buffer <> Nil) {
@@ -247,7 +247,7 @@ stream->Close();
 						@type := StreamParser->Type->ARRAY_END;
 						@is_delim := true;
 					};
-				}	
+				}
 				else if(@cur_char = '"') {
 					if(string_buffer = Nil) {
 						string_buffer := String->New();
@@ -297,9 +297,7 @@ stream->Close();
 				}
 				else if(@cur_char->IsDigit() | @cur_char = '-' | @cur_char = '.' | (num_buffer <> Nil & (@cur_char = 'e' | @cur_char = 'E' | @cur_char = '+'))) {
 					if(string_buffer = Nil) {
-						if(num_buffer = Nil) {
-							num_buffer := String->New();
-						}
+						num_buffer := num_buffer ?? String->New();
 						num_buffer->Append(@cur_char);
 					}
 					else {
@@ -311,7 +309,7 @@ stream->Close();
 						if(<>Match("null")) {
 							SetError("expected 'null'")
 						}
-						else {						
+						else {
 							@type := StreamParser->Type->NULL;
 							@is_delim := true;
 						};
@@ -320,7 +318,7 @@ stream->Close();
 						if(<>Match("true")) {
 							SetError("expected 'true'")
 						}
-						else {						
+						else {
 							@type := StreamParser->Type->TRUE;
 							@is_delim := true;
 						};
@@ -329,7 +327,7 @@ stream->Close();
 						if(<>Match("false")) {
 							SetError("expected 'false'")
 						}
-						else {						
+						else {
 							@type := StreamParser->Type->FALSE;
 							@is_delim := true;
 						};
@@ -337,8 +335,8 @@ stream->Close();
 					else {
 						if(@cur_char <> ',' & @cur_char <> ':') {
 							SetError("expected : [':' or ',' or '\"']")
-						};	
-					};	
+						};
+					};
 				}
 				else {
 					if(num_buffer <> Nil) {
@@ -346,7 +344,7 @@ stream->Close();
 						num_buffer := Nil;
 					};
 				};
-				
+
 				if(@skip_next) {
 					@skip_next := false;
 				}
@@ -394,7 +392,7 @@ stream->Close();
 				label StreamParser->Type->OBJECT_END {
 					return "(-) object-end";
 				}
-				
+
 				label StreamParser->Type->ARRAY {
 					return "(+) array-start";
 				}
@@ -453,7 +451,7 @@ stream->Close();
 				label StreamParser->Type->OBJECT_END {
 					return "}";
 				}
-				
+
 				label StreamParser->Type->ARRAY {
 					return "[";
 				}
@@ -467,7 +465,7 @@ stream->Close();
 				label StreamParser->Type->NUMBER {
 					return @value;
 				}
-	 
+
 				label StreamParser->Type->NULL {
 					return "null";
 				}

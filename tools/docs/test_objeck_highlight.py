@@ -40,6 +40,34 @@ class Highlight(unittest.TestCase):
         self.assertIn('<span class="t-num">1</span>', out)
         self.assertIn('<span class="t-const">null</span>', out)
 
+    def test_contextual_keyword_is(self):
+        # 'is' is a keyword between a value and 'Type name)' and a name everywhere else
+        got = classes("if(part is TextPart text) {\n  is := 3;\n  is += 1;\n};\n")
+        self.assertEqual(got.count(("kw", "is")), 1)
+
+    def test_contextual_keyword_json(self):
+        # 'json' is a keyword before '{' and a name everywhere else
+        got = classes('request := json{"n": 1};\njson := 3;\njson += 1;\n')
+        self.assertEqual(got.count(("kw", "json")), 1)
+
+    def test_contextual_keyword_match(self):
+        # 'match' is a keyword before its subject and a name everywhere else
+        got = classes("x := match c { Color->Red => 1, other => 2 };\nmatch := 3;\nmatch += 1;\n")
+        self.assertEqual(got.count(("kw", "match")), 1)
+        self.assertIn(("kw", "other"), got)
+
+    def test_prompt_is_a_keyword_only_before_a_string(self):
+        self.assertIn(("kw", "prompt"), classes('p := prompt "Summarise {text}.";'))
+        self.assertNotIn(("kw", "prompt"), classes('prompt := "a name"; prompt->PrintLine();'))
+        self.assertNotIn("prompt", h.KEYWORDS)
+
+    def test_agent_is_a_keyword_only_at_a_declaration(self):
+        got = classes('agent Helper(script : Vector<AgentReply>) {\n  backend : ScriptedBackend->New(script);\n}\n')
+        self.assertIn(("kw", "agent"), got)
+        self.assertIn(("cls", "Helper"), got)
+        self.assertNotIn(("kw", "agent"), classes('    agent := 3;\n    agent->Run("x");\n    x := agent Foo {\n'))
+        self.assertNotIn("agent", h.KEYWORDS)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)

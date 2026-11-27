@@ -37,8 +37,7 @@ class FakeReviewTTest {
 		};
 
 		sizes := [100, 500, 2000];
-		each(s : sizes) {
-			n := sizes[s];
+		each(n in sizes) {
 			@state := seed + n;
 			genuine := MakeGroup(n, 55.0, 28.0);
 			fake := MakeGroup(n, 48.0, 24.0);

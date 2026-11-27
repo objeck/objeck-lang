@@ -19,9 +19,7 @@ class : private: Proxy {
 	@lib_proxy : static : System.API.DllProxy;
 
 	function : GetDllProxy() ~ System.API.DllProxy {
-		if(@lib_proxy = Nil) {
-			@lib_proxy := System.API.DllProxy->New("lib_foo");
-		};
+		@lib_proxy := @lib_proxy ?? System.API.DllProxy->New("lib_foo");
 
 		return @lib_proxy;
 	}

@@ -1,0 +1,139 @@
+#~
+'match' and 'select' as values, the binding type test and the nil-guard, where they meet:
+  - 'x := E ?? return match kind { ... };': the value returned when E is Nil is a match
+  - a match arm that is Nil, guarded: 'name := Name(k) ?? return "none";'
+  - '(match k { ... }) ?? "fallback"': a match as the left side of '??'
+  - 'if(a ?? b is Type name)': the tested value is a '??' expression, evaluated once
+  - in a loop: '?? continue' and '?? break' before a match and a type test on the value
+  - a nil-guard block whose last statement returns a 'select' value
+  - a match statement whose arms guard and test
+~#
+use Collection;
+
+enum Kind { A, B, C }
+
+class Shape {
+	New() {
+	}
+
+	method : public : Area() ~ Int {
+		return 1;
+	}
+}
+
+class Square from Shape {
+	@side : Int;
+
+	New(side : Int) {
+		Parent();
+		@side := side;
+	}
+
+	method : public : Side() ~ Int {
+		return @side;
+	}
+}
+
+class InteractMatchIsNilGuard {
+	@@finds : static : Int;
+
+	function : Find(m : Map<String, Shape>, k : String) ~ Shape {
+		@@finds += 1;
+		return m->Find(k);
+	}
+
+	function : Name(k : Kind) ~ String {
+		return match k { Kind->A => "a", Kind->B => "b", Kind->C => Nil };
+	}
+
+	function : Size(m : Map<String, Shape>, k : String, kind : Kind) ~ Int {
+		s := Find(m, k) ?? return match kind { Kind->A => -1, Kind->B => -2, Kind->C => -3 };
+		if(s is Square q) {
+			return q->Side();
+		};
+		return s->Area();
+	}
+
+	function : Label(k : Kind) ~ String {
+		name := Name(k) ?? return "none";
+		return name;
+	}
+
+	function : Or(k : Kind) ~ String {
+		return (match k { Kind->A => "a", Kind->B => "b", Kind->C => Nil }) ?? "fallback";
+	}
+
+	function : Code(m : Map<String, Shape>, k : String, n : Int) ~ Int {
+		s := Find(m, k) ?? {
+			@@finds += 100;
+			return select(n) { label 0: 10 label 1, 2: 20 other: 30 };
+		};
+		return s->Area();
+	}
+
+	function : Describe(m : Map<String, Shape>, kind : Kind) ~ String {
+		text := "";
+		match kind {
+			Kind->A | Kind->B => {
+				s := Find(m, "square") ?? return "missing";
+				if(s is Square q) {
+					text := "square of {$q->Side()}";
+				};
+			}
+			Kind->C => {
+				text := "other";
+			}
+		};
+		return text;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		m := Map->New()<String, Shape>;
+		m->Insert("square", Square->New(4));
+		m->Insert("shape", Shape->New());
+
+		assert Size(m, "square", Kind->A) = 4 : "guard passed, type test taken";
+		assert Size(m, "shape", Kind->A) = 1 : "guard passed, type test not taken";
+		assert Size(m, "none", Kind->B) = -2 : "the guard returns a match value";
+		assert Size(m, "none", Kind->C) = -3 : "the guard returns a match value";
+
+		assert Label(Kind->C)->Equals("none") : "a Nil arm, guarded";
+		assert Label(Kind->B)->Equals("b") : "an arm with a value, guarded";
+		assert Or(Kind->C)->Equals("fallback") : "a match before '??'";
+		assert Or(Kind->A)->Equals("a") : "a match before '??'";
+
+		# the tested value is 'a ?? b', each side evaluated once
+		@@finds := 0;
+		side := 0;
+		if(Find(m, "none") ?? Find(m, "square") is Square q) {
+			side := q->Side();
+		};
+		assert side = 4 & @@finds = 2 : "a '??' value in a type test, evaluated once";
+
+		total := 0;
+		keys : Vector<String> := ["square", "none", "shape", "stop", "square"];
+		each(key in keys) {
+			if(key->Equals("stop")) {
+				done : String := Nil;
+				done ?? { break; };
+			};
+			s := Find(m, key) ?? continue;
+			total += match key { "square" => 10, "shape" => 20, other => 0 };
+			if(s is Square q) {
+				total += q->Side();
+			};
+		};
+		assert total = 34 : "a guard, a match and a type test in a loop";
+
+		@@finds := 0;
+		assert Code(m, "none", 2) = 20 & @@finds = 101 : "a guard block that returns a select value";
+		assert Code(m, "shape", 2) = 1 : "the guard not taken";
+
+		assert Describe(m, Kind->B)->Equals("square of 4") : "a guard and a type test in a match arm";
+		assert Describe(m, Kind->C)->Equals("other") : "the other arm";
+		m->Remove("square");
+		assert Describe(m, Kind->A)->Equals("missing") : "the guard in the arm returns";
+
+		"PASS: match, the type test and the nil-guard"->PrintLine();
+	}
+}

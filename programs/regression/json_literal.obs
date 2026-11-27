@@ -1,0 +1,224 @@
+#~
+The JSON literal: `json{"name": value, "list": [a, b], "inner": {"x": 1}}` is a
+`Data.JSON.JsonElement` built where it is written. An object is a JsonElement of
+type OBJECT with an `Insert(name, value)` for each member, an array one of type
+ARRAY with an `Add(value)` for each element, in the order written; a value is
+any expression JsonElement has an Insert/Add for (String, Int, Float, Bool,
+JsonElement), a nested `{ }` or `[ ]`, or Nil for null. This test holds the
+literal to the text and structure of the same element built by hand, and to
+evaluation order, evaluation only when reached, nesting, loops and lambdas.
+~#
+use Collection;
+use Data.JSON;
+
+class Counter {
+	@log : String;
+
+	New() {
+		@log := "";
+	}
+
+	method : public : Next(tag : String) ~ String {
+		@log += tag;
+		return tag;
+	}
+
+	method : public : Number(tag : String, value : Int) ~ Int {
+		@log += tag;
+		return value;
+	}
+
+	method : public : Log() ~ String {
+		return @log;
+	}
+}
+
+class JsonLiteral {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := JsonLiteral->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	# the request body the OpenAI client builds, by hand
+	function : RequestLong(model : String, prompt : String, max_tokens : Int, temperature : Float, stream : Bool) ~ JsonElement {
+		request := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request->Insert("model", model);
+		request->Insert("max_tokens", max_tokens);
+		request->Insert("temperature", temperature);
+		request->Insert("stream", stream);
+
+		messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+		system := JsonElement->New(JsonElement->JsonType->OBJECT);
+		system->Insert("role", "system");
+		system->Insert("content", "Be brief.");
+		messages->Add(system);
+		user := JsonElement->New(JsonElement->JsonType->OBJECT);
+		user->Insert("role", "user");
+		user->Insert("content", prompt);
+		messages->Add(user);
+		request->Insert("messages", messages);
+
+		stops := JsonElement->New(JsonElement->JsonType->ARRAY);
+		stops->Add("END");
+		stops->Add("STOP");
+		request->Insert("stop", stops);
+		request->Insert("user", JsonElement->New(JsonElement->JsonType->NULL));
+
+		return request;
+	}
+
+	# and as a literal
+	function : Request(model : String, prompt : String, max_tokens : Int, temperature : Float, stream : Bool) ~ JsonElement {
+		return json{
+			"model": model,
+			"max_tokens": max_tokens,
+			"temperature": temperature,
+			"stream": stream,
+			"messages": [
+				{"role": "system", "content": "Be brief."},
+				{"role": "user", "content": prompt}
+			],
+			"stop": ["END", "STOP"],
+			"user": Nil
+		};
+	}
+
+	function : Text(element : JsonElement) ~ String {
+		return element->ToString();
+	}
+
+	method : Run() ~ Nil {
+		# the same element as the one built by hand
+		long_form := RequestLong("m-1", "Hi \"there\"", 256, 0.25, true);
+		literal := Request("m-1", "Hi \"there\"", 256, 0.25, true);
+		Check("same as by hand", literal->ToString()->Equals(long_form->ToString()));
+		Check("structure", literal->GetType() = JsonElement->JsonType->OBJECT & literal->Get("messages")->Size() = 2 &
+			literal->Get("messages")->Get(1)->Get("content")->GetString()->Equals("Hi \"there\"") &
+			literal->Get("max_tokens")->GetInt() = 256 & literal->Get("stop")->Get(1)->GetString()->Equals("STOP") &
+			literal->Get("user")->GetType() = JsonElement->JsonType->NULL);
+
+		# every kind of value
+		name := "ada";
+		count := 3;
+		ratio := 0.5;
+		on := true;
+		kinds := json{"s": name, "i": count, "f": ratio, "b": on, "nb": false, "n": Nil, "lit": "x", "one": 1, "pi": 3.25};
+		Check("kinds", kinds->ToString()->Equals("{\"b\":true,\"f\":0.5,\"i\":3,\"lit\":\"x\",\"n\":null,\"nb\":false,\"one\":1,\"pi\":3.25,\"s\":\"ada\"}"));
+		Check("kinds types", kinds->Get("s")->GetType() = JsonElement->JsonType->STRING & kinds->Get("i")->GetType() = JsonElement->JsonType->NUMBER &
+			kinds->Get("b")->GetType() = JsonElement->JsonType->TRUE & kinds->Get("nb")->GetType() = JsonElement->JsonType->FALSE);
+
+		# values that are expressions: arithmetic, calls, '?', concatenation, a comparison, a cast
+		exprs := json{
+			"sum": count * 2 + 1,
+			"size": name->Size(),
+			"upper": name->ToUpper(),
+			"pick": count > 2 ? "many" : "few",
+			"joined": name + "-" + name,
+			"big": count > 2,
+			"half": count->As(Float) / 2.0
+		};
+		Check("expressions", exprs->ToString()->Equals("{\"big\":true,\"half\":1.5,\"joined\":\"ada-ada\",\"pick\":\"many\",\"size\":3,\"sum\":7,\"upper\":\"ADA\"}"));
+
+		# names that are expressions, and an existing element as a value
+		key := "k";
+		inner := JsonElement->New(JsonElement->JsonType->ARRAY);
+		inner->Add(9);
+		named := json{key: 1, (key + "2"): 2, name->ToUpper(): inner, "again": inner};
+		Check("names", named->ToString()->Equals("{\"ADA\":[9],\"again\":[9],\"k\":1,\"k2\":2}"));
+		Check("element value", named->Get("ADA") = inner);
+
+		# nesting, empty containers, a trailing comma, and 'json' written inside as well
+		deep := json{
+			"a": {"b": {"c": [1, [2, [3, {"d": Nil}]]]}},
+			"empty_object": {},
+			"empty_array": [],
+			"prefixed": json{"x": [json{"y": 1}]},
+		};
+		Check("nesting", deep->ToString()->Equals("{\"a\":{\"b\":{\"c\":[1,[2,[3,{\"d\":null}]]]}},\"empty_array\":[],\"empty_object\":{},\"prefixed\":{\"x\":[{\"y\":1}]}}"));
+		Check("empty", json{}->ToString()->Equals("{}") & json{}->GetType() = JsonElement->JsonType->OBJECT);
+
+		# names and values are evaluated once, in the order written
+		counter := Counter->New();
+		ordered := json{
+			counter->Next("a"): counter->Number("1", 1),
+			counter->Next("b"): [counter->Number("2", 2), counter->Number("3", 3)],
+			counter->Next("c"): {counter->Next("d"): counter->Number("4", 4)}
+		};
+		Check("order", counter->Log()->Equals("a1b23cd4"));
+		Check("order values", ordered->ToString()->Equals("{\"a\":1,\"b\":[2,3],\"c\":{\"d\":4}}"));
+
+		# built only when it is reached
+		skipped := Counter->New();
+		none : JsonElement := count < 0 ? json{"x": skipped->Number("x", 1)} : Nil;
+		Check("not reached", none = Nil & skipped->Log()->Size() = 0);
+		taken : JsonElement := count > 0 ? json{"x": skipped->Number("x", 1)} : Nil;
+		Check("reached", taken->Get("x")->GetInt() = 1 & skipped->Log()->Equals("x"));
+
+		# as an argument, with a call on it, and as a statement
+		Check("argument", Text(json{"a": [1, 2]})->Equals("{\"a\":[1,2]}"));
+		Check("call on it", json{"a": 1, "b": 2}->Size() = 2);
+		Check("chain on it", json{"a": {"b": "deep"}}->Get("a")->Get("b")->GetString()->Equals("deep"));
+		holder := Vector->New()<JsonElement>;
+		holder->AddBack(json{"n": 1});
+		holder->AddBack(json{"n": 2});
+		Check("in a collection", holder->Get(1)->Get("n")->GetInt() = 2);
+
+		# in loops, each time a new element
+		rows := JsonElement->New(JsonElement->JsonType->ARRAY);
+		each(i : 3) {
+			each(j : 2) {
+				cell := i * 10 + j;
+				rows->Add(json{"i": i, "j": j, "cell": cell, "tags": [i, j]});
+			};
+		};
+		Check("loops", rows->Size() = 6 & rows->Get(5)->Get("cell")->GetInt() = 21 & rows->Get(5)->Get("tags")->Get(0)->GetInt() = 2 &
+			rows->Get(0) <> rows->Get(1));
+
+		# in a lambda, with a captured variable
+		prefix := "id-";
+		make := \(Int) ~ JsonElement : (n) => json{"id": prefix + n->ToString(), "n": n};
+		Check("lambda", make(7)->ToString()->Equals("{\"id\":\"id-7\",\"n\":7}"));
+
+		# many under memory pressure: the elements built first survive those built later
+		kept := Vector->New()<JsonElement>;
+		each(i : 20000) {
+			element := json{"i": i, "text": "item " + i->ToString(), "list": [i, i + 1, {"deep": [i]}]};
+			if(i % 1000 = 0) {
+				kept->AddBack(element);
+			};
+		};
+		kept_ok := kept->Size() = 20;
+		each(i : kept->Size()) {
+			if(kept->Get(i)->Get("i")->GetInt() <> i * 1000 | kept->Get(i)->Get("list")->Get(2)->Get("deep")->Get(0)->GetInt() <> i * 1000) {
+				kept_ok := false;
+			};
+		};
+		Check("many", kept_ok);
+
+		# 'json' is still an ordinary name
+		json := "text";
+		json += "!";
+		Check("name", json->Equals("text!"));
+
+		if(@fails = 0) {
+			"PASS: json literal"->PrintLine();
+		}
+		else {
+			"FAIL: json literal"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

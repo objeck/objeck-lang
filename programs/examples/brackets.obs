@@ -1,8 +1,7 @@
 class Balanced {
 	function : IsBalanced(text : String) ~ Bool {
 		level := 0;
-		each(i : text) {
-			character := text->Get(i); 
+		each(character in text) {
 			if(character = ']') {
 				if(level = 0) {
 					return false;

@@ -14,9 +14,14 @@ the pages from these files, so a page cannot show code that was never compiled.
                                                                    compare the output with NAME.out
     python tools/cicd/check_site_examples.py --toolchain DIR --update   rewrite the .out files from a real run
 
+A sample that is an MCP server can have NAME.mcp next to it: the JSON-RPC requests a client sends, one per line.
+With a toolchain the checker starts `obr --mcp NAME.obe`, sends them, and compares the session (each request and
+the reply it got) with NAME.mcp.out, which the page shows. The sample's own run (the .out) is checked as before.
+
 Exit 0 = consistent, 1 = something to fix.
 """
 import glob
+import json
 import os
 import re
 import subprocess
@@ -66,6 +71,41 @@ def run(name, libs, toolchain):
         return p.stdout, None
 
 
+def mcp_session(name, libs, toolchain):
+    """(transcript, error) of NAME.mcp played against `obr --mcp NAME.obe`."""
+    exe = ".exe" if os.name == "nt" else ""
+    obc, obr = (os.path.join(toolchain, "bin", t + exe) for t in ("obc", "obr"))
+    with open(os.path.join(EX, name + ".mcp"), encoding="utf-8") as f:
+        requests = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
+    with tempfile.TemporaryDirectory() as tmp:
+        dest = os.path.join(tmp, name + ".obe")
+        c = [obc, "-src", os.path.join(EX, name + ".obs"), "-dest", dest]
+        if libs.get(name):
+            c += ["-lib", libs[name]]
+        p = subprocess.run(c, capture_output=True, text=True, timeout=120)
+        if p.returncode != 0 or not os.path.exists(dest):
+            return None, "compile failed:\n" + p.stdout + p.stderr
+        p = subprocess.run([obr, "--mcp", dest], input=("\n".join(requests) + "\n").encode("utf-8"),
+                           capture_output=True, timeout=120)
+        replies = [ln for ln in p.stdout.decode("utf-8", "replace").replace(chr(13), "").split("\n") if ln.strip()]
+    out = ["$ obr --mcp %s.obe" % name]
+    want = sum(1 for r in requests if '"id"' in r)
+    if len(replies) != want:
+        return None, "sent %d requests that expect a reply, got %d replies:\n%s" % (want, len(replies), "\n".join(replies))
+    # a server may answer requests in any order (they run concurrently): pair each reply with its request by id
+    by_id = {}
+    for ln in replies:
+        by_id[json.loads(ln).get("id")] = ln
+    for r in requests:
+        out.append("> " + r)
+        if '"id"' in r:
+            rid = json.loads(r).get("id")
+            if rid not in by_id:
+                return None, "no reply for request id %s:\n%s" % (rid, "\n".join(replies))
+            out.append("< " + by_id[rid])
+    return "\n".join(out) + "\n", None
+
+
 def main():
     args = sys.argv[1:]
     toolchain = args[args.index("--toolchain") + 1] if "--toolchain" in args else None
@@ -81,13 +121,20 @@ def main():
     for n in libs:
         if n not in names:
             problems.append("libs.txt names %s, which has no .obs" % n)
+    for n in names:
+        if os.path.exists(os.path.join(EX, n + ".mcp")) and not os.path.exists(os.path.join(EX, n + ".mcp.out")) and not update:
+            problems.append("%s.mcp has no %s.mcp.out" % (n, n))
     used = set()
     for md in glob.glob(os.path.join(ROOT, "docs", "site", "*.md")):
         with open(md, encoding="utf-8") as f:
-            for n in re.findall(r"\{\{example:(\w+)\}\}", f.read()):
-                used.add(n)
-                if n not in names:
-                    problems.append("%s uses {{example:%s}}, which does not exist" % (os.path.basename(md), n))
+            text = f.read()
+        for n in re.findall(r"\{\{example:(\w+)\}\}", text):
+            used.add(n)
+            if n not in names:
+                problems.append("%s uses {{example:%s}}, which does not exist" % (os.path.basename(md), n))
+        for n in re.findall(r"\{\{mcp:(\w+)\}\}", text):
+            if not os.path.exists(os.path.join(EX, n + ".mcp")):
+                problems.append("%s uses {{mcp:%s}}, which has no %s.mcp" % (os.path.basename(md), n, n))
     idx = os.path.join(ROOT, "docs", "web", "index.html")
     with open(idx, encoding="utf-8") as f:
         for n in re.findall(r"<!-- example:(\w+):start -->", f.read()):
@@ -112,6 +159,22 @@ def main():
                     problems.append("%s.out differs from what the program printed:\n%s" % (n, want))
             else:
                 print("ok", n)
+            if os.path.exists(os.path.join(EX, n + ".mcp")):
+                sess, err = mcp_session(n, libs, toolchain)
+                if err:
+                    problems.append("%s.mcp: %s" % (n, err))
+                    continue
+                path = os.path.join(EX, n + ".mcp.out")
+                have = open(path, encoding="utf-8", newline="").read().replace("\r\n", "\n") if os.path.exists(path) else None
+                if have != sess:
+                    if update:
+                        with open(path, "w", encoding="utf-8", newline="\n") as f:
+                            f.write(sess)
+                        print("updated", n + ".mcp.out")
+                    else:
+                        problems.append("%s.mcp.out differs from the session:\n%s" % (n, sess))
+                else:
+                    print("ok", n + ".mcp")
     for p in problems:
         print("FAIL:", p)
     print("%d sample(s), %d problem(s)" % (len(names), len(problems)))

@@ -176,7 +176,7 @@ server->EndWrite();
 			}
 			else if(path->Equals("/query")) {
 				sql := body;
-				if(sql = Nil | sql->Size() = 0) {
+				if(sql = Nil | sql->IsEmpty()) {
 					sql := request->GetParam("sql");
 				};
 				if(sql = Nil | sql->Trim()->Size() = 0) {
@@ -274,9 +274,7 @@ server->EndWrite();
 			};
 
 			accept := request->GetHeader("Accept");
-			if(accept = Nil) {
-				accept := request->GetHeader("accept");
-			};
+			accept := accept ?? request->GetHeader("accept");
 			if(accept <> Nil) {
 				accept := accept->ToLower();
 				if(accept->Has("application/x-otab")) {
@@ -290,9 +288,7 @@ server->EndWrite();
 		}
 
 		function : Fail(response : Response, code : Int, message : String) ~ Nil {
-			if(message = Nil) {
-				message := "error";
-			};
+			message := message ?? "error";
 			response->SetHeader("Content-Type", "text/plain; charset=utf-8");
 			response->SetCodeContent(code, message->ToByteArray());
 		}

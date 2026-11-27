@@ -1,0 +1,15 @@
+# EXTRA_LIBS: llm_util,regex
+# EXPECT_COMPILE_ERROR: (12,12): Undefined variable: 'txt'
+# EXPECT_ERROR_COUNT: 1
+#~
+A hole of a prompt literal that names no variable in scope is a compile error at the hole,
+here on the second line of a literal that spans lines (docs/design/AGENT_SYNTAX.md).
+~#
+class BadPromptHoleUndefined {
+	function : Main(args : String[]) ~ Nil {
+		text := "The meeting moved to Friday.";
+		p := prompt "Read {text}.
+Summarise {txt} in one line.";
+		p->ToString()->PrintLine();
+	}
+}

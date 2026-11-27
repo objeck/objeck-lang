@@ -1286,8 +1286,7 @@ class Player {
 					# warp: find nearest platform ahead
 					warp_platforms := world->GetPlatforms();
 					best_x := @x + 400.0;
-					each(i : warp_platforms) {
-						wp := warp_platforms->Get(i);
+					each(wp in warp_platforms) {
 						wpx := wp->GetX();
 						if(wpx > @x + 100.0 & wpx < best_x) {
 							best_x := wpx + (wp->GetW() / 2)->As(Float);
@@ -1334,8 +1333,7 @@ class Player {
 		@edge_land_dist := -1.0;
 
 		platforms := world->GetPlatforms();
-		each(i : platforms) {
-			p := platforms->Get(i);
+		each(p in platforms) {
 			if(p->IsDead()) {
 				# skip dead platforms
 			}
@@ -1436,8 +1434,7 @@ class Player {
 	method : public : CheckItemCollect(world : World, counts : Int[]) ~ Nil {
 		# fill counts: [0]=coins, [1]=gems, [2]=stars, [3]=mushrooms
 		platforms := world->GetPlatforms();
-		each(i : platforms) {
-			p := platforms->Get(i);
+		each(p in platforms) {
 			if(p->HasItem()) {
 				px := p->GetX();
 				pw := p->GetW();
@@ -2567,8 +2564,7 @@ class Game {
 		player_cx := @player->GetX() + 12.0;
 		player_cy := @player->GetY() + 18.0;
 		enemies := @world->GetEnemies();
-		each(ei : enemies) {
-			en := enemies->Get(ei);
+		each(en in enemies) {
 			if(en->IsAlive() & en->Collides(player_cx, player_cy)) {
 				en->Kill();
 				# enemy hit = lose points, shake, and slow down
@@ -2590,8 +2586,7 @@ class Game {
 
 		# collect floating coin trails
 		float_coins := @world->GetCoins();
-		each(fci : float_coins) {
-			fc := float_coins->Get(fci);
+		each(fc in float_coins) {
 			if(<>fc->IsCollected()) {
 				dx := (player_cx - fc->GetX());
 				dy := (player_cy - fc->GetY());

@@ -90,6 +90,11 @@ bundle API.MCP {
 			return tools->Size();
 		}
 
+		#~
+		Copies the read-only and destructive hints that the tool states onto the agent tool; a hint the tool does not state is left at the agent's default
+		@param tool the MCP tool
+		@param made the agent tool to set
+		~#
 		# the stated effect hints, and only those, so a tool with none keeps the agent's defaults
 		function : CopyHints(tool : McpTool, made : AgentTool) ~ Nil {
 			if(tool->HasReadOnlyHint()) {
@@ -105,10 +110,20 @@ bundle API.MCP {
 	class : private : McpAgentLocal implements AgentCancelableHandler {
 		@tool : McpTool;
 
+		#~
+		Constructor
+		@param tool the tool whose handler runs in this process
+		~#
 		New(tool : McpTool) {
 			@tool := tool;
 		}
 
+		#~
+		Runs the tool's handler with the arguments. A watcher thread copies the agent's cancellation to the call while the handler runs. A handler that throws, a result that says it failed and a Nil result are raised as errors
+		@param arguments the model's arguments, a JSON object
+		@param cancel the agent's cancellation token; a token already cancelled raises an error before the handler runs
+		@return the text of the result
+		~#
 		method : public : Run(arguments : JsonElement, cancel : AgentCancel) ~ String {
 			if(cancel->IsCancelled()) {
 				Runtime->Raise(Error->New("cancelled before the tool ran"));
@@ -144,11 +159,21 @@ bundle API.MCP {
 		@client : McpClient;
 		@name : String;
 
+		#~
+		Constructor
+		@param client an initialized client
+		@param name name of the server's tool
+		~#
 		New(client : McpClient, name : String) {
 			@client := client;
 			@name := name;
 		}
 
+		#~
+		Calls the tool on the server. A call that could not be made, a result that says it failed and a Nil result are raised as errors
+		@param arguments the model's arguments, a JSON object
+		@return the text of the result
+		~#
 		method : public : Run(arguments : JsonElement) ~ String {
 			result := @client->CallTool(@name, arguments);
 			if(result = Nil) {
@@ -161,6 +186,11 @@ bundle API.MCP {
 
 	# The text of a result; a result that says it failed is raised so the agent reports the message as an error
 	class : private : McpAgentText {
+		#~
+		Gets the text of a tool result, raising an error for a Nil result or one whose IsError() is true so the agent reports the message as an error
+		@param result the result
+		@return the text
+		~#
 		function : Of(result : McpToolResult) ~ String {
 			if(result = Nil) {
 				Runtime->Raise(Error->New("the tool returned no result"));
@@ -168,9 +198,7 @@ bundle API.MCP {
 
 			text := result->GetText();
 			if(result->IsError()) {
-				if(text = Nil) {
-					text := "the tool failed";
-				};
+				text := text ?? "the tool failed";
 				Runtime->Raise(Error->New(text));
 			};
 			return text;
@@ -183,15 +211,26 @@ bundle API.MCP {
 		@cancel : AgentCancel;
 		@done : Bool;
 
+		#~
+		Constructor
+		@param call the call to cancel
+		@param cancel the agent's cancellation token to watch
+		~#
 		New(call : McpCall, cancel : AgentCancel) {
 			@call := call;
 			@cancel := cancel;
 		}
 
+		#~
+		Tells the watcher to end without cancelling the call
+		~#
 		method : public : Stop() ~ Nil {
 			@done := true;
 		}
 
+		#~
+		Checks the agent's token every 2 ms and cancels the call, then returns, as soon as it is cancelled; returns when Stop is called
+		~#
 		method : public : Run() ~ Nil {
 			while(<>@done) {
 				if(@cancel->IsCancelled()) {
@@ -204,10 +243,17 @@ bundle API.MCP {
 	}
 
 	class : private : McpAgentWatcher from Thread {
+		#~
+		Constructor
+		~#
 		New() {
 			Parent();
 		}
 
+		#~
+		Runs the McpAgentWatch passed as the argument
+		@param arg the McpAgentWatch
+		~#
 		method : public : Run(arg : System.Base) ~ Nil {
 			arg->As(McpAgentWatch)->Run();
 		}

@@ -945,6 +945,39 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 mcp_tool_tags_diag_test.py "$BIN"
 
+    # 'class Name : json' (docs/design/AGENT_SYNTAX.md): every diagnostic with its line, and what must be left alone
+    - name: the json class diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 json_class_diag_test.py "$BIN"
+
+    # 'prompt "..."' (docs/design/AGENT_SYNTAX.md): each hole the compiler must refuse, with the line and column it
+    # reports, in LF and CRLF files, and 'prompt' left alone wherever it is an ordinary name.
+    - name: the prompt literal diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 prompt_literal_diag_test.py "$BIN"
+
+    # 'agent Name { ... }' (docs/design/AGENT_SYNTAX.md): each declaration the compiler must refuse, with the line
+    # and column it reports (also inside the user's own expressions), in LF and CRLF files; bundles, several
+    # files, and 'agent' left alone wherever it is an ordinary name. Scripted model: no key, no network.
+    - name: the agent declaration diagnostics hold (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 agent_decl_diag_test.py "$BIN"
+
     # 'obr --mcp' and 'obr --mcp-http' (docs/design/MCP_FIRST_CLASS.md, Stage 3): a program's tools, resources and prompts
     # served with no server code; stdio in three execution modes, hostile input, HTTP, the refusals.
     - name: obr --mcp serves a program's tools (POSIX)
@@ -1041,6 +1074,69 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_obc_debug_reproducible.py "$BIN"
 
+    # `assert E : "label";` must fail a test by itself: print the FAIL line with both operands and
+    # exit 1 (the regression runners read the exit code alone). The passing shapes and the programs
+    # that must be rejected are in the regression suite; this runs the failing ones.
+    - name: assert statement fails a program with its FAIL line and exit code 1 (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_assert_statement.py "$BIN"
+
+    # `if(value is Type name) { ... }` is the test and the cast it stands for, with the name
+    # declared in the block: `if(value <> Nil & value->TypeOf(Type)) { name := value->As(Type); ... }`.
+    # The fixture pairs each use with the same code written by hand and the two listings must be
+    # the same instruction for instruction, at -opt s0 and s3.
+    - name: a binding type test compiles to the test and cast it stands for (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_type_test_lowering.py "$BIN"
+
+    # A JSON literal, `json{"name": value, "list": [a, b]}`, is the JsonElement calls it stands
+    # for: New(OBJECT) and an Insert per member, New(ARRAY) and an Add per element. The fixture
+    # pairs literals with the same element built by hand: a flat one must have the same listing,
+    # a nested one the same instructions in the literal's own order, at -opt s0 and s3.
+    - name: a JSON literal compiles to the JsonElement calls it stands for (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_json_literal_lowering.py "$BIN"
+
+    # A map literal, `m : Map<String, IntRef> := {"a": 1}`, is the constructor and the Insert
+    # calls it stands for, typed by its target. The fixture pairs literals with the same map built
+    # by hand and the two listings must be the same instruction for instruction, at -opt s0 and s3.
+    - name: a map literal compiles to the constructor and Insert calls it stands for (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_map_literal_lowering.py "$BIN"
+
+    # A 'match' (or 'select') used as a value is the select statement it stands for, emitted
+    # where the expression is evaluated: no instruction of its own. The fixture pairs each value
+    # form with the same table written by hand and the two listings must be the same instruction
+    # for instruction, at -opt s0 and s3.
+    - name: a value match compiles to the select statement it stands for (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_match_lowering.py "$BIN"
+
     # With OBJECK_LIB_PATH unset the library directory is resolved against the executable,
     # not the working directory.
     - name: obc and obr find their libraries from another working directory (POSIX)
@@ -1064,6 +1160,19 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_named_args.py "$BIN"
+
+    # A dead store's value must leave the operand stack with it. In a chained
+    # assignment (`a := b := E`) it did not: a dead `b` lost its store and kept E,
+    # and the loader refused the method. Generates the shapes around that one and
+    # compares -opt s0..s3 under the interpreter and the JIT.
+    - name: a dead store leaves nothing on the operand stack (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_dead_store_chain.py "$BIN"
 
     # A library records where its methods' own type parameters stand, so a call
     # into it infers them: a library generic function returns its caller's type,
@@ -1089,6 +1198,45 @@ jobs:
         BIN="../../core/release/deploy-$ARCH/bin"
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_chain.py "$BIN"
+
+    # A primitive is boxed and a holder unboxed to fit a parameter, and the method
+    # that fits best is called. A library's methods are matched and ranked by the
+    # analyzer's library path, from the signatures in the .obl; this builds a library
+    # whose overloads are declared holder-first and calls each of them.
+    - name: boxing and unboxing choose among a library's overloads (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_boxing_overloads.py "$BIN"
+
+    # A constructor call may leave out its type arguments ('Pair->New(a, b)',
+    # 'v : Vector<Foo> := Vector->New();'). For a library class the constructors'
+    # parameter types and the type parameters' bounds are read back from the .obl,
+    # and a second library may have a class of the same short name; this builds two.
+    - name: type arguments are inferred for a library generic class (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_generic_inference.py "$BIN"
+
+    # 'spawn { ... }' is written out as an anonymous Thread class and a lambda, named
+    # for the class, file and position it is written at. A library stores them in
+    # its .obl beside the ones a program makes for its own 'spawn' blocks; this
+    # builds both, with a 'spawn' at one position of two files of one name.
+    - name: a spawn block in a library and in the program that uses it (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_spawn.py "$BIN"
 
     # `Vector[]<T>` as a parameter built fine inside a library and resolved for
     # callers inside it, but a program that linked the library was told the method
@@ -1477,6 +1625,16 @@ jobs:
         OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
       run: python3 programs/deploy/build_examples.py
 
+    # The samples on objeck.org (docs/site/examples) are compiled and run with the full deploy tree (the ml
+    # sample loads libobjk_ml), and the MCP session the Agents page shows is played against `obr --mcp`.
+    # Linux x64 only, like the step above: the samples are platform-neutral.
+    - name: Site code samples compile, run and print what the pages show
+      if: matrix.platform == 'linux-x64'
+      env:
+        OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
+        LD_LIBRARY_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib/native
+      run: python3 tools/cicd/check_site_examples.py --toolchain core/release/${{ steps.deploy-dir.outputs.dir }}
+
     # ============================================
     # API Documentation (Linux x64 only)
     # ============================================
@@ -1563,6 +1721,7 @@ jobs:
           ../../../compiler/lib_src/actor_agents.obs \
           ../../../compiler/lib_src/mcp.obs \
           ../../../compiler/lib_src/mcp_agent.obs \
+          ../../../compiler/lib_src/agent_json.obs \
           ../../../compiler/lib_src/rag.obs \
           ../../../compiler/lib_src/rag_adapters.obs \
           ../../../compiler/lib_src/json_rpc.obs \
@@ -1668,6 +1827,15 @@ jobs:
       # matched while the API docs and the editor index were both incomplete.
       - name: Library lists agree with lib_src
         run: python3 tools/cicd/check_doc_lists.py
+
+      # System.Utility.CodeFormatter (misc.obs) is written from the language
+      # server's formatter (tools/lsp/server/format_code). It began as a copy,
+      # the two were changed apart, and the library's went on returning a
+      # different program from the one it was given for most inputs. A change to
+      # the formatter that is not carried into misc.obs fails here; the fix is
+      # the command the check prints.
+      - name: The library's formatter is the language server's
+        run: python3 tools/cicd/check_formatter_sync.py
 
       # Same family, found the same way -- by noticing something documented was
       # not in the reference. doc_parser.obs parses a doc comment's code fence
@@ -1885,6 +2053,7 @@ jobs:
         run: |
           python3 tools/cicd/check_site_examples.py
           python3 tools/docs/test_objeck_highlight.py
+          python3 tools/docs/test_editor_grammars.py
 
       # Same class of guard, for both halves of what the benchmark harness does.
       # Every number on docs/performance.md was measured at the input printed

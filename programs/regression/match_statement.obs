@@ -1,0 +1,234 @@
+#~
+'match' as a statement: `match subject { pattern | pattern => { ... } other => { ... } }`.
+It is a `select` whose arms are blocks, with two checks a `select` does not make:
+on an enum every label is an item of that enum, and without `other` the labels
+name every item. Covers every item with and without `other`, several patterns on
+one arm, an enum nested in a class and one from a library, Int, Char and String
+subjects, locals declared in an arm, break/continue/return from an arm, a match
+inside a match, and the commas between arms being optional.
+~#
+use Collection;
+use Data.JSON;
+
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+class Light {
+	enum State { Off, Dim, Bright }
+
+	@state : Light->State;
+	@log : String;
+
+	New() {
+		@state := Light->State->Off;
+		@log := "";
+	}
+
+	method : public : Step() ~ Nil {
+		match @state {
+			State->Off => {
+				@state := Light->State->Dim;
+				@log += "d";
+			}
+			State->Dim => {
+				@state := Light->State->Bright;
+				@log += "b";
+			}
+			State->Bright => {
+				@state := Light->State->Off;
+				@log += "o";
+			}
+		};
+	}
+
+	method : public : Log() ~ String {
+		return @log;
+	}
+}
+
+class MatchStatement {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MatchStatement->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	# every arm returns, and the method still ends in a return
+	function : Name(c : Color) ~ String {
+		match c {
+			Color->Red => { return "red"; }
+			Color->Green => { return "green"; }
+			Color->Blue => { return "blue"; }
+		};
+
+		return "none";
+	}
+
+	# with 'other' every path returns, so nothing follows
+	function : Warm(c : Color) ~ Bool {
+		match c {
+			Color->Red => { return true; }
+			other => { return false; }
+		};
+	}
+
+	function : JsonKind(e : JsonElement) ~ String {
+		kind := "";
+		match e->GetType() {
+			JsonElement->JsonType->STRING => { kind := "string"; }
+			JsonElement->JsonType->NUMBER => { kind := "number"; }
+			JsonElement->JsonType->TRUE | JsonElement->JsonType->FALSE => { kind := "bool"; }
+			other => { kind := "other"; }
+		};
+
+		return kind;
+	}
+
+	method : Run() ~ Nil {
+		Check("returns", Name(Color->Red)->Equals("red") & Name(Color->Green)->Equals("green") & Name(Color->Blue)->Equals("blue"));
+		Check("other returns", Warm(Color->Red) & <>Warm(Color->Blue));
+
+		# every item, with commas between the arms and without
+		hits := 0;
+		each(k : 3) {
+			c := k->As(Color);
+			match c {
+				Color->Red => { hits += 1; },
+				Color->Green => { hits += 10; },
+				Color->Blue => { hits += 100; }
+			};
+		};
+		Check("every item", hits = 111);
+
+		# several patterns on one arm, and 'other'
+		seen := "";
+		each(k : 3) {
+			c := k->As(Color);
+			match c {
+				Color->Red | Color->Blue => { seen += "x"; }
+				other => { seen += "g"; }
+			};
+		};
+		Check("patterns", seen->Equals("xgx"));
+
+		# an enum nested in a class, as a field
+		light := Light->New();
+		each(k : 4) {
+			light->Step();
+		};
+		Check("nested enum", light->Log()->Equals("dbod"));
+
+		# an enum from a library
+		Check("library enum", JsonKind(JsonElement->New("s"))->Equals("string") & JsonKind(JsonElement->New(3))->Equals("number") &
+			JsonKind(JsonElement->New(JsonElement->JsonType->FALSE))->Equals("bool") & JsonKind(JsonElement->New(JsonElement->JsonType->ARRAY))->Equals("other"));
+
+		# Int, Char and String subjects need no 'other'
+		n := 0;
+		each(k : 5) {
+			match k {
+				0 => { n += 1; }
+				2 | 3 => { n += 10; }
+			};
+		};
+		Check("int", n = 21);
+
+		vowels := 0;
+		text := "match is sugar";
+		each(k : text->Size()) {
+			match text->Get(k) {
+				'a' | 'e' | 'i' | 'o' | 'u' => { vowels += 1; }
+			};
+		};
+		Check("char", vowels = 4);
+
+		words := ["get", "put", "get", "drop"];
+		gets := 0;
+		puts := 0;
+		rest := 0;
+		each(k : words->Size()) {
+			word := words[k];
+			match word {
+				"get" => { gets += 1; }
+				"put" => { puts += 1; }
+				other => { rest += 1; }
+			};
+		};
+		Check("string", gets = 2 & puts = 1 & rest = 1);
+
+		# a local declared in an arm belongs to the arm
+		total := 0;
+		each(k : 3) {
+			c := k->As(Color);
+			match c {
+				Color->Red => {
+					part := 5;
+					total += part;
+				}
+				Color->Green => {
+					part := "seven";
+					total += part->Size();
+				}
+				Color->Blue => {
+					part := 2.5;
+					total += (part * 2.0)->As(Int);
+				}
+			};
+		};
+		Check("arm locals", total = 15);
+
+		# break and continue leave the loop the match is in
+		steps := 0;
+		each(k : 10) {
+			match k {
+				1 => { continue; }
+				4 => { break; }
+			};
+			steps += 1;
+		};
+		Check("break and continue", steps = 3);
+
+		# a match inside a match
+		grid := "";
+		each(a : 2) {
+			each(b : 3) {
+				c := b->As(Color);
+				match a {
+					0 => {
+						match c {
+							Color->Red => { grid += "r"; }
+							Color->Green => { grid += "g"; }
+							Color->Blue => { grid += "b"; }
+						};
+					}
+					other => {
+						grid += match c { Color->Red => "R", other => "-" };
+					}
+				};
+			};
+		};
+		Check("nested", grid->Equals("rgbR--"));
+
+		if(@fails = 0) {
+			"PASS: match statement"->PrintLine();
+		}
+		else {
+			"FAIL: match statement"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

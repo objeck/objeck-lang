@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: (13,8): A map literal takes its type from the variable it is assigned to or the method it is returned from
+#~
+An argument is not a target a map literal takes its type from (the overload is chosen from the arguments' types).
+~#
+use Collection;
+
+class BadMapLiteralArgument {
+	function : Take(m : Map<String, IntRef>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Take({"a": 1})->PrintLine();
+	}
+}

@@ -30,7 +30,7 @@
 (defvar objeck-mode-font-lock-keywords
   (let ((keywords '("use" "leaving" "if" "else" "do" "while" "select" "break"
                     "continue" "in" "other" "for" "each" "reverse" "label"
-                    "return" "critical" "from" "implements" "virtual"))
+                    "return" "critical" "spawn" "from" "implements" "virtual"))
         (builtins '("New" "Parent" "Try" "Otherwise"))
         (types '("Nil" "Byte" "ByteRef" "Int" "IntRef" "Float" "FloatRef"
                  "Char" "CharRef" "Bool" "BoolRef" "String"

@@ -1,0 +1,105 @@
+#~
+Field accessors and constructor field promotion on the same fields, with what they meet:
+  - 'New(@x : Int, @label : String) {}' fills fields declared '@x : get set : Int'
+  - promoted parameters with defaults and named arguments; the setter after construction
+  - a Bool field ('is_' prefix), a holder field filled from a number (boxing), a
+    collection field filled from a literal by the caller
+  - a subclass: 'Parent(..)' first, then its own promoted field; the parent's accessors
+  - a hand-written getter wins over the generated one for a promoted field
+  - a lambda in an instance method reads and writes a promoted field with accessors
+  - a nil-guard on an accessor's value and a 'match' on one
+~#
+use Collection;
+
+enum Level { LOW, HIGH }
+
+class Point {
+	@x : get set : Int;
+	@y : get set : Int;
+	@label : get : String;
+	@is_fixed : get set : Bool;
+	@weight : get set : FloatRef;
+	@tags : get : Vector<String>;
+	@level : get set : Level;
+
+	New(@x : Int, @y : Int, @label : String := "origin", @is_fixed : Bool := false) {
+		@weight := 1;
+		@level := Level->LOW;
+	}
+
+	New(@label : String, @tags : Vector<String>) {
+		@x := @tags->Size();
+	}
+
+	method : public : Mover() ~ FuncRef<IntRef> {
+		return \() => {
+			@x += 10;
+			return IntRef->New(@x + @y);
+		};
+	}
+}
+
+class Pixel from Point {
+	@shade : get : Int;
+	@note : get set : String;
+
+	New(x : Int, y : Int, @shade : Int) {
+		Parent(x, y, "pixel");
+	}
+
+	# written by hand: this is the getter that is called
+	method : public : GetShade() ~ Int {
+		return @shade * 2;
+	}
+}
+
+class InteractAccessorsPromotion {
+	function : Rank(p : Point) ~ String {
+		return match p->GetLevel() { Level->LOW => "low", Level->HIGH => "high" };
+	}
+
+	function : NoteSize(p : Pixel) ~ Int {
+		note := p->GetNote() ?? return -1;
+		return note->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		p := Point->New(3, 4);
+		assert p->GetX() = 3 & p->GetY() = 4 : "promoted fields through generated getters";
+		assert p->GetLabel()->Equals("origin") : "a promoted parameter's default";
+		assert p->IsFixed() = false : "a Bool field's getter";
+		p->SetX(30);
+		p->SetFixed(true);
+		assert p->GetX() = 30 & p->IsFixed() : "generated setters";
+
+		named := Point->New(y: 8, x: 7, is_fixed: true);
+		assert named->GetX() = 7 & named->GetY() = 8 & named->IsFixed() : "named arguments to promoted parameters";
+		assert named->GetLabel()->Equals("origin") : "the default with named arguments";
+
+		assert p->GetWeight() = 1.0 : "a holder field set from an Int in the constructor";
+		p->SetWeight(2.5);
+		assert p->GetWeight() * 2 = 5.0 : "the setter boxes, the getter's value is unboxed";
+
+		words : Vector<String> := ["a", "b", "c"];
+		tagged := Point->New("tagged", words);
+		assert tagged->GetTags()->Size() = 3 & tagged->GetX() = 3 : "a promoted collection field, read in the body";
+		assert tagged->GetLabel()->Equals("tagged") : "the second constructor's promoted field";
+
+		move := p->Mover();
+		assert move() = 44 : "a lambda writes the promoted field";
+		assert p->GetX() = 40 : "the getter sees the lambda's write";
+
+		assert Rank(p)->Equals("low") : "a match on a getter's value";
+		p->SetLevel(Level->HIGH);
+		assert Rank(p)->Equals("high") : "after the setter";
+
+		px := Pixel->New(1, 2, 9);
+		assert px->GetX() = 1 & px->GetLabel()->Equals("pixel") : "the parent's accessors on a subclass";
+		assert px->GetShade() = 18 : "a hand-written getter wins";
+		assert NoteSize(px) = -1 : "a nil-guard on a getter's value";
+		px->SetNote("dark");
+		assert NoteSize(px) = 4 : "after the setter";
+
+		"PASS: field accessors and constructor promotion"->PrintLine();
+	}
+}

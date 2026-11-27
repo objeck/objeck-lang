@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: must end in return, break, continue or Runtime->Exit
+#~
+A guard block that can fall through would leave the variable Nil (line 10).
+~#
+class BadNilGuardFallsThrough {
+	function : Main(args : String[]) ~ Nil {
+		v : IntRef := Nil;
+		x := v ?? {
+			"nil"->PrintLine();
+		};
+	}
+}

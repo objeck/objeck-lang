@@ -1,0 +1,9 @@
+# EXPECT_COMPILE_ERROR: apply to a field of a class, not to a local variable
+#~
+A local is not a field (line 7).
+~#
+class BadFieldAccessorLocal {
+	function : Main(args : String[]) ~ Nil {
+		x : get : Int;
+	}
+}

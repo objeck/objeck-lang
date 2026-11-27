@@ -28,7 +28,13 @@ syn match objeckFloat '\<\.\d\+\([eE][+-]\?\d\+\)\?\>'
 
 " Control flow keywords
 syn keyword objeckControl if else do while for each reverse select other
-syn keyword objeckControl break continue return label in critical
+syn keyword objeckControl break continue return label in critical spawn
+" contextual: 'if(value is Type name) { ... }'
+syn match objeckControl "\<is\>\ze\s\+[A-Za-z_][A-Za-z0-9_.]*\s\+[A-Za-z_][A-Za-z0-9_]*\s*)"
+" contextual: 'json{ ... }', a JSON literal
+syn match objeckControl "\<json\>\ze\s*{"
+" contextual: 'match subject { pattern => ... }'
+syn match objeckControl "\<match\>\ze\s\+[A-Za-z_@]"
 
 " Declaration keywords
 syn keyword objeckDecl class interface enum consts bundle alias
@@ -43,7 +49,7 @@ syn keyword objeckType CharArrayRef FloatArrayRef IntArrayRef StringArrayRef
 syn keyword objeckType Func2Ref Func3Ref Func4Ref FuncRef
 
 " Other keywords
-syn keyword objeckKeyword use leaving Parent As TypeOf from implements
+syn keyword objeckKeyword use leaving assert using Parent As TypeOf from implements
 syn keyword objeckKeyword Try Otherwise New
 
 " Constants

@@ -44,8 +44,7 @@ class Cusip {
             "68389X105"
         ];
 
-        each(i : candidates) {
-            candidate := candidates[i];
+        each(candidate in candidates) {
             "{$candidate} => "->Print(); 
             if(IsCusip(candidate)) {
                 "correct"->PrintLine();

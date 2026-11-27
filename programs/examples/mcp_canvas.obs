@@ -122,13 +122,12 @@ class Palette {
 
 	# a color name ("sky"), its letter ("s") or #rrggbb (the nearest of the 17); -1 when unknown
 	function : Resolve(color : String) ~ Int {
-		if(color = Nil | color->Size() = 0) {
+		if(color = Nil | color->IsEmpty()) {
 			return -1;
 		};
 
 		low := "";
-		each(i : color) {
-			ch := color->Get(i);
+		each(ch in color) {
 			lower := Char->ToLower(ch);
 			low->Append(lower);
 		};
@@ -1110,7 +1109,7 @@ class Gfx {
 	}
 
 	method : public : Text(text : String, x : Int, y : Int, size : Int, rgb : Int) ~ Int {
-		if(text = Nil | text->Size() = 0) {
+		if(text = Nil | text->IsEmpty()) {
 			return 0;
 		};
 		key := "{$size}|{$rgb}|{$text}";
@@ -1188,8 +1187,7 @@ class Gfx {
 	# one line, no JSON whitespace
 	function : Flat(text : String) ~ String {
 		out := "";
-		each(i : text) {
-			c := text->Get(i);
+		each(c in text) {
 			if(c = '\n' | c = '\r' | c = '\t') {
 				c := ' ';
 			};
@@ -1202,8 +1200,7 @@ class Gfx {
 
 	# --- events -> effects ---
 	method : public : Take(events : Vector<Ev>) ~ Nil {
-		each(i : events) {
-			ev := events->Get(i);
+		each(ev in events) {
 			@log->AddBack(ev);
 			@total_calls += 1;
 			if(@log->Size() > 40) {
@@ -1324,8 +1321,7 @@ class Gfx {
 
 	method : DrawFx() ~ Nil {
 		alive := Vector->New()<Fx>;
-		each(i : @fx) {
-			f := @fx->Get(i);
+		each(f in @fx) {
 			u := (@now - f->GetStart()) / f->GetLife();
 			if(u < 1.0) {
 				alive->AddBack(f);
@@ -1635,8 +1631,7 @@ class McpCanvas {
 
 			fresh := Board->Drain();
 			if(verbose) {
-				each(e : fresh) {
-					ev := fresh->Get(e);
+				each(ev in fresh) {
 					en := Board->GetName(ev->GetPid());
 					et := ev->GetTool();
 					ea := Gfx->Flat(ev->GetArgs());

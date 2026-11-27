@@ -21,8 +21,7 @@ class LZW {
     w := "";
     result := Vector->New()<IntRef>;
 						
-    each (i : uncompressed) {
-      c := uncompressed->Get(i);
+    each(c in uncompressed) {
       wc := String->New(w);
 			wc->Append(c);
         if (dictionary->Has(wc)) {

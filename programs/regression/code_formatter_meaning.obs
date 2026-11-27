@@ -1,0 +1,153 @@
+# EXTRA_LIBS: net,misc
+#~
+System.Utility.CodeFormatter gives back the program it was given.
+
+The library's formatter changed what it formatted. 'Parent' came back as
+'parent', a name, so any class whose constructor calls its parent's no longer
+compiled. It had no rule for the '\' of a lambda and wrote it with a space
+after it; a number with an exponent, a separator or a prefix came back in two
+pieces; a string that ended "; " or "} " lost its last space; a blank line
+after a comment was dropped and one after a '{' doubled on every pass. Of the
+1,185 programs in programs/examples and programs/regression that compiled, it
+returned the same program for 408.
+
+It is now the language server's formatter, written into the library from that
+source (tools/cicd/check_formatter_sync.py), so the two cannot differ again, and
+tools/lsp/tests/format_corpus.py formats every one of those programs with both
+and requires the same tokens, the same compiled image and no change on a second
+pass. These are the cases that failed, one by one, through the library's own
+entry point, with the colored output it alone has.
+~#
+use Collection;
+
+class CodeFormatterMeaning {
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Options() ~ Map<String, String> {
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+		return options;
+	}
+
+	function : Format(src : String) ~ String {
+		return System.Utility.CodeFormatter->New(Options())->Format(src, false);
+	}
+
+	function : Body(body : String) ~ String {
+		src := "class A {\nfunction : Main(args : String[]) ~ Nil {\n";
+		src += body;
+		src += "\n}\n}\n";
+		return Format(src);
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		return text <> Nil & text->Find(part) > -1;
+	}
+
+	function : Stable(name : String, text : String) ~ Nil {
+		if(text = Nil) {
+			Check("{$name}: formats", false);
+			return;
+		};
+		again := Format(text);
+		Check("{$name}: formatting the result again changes nothing", again <> Nil & again->Equals(text));
+	}
+
+	# the text with every ANSI color sequence (ESC '[' digits 'm') taken out
+	function : Plain(colored : String) ~ String {
+		plain := "";
+		i := 0;
+		while(i < colored->Size()) {
+			c := colored->Get(i);
+			if(c = '\e') {
+				while(i < colored->Size() & colored->Get(i) <> 'm') {
+					i += 1;
+				};
+			}
+			else {
+				plain->Append(c);
+			};
+			i += 1;
+		};
+		return plain;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# Parent
+		parent := Format("class Base{New(){}New(n:Int){}}class Kid from Base{New(){Parent();}New(n:Int){Parent(n);}}");
+		Check("Parent: the keyword keeps its capital", Has(parent, "Parent();") & Has(parent, "Parent(n);") & <>Has(parent, "parent"));
+		Stable("Parent", parent);
+
+		# lambdas and function types
+		lambdas := Body("f := \\(Int) ~ Int : (x) => x + 1;\ng := Apply(\\(a, b) => a + b);\nh := \\() => {\nreturn 1;\n};");
+		Check("Lambda: a typed lambda", Has(lambdas, "f := \\(Int) ~ Int : (x) => x + 1;"));
+		Check("Lambda: a bare lambda as an argument", Has(lambdas, "g := Apply(\\(a, b) => a + b);"));
+		Check("Lambda: a block body", Has(lambdas, "h := \\() => {\n      return 1;\n    };"));
+		Check("Lambda: the '\\' stays against what it starts", lambdas <> Nil & lambdas->Find("\\ ") < 0);
+		Stable("Lambda", lambdas);
+
+		# numbers and signs
+		numbers := Body("a := 1.5e-3; b := 0x1F; c := 1_000; d := 0o17; e := 255u; f := -1; g := a-1; h := F(-1);");
+		Check("Numbers: each literal is one token", Has(numbers, "a := 1.5e-3;") & Has(numbers, "b := 0x1F;") & Has(numbers, "c := 1_000;") &
+			Has(numbers, "d := 0o17;") & Has(numbers, "e := 255u;"));
+		Check("Numbers: a sign and a subtraction", Has(numbers, "f := -1;") & Has(numbers, "g := a - 1;") & Has(numbers, "h := F(-1);"));
+		Stable("Numbers", numbers);
+
+		# operators
+		operators := Body("a := b <= c; d := e ?? f; g := h?->I(); j := k < l; m := Map->New()<String, Vector<IntRef>>; n := <>o; p := q <> r; s := t << 2 >> 1;");
+		Check("Operators: '<=' and '??' and '?->'", Has(operators, "a := b <= c;") & Has(operators, "d := e ?? f;") & Has(operators, "g := h?->I();"));
+		Check("Operators: a comparison and type arguments", Has(operators, "j := k < l;") & Has(operators, "m := Map->New()<String, Vector<IntRef>>;"));
+		Check("Operators: 'not', '<>' and shifts", Has(operators, "n := <>o;") & Has(operators, "p := q <> r;") & Has(operators, "s := t << 2 >> 1;"));
+		Stable("Operators", operators);
+
+		# literals
+		literals := Body("a := \"x; \"; b := \"y} \"; c := ';'; d := $\"C:\\\\temp\"; m := {\"k\": [1, 2], \"n\": {}};");
+		Check("Literals: a string keeps its last space", Has(literals, "a := \"x; \";") & Has(literals, "b := \"y} \";"));
+		Check("Literals: a character and a '$' string", Has(literals, "c := ';';") & Has(literals, "d := $\"C:\\\\temp\";"));
+		Check("Literals: a map literal stays in its line", Has(literals, "m := {\"k\": [1, 2], \"n\": {}};"));
+		Stable("Literals", literals);
+
+		# comments and blank lines
+		comments := Body("a := 1; # one\n# own line\nb := 2;\n\n# after a blank line\nc := 3;\n\n\n\nd := 4;\nif(a = 1) {\n\ne := 5;\n};");
+		Check("Comments: one after a statement stays on its line", Has(comments, "    a := 1; # one\n    # own line\n    b := 2;\n"));
+		Check("Comments: a blank line after one is kept, several are one", Has(comments, "    b := 2;\n\n    # after a blank line\n    c := 3;\n\n    d := 4;\n"));
+		Check("Comments: a blank line after '{' is one, with nothing on it", Has(comments, "    if(a = 1) {\n\n      e := 5;\n    };"));
+		Stable("Comments", comments);
+
+		# a statement over several lines keeps them
+		breaks := Body("x := F(1,\n2,\n3);\nfor(i := 0; i < 3; i += 1;) {\ny := i;\n};");
+		Check("Breaks: arguments on their own lines", Has(breaks, "    x := F(1,\n      2,\n      3);\n"));
+		Check("Breaks: the parts of a for", Has(breaks, "for(i := 0; i < 3; i += 1;) {"));
+		Stable("Breaks", breaks);
+
+		# a character with no rule, a name in another script: neither stops it
+		odd := Body("Δ := 1; s := a ^ b;");
+		Check("Characters: read and written back", Has(odd, "Δ := 1;") & Has(odd, "s := a ^ b;"));
+
+		# colors: the same text, with sequences around the tokens
+		src := "class A{New(){Parent();}method:public:F(n:Int)~String{# note\nreturn \"x; \";}}";
+		plain := Format(src);
+		colored := System.Utility.CodeFormatter->New(Options())->Format(src, true);
+		Check("Colors: the colored text has color sequences", colored <> Nil & colored->Find("\e[") > -1);
+		Check("Colors: a keyword, a type, a literal and a comment each have one", Has(colored, "\e[33mclass\e[0m") & Has(colored, "\e[94mString\e[0m") &
+			Has(colored, "\e[36m\"x; \"\e[0m") & Has(colored, "\e[90m# note\e[0m"));
+		Check("Colors: without them it is the formatted text", colored <> Nil & plain <> Nil & Plain(colored)->Equals(plain));
+
+		if(@failed = 0) {
+			"PASS: CodeFormatter gives back the program it was given"->PrintLine();
+		}
+		else {
+			"FAIL: {$@failed} CodeFormatter check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

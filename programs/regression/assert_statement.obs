@@ -1,0 +1,97 @@
+#~
+assert statement: 'assert E : "label";' (docs/design/ASSERT_STATEMENT.md).
+Every assertion here holds, so the program must exit 0; the failing shapes are
+checked by check_assert_statement.py. Also covers the contextual word: 'assert' stays
+usable as a variable, a method name and Runtime->Assert.
+~#
+class Cell {
+	@n : Int;
+	New(n : Int) { @n := n; }
+	method : public : Get() ~ Int { return @n; }
+}
+
+class AssertStatement {
+	@@calls : static : Int;
+
+	function : Tick() ~ Int {
+		@@calls += 1;
+		return @@calls;
+	}
+
+	function : assert(b : Bool) ~ Bool {
+		return b;
+	}
+
+	function : Half(n : Int) ~ Int {
+		assert n >= 0 : "Half needs a non-negative number";
+		return n / 2;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# comparisons over every basic type
+		x := 3; y := 4;
+		assert x + 1 = y : "int";
+		assert x <> y : "int <>";
+		assert x < y;
+		assert y >= 4 : "int >=";
+		assert 2.5 < 3.5 : "float";
+		f := 1.5;
+		assert f * 2.0 = 3.0 : "float =";
+		assert 'a' < 'b' : "char";
+		assert true = true : "bool";
+		s := "hi";
+		assert s->Equals("hi") : "string";
+		assert s->Size() = 2 : "method call operand";
+
+		# no label, a bare expression, parentheses, and operators
+		assert x = 3 & y = 4;
+		assert x = 9 | y = 4 : "or";
+		assert (x = 3);
+		assert (x + y) = 7 : "parenthesised operand";
+		assert (x = 3) : "parenthesised, labelled";
+
+		# a Nil operand and an object
+		nothing : String;
+		assert nothing = Nil : "nil right";
+		assert Nil = nothing : "nil left";
+		assert s <> Nil : "not nil";
+		c := Cell->New(7);
+		assert c <> Nil : "object";
+		assert c->Get() = 7 : "object call";
+
+		# each operand is evaluated once, and the label only when the check fails
+		@@calls := 0;
+		assert Tick() = 1 : "once";
+		assert @@calls = 1 : "ticked once";
+		assert Tick() < 3 : "twice";
+		assert @@calls = 2 : "ticked twice";
+
+		# label is an expression
+		i := 5;
+		assert i = 5 : "i is {$i}";
+		assert i = 5 : "i is " + i->ToString();
+
+		# several lines
+		assert x +
+			y =
+			7 : "split";
+
+		# inside blocks, a loop, an if, a method with a return value
+		for(k := 0; k < 3; k += 1;) {
+			assert k < 3 : "loop";
+			if(k = 1) {
+				assert k = 1 : "branch";
+			};
+		};
+		assert Half(10) = 5 : "return value";
+
+		# 'assert' is still an ordinary name
+		assert := 5;
+		assert := assert + 1;
+		Runtime->Assert(assert = 6);
+		ok := assert(true);
+		Runtime->Assert(ok);
+
+		"PASS: assert statement"->PrintLine();
+	}
+}

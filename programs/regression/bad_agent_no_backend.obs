@@ -1,0 +1,19 @@
+# EXTRA_LIBS: agent,net,cipher,misc
+# EXPECT_COMPILE_ERROR: (10,7): The agent 'Quiet' has no backend
+# EXPECT_ERROR_COUNT: 1
+#~
+An agent declaration must say which model the agent talks to: one without a backend is a
+compile error at its name (docs/design/AGENT_SYNTAX.md).
+~#
+use API.Agent;
+
+agent Quiet {
+	instructions : "Answer in one sentence.";
+	budget { steps : 4; }
+}
+
+class BadAgentNoBackend {
+	function : Main(args : String[]) ~ Nil {
+		Quiet->Build()->Run("hello")->GetText()->PrintLine();
+	}
+}

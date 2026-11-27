@@ -1,0 +1,186 @@
+# EXTRA_LIBS: gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json
+#~
+The oracle for 'class Name : json' (docs/design/AGENT_SYNTAX.md): the schema the compiler derives from a
+class must equal, as JSON, the schema a person wrote by hand for the same shape. Twelve classes cover the
+primitives, Char and Byte, optional fields (a field may be left out or be null), nested classes three deep,
+Vector and array fields, a Vector of classes, a Map, an enum, a JsonElement and an optional nested class.
+Each hand-written schema is checked against what the class reads, too: a value built from the schema
+round-trips through FromJson.
+~#
+use API.LlmUtil, Data.JSON, Collection;
+
+enum Level { LOW, MID, HIGH }
+
+class OPrim : json {
+  @s : String;
+  @i : Int;
+  @f : Float;
+  @b : Bool;
+  New() {
+  }
+}
+
+class OOpt : json(note, count) {
+  @id : Int;
+  @note : String;
+  @count : Int;
+  New() {
+  }
+}
+
+class OInner : json {
+  @x : Int;
+  New() {
+  }
+}
+
+class OMid : json {
+  @inner : OInner;
+  @label : String;
+  New() {
+  }
+}
+
+class OOuter : json {
+  @mid : OMid;
+  @name : String;
+  New() {
+  }
+}
+
+class OVec : json {
+  @names : Vector<String>;
+  @counts : Vector<IntRef>;
+  @grid : Float[];
+  New() {
+  }
+}
+
+class OList : json {
+  @items : Vector<OInner>;
+  New() {
+  }
+}
+
+class OMap : json {
+  @weights : Map<String, FloatRef>;
+  New() {
+  }
+}
+
+class OEnum : json {
+  @level : Level;
+  @flag : Bool;
+  New() {
+  }
+}
+
+class OAny : json {
+  @payload : JsonElement;
+  @tag : String;
+  New() {
+  }
+}
+
+class OChars : json {
+  @c : Char;
+  @octet : Byte;
+  New() {
+  }
+}
+
+class OOptNested : json(inner, names) {
+  @inner : OInner;
+  @names : Vector<String>;
+  @id : Int;
+  New() {
+  }
+}
+
+class JsonClassOracleTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  function : Equal(name : String, derived : JsonElement, hand : String) ~ Nil {
+    expected := Json(hand);
+    ok := derived <> Nil & expected <> Nil & JsonSchema->Same(derived, expected);
+    Check("derived = hand-written: {$name}", ok);
+    if(<>ok) {
+      "    derived: {$derived->ToString()}"->PrintLine();
+      "    by hand: {$expected->ToString()}"->PrintLine();
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    Equal("primitives", OPrim->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"s\":{\"type\":\"string\"},\"i\":{\"type\":\"integer\"},\"f\":{\"type\":\"number\"},\"b\":{\"type\":\"boolean\"}},\"required\":[\"s\",\"i\",\"f\",\"b\"]}");
+
+    Equal("optional fields", OOpt->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"note\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"count\":{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"null\"}]}},\"required\":[\"id\"]}");
+
+    Equal("a nested class", OMid->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"inner\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"}},\"required\":[\"x\"]},\"label\":{\"type\":\"string\"}},\"required\":[\"inner\",\"label\"]}");
+
+    Equal("three levels deep", OOuter->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"mid\":{\"type\":\"object\",\"properties\":{\"inner\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"}},\"required\":[\"x\"]},\"label\":{\"type\":\"string\"}},\"required\":[\"inner\",\"label\"]},\"name\":{\"type\":\"string\"}},\"required\":[\"mid\",\"name\"]}");
+
+    Equal("Vector and array fields", OVec->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"counts\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}},\"grid\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}},\"required\":[\"names\",\"counts\",\"grid\"]}");
+
+    Equal("a Vector of classes", OList->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"}},\"required\":[\"x\"]}}},\"required\":[\"items\"]}");
+
+    Equal("a Map with String keys", OMap->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"weights\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\"}}},\"required\":[\"weights\"]}");
+
+    Equal("an enum", OEnum->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"level\":{\"type\":\"string\",\"enum\":[\"LOW\",\"MID\",\"HIGH\"]},\"flag\":{\"type\":\"boolean\"}},\"required\":[\"level\",\"flag\"]}");
+
+    Equal("a JsonElement", OAny->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"payload\":{},\"tag\":{\"type\":\"string\"}},\"required\":[\"payload\",\"tag\"]}");
+
+    Equal("Char and Byte", OChars->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"c\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1},\"octet\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":255}},\"required\":[\"c\",\"octet\"]}");
+
+    Equal("an optional nested class and Vector", OOptNested->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"inner\":{\"anyOf\":[{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"}},\"required\":[\"x\"]},{\"type\":\"null\"}]},\"names\":{\"anyOf\":[{\"type\":\"array\",\"items\":{\"type\":\"string\"}},{\"type\":\"null\"}]},\"id\":{\"type\":\"integer\"}},\"required\":[\"id\"]}");
+
+    Equal("the smallest class", OInner->JsonSchema(),
+      "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"}},\"required\":[\"x\"]}");
+
+    Equal("a class used as a field is the same schema as on its own", OMid->JsonSchema()->Get("properties")->Get("inner"), OInner->JsonSchema()->ToString());
+
+    # the values the schemas describe are the values FromJson reads
+    nested := OOuter->FromJson(Json("{\"mid\":{\"inner\":{\"x\":7},\"label\":\"l\"},\"name\":\"n\"}"));
+    Check("FromJson reads a three-level value", nested <> Nil);
+    opt := OOptNested->FromJson(Json("{\"id\":1,\"inner\":null,\"names\":null}"));
+    Check("optional fields may be null", opt <> Nil);
+    opt2 := OOptNested->FromJson(Json("{\"id\":1,\"inner\":{\"x\":2},\"names\":[\"a\"]}"));
+    Check("optional fields may be present", opt2 <> Nil);
+    chars := OChars->FromJson(Json("{\"c\":\"z\",\"octet\":255}"));
+    Check("a Char and a Byte are read", chars <> Nil);
+    level := OEnum->FromJson(Json("{\"level\":\"HIGH\",\"flag\":true}"));
+    Check("an enum is read", level <> Nil);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

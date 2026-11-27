@@ -1,0 +1,19 @@
+# EXTRA_LIBS: agent,net,cipher,misc
+# EXPECT_COMPILE_ERROR: (12,2): Unknown setting 'model' in the agent 'Helper'
+# EXPECT_ERROR_COUNT: 1
+#~
+A setting an agent declaration does not have is a compile error at the setting, and the
+message lists the settings there are (docs/design/AGENT_SYNTAX.md).
+~#
+use API.Agent;
+
+agent Helper {
+	backend : ScriptedBackend->New(Nil);
+	model : "claude";
+}
+
+class BadAgentUnknownSetting {
+	function : Main(args : String[]) ~ Nil {
+		Helper->Build()->Run("hello")->GetText()->PrintLine();
+	}
+}

@@ -33,8 +33,7 @@ bundle Default {
 				queries[1] := "What is the current price of Bitcoin?";
 				queries[2] := "What major programming language updates were announced recently?";
 
-				each(i : queries) {
-					query := queries[i];
+				each(query in queries) {
 					"=== Query: {$query} ==="->PrintLine();
 					RunQuery(model, query, token);
 					"---"->PrintLine();

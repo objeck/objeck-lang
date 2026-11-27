@@ -15,7 +15,7 @@ Clustering: KMeans with k-means++ seeding, density-based DBSCAN and the Gaussian
 bundle System.ML {
 #~
 	K-Means clustering algorithm
-	
+
 	```
 records->AddBack(FloatArrayRef->New([9.677901811, 3.044481052]));
 records->AddBack(FloatArrayRef->New([2.103293937, 2.446154204]));
@@ -328,8 +328,7 @@ labels := scanner->GetLabels();   # cluster id per row; -1 = noise
 
 						head := 0;
 						tail := 0;
-						each(n : neighbors) {
-							q := neighbors[n];
+						each(q in neighbors) {
 							if(@labels[q] = -2 | @labels[q] = -1) {
 								@labels[q] := cluster;
 								queue[tail] := q;
@@ -344,8 +343,7 @@ labels := scanner->GetLabels();   # cluster id per row; -1 = noise
 							p_neighbors := RegionQuery(X, p);
 							if(p_neighbors->Size() >= @min_points) {
 								# core point: claim and extend the frontier
-								each(n : p_neighbors) {
-									q := p_neighbors[n];
+								each(q in p_neighbors) {
 									if(@labels[q] = -2 | @labels[q] = -1) {
 										@labels[q] := cluster;
 										queue[tail] := q;
@@ -908,8 +906,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 			@dunn_index := -1.0;
 
 			names := Vector->New()<String>;
-			each(i : group_labels) {
-				group_name := group_labels[i];
+			each(group_name in group_labels) {
 				if(group_name <> Nil) {
 					group := groups->Find(group_name);
 					if(group <> Nil & <>@groups->Has(group_name)) {
@@ -974,13 +971,13 @@ resp := gmm->Predict(X);                # soft responsibilities
 				each(group_key_value in group_key_values) {
 					group := group_key_value->GetSecond()->GetValues();
 					group_name := group_key_value->GetFirst();
-					
+
 					if(@debug) {
 						group_size := group->Size();
 						"group: name='{$group_name}', size={$group_size}\n---"->PrintLine();
 					};
 
-					each(left_array in group) {			
+					each(left_array in group) {
 						each(right_array in group) {
 							if(left_array <> right_array) {
 								distance := KMeans->Distance(left_array, right_array);
@@ -1035,7 +1032,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 
 			return @dunn_index;
 		}
-		
+
 		#~
 		String representation of the object
 		@return groups representation of the object
@@ -1073,8 +1070,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 		#
 		function : AppendJsonText(str : String, buffer : String) ~ Nil {
 			hex := "0123456789abcdef";
-			each(i : str) {
-				c := str->Get(i);
+			each(c in str) {
 				if(c = '"') {
 					buffer->Append("\\\"");
 				}

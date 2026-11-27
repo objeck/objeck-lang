@@ -16,7 +16,7 @@ bundle Game.Framework {
 	~#
 	class AnimatedImageSprite from ImageSprite {
 		@clips : Vector<Rect>;
-		
+
 		New(renderer : Renderer, file : String, clips : Vector<Rect>) {
 			Parent(renderer, file);
 			if(@is_ok) {
@@ -62,7 +62,7 @@ bundle Game.Framework {
 		method : public : AddClip(clip : Rect) ~ Nil {
 			@clips->AddBack(clip);
 		}
-		
+
 		#~
 		Adds clips
 		@param num_x_clips number of x-clips
@@ -158,7 +158,7 @@ bundle Game.Framework {
 		~#
 		method : LoadImage(file : String, colorkey : Color) ~ Bool {
 			Free();
-			
+
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
 			# "Unable to load image '{$file}'!"->ErrorLine();
@@ -180,7 +180,7 @@ bundle Game.Framework {
 
 			@width := surface->GetW();
 			@height := surface->GetH();
-			
+
 			surface->Free();
 			@texture := texture;
 			return @texture <> Nil;
@@ -224,7 +224,7 @@ bundle Game.Framework {
 		@param x increment to the current x-position
 		~#
 		method : public : AddX(x : Int) ~ Nil {
-			if(@is_ok) {	
+			if(@is_ok) {
 				@shapes->Rewind();
 				while(@shapes->More()) {
 					shape := @shapes->Get()->As(ImageSprite);
@@ -240,7 +240,7 @@ bundle Game.Framework {
 		@param y increment to the current y-position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
-			if(@is_ok) {	
+			if(@is_ok) {
 				@shapes->Rewind();
 				while(@shapes->More()) {
 					shape := @shapes->Get()->As(ImageSprite);
@@ -255,7 +255,7 @@ bundle Game.Framework {
 		Renders an images based upon position instances
 		~#
 		method : public : Render() ~ Nil {
-			if(@is_ok) {	
+			if(@is_ok) {
 				@shapes->Rewind();
 				while(@shapes->More()) {
 					shape := @shapes->Get()->As(ImageSprite);
@@ -321,7 +321,7 @@ bundle Game.Framework {
 		~#
 		method : LoadImage(file : String, colorkey : Color) ~ Bool {
 			Free();
-			
+
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
 			# "Unable to load image '{$file}'!"->ErrorLine();
@@ -343,7 +343,7 @@ bundle Game.Framework {
 
 			@render_rect->SetW(surface->GetW());
 			@render_rect->SetH(surface->GetH());
-			
+
 			surface->Free();
 			@texture := texture;
 			return @texture <> Nil;
@@ -427,7 +427,7 @@ bundle Game.Framework {
 		~#
 		method : public : SetFont(font : Font) ~ Nil {
 			@font := font;
-		}		
+		}
 
 		#~
 		Sets the text color
@@ -454,9 +454,7 @@ bundle Game.Framework {
 			if(@font <> Nil) {
 				Free();
 
-				if(color = Nil) {
-					color := Color->New(32, 32, 32);
-				};
+				color := color ?? Color->New(32, 32, 32);
 
 				# Render text surface
 				text_surface := @font->RenderTextSolid(text, color);
@@ -469,7 +467,7 @@ bundle Game.Framework {
 				@render_rect->SetW(text_surface->GetW());
 				@render_rect->SetH(text_surface->GetH());
 				text_surface->Free();
-				
+
 				@texture := texture;
 				@is_ok := @texture <> Nil;
 			}
@@ -501,16 +499,16 @@ bundle Game.Framework {
 		@scale : Float;
 		@scaled : Bool;
 
-		New(renderer : Renderer) {			
-			@renderer := renderer;			
+		New(renderer : Renderer) {
+			@renderer := renderer;
 			@render_rect := Rect->New();
 			@position := Position->New(@render_rect);
 			@scale := 1.0;
 		}
-		
+
 		#~
-		Sets scaling percentage 
-		@param scale scaling percentage 
+		Sets scaling percentage
+		@param scale scaling percentage
 		~#
 		method : public : SetScale(scale : Float) ~ Nil {
 			@scale := scale;
@@ -518,8 +516,8 @@ bundle Game.Framework {
 		}
 
 		#~
-		Gets scaling percentage 
-		@return scaling percentage 
+		Gets scaling percentage
+		@return scaling percentage
 		~#
 		method : public : GetScale() ~ Float {
 			return @scale;
@@ -565,16 +563,16 @@ bundle Game.Framework {
 		#~
 		Sets alpha
 		@param alpha setting
-		~#		
+		~#
 		method : public : SetAlpha(alpha : Int) ~ Nil {
 			@texture->SetAlphaMod(alpha );
 		}
 
-		method : RenderAll(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+		method : RenderAll(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0,
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 			@render_rect->SetX(x);
 			@render_rect->SetY(y);
-			
+
 			if(<>@scaled) {
 				format := IntRef->New();
 				access := IntRef->New();
@@ -603,7 +601,7 @@ bundle Game.Framework {
 		@param center center point
 		@param flip flip direction
 		~#
-		method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+		method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0,
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 			RenderAll(x, y, clip, angle, center, flip);
 		}
@@ -682,8 +680,8 @@ bundle Game.Framework {
 
 		#~
 		Sets upper left position
-		@param x x-position 
-		@param y y-position 
+		@param x x-position
+		@param y y-position
 		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
@@ -691,8 +689,8 @@ bundle Game.Framework {
 
 		#~
 		Sets cener position
-		@param x x-position 
-		@param y y-position 
+		@param x x-position
+		@param y y-position
 		~#
 		method : public : SetCenter(x : Int, y : Int) ~ Nil {
 			@position->SetCenter(x, y);
@@ -700,7 +698,7 @@ bundle Game.Framework {
 
 		#~
 		Sets position
-		@param v2 vector position 
+		@param v2 vector position
 		~#
 		method : public : Set(v2 : Vector2) ~ Nil {
 			@position->Set(v2->GetX(), v2->GetY());
@@ -729,7 +727,7 @@ bundle Game.Framework {
 		method : public : SetRight(x2 : Int) ~ Nil {
 			@position->SetRight(x2);
 		}
-		
+
 		#~
 		Sets bottom position
 		@param y2 bottom position
@@ -745,7 +743,7 @@ bundle Game.Framework {
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
 		}
-		
+
 		#~
 		Sets center y-position
 		@param y center y-position
@@ -795,7 +793,7 @@ bundle Game.Framework {
 			@position := position;
 		}
 
-		method : public : Free() ~ Nil {			
+		method : public : Free() ~ Nil {
 		}
 
 		#~
@@ -865,7 +863,7 @@ bundle Game.Framework {
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
 		}
-		
+
 		#~
 		Sets center y-position
 		@param y center y-position
@@ -876,8 +874,8 @@ bundle Game.Framework {
 
 		#~
 		Sets left upper position
-		@param x x-position 
-		@param y y-position 
+		@param x x-position
+		@param y y-position
 		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
@@ -885,8 +883,8 @@ bundle Game.Framework {
 
 		#~
 		Sets center position
-		@param x x-position 
-		@param y y-position 
+		@param x x-position
+		@param y y-position
 		~#
 		method : public : SetCenter(x : Int, y : Int) ~ Nil {
 			@position->SetCenter(x, y);
@@ -894,7 +892,7 @@ bundle Game.Framework {
 
 		#~
 		Sets position
-		@param v2 vector position 
+		@param v2 vector position
 		~#
 		method : public : Set(v2 : Vector2) ~ Nil {
 			@position->Set(v2->GetX(), v2->GetY());
@@ -1001,9 +999,7 @@ bundle Game.Framework {
 		@param y y-position
 		~#
 		method : public : Render(x : Int, y : Int) ~ Nil {
-			if(@color = Nil) {
-				@color := Color->New();
-			};
+			@color := @color ?? Color->New();
 
 			@render_rect->SetX(x);
 			@render_rect->SetY(y);
@@ -1017,13 +1013,13 @@ bundle Game.Framework {
 			};
 		}
 	}
-	
+
 	#~
 	Shape position
 	~#
 	class Position {
 		@rect : Rect;
-		
+
 		#~
 		Creates a new rectangle with given size
 		@param rect position
@@ -1087,7 +1083,7 @@ bundle Game.Framework {
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@rect->SetX(x - @rect->GetW() / 2);
 		}
-		
+
 		#~
 		Set center y-position
 		@param y y-position
@@ -1203,7 +1199,7 @@ bundle Game.Framework {
 			y_norm := y - GetCenterY();
 			return (x_norm * x_norm + y_norm * y_norm)->ToFloat()->Sqrt();
 		}
-		
+
 		#~
 		Calculates the distance between two points
 		@param pos position
@@ -1217,7 +1213,7 @@ bundle Game.Framework {
 
 		#~
 		Determines if position overlaps rectangle
-		@param pos position to test 
+		@param pos position to test
 		@return true of overlap, false otherwise
 		~#
 		method : public : native : Overlaps(pos : Position) ~ Bool {
@@ -1232,7 +1228,7 @@ bundle Game.Framework {
 
 			x := GetLeft();
 			pos_x2 := pos->GetRight();
-			
+
 			return <>(y2 <= pos_y | y >= pos_y2 | x >= pos_x2 | x2 <= pos_x);
 		}
 
@@ -1340,7 +1336,7 @@ bundle Game.Framework {
 		@colors_dict : Hash<String, Color>;
 		@image_sprites_dict : Hash<String, ImageSprite>;
 		@rectangles_dict : Hash<String, Rectangle>;
-		@text_sprites_dict : Hash<String, TextSprite>;		
+		@text_sprites_dict : Hash<String, TextSprite>;
 
 		@mix_chunks : Vector<MixChunk>;
 		@chunks_dict : Hash<String, MixChunk>;
@@ -1370,7 +1366,7 @@ bundle Game.Framework {
 			@shapes := Vector->New()<Shape>;
 			@mix_chunks := Vector->New()<MixChunk>;
 			@fonts := Vector->New()<Font>;
-						
+
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
@@ -1382,9 +1378,9 @@ bundle Game.Framework {
 		~#
 		New(screen_width : Int, screen_height : Int, title : String) {
 			init_flags := HardwareFlags->SDL_INIT_VIDEO or
-				HardwareFlags->SDL_INIT_AUDIO or 
+				HardwareFlags->SDL_INIT_AUDIO or
 				HardwareFlags->SDL_INIT_JOYSTICK;
-			@fps := 60;	
+			@fps := 60;
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New()<Shape>;
 			@mix_chunks := Vector->New()<MixChunk>;
@@ -1407,7 +1403,7 @@ bundle Game.Framework {
 				@debug_msg->ErrorLine();
 			};
 		}
-		
+
 		method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
 			@screen_width := screen_width;
 			@screen_height := screen_height;
@@ -1424,7 +1420,7 @@ bundle Game.Framework {
 			# "SDL could not initialize!"->ErrorLine();
 				return false;
 			};
-			
+
 			if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
 				"Warning: Linear texture filtering not enabled!"->ErrorLine();
 				return false;
@@ -1435,15 +1431,15 @@ bundle Game.Framework {
 				return false;
 			};
 
-			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
+			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED,
+				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height,
 				WindowFlags->SDL_WINDOW_SHOWN);
 			if(@window->IsNull()) {
 				"Cannot create window!"->ErrorLine();
 				return false;
 			};
 
-			@renderer := Renderer->New(@window, -1, 
+			@renderer := Renderer->New(@window, -1,
 				RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
 			if(@renderer->IsNull()) {
 				"Cannot create renderer!"->ErrorLine();
@@ -1461,7 +1457,7 @@ bundle Game.Framework {
 				"SDL_ttf could not initialize!"->ErrorLine();
 				return false;
 			};
-			
+
 			font_path := Runtime->GetProperty("lib_dir");
 			if(font_path = Nil) {
 				"Failed to load font!"->ErrorLine();
@@ -1485,7 +1481,7 @@ bundle Game.Framework {
 			};
 			@joystick := Joystick->New(0);
 			@event := Event->New();
-			
+
 			return true;
 		}
 
@@ -1558,7 +1554,7 @@ bundle Game.Framework {
 		method : public : SetFont(font : Font) ~ Nil {
 			@font := font;
 		}
-		
+
 		#~
 		Gets the clear color
 		@return clear color
@@ -1575,7 +1571,7 @@ bundle Game.Framework {
 				@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			}
 			else {
-				@renderer->SetDrawColor(@clear_color->GetR(), @clear_color->GetG(), 
+				@renderer->SetDrawColor(@clear_color->GetR(), @clear_color->GetG(),
 					@clear_color->GetB(), @clear_color->GetA());
 			};
 			@renderer->Clear();
@@ -1592,7 +1588,7 @@ bundle Game.Framework {
 		Get specified image sprite
 		@param name name of image sprite
 		@return image sprite
-		~# 
+		~#
 		method : public : GetImageSprite(name : String) ~ ImageSprite {
 			return @image_sprites_dict->Find(name)<String>;
 		}
@@ -1601,7 +1597,7 @@ bundle Game.Framework {
 		Get specified rectangle
 		@param name name of rectangle
 		@return rectangle
-		~# 
+		~#
 		method : public : GetRectangle(name : String) ~ Rectangle {
 			return @rectangles_dict->Find(name)<String>;
 		}
@@ -1610,7 +1606,7 @@ bundle Game.Framework {
 		Get specified text sprite
 		@param name name of text sprite
 		@return text sprite
-		~# 
+		~#
 		method : public : GetTextSprite(name : String) ~ TextSprite {
 			return @text_sprites_dict->Find(name)<String>;
 		}
@@ -1619,7 +1615,7 @@ bundle Game.Framework {
 		Get specified color
 		@param name name of color
 		@return color
-		~# 
+		~#
 		method : public : GetColor(name : String) ~ Color {
 			return @colors_dict->Find(name)<String>;
 		}
@@ -1628,7 +1624,7 @@ bundle Game.Framework {
 		Get specified font
 		@param name name of font
 		@return font
-		~# 
+		~#
 		method : public : GetFont(name : String) ~ Font {
 			return @fonts_dict->Find(name)<String>;
 		}
@@ -1637,7 +1633,7 @@ bundle Game.Framework {
 		Get mix chunk
 		@param name name of mix chunk
 		@return mix chunk
-		~# 
+		~#
 		method : public : GetMixChunk(name : String) ~ MixChunk {
 			return @chunks_dict->Find(name)<String>;
 		}
@@ -1646,7 +1642,7 @@ bundle Game.Framework {
 		Build assets from a Json file
 		@param file path to build file
 		@return true if successful, false otherwise
-		~# 
+		~#
 		method : public : BuildFromFile(file : String) ~ Bool {
 			if(@is_ok) {
 				parser := JsonParser->New(System.IO.Filesystem.FileReader->ReadFile(file));
@@ -1665,17 +1661,16 @@ bundle Game.Framework {
 								SetMusicChunk(path);
 							}
 							else {
-								"### Missing music: 'path' attribute ###"->ErrorLine();	
+								"### Missing music: 'path' attribute ###"->ErrorLine();
 								@is_ok := false;
 								return false;
 							};
 						};
-						
+
 						# chucks
 						chunks := sound->Get("chunks");
 						if(chunks <> Nil & chunks->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : chunks) {
-								chunk := chunks->Get(i);
+							each(chunk in chunks) {
 								if(chunk->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := chunk->Get("name");
 									path_attrib := chunk->Get("path");
@@ -1702,8 +1697,7 @@ bundle Game.Framework {
 					# colors
 					colors := root->Get("colors");
 					if(colors <> Nil & colors->GetType() = JsonElement->JsonType->ARRAY) {
-						each(i : colors) {
-							color := colors->Get(i);
+						each(color in colors) {
 							if(color->GetType() = JsonElement->JsonType->OBJECT) {
 								name_attrib := color->Get("name");
 								code_attrib := color->Get("code");
@@ -1734,8 +1728,7 @@ bundle Game.Framework {
 					# fonts
 					fonts := root->Get("fonts");
 					if(fonts <> Nil & fonts->GetType() = JsonElement->JsonType->ARRAY) {
-						each(i : fonts) {
-							font_obj := fonts->Get(i);
+						each(font_obj in fonts) {
 							if(font_obj->GetType() = JsonElement->JsonType->OBJECT) {
 								name_attrib := font_obj->Get("name");
 								path_attrib := font_obj->Get("path");
@@ -1767,16 +1760,15 @@ bundle Game.Framework {
 						# image_sprites
 						image_sprites := assets->Get("image_sprites");
 						if(image_sprites <> Nil & image_sprites->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : image_sprites) {
-								image_sprite := image_sprites->Get(i);
+							each(image_sprite in image_sprites) {
 								if(image_sprite->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := image_sprite->Get("name");
 									path_attrib := image_sprite->Get("path");
 									color_key_attrib := image_sprite->Get("color-key");
-									render_rect_attrib := image_sprite->Get("render-rect");						
+									render_rect_attrib := image_sprite->Get("render-rect");
 									if(name_attrib <> Nil & path_attrib <> Nil & color_key_attrib <> Nil & render_rect_attrib <> Nil) {
 										name := name_attrib->GetValue();
-										path := path_attrib->GetValue();										
+										path := path_attrib->GetValue();
 										color_key := color_key_attrib->GetValue();
 										render_rect := render_rect_attrib->GetValue()->Split(",");
 										color := GetColor(color_key);
@@ -1802,7 +1794,7 @@ bundle Game.Framework {
 										path := path_attrib->GetValue();
 										image := AddImageSprite(path);
 										@image_sprites_dict->Insert(name, image);
-									}									
+									}
 									else {
 										"### Missing image sprite: 'name' or 'path' attribute ###"->ErrorLine();
 										@is_ok := false;
@@ -1820,24 +1812,23 @@ bundle Game.Framework {
 						# rectangles
 						rectangles := assets->Get("rectangles");
 						if(rectangles <> Nil & rectangles->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : rectangles) {
-								rectangle := rectangles->Get(i);
+							each(rectangle in rectangles) {
 								if(rectangle->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := rectangle->Get("name");
 									size_attrib := rectangle->Get("size");
 									color_attrib := rectangle->Get("color");
 									filled_attrib := rectangle->Get("filled");
-									
+
 									if(name_attrib <> Nil & size_attrib <> Nil) {
 										name := name_attrib->GetValue();
 										size := size_attrib->GetValue()->Split(",");
-										
+
 										rect_obj : Rectangle;
 										if(size->Size() = 2) {
 											rect_obj := AddRectangle(size[0]->ToInt(), size[1]->ToInt());
 										}
 										else {
-											rect_obj := AddRectangle(8, 8);											
+											rect_obj := AddRectangle(8, 8);
 										};
 										@rectangles_dict->Insert(name, rect_obj);
 
@@ -1866,17 +1857,16 @@ bundle Game.Framework {
 						# text_sprites
 						text_sprites := assets->Get("text_sprites");
 						if(text_sprites <> Nil & text_sprites->GetType() = JsonElement->JsonType->ARRAY) {
-							each(i : text_sprites) {
-								text_sprite := text_sprites->Get(i);
+							each(text_sprite in text_sprites) {
 								if(text_sprite->GetType() = JsonElement->JsonType->OBJECT) {
 									name_attrib := text_sprite->Get("name");
 									font_attrib := text_sprite->Get("font");
 									text_attrib := text_sprite->Get("text");
 									color_attrib := text_sprite->Get("color");
-																	
+
 									if(name_attrib <> Nil) {
 										name := name_attrib->GetValue();
-										
+
 										text_obj := AddTextSprite();
 										@text_sprites_dict->Insert(name, text_obj);
 
@@ -1915,7 +1905,7 @@ bundle Game.Framework {
 			};
 
 			return true;
-		}	
+		}
 
 		#~
 		Adds a font
@@ -1932,11 +1922,11 @@ bundle Game.Framework {
 			@fonts->AddBack(font);
 
 			return font;
-		}	
+		}
 
 		#~
 		Adds a sound mix chunk
-		@param file file path to sound asset 
+		@param file file path to sound asset
 		@return mix chunk
 		~#
 		method : public : AddMixChunk(file : String) ~ MixChunk {
@@ -1952,7 +1942,7 @@ bundle Game.Framework {
 
 		#~
 		Adds music chunk
-		@param file file path to sound asset 
+		@param file file path to sound asset
 		@return music chunk
 		~#
 		method : public : SetMusicChunk(file : String) ~ MixMusic {
@@ -1963,7 +1953,7 @@ bundle Game.Framework {
 			SetOk(<>@music->IsNull());
 			return @music;
 		}
-		
+
 		#~
 		Adds a rectangle to the framework
 		@param w rectangle width
@@ -2027,7 +2017,7 @@ bundle Game.Framework {
 		Adds an tiled image  to the framework
 		@param file file path to image asset
 		@param colorkey image color key, may be Nil
-		@return tiled image 
+		@return tiled image
 		~#
 		method : public : AddTitledImageSprite(file : String, colorkey : Color) ~ TitledImageSprite {
 			shape := TitledImageSprite->New(@renderer, file, colorkey);
@@ -2096,7 +2086,7 @@ bundle Game.Framework {
 		~#
 		method : public : RemoveSprite(shape : Shape) ~ Bool {
 			found := -1;
-			
+
 			for(i := 0; i < @shapes->Size() & found < 0; i +=1;) {
 				if(@shapes->Get(i) = shape) {
 					found := i;
@@ -2120,7 +2110,7 @@ bundle Game.Framework {
 		~#
 		method : public : RemoveMixChunk(mix_chunk : MixChunk) ~ Bool {
 			found := -1;
-			
+
 			for(i := 0; i < @mix_chunks->Size() & found < 0; i +=1;) {
 				if(@mix_chunks->Get(i) = mix_chunk) {
 					found := i;
@@ -2144,7 +2134,7 @@ bundle Game.Framework {
 		~#
 		method : public : RemoveFont(font : Font) ~ Bool {
 			found := -1;
-			
+
 			for(i := 0; i < @fonts->Size() & found < 0; i +=1;) {
 				if(@fonts->Get(i) = font) {
 					found := i;
@@ -2172,8 +2162,7 @@ bundle Game.Framework {
 		Removes all shapes
 		~#
 		method : public : FreeShapes() ~ Nil {
-			each(i : @shapes) {
-				shape := @shapes->Get(i);
+			each(shape in @shapes) {
 				shape->Free();
 			};
 			@shapes->Empty();
@@ -2183,8 +2172,7 @@ bundle Game.Framework {
 		Removes all mix chunks
 		~#
 		method : public : FreeMixChunks() ~ Nil {
-			each(i : @mix_chunks) {
-				chunk := @mix_chunks->Get(i);
+			each(chunk in @mix_chunks) {
 				chunk->Free();
 			};
 			@mix_chunks->Empty();
@@ -2194,8 +2182,7 @@ bundle Game.Framework {
 		Removes all font
 		~#
 		method : public : FreeFonts() ~ Nil {
-			each(i : @fonts) {
-				chunk := @fonts->Get(i);
+			each(chunk in @fonts) {
 				chunk->Quit();
 			};
 			@fonts->Empty();
@@ -2210,7 +2197,7 @@ bundle Game.Framework {
 				@music->Free();
 			};
 		}
-		
+
 		#~
 		Closes the framework
 		~#
@@ -2226,7 +2213,7 @@ bundle Game.Framework {
 			if(@joystick <> Nil) {
 				@joystick->Free();
 			};
-			
+
 			Image->Quit();
 			Font->Quit();
 			Mixer->Quit();
@@ -2310,12 +2297,12 @@ bundle Game.Framework {
 		}
 
 		#~
-		Calculates the magnitude 
-		@return magnitude 
+		Calculates the magnitude
+		@return magnitude
 		~#
 		method : public : Magnitude() ~ Float {
 			return MagnitudeSquared()->Sqrt();
-		}		
+		}
 
 		#~
 		Normalizes a unit vector
@@ -2326,7 +2313,7 @@ bundle Game.Framework {
  				Div(mag);
  			};
  		}
- 		
+
 		#~
 		String representation of vector
 		@return string representation
@@ -2547,7 +2534,7 @@ bundle Game.Framework {
 			@x := 0.0;
 			@y := 0.0;
 		}
-		
+
 		#~
 		Add two vectors
 		@param lhs left vector

@@ -1,0 +1,10 @@
+# EXPECT_COMPILE_ERROR: guards a variable the statement assigns
+#~
+'?? return' belongs to an assignment statement, not to an argument (line 9).
+~#
+class BadNilGuardExpression {
+	function : Main(args : String[]) ~ Nil {
+		v : IntRef := Nil;
+		"{$v->Get()}"->PrintLine(IntRef->New(1) ?? break);
+	}
+}

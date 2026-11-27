@@ -20,6 +20,12 @@
     "API.Agent": ["Agent", "AgentApprover", "AgentBudget", "AgentCancel", "AgentCancelableHandler", "AgentConversation", "AgentDeadlineAware", "AgentEntry", "AgentEvent", "AgentObserver", "AgentPrices", "AgentReply", "AgentResult", "AgentSchema", "AgentScope", "AgentStep", "AgentTool", "AgentToolCall", "AgentToolHandler", "AgentToolResult", "AgentTools", "AgentTraceBuffer", "AgentTraceSink", "AnthropicBackend", "ChatBackend", "GeminiBackend", "OllamaBackend", "OpenAIBackend", "Redactor", "ScriptedBackend", "ToolRegistry"]
    }
   },
+  "agent_json": {
+   "deps": ["gen_collect", "json", "regex", "llm_util", "net", "cipher", "misc", "agent"],
+   "bundles": {
+    "API.AgentJson": ["AgentAsk"]
+   }
+  },
   "ai": {
    "deps": ["gen_collect"],
    "bundles": {
@@ -111,7 +117,7 @@
   "lang": {
    "deps": [],
    "bundles": {
-    "System": ["ArraySort", "Base", "BaseArrayRef", "BasicCompare", "BoolArrayRef", "BoolRef", "ByteArrayRef", "ByteBuffer", "ByteRef", "CastError", "CharArrayRef", "CharRange", "CharRef", "Clone", "CommandOutput", "Compare", "CompareArrayRef", "DivideByZeroError", "Error", "FloatArrayRef", "FloatRange", "FloatRef", "Func2Ref", "Func3Ref", "Func4Ref", "FuncRef", "IndexError", "IntArrayRef", "IntRange", "IntRef", "NilError", "Number", "Primitive", "Range", "Runtime", "RuntimeError", "String", "StringArrayRef", "Stringify"],
+    "System": ["ArraySort", "AssertCheck", "Base", "BaseArrayRef", "BasicCompare", "BoolArrayRef", "BoolRef", "ByteArrayRef", "ByteBuffer", "ByteRef", "CastError", "CharArrayRef", "CharRange", "CharRef", "Clone", "CommandOutput", "Compare", "CompareArrayRef", "DivideByZeroError", "Error", "FloatArrayRef", "FloatRange", "FloatRef", "Func2Ref", "Func3Ref", "Func4Ref", "FuncRef", "IndexError", "IntArrayRef", "IntRange", "IntRef", "NilError", "Number", "Primitive", "Range", "Runtime", "RuntimeError", "String", "StringArrayRef", "Stringify"],
     "System.API": ["DllProxy"],
     "System.Concurrency": ["Condition", "Thread", "ThreadMutex"],
     "System.IO": ["Console", "ConsoleIO", "Deserializer", "InputStream", "OutputStream", "Pipe", "Serializer"],
@@ -124,7 +130,7 @@
   "llm_util": {
    "deps": ["gen_collect", "json", "regex"],
    "bundles": {
-    "API.LlmUtil": ["ChatFn", "ContextWindow", "JsonExtractor", "JsonRepair", "JsonSchema", "JsonStrict", "LlmChars", "PromptBuilder", "PromptTemplate", "PromptTurn", "PromptVars", "SchemaError", "StructuredCall", "StructuredOutcome", "TemplateNode", "TokenCounter", "TokenEstimator"]
+    "API.LlmUtil": ["ChatFn", "ContextWindow", "JsonExtractor", "JsonRepair", "JsonSchema", "JsonStrict", "LlmChars", "Prompt", "PromptBuilder", "PromptTemplate", "PromptTurn", "PromptVars", "SchemaError", "StructuredCall", "StructuredOutcome", "TemplateNode", "TokenCounter", "TokenEstimator"]
    }
   },
   "math": {

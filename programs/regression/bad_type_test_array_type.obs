@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (24,22): Expected a class name after 'is': 'if(value is Type name)'
+# EXPECT_ERROR_COUNT: 1
+#~
+An array type is not a class to test for.
+~#
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part {
+	New() {
+		Parent();
+	}
+
+	method : public : Size() ~ Int {
+		return 4;
+	}
+}
+
+class BadTypeTestArrayType {
+	function : Main(args : String[]) ~ Nil {
+		p : Part := TextPart->New();
+		if(p is TextPart[] t) {
+			"never"->PrintLine();
+		};
+	}
+}

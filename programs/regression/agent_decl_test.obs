@@ -1,0 +1,349 @@
+# EXTRA_LIBS: mcp,agent,mcp_agent,llm_util,regex,net,net_server,cipher,misc
+#~
+Agent declarations (docs/design/AGENT_SYNTAX.md, section 3): 'agent Name(...) { backend : ...; ... }'
+against a scripted model, so no key and no network. Every check compares against what the
+agent built by the declaration must do: which tools the model is offered and in which order,
+what a tool call returns, which calls are denied, what the budget stops, what the trace holds,
+that the settings are evaluated in the order they are written and once per Build, that each
+Build is a new agent, that a scope still limits a declared agent, and that 'agent', 'budget',
+'tools' and the other words stay ordinary names.
+~#
+
+use API.MCP, API.Agent, API.LlmUtil, Data.JSON, Collection;
+
+# declared before the classes it names: the order of declarations in a file does not matter
+agent Helper(script : Vector<AgentReply>, role : String) {
+  backend : ScriptedBackend->New(script);
+  instructions : "You are {$role}. Answer in one sentence.";
+  tools : Arithmetic, AgentTools->CurrentTime(), Files;
+  deny : "delete_file";
+  budget { steps : 8; tokens : 5000; tool_calls : 20; }
+  trace : AgentTraceBuffer->New();
+}
+
+# the model is a parameter, so the test can ask it which tools it was offered
+agent Offered(model : ScriptedBackend) {
+  backend : model;
+  tools : Files, AgentTools->CurrentTime(), Arithmetic;
+  deny : "delete_file";
+}
+
+agent Plain {
+  backend : ScriptedBackend->New(Nil)->Add(AgentReply->Say("plain answer"));
+}
+
+agent OneLine { backend : AgentDeclTest->Echo("one"); instructions : "terse"; budget { steps : 1; } }
+
+# every limit; values are expressions and may use the parameters
+agent Limited(script : Vector<AgentReply>, steps : Int, spend : Float) {
+  backend : ScriptedBackend->New(script);
+  tools : Arithmetic;
+  budget {
+    steps : steps;
+    tokens : 100 * 10;
+    tool_calls : steps + 1;
+    model_calls : 12;
+    wall_ms : 60000;
+    model_call_ms : 5000;
+    cost : spend;
+  }
+}
+
+# the settings in another order, lists of several entries, a comment and a value over several lines
+agent Picky(script : Vector<AgentReply>, extra : AgentTool, remote : McpClient) {
+  trace : AgentDeclTest->Note("trace", AgentTraceBuffer->New())->As(AgentTraceBuffer);
+  allow : AgentDeclTest->Name("allow", "add"), "echo",
+          "shout";            # the last entry of the list
+  mcp : remote;
+  tools : extra, Arithmetic;
+  instructions : AgentDeclTest->Text("instructions",
+                                     "Use the tools.");
+  backend : AgentDeclTest->Backend("backend", script);
+}
+
+# a prompt literal as the instructions, with a parameter in a hole, and a lambda in a setting
+agent Briefed(script : Vector<AgentReply>, audience : String, limit : Int) {
+  backend : ScriptedBackend->New(script);
+  instructions : prompt "Write for {audience} in at most {limit : Int} words."->ToString();
+  budget { steps : AgentDeclTest->Apply(\(Int) ~ Int : (n) => n * 2, limit); }
+}
+
+class Arithmetic {
+  #~
+  Add two integers.
+  @tool
+  @readonly
+  ~#
+  function : Add(a : Int, b : Int) ~ Int {
+    return a + b;
+  }
+
+  #~
+  Multiply two integers.
+  @tool
+  @readonly
+  ~#
+  function : Multiply(a : Int, b : Int) ~ Int {
+    return a * b;
+  }
+}
+
+class Files {
+  #~
+  Delete a file.
+  @tool
+  @destructive
+  ~#
+  function : DeleteFile(path : String) ~ String {
+    return "deleted {$path}";
+  }
+}
+
+class Remote {
+  #~
+  Say it again.
+  @tool
+  ~#
+  function : Echo(text : String) ~ String {
+    return "echo: {$text}";
+  }
+
+  #~
+  Say it loudly.
+  @tool
+  ~#
+  function : Shout(text : String) ~ String {
+    return text->ToUpper();
+  }
+}
+
+class AgentDeclTest {
+  @failures : static : Int;
+  @order : static : String;
+  @scoped : static : Agent;
+  @scoped_stops : static : String;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(name : String, got : String, expected : String) ~ Nil {
+    if(got <> Nil & got->Equals(expected)) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      "         got:      |{$got}|"->PrintLine();
+      "         expected: |{$expected}|"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # helpers the declarations above call; each notes that it ran
+  function : Note(what : String, sink : AgentTraceSink) ~ AgentTraceSink {
+    @order += what + ";";
+    return sink;
+  }
+
+  function : Name(what : String, name : String) ~ String {
+    @order += what + ";";
+    return name;
+  }
+
+  function : Text(what : String, text : String) ~ String {
+    @order += what + ";";
+    return text;
+  }
+
+  function : Backend(what : String, script : Vector<AgentReply>) ~ ChatBackend {
+    @order += what + ";";
+    return ScriptedBackend->New(script);
+  }
+
+  function : Echo(text : String) ~ ChatBackend {
+    return ScriptedBackend->New(Nil)->Add(AgentReply->Say(text));
+  }
+
+  function : Apply(f : (Int) ~ Int, value : Int) ~ Int {
+    return f(value);
+  }
+
+  function : Script(replies : AgentReply[]) ~ Vector<AgentReply> {
+    script := Vector->New()<AgentReply>;
+    each(reply in replies) {
+      script->AddBack(reply);
+    };
+    return script;
+  }
+
+  # the results of every tool call of a run, as "name=status:content;"
+  function : Results(result : AgentResult) ~ String {
+    out := "";
+    each(step in result->GetSteps()) {
+      each(r in step->GetResults()) {
+        out += "{$r->GetToolName()}={$r->GetStatus()}:{$r->GetContent()};";
+      };
+    };
+    return out;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    TestHelper();
+    TestPlain();
+    TestLimits();
+    TestOrder();
+    TestPrompt();
+    TestScope();
+    TestNames();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : TestHelper() ~ Nil {
+    "-- a declared agent"->PrintLine();
+    script := Script([AgentReply->Ask("1", "add", "{\"a\":17,\"b\":25}"), AgentReply->Ask("2", "delete_file", "{\"path\":\"old.txt\"}"),
+                      AgentReply->Ask("3", "multiply", "{\"a\":6,\"b\":7}"), AgentReply->Say("The sum is 42.")]);
+    helper := Helper->Build(script, "a clerk");
+    Check("Build returns an Agent", helper->TypeOf(Agent));
+
+    result := helper->Run("Add 17 and 25");
+    Same("the answer", result->GetText(), "The sum is 42.");
+    Same("why it stopped", result->GetStopReason(), "completed");
+    Same("what the tools returned", Results(result),
+         "add=ok:42;delete_file=denied:Error: the tool 'delete_file' is not permitted here;multiply=ok:42;");
+    Same("the instructions, with the parameter", helper->GetConversation()->GetSystem(), "You are a clerk. Answer in one sentence.");
+
+    Check("the conversation holds the task", helper->GetConversation()->GetEntries()->Get(0)->GetText()->Equals("Add 17 and 25"));
+
+    budget := helper->GetBudget();
+    Check("the budget's limits", budget <> Nil & budget->GetMaxSteps() = 8 & budget->GetMaxTokens() = 5000 & budget->GetMaxToolCalls() = 20);
+    Check("a limit that was not written is not set", budget->GetMaxWallMs() = 0 & budget->GetMaxModelCalls() = 0);
+
+    trace := helper->GetTrace()->As(AgentTraceBuffer);
+    Check("the trace has the run", trace <> Nil & trace->Count("run_start") = 1 & trace->Count("run_end") = 1 & trace->Count("tool_start") = 2);
+
+    # the entries in the order written, the tools of a class in the order of the class; a denied tool is not offered
+    model := ScriptedBackend->New(Script([AgentReply->Say("ok")]));
+    Offered->Build(model)->Run("which tools?");
+    Same("the tools the model is offered, in order", model->GetOfferedTools(), "current_time,add,multiply");
+
+    second := Helper->Build(Script([AgentReply->Say("other")]), "a judge");
+    Check("each Build is a new agent", second <> helper & second->GetConversation()->Size() = 0 & helper->GetConversation()->Size() > 0);
+    Same("with its own instructions", second->GetConversation()->GetSystem(), "You are a judge. Answer in one sentence.");
+    Check("and its own trace", second->GetTrace() <> helper->GetTrace());
+  }
+
+  function : TestPlain() ~ Nil {
+    "-- the smallest declarations"->PrintLine();
+    plain := Plain->Build();
+    Same("an agent with only a backend answers", plain->Run("hello")->GetText(), "plain answer");
+    Check("it has no budget, trace or instructions", plain->GetBudget() = Nil & plain->GetTrace() = Nil & plain->GetConversation()->GetSystem() = Nil);
+    Same("a declaration on one line", OneLine->Build()->Run("x")->GetText(), "one");
+    Check("its budget", OneLine->Build()->GetBudget()->GetMaxSteps() = 1);
+  }
+
+  function : TestLimits() ~ Nil {
+    "-- the budget"->PrintLine();
+    limited := Limited->Build(Script([AgentReply->Say("unused")]), 3, 0.25);
+    budget := limited->GetBudget();
+    Check("every limit is set from its expression", budget->GetMaxSteps() = 3 & budget->GetMaxTokens() = 1000 & budget->GetMaxToolCalls() = 4 &
+          budget->GetMaxModelCalls() = 12 & budget->GetMaxWallMs() = 60000 & budget->GetModelCallMs() = 5000 & budget->GetMaxCost() = 0.25);
+
+    # one step allowed, and the model asks for a tool: the run is stopped by the budget, not by the answer
+    script := Script([AgentReply->Ask("1", "add", "{\"a\":1,\"b\":2}"), AgentReply->Ask("2", "add", "{\"a\":3,\"b\":4}"), AgentReply->Say("never")]);
+    stopped := Limited->Build(script, 1, 0.0)->Run("keep adding");
+    Same("a run over its step limit is halted", stopped->GetStopReason(), "budget_steps");
+    Same("after the one step it was allowed", Results(stopped), "add=ok:3;");
+  }
+
+  function : TestOrder() ~ Nil {
+    "-- order, lists and an MCP server"->PrintLine();
+    service := McpService->New("remote", "1.0");
+    Remote->McpTools(service);
+    remote := McpClient->InProcess(service);
+    remote->Initialize("agent-decl-test", "1.0");
+
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}");
+    extra := AgentTool->New("noon", "Tells the time", schema, Func2Ref->New(AgentDeclTest->Noon(JsonElement) ~ String)<JsonElement, String>);
+
+    @order := "";
+    script := Script([AgentReply->Ask("1", "echo", "{\"text\":\"hi\"}"), AgentReply->Ask("2", "shout", "{\"text\":\"hi\"}"),
+                      AgentReply->Ask("3", "add", "{\"a\":2,\"b\":3}"), AgentReply->Ask("4", "multiply", "{\"a\":2,\"b\":3}"),
+                      AgentReply->Ask("5", "noon", "{}"), AgentReply->Say("done")]);
+    picky := Picky->Build(script, extra, remote);
+    Same("the settings are evaluated in the order they are written, once", @order, "trace;allow;instructions;backend;");
+
+    result := picky->Run("try everything");
+    Same("tools of an MCP server, of a class and a tool value; 'allow' permits only what it lists", Results(result),
+         "echo=ok:echo: hi;shout=ok:HI;add=ok:5;multiply=denied:Error: the tool 'multiply' is not permitted here;noon=denied:Error: the tool 'noon' is not permitted here;");
+    Same("the instructions from a value over two lines", picky->GetConversation()->GetSystem(), "Use the tools.");
+
+    @order := "";
+    Picky->Build(Script([AgentReply->Say("x")]), extra, remote);
+    Picky->Build(Script([AgentReply->Say("y")]), extra, remote);
+    Same("each Build evaluates them again", @order, "trace;allow;instructions;backend;trace;allow;instructions;backend;");
+  }
+
+  function : Noon(args : JsonElement) ~ String {
+    return "12:00";
+  }
+
+  function : TestPrompt() ~ Nil {
+    "-- a prompt literal and a lambda in a declaration"->PrintLine();
+    briefed := Briefed->Build(Script([AgentReply->Say("ok")]), "new readers", 40);
+    Same("a hole filled from a parameter", briefed->GetConversation()->GetSystem(), "Write for <audience>new readers</audience> in at most 40 words.");
+    Check("a lambda in a limit", briefed->GetBudget()->GetMaxSteps() = 80);
+  }
+
+  function : TestScope() ~ Nil {
+    "-- a scope around a declared agent"->PrintLine();
+    script := Script([AgentReply->Ask("1", "add", "{\"a\":1,\"b\":1}"), AgentReply->Say("two"), AgentReply->Say("unused")]);
+    # the agent's own budget allows 8 steps; the scope allows 2 for everything in it
+    @scoped := Limited->Build(script, 8, 0.0);
+    @scoped_stops := "";
+    scope := AgentScope->New()->SetMaxSteps(2);
+    AgentScope->Run(scope, Scoped() ~ Nil);
+    Same("the smaller limit wins", @scoped_stops, "completed;budget_steps;");
+    Check("the scope counted the agent's steps", scope->GetStepsUsed() = 2 & scope->GetRuns() = 2);
+  }
+
+  function : Scoped() ~ Nil {
+    @scoped_stops += @scoped->Run("first")->GetStopReason() + ";";
+    @scoped_stops += @scoped->Run("second")->GetStopReason() + ";";
+  }
+
+  function : agent(budget : Int, tools : String) ~ String {
+    backend := budget * 2;
+    trace := tools + "!";
+    return "{$backend}{$trace}";
+  }
+
+  function : TestNames() ~ Nil {
+    "-- the words of a declaration are still ordinary names"->PrintLine();
+    agent := 3;
+    budget := agent + 1;
+    tools := "t";
+    mcp := "m";
+    allow := true;
+    deny := false;
+    instructions := "i";
+    backend := 2.5;
+    trace := 'c';
+    steps := 7;
+    Check("variables called agent, budget, tools, mcp, allow, deny, instructions, backend, trace and steps",
+          agent = 3 & budget = 4 & tools->Equals("t") & mcp->Equals("m") & allow & <>deny & instructions->Equals("i") & backend = 2.5 & trace = 'c' & steps = 7);
+    Same("a function called agent with parameters called budget and tools", AgentDeclTest->agent(budget, tools), "8t!");
+    agent += 1;
+    Check("assigned again", agent = 4);
+  }
+}

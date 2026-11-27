@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Invalid cast with classes
+#~
+A promoted parameter takes the field's value, so the types must agree (the assignment
+is checked like any other, line 8).
+~#
+class BadCtorPromotionType {
+	@x : Int;
+	New(@x : String) {}
+	function : Main(args : String[]) ~ Nil {
+	}
+}

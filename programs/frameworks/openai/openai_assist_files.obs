@@ -18,8 +18,7 @@ class OpenAIQueary {
 		else if(action->Equals("store-create-files")) {
 			file_ids := ["file-Xbk81J8NdHkcVPeQLc33lrKC", "file-6r7iumdLUZXhZXmiPxacuG9r"];
 			files := Vector->New()<API.OpenAI.File>;
-			each(i : file_ids) {
-				file_id := file_ids[i];
+			each(file_id in file_ids) {
 				file := API.OpenAI.File->Load(file_id, token);
 				if(file <> Nil) {
 					file->ToString()->PrintLine();
@@ -93,8 +92,7 @@ class OpenAIQueary {
 
 			file_ids := ["file-Xbk81J8NdHkcVPeQLc33lrKC", "file-6r7iumdLUZXhZXmiPxacuG9r"];
 			files := Vector->New()<API.OpenAI.File>;
-			each(i : file_ids) {
-				file_id := file_ids[i];
+			each(file_id in file_ids) {
 				file := API.OpenAI.File->Load(file_id, token);
 				if(file <> Nil) {
 					file->ToString()->PrintLine();

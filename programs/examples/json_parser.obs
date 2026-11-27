@@ -7,8 +7,7 @@ bundle Default {
 			parser := JsonParser->New(input);
 			root := parser->Parse() ? parser->GetRoot() : Nil;
 			if(root <> Nil & root->GetType() = JsonElement->JsonType->ARRAY) {
-				each(i : root) {
-					array := root->Get(i);
+				each(array in root) {
 					if(array->GetType() = JsonElement->JsonType->ARRAY) {
 						each(j : array) {
 							array->Get(j)->GetValue()->Print();

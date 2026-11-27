@@ -552,8 +552,7 @@ class CkPos {
     CkBits->Init();
     p := CkPos->New();
     parts := text->Split(' ');
-    each(i : parts) {
-      part := parts[i];
+    each(part in parts) {
       if(part->Size() > 1 & part->Get(0) = '/') {
         p->SetSide(part->SubString(1, 1)->ToInt());
       }

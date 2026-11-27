@@ -31,7 +31,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 		~#
 		function : Parse(date_str : String, format : String, gmt : Bool) ~ Date {
 			parts := Map->New()<IntRef, DatePart>;
-		
+
 			# month
 			month := format->Find("MM");
 			if(month > -1) {
@@ -57,7 +57,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 					long_year_format := false;
 				};
 			};
-	
+
 			# hour
 			hours := format->Find("hh");
 			if(hours > -1) {
@@ -78,17 +78,16 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 			date_month := 0; date_day := 0; date_year := 0;
 			date_hours := 0; date_mins := 0; date_secs := 0;
-		
+
 			offset := 0;
 			values := parts->GetValues()<DatePart>;
-			each(i : values) {
-				part := values->Get(i);
+			each(part in values) {
 				type := part->GetType();
 
 				select(type) {
 					label DatePart->Type->Month: {
 						pos := month + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_month := date_str->SubString(month + offset, 2)->ToInt();
 							}
@@ -101,7 +100,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Day: {
 						pos := day + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_day := date_str->SubString(day + offset, 2)->ToInt();
 							}
@@ -111,13 +110,13 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 							};
 						};
 					}
-				
+
 					label DatePart->Type->Year: {
 						pos := year + offset;
 						if(pos > -1 & pos < date_str->Size()) {
 							if(long_year_format) {
 								date_year := date_str->SubString(year + offset, 4)->ToInt();
-							}	
+							}
 							else {
 								date_year := 2000;
 								date_year += date_str->SubString(year + offset, 2)->ToInt();
@@ -127,7 +126,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Hour: {
 						pos := hours + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_hours := date_str->SubString(hours + offset, 2)->ToInt();
 							}
@@ -140,7 +139,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Min: {
 						pos := mins + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_mins := date_str->SubString(mins + offset, 2)->ToInt();
 							}
@@ -153,7 +152,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Sec: {
 						pos := secs + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_secs := date_str->SubString(secs + offset, 2)->ToInt();
 							}
@@ -275,13 +274,13 @@ if(triplet <> Nil) {
 			if(response <> Nil & response->GetCode() = 200 & response->GetContent() <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json <> Nil) {
-					unix_time_json := response_json->Get("unixtime");					
+					unix_time_json := response_json->Get("unixtime");
 					utc_time_json := response_json->Get("utc_datetime");
 					dst_time_json := response_json->Get("datetime");
 					if(unix_time_json <> Nil & utc_time_json <> Nil & dst_time_json <> Nil) {
 						utc_date := System.Time.DateUtility->Parse(utc_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);
-						dst_date := System.Time.DateUtility->Parse(dst_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);	
-						
+						dst_date := System.Time.DateUtility->Parse(dst_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);
+
 						return Collection.Tuple.Triplet->New(IntRef->New(unix_time_json->GetInt()), utc_date, dst_date)<IntRef, Date, Date>;
 					};
 				};
@@ -290,7 +289,7 @@ if(triplet <> Nil) {
 			return Nil;
 		}
 	}
-	
+
 	class : private : DatePart {
 		@index : Int;
 		@type : Type;
@@ -492,8 +491,17 @@ Spinner->Last();
 		}
 	}
 
+	# formatter:begin (written by tools/cicd/check_formatter_sync.py from tools/lsp/server/format_code; change it there)
 	#~
-	Code formatter
+	Code formatter. Formats Objeck source text: indentation, one statement to a line, spacing around
+	operators. The text it returns has the same tokens as the text it was given, so it compiles to the
+	same program; formatting its own output changes nothing.
+	```
+	options := Map->New()<String, String>;
+	options->Insert("ident-space", "2");
+	options->Insert("trim-trailing", "true");
+	formatted := System.Utility.CodeFormatter->New(options)->Format(source, false);
+	```
 	~#
 	class CodeFormatter {
 		@token : Token;
@@ -509,15 +517,8 @@ Spinner->Last();
 		@end_range : Int;
 
 		@trim_trailing : Bool;
-		@is_generic : Bool;
-
-		ASCII_COLOR_TYPE : String;
-		ASCII_COLOR_KEYWORD : String;
-		ASCII_COLOR_OPER : String;
-		ASCII_COLOR_CONST : String;
-		ASCII_COLOR_BRACKET : String;
-		ASCII_COLOR_COMMENT : String;
-		ASCII_END : String;
+		@braces : String;
+		@hold_space : Bool;
 
 		#~
 		Constructor
@@ -531,23 +532,14 @@ Spinner->Last();
 		  <li>"start-line" - (optional|number)</li>
 		  <li>"end-line" - (optional|number)</li>
 		</ul>
-
-```
-opts := Map->New()<String, String>;
-opts->Insert("ident-space", "2");
-opts->Insert("trim-trailing", "true");
-formatter := CodeFormatter->New(opts);
-```
+		```
+		opts := Map->New()<String, String>;
+		opts->Insert("ident-space", "2");
+		opts->Insert("trim-trailing", "true");
+		formatter := CodeFormatter->New(opts);
+		```
 		~#
 		New(options : Map<String, String>) {
-			ASCII_COLOR_KEYWORD := "\x1B[33m";
-			ASCII_COLOR_TYPE := "\x1B[94m";
-			ASCII_COLOR_OPER := "\x1B[32m";
-			ASCII_COLOR_CONST := "\x1B[36m";
-			ASCII_COLOR_BRACKET := "\x1B[31m";
-			ASCII_COLOR_COMMENT := "\x1B[90m";
-			ASCII_END := "\x1b[0m";
-
 			# get options
 			stmt_space_check := options->Find("function-space");
 			@stmt_space := stmt_space_check <> Nil & stmt_space_check->Equals("true");
@@ -561,7 +553,7 @@ formatter := CodeFormatter->New(opts);
 			if(ident_space_check <> Nil & <>ident_space_check->IsEmpty()) {
 				@ident_space := ident_space_check->ToInt() - 1;
 			};
-			
+
 			# get start and end range
 			@start_range := -1;
 			start_line_check := options->Find("start-line");
@@ -575,13 +567,47 @@ formatter := CodeFormatter->New(opts);
 				@end_range := end_line_check->ToInt();
 			};
 
+	# "ranges: ({$@start_range},{$@end_range})"->PrintLine();
 
 			@buffer := "";
 		}
 
 		method : AppendBuffer(str : String) ~ Nil {
+			if(InRange() & str->Size() > 0) {
+				if(@hold_space) {
+					@hold_space := false;
+				}
+				else if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+					@buffer->Pop();
+				};
+
+				KeepApart(str->Get(0));
+				@buffer += str;
+			};
+		}
+
+		method : AppendBuffer(char : Char) ~ Nil {
 			if(InRange()) {
-				if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+				if(@hold_space) {
+					@hold_space := false;
+				}
+				else if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
+					@buffer->Pop();
+				};
+
+				KeepApart(char);
+				@buffer += char;
+			};
+		}
+
+		# Text that is written exactly as given: a literal or a comment, whose first
+		# and last characters are its own and are never joined to or parted from.
+		method : AppendVerbatim(str : String) ~ Nil {
+			if(InRange()) {
+				if(@hold_space) {
+					@hold_space := false;
+				}
+				else if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
 					@buffer->Pop();
 				};
 
@@ -589,19 +615,171 @@ formatter := CodeFormatter->New(opts);
 			};
 		}
 
-		method : AppendBuffer(char : Char) ~ Nil {
-			if(InRange()) {
-				if(@buffer->EndsWith("; ") | @buffer->EndsWith("} ")) {
-					@buffer->Pop();
-				};
+		# Two tokens written with nothing between them must still read as two. The
+		# layout rules below remove the space before or after a token in many
+		# places, and each one that did so without looking joined something:
+		# "classB", "a<" then ">b" as "a<>b", ":" then "=" as ":=". Wherever the
+		# end of the text and the start of what is added would read as one token, a
+		# space goes between them, so no rule can change what a program means by
+		# closing a gap.
+		method : KeepApart(first : Char) ~ Nil {
+			size := @buffer->Size();
+			if(size = 0) {
+				return;
+			};
 
-				@buffer += char;
+			last := @buffer->Get(size - 1);
+			if(IsWordChar(last) & IsWordChar(first)) {
+				@buffer += ' ';
+				return;
+			};
+
+			joins := false;
+			select(last) {
+				label ':' { joins := first = '='; }
+				label '-' { joins := first = '>' | first = '=' | first = '-'; }
+				label '+' { joins := first = '=' | first = '+'; }
+				label '*' { joins := first = '='; }
+				label '/' { joins := first = '='; }
+				label '<' { joins := first = '>' | first = '=' | first = '<'; }
+				label '>' { joins := first = '=' | first = '>'; }
+				label '=' { joins := first = '>' | first = '='; }
+				label '!' { joins := first = '='; }
+				label '&' { joins := first = '&'; }
+				label '|' { joins := first = '|'; }
+				label '#' { joins := first = '~'; }
+				# "??"; a '?' followed by "->" is the Nil-safe call "?->", which is
+				# read as those two tokens and written back joined
+				label '?' { joins := first = '?'; }
+				# a digit after a '.' would make the '.' part of a number
+				label '.' { joins := first->IsDigit(); }
+			};
+
+			if(joins) {
+				@buffer += ' ';
 			};
 		}
 
+		method : IsWordChar(c : Char) ~ Bool {
+			return c->IsChar() | c->IsDigit() | c = '_' | c = '@' | c = '$' | c = '.' | c->As(Int) > 127;
+		}
+
+		# Removes the space the loop writes after each token, where a rule wants the
+		# next token against the one before it. Only that space: this popped whatever
+		# character came last, so where no space had been written (after '(' or '[',
+		# at the start of a line) it took the last character of the token before it,
+		# or a character of the line's indentation.
 		method : PopBuffer() ~ Nil {
 			if(InRange()) {
-				@buffer->Pop();
+				size := @buffer->Size();
+				if(size > 1) {
+					if(@buffer->Get(size - 1) = ' ') {
+						before := @buffer->Get(size - 2);
+						if(before <> ' ' & before <> '\t' & before <> '\n') {
+							@buffer->Pop();
+						};
+					};
+				};
+			};
+		}
+
+		# Starts a line at this depth, unless the text is already at the start of
+		# one: a comment ends its own line, and a second newline after it left a
+		# line of nothing but indentation behind.
+		method : StartLine(tab_space : Int) ~ Nil {
+			TrimIndent();
+			if(InRange() & @buffer->Size() > 0 & <>@buffer->EndsWith('\n')) {
+				AppendVerbatim("\n");
+			};
+			TabSpace(tab_space, @ident_space);
+		}
+
+		# Whether the '{' at 'at' opens a map or JSON literal: its first entry is a
+		# string key and a ':', or it is empty and stands where a value does.
+		method : IsLiteralBrace(tokens : Vector<Token>, at : Int) ~ Bool {
+			if(at + 2 < tokens->Size()) {
+				if(tokens->Get(at + 1)->GetType() = System.Utility.Token->Type->STRING_LIT & tokens->Get(at + 2)->GetType() = System.Utility.Token->Type->COLON) {
+					return true;
+				};
+			};
+
+			if(at + 1 < tokens->Size() & at > 0) {
+				if(tokens->Get(at + 1)->GetType() = System.Utility.Token->Type->CCBRACE) {
+					select(tokens->Get(at - 1)->GetType()) {
+						label System.Utility.Token->Type->ASGN
+						label System.Utility.Token->Type->COMMA
+						label System.Utility.Token->Type->OPREN
+						label System.Utility.Token->Type->OBRACE
+						label System.Utility.Token->Type->RETURN_ID {
+							return true;
+						}
+
+						# an entry's value, inside a literal
+						label System.Utility.Token->Type->COLON {
+							return @braces->EndsWith('L');
+						}
+					};
+				};
+			};
+
+			return false;
+		}
+
+		# Whether a token that starts a line in the source, inside a statement,
+		# starts one here. The ones that do not have rules of their own for where
+		# they go, as does anything after a brace or a comment.
+		method : KeepsLineBreak(token : Token, before : Token) ~ Bool {
+			select(token->GetType()) {
+				label System.Utility.Token->Type->OCBRACE
+				label System.Utility.Token->Type->CCBRACE
+				label System.Utility.Token->Type->SEMI
+				label System.Utility.Token->Type->ELSE_ID
+				label System.Utility.Token->Type->VTAB
+				label System.Utility.Token->Type->LINE_COMMENT
+				label System.Utility.Token->Type->TRAIL_COMMENT
+				label System.Utility.Token->Type->MULTI_COMMENT
+				label System.Utility.Token->Type->INLINE_COMMENT {
+					return false;
+				}
+			};
+
+			select(before->GetType()) {
+				label System.Utility.Token->Type->OCBRACE
+				label System.Utility.Token->Type->CCBRACE
+				label System.Utility.Token->Type->SEMI
+				label System.Utility.Token->Type->VTAB
+				label System.Utility.Token->Type->LINE_COMMENT
+				label System.Utility.Token->Type->TRAIL_COMMENT
+				label System.Utility.Token->Type->MULTI_COMMENT {
+					return false;
+				}
+			};
+
+			return true;
+		}
+
+		# whether nothing but indentation has been written on the current line
+		method : AtLineStart() ~ Bool {
+			for(k := @buffer->Size() - 1; k > -1; k -= 1;) {
+				c := @buffer->Get(k);
+				if(c = '\n') {
+					return true;
+				};
+
+				if(c <> ' ' & c <> '\t') {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		# removes the indentation at the end of the buffer
+		method : TrimIndent() ~ Nil {
+			if(InRange()) {
+				while(@buffer->EndsWith(' ') | @buffer->EndsWith('\t')) {
+					@buffer->Pop();
+				};
 			};
 		}
 
@@ -609,55 +787,18 @@ formatter := CodeFormatter->New(opts);
 			return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
 		}	
 
-		method : CheckGeneric(tokens : Vector<Token>, i : Int) ~ Bool {
-			level := 0;
-			
-			token := tokens->Get(i);
-			while(token->GetType() <> System.Utility.Token->Type->SEMI & token->GetType() <> System.Utility.Token->Type->OTHER) {
-				select(token->GetType()) {
-					label System.Utility.Token->Type->LESS {
-						level += 1;
-					}
-
-					label System.Utility.Token->Type->GTR {
-						level -= 1;
-					}
-
-					label System.Utility.Token->Type->IDENT
-					label System.Utility.Token->Type->STRING_ID
-					label System.Utility.Token->Type->COMMA {
-						# skip
-					}
-
-					other {
-						return false;
-					}
-				}
-
-				if(level = 0) {
-					return true;
-				};
-
-				token := tokens->Get(++i);
-			}
-
-			return false;
-		}
-
 		#~
+		Formats source code
 		@param source source code
-		@param is_color true for ascii color formatting, false otherwise
 		@return formatted code
-
-```
-opts := Map->New()<String, String>;
-opts->Insert("ident-space", "3");
-formatter := CodeFormatter->New(opts);
-src := "class Foo{method:public:Bar()~Nil{x:=1;}}";
-formatter->Format(src, false)->PrintLine();
-```
+		```
+		opts := Map->New()<String, String>;
+		opts->Insert("ident-space", "3");
+		formatter := CodeFormatter->New(opts);
+		formatter->Format("class Foo{method:public:Bar()~Nil{x:=1;}}")->PrintLine();
+		```
 		~#
-		method : public : native : Format(source : String, is_color : Bool) ~ String {
+		method : public : Format(source : String) ~ String {
 			scanner := Scanner->New(source);
 			if(scanner->Scan()) {
 				tab_space := 0;
@@ -667,6 +808,12 @@ formatter->Format(src, false)->PrintLine();
 				in_label := false;
 				in_for := false;
 				in_consts := false;
+				generic_depth := 0;
+				# how many '(', '[' and literal '{' are open, and for each open '{'
+				# whether it is a block ('B') or a map or JSON literal ('L')
+				open_depth := 0;
+				@braces := "";
+				@hold_space := false;
 
 				@prev_token := Token->New(-1, System.Utility.Token->Type->OTHER, "other");
 
@@ -695,278 +842,132 @@ formatter->Format(src, false)->PrintLine();
 					else {
 						@next_token := Token->New(-1, System.Utility.Token->Type->OTHER, "other");
 					};
-					
+
+					# A line break inside a statement is the author's and is kept: the
+					# arguments of a long call, the entries of a literal, the arms of a
+					# match. (Everything between two ';' used to be joined into one
+					# line.) The tokens that place themselves, and whatever follows a
+					# brace, are left to their own rules.
+					if(@prev_token->GetLine() > -1 & @token->GetLine() > @prev_token->GetLine()) {
+						if(KeepsLineBreak(@token, @prev_token) & <>AtLineStart()) {
+							if(open_depth = 0 & @prev_token->GetType() = System.Utility.Token->Type->COMMA) {
+								StartLine(tab_space);
+							}
+							else {
+								StartLine(tab_space + 1);
+							};
+						};
+					};
+
 					select(@token->GetType()) {
 						label System.Utility.Token->Type->CLASS_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-							
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("class");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->FUNCTION_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
 
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("function");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->METHOD_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("method");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->PUBLIC_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("public");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->PRIVATE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("private");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->IF_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("if");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->ELSE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
-							AppendBuffer('\n');
-							TabSpace(tab_space, @ident_space);
+							StartLine(tab_space);
 							AppendBuffer("else");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}					
 
 						label System.Utility.Token->Type->DO_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("do");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->WHILE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("while");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->FOR_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("for");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
-
 							in_for := true;
 						}
 
 						label System.Utility.Token->Type->EACH_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("each");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->BREAK_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("break");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->CONTINUE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("continue");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->RETURN_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("return");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->ALIAS_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
+							VerticalSpace(@prev_token, tab_space, @ident_space);
 							AppendBuffer("alias");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->LEAVING_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("leaving");
 						}
 
 						label System.Utility.Token->Type->USE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("use");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->NATIVE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("native");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->STATIC_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("static");
 						}
 
 						label System.Utility.Token->Type->SELECT_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("select");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->LABEL_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("label");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
-
 							in_label := true;
 							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->OTHER_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("other");
+							in_label := true;
+							@skip_space := false;
+						}
 
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
-
+						label System.Utility.Token->Type->OTHERWISE_ID {
+							VerticalSpace(@prev_token, tab_space, @ident_space);
+							AppendBuffer("otherwise");
 							in_label := true;
 							@skip_space := false;
 						}
@@ -978,75 +979,56 @@ formatter->Format(src, false)->PrintLine();
 						label System.Utility.Token->Type->ASSESSOR {
 							PopBuffer();
 							AppendBuffer("->");
+							@skip_space := true;
 						}
 
+						# a comment on a line of its own keeps one, also after a '(' or '['
 						label System.Utility.Token->Type->LINE_COMMENT {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_COMMENT);
+							if(<>AtLineStart()) {
+								StartLine(tab_space);
 							};
-
-							AppendBuffer("# ");
-							AppendBuffer(@token->GetValue()->Trim());
-							
-							if(is_color) {
-								AppendBuffer("\033[0m");
-							};
-							
-							AppendBuffer('\n');
+							comment := "#";
+							comment += @token->GetValue();
+							comment += '\n';
+							AppendVerbatim(comment);
 							@skip_space := insert_tabs := true;
 						}
 
+						# A comment after code on its line stays on that line. The rule for
+						# the token before it may already have ended the line (a ';', a
+						# '{'); that is taken back, and the line ends after the comment.
+						label System.Utility.Token->Type->TRAIL_COMMENT {
+							TrimIndent();
+							if(@buffer->EndsWith('\n') & <>@buffer->EndsWith("\n\n")) {
+								@buffer->Pop();
+							};
+							comment := " #";
+							comment += @token->GetValue();
+							comment += '\n';
+							AppendVerbatim(comment);
+							@skip_space := insert_tabs := true;
+						}
+
+						# A block comment on lines of its own keeps them: what follows it
+						# starts a new line. (It did not, and a file's header comment came
+						# back with the first 'use' on its last line.) One written inside a
+						# line of code stays inside it.
 						label System.Utility.Token->Type->MULTI_COMMENT {
-							PopBuffer();
-							
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_COMMENT);
+							if(<>AtLineStart()) {
+								StartLine(tab_space);
 							};
+							comment := "#~";
+							comment += @token->GetValue();
+							comment += "~#\n";
+							AppendVerbatim(comment);
+							@skip_space := insert_tabs := true;
+						}
 
-							comment := @token->GetValue()->Trim();
-
-							AppendBuffer(" #~\n");
-							each(k : @ident_space) {
-								AppendBuffer(' ');
-							};
-							AppendBuffer(' ');
-
-							words := System.Utility.Parser->Tokenize(comment);
-							each(word := words) {
-								if(word->StartsWith('@')) {
-									AppendBuffer('\n');
-									each(k : @ident_space) {
-										AppendBuffer(' ');
-									};
-									AppendBuffer(' ');
-									AppendBuffer(word);
-								}
-								else {
-									AppendBuffer(word);
-									if(word->StartsWith(';')) {
-										AppendBuffer('\n');
-										each(k : @ident_space) {
-											AppendBuffer(' ');
-										};
-									}
-									AppendBuffer(' ');
-								}
-							};
-
-							AppendBuffer('\n');
-							each(k : @ident_space) {
-								AppendBuffer(' ');
-							};
-							AppendBuffer(" ~#");
-
-							AppendBuffer('\n');
-							each(k : @ident_space) {
-								AppendBuffer(' ');
-							};
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+						label System.Utility.Token->Type->INLINE_COMMENT {
+							comment := "#~";
+							comment += @token->GetValue();
+							comment += "~#";
+							AppendVerbatim(comment);
 						}
 
 						label System.Utility.Token->Type->SEMI {
@@ -1055,35 +1037,63 @@ formatter->Format(src, false)->PrintLine();
 
 							if(@next_token->GetType() <> System.Utility.Token->Type->CCBRACE & @next_token->GetType() <> System.Utility.Token->Type->VTAB & <>in_for) {
 								AppendBuffer('\n');
-								
+
 								@skip_space := true;
 								if(<>in_for) {
 									insert_tabs := true;
 								};
 							};
-						}
 
-						label System.Utility.Token->Type->LESS {
-							@is_generic := CheckGeneric(tokens, i);
-
-							if(@is_generic) {
-								PopBuffer();
+							# "for(i := 0; i < n; i += 1;)": the parts are set apart, but
+							# nothing stands between the last ';' and the ')'
+							if(in_for) {
+								if(@next_token->GetType() = System.Utility.Token->Type->CPREN) {
+									@skip_space := true;
+								}
+								else {
+									@hold_space := true;
+								};
 							};
 
-							AppendBuffer('<');
+						}
 
-							if(@is_generic) {
+						# A '<' that opens type arguments ("Vector<String>", "New()<Int>",
+						# "class Box<T : Stringify>") sits against the name before it and
+						# the type after it; a comparison is spaced like any operator. It
+						# was neither: every '<' lost the space after it and kept the one
+						# before, "a <b" and "Vector <String >".
+						label System.Utility.Token->Type->LESS {
+							if(IsTypeArguments(tokens, i)) {
+								PopBuffer();
+								AppendBuffer('<');
 								@skip_space := true;
+								generic_depth += 1;
+							}
+							else {
+								AppendBuffer('<');
 							};
 						}
 
 						label System.Utility.Token->Type->GTR {
-							if(@is_generic) {
+							if(generic_depth > 0) {
 								PopBuffer();
-								@is_generic := false;
 							};
 
-							AppendBuffer('>');
+							# ">>" and ">>>" are written back unbroken: see the scanner
+							if(@buffer->EndsWith('>') & @prev_token->GetType() = System.Utility.Token->Type->GTR & @prev_token->GetValue()->Equals("joined")) {
+								AppendVerbatim(">");
+							}
+							else {
+								AppendBuffer('>');
+							};
+
+							if(generic_depth > 0) {
+								generic_depth -= 1;
+							};
+
+							if(@token->GetValue()->Equals("joined")) {
+								@skip_space := true;
+							};
 						}
 
 						label System.Utility.Token->Type->COMMA {
@@ -1096,44 +1106,32 @@ formatter->Format(src, false)->PrintLine();
 							};
 						}
 
+						# "a <> b" is a comparison; "<>done" is 'not', against its operand
 						label System.Utility.Token->Type->NEQL {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("<>");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
+							@skip_space := <>EndsOperand(@prev_token);
 						}
 
 						label System.Utility.Token->Type->AND {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer('&');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
 						}
 
 						label System.Utility.Token->Type->OR {
 							AppendBuffer('|');
 						}
 
+						# "a ? b : c" is spaced; the '?' of the Nil-safe call "a?->F()" sits
+						# against what it guards, and the "->" against it
 						label System.Utility.Token->Type->QUESTION {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
+							if(@next_token->GetType() = System.Utility.Token->Type->ASSESSOR) {
+								PopBuffer();
+								@skip_space := true;
 							};
-							
 							AppendBuffer('?');
+						}
 
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
+						label System.Utility.Token->Type->QUESTION_QUESTION {
+							AppendBuffer("??");
 						}
 
 						label System.Utility.Token->Type->IDENT {
@@ -1146,298 +1144,121 @@ formatter->Format(src, false)->PrintLine();
 							AppendBuffer("{$value}");
 						}
 
+						# A literal is written in one piece. Written as a quote, the text and
+						# a quote, the text went through the rule that drops the space after
+						# a ';' or '}': a string that ended "; " or "} " lost its last space,
+						# and the program printed something else.
 						label System.Utility.Token->Type->STRING_LIT {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_CONST);
-							}
-							
-							value := @token->GetValue();
-							AppendBuffer('"');
-							AppendBuffer(value);
-							AppendBuffer('"');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
+							literal := "\"";
+							literal += @token->GetValue();
+							literal += '"';
+							AppendVerbatim(literal);
 						}
 
 						label System.Utility.Token->Type->CHAR_LIT {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_CONST);
-							}
-
-							AppendBuffer('\'');
-							AppendBuffer(@token->GetValue());
-							AppendBuffer('\'');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
+							literal := "'";
+							literal += @token->GetValue();
+							literal += '\'';
+							AppendVerbatim(literal);
 						}
 
 						label System.Utility.Token->Type->NUM_LIT {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_CONST);
-							}
-
 							AppendBuffer(@token->GetValue());
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
 						}
-						
+
 						label System.Utility.Token->Type->STRING_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-
 							AppendBuffer("String");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->INT_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-
 							AppendBuffer("Int");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->FLOAT_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-							
 							AppendBuffer("Float");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->CHAR_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-
 							AppendBuffer("Char");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->BOOL_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-
 							AppendBuffer("Bool");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->BYTE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-
 							AppendBuffer("Byte");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->NIL_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_TYPE);
-							};
-
 							AppendBuffer("Nil");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->AND_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("and");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
 						}
 
 						label System.Utility.Token->Type->OR_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-							
 							AppendBuffer("or");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
 						}
 
 						label System.Utility.Token->Type->XOR_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("xor");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							}
 						}
 
 						label System.Utility.Token->Type->VIRTUAL_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("virtual");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->BUNDLE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
+							VerticalSpace(@prev_token, tab_space, @ident_space);
 							AppendBuffer("bundle");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->INTERFACE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
+							VerticalSpace(@prev_token, tab_space, @ident_space);
 							AppendBuffer("interface");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->IMPLEMENTS_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("implements");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->ENUM_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
+							VerticalSpace(@prev_token, tab_space, @ident_space);
 							AppendBuffer("enum");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->CONSTS_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							in_consts := true;
+							VerticalSpace(@prev_token, tab_space, @ident_space);
 							AppendBuffer("consts");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := false;
 						}
 
 						label System.Utility.Token->Type->REVERSE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("reverse");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
+						# the keyword is 'Parent'; written 'parent' it is a name, and a
+						# constructor's "Parent();" came back as a call to nothing
 						label System.Utility.Token->Type->PARENT_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
-							AppendBuffer("parent");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							AppendBuffer("Parent");
 						}
 
 						label System.Utility.Token->Type->FROM_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_KEYWORD);
-							};
-
 							AppendBuffer("from");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->TRUE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_CONST);
-							};
-
 							AppendBuffer("true");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->FALSE_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_CONST);
-							};
-
 							AppendBuffer("false");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->NEW_ID {
@@ -1447,264 +1268,143 @@ formatter->Format(src, false)->PrintLine();
 							if(@prev_token->GetType() = System.Utility.Token->Type->ASSESSOR) {
 								PopBuffer();
 							};
-							@skip_space := true;
 							AppendBuffer("New");
+							@skip_space := true;
 						}
 
 						label System.Utility.Token->Type->AS_ID {
-							PopBuffer();
-							@skip_space := true;
 							AppendBuffer("As");
 						}
 
 						label System.Utility.Token->Type->TYPE_OF_ID {
-							PopBuffer();
-							@skip_space := true;
 							AppendBuffer("TypeOf");
 						}
 
 						label System.Utility.Token->Type->CRITICAL_ID {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_CONST);
-							};
-
 							AppendBuffer("critical");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
 						label System.Utility.Token->Type->COLON {
-							if(in_label) {
+							# "label 1:" and a literal's "key": value
+							if(in_label | @braces->EndsWith('L')) {
 								PopBuffer();
 							};
 							AppendBuffer(':');
 						}
 
+						# A '+' or '-' with no operand before it is a sign and stays against
+						# its operand ("x := -1", "F(-n)"); between two operands it is spaced
+						# like any other operator.
 						label System.Utility.Token->Type->ADD {
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
 							AppendBuffer('+');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := IsSign();
 						}
 
-						label System.Utility.Token->Type->SUB{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->SUB {
 							AppendBuffer('-');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
+							@skip_space := IsSign();
 						}
 
-						label System.Utility.Token->Type->MUL{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->MUL {
 							AppendBuffer('*');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->DIV{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->DIV {
 							AppendBuffer('/');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->MOD{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
+						label System.Utility.Token->Type->MOD {
 							AppendBuffer('%');
 						}
 
-						label System.Utility.Token->Type->QUOTE{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
-							AppendBuffer('\'');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
-						}
-
-						label System.Utility.Token->Type->FWD_SLASH{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						# the '\' of a function type or a lambda stays against what it starts
+						label System.Utility.Token->Type->FWD_SLASH {
 							AppendBuffer('\\');
+							@skip_space := true;
+						}
 
-							if(is_color) {
-								AppendBuffer(ASCII_END);
+						# a token with no rule of its own is written as it was read
+						label System.Utility.Token->Type->SYMBOL {
+							symbol := @token->GetValue();
+							if(symbol->Equals("^") & @prev_token->GetType() = System.Utility.Token->Type->FWD_SLASH) {
+								# "\^(a : Int) ~ Int => ..."
+								AppendBuffer(symbol);
+								@skip_space := true;
+							}
+							else if(symbol->Equals("!")) {
+								AppendBuffer(symbol);
+								@skip_space := true;
+							}
+							else {
+								AppendBuffer(symbol);
 							};
 						}
 
-						label System.Utility.Token->Type->EQL{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->EQL {
 							AppendBuffer('=');
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->LESS_EQL{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->LESS_EQL {
 							AppendBuffer("<=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->ESCAPE{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
-							AppendBuffer("\e");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
-						}
-
-
-						label System.Utility.Token->Type->GTR_EQL{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->GTR_EQL {
 							AppendBuffer(">=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->ADD_ASN{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->ADD_ASN {
 							AppendBuffer("+=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->SUB_ASN{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->SUB_ASN {
 							AppendBuffer("-=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->ADD_ADD{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
+						# "i++" and "++i": against the operand on whichever side has one
+						label System.Utility.Token->Type->ADD_ADD {
+							if(EndsOperand(@prev_token)) {
+								PopBuffer();
+							}
+							else {
+								@skip_space := true;
 							};
-
 							AppendBuffer("++");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->SUB_SUB{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
+						label System.Utility.Token->Type->SUB_SUB {
+							if(EndsOperand(@prev_token)) {
+								PopBuffer();
+							}
+							else {
+								@skip_space := true;
 							};
-
 							AppendBuffer("--");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->MUL_ASN{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->MUL_ASN {
 							AppendBuffer("*=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->DIV_ASN{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->DIV_ASN {
 							AppendBuffer("/=");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->LAMBDA{
-							if(is_color) {
-								AppendBuffer(ASCII_COLOR_OPER);
-							};
-
+						label System.Utility.Token->Type->LAMBDA {
 							AppendBuffer("=>");
-
-							if(is_color) {
-								AppendBuffer(ASCII_END);
-							};
 						}
 
-						label System.Utility.Token->Type->TILDE{
+						label System.Utility.Token->Type->TILDE {
 							AppendBuffer('~');
 						}
 
 						label System.Utility.Token->Type->OBRACE {
-							if(@prev_token->GetType() = System.Utility.Token->Type->IDENT) {
+							# "values[i]" and "String[]": against a name or a type
+							if(@prev_token->GetType() = System.Utility.Token->Type->IDENT | IsTypeName(@prev_token)) {
 								PopBuffer();
 							};
-
 							AppendBuffer('[');
 							@skip_space := true;
+							open_depth += 1;
 						}
 
 						label System.Utility.Token->Type->CBRACE {
@@ -1712,6 +1412,9 @@ formatter->Format(src, false)->PrintLine();
 								PopBuffer();
 							};
 							AppendBuffer(']');
+							if(open_depth > 0) {
+								open_depth -= 1;
+							};
 						}
 
 						label System.Utility.Token->Type->OPREN {
@@ -1722,6 +1425,12 @@ formatter->Format(src, false)->PrintLine();
 									label System.Utility.Token->Type->FOR_ID
 									label System.Utility.Token->Type->EACH_ID
 									label System.Utility.Token->Type->SELECT_ID
+									label System.Utility.Token->Type->PARENT_ID
+									label System.Utility.Token->Type->CRITICAL_ID
+									label System.Utility.Token->Type->AS_ID
+									label System.Utility.Token->Type->TYPE_OF_ID
+									label System.Utility.Token->Type->REVERSE_ID
+									label System.Utility.Token->Type->CPREN
 									label System.Utility.Token->Type->WHILE_ID {
 										PopBuffer();
 									}
@@ -1730,6 +1439,7 @@ formatter->Format(src, false)->PrintLine();
 
 							AppendBuffer('(');
 							@skip_space := true;
+							open_depth += 1;
 						}
 
 						label System.Utility.Token->Type->CPREN {
@@ -1742,13 +1452,28 @@ formatter->Format(src, false)->PrintLine();
 							};
 
 							AppendBuffer(')');
+							if(open_depth > 0) {
+								open_depth -= 1;
+							};
 						}
 
+						# A '{' opens a block, which gets lines of its own, or a map or JSON
+						# literal ({"name": "x", "n": 1}, {}), which is an expression and
+						# stays in its line like a '[' does.
 						label System.Utility.Token->Type->OCBRACE {
-							AppendBuffer("{\n");
-							@skip_space := true;
-							tab_space += 1;
-							insert_tabs := true;
+							if(IsLiteralBrace(tokens, i)) {
+								AppendBuffer('{');
+								@skip_space := true;
+								open_depth += 1;
+								@braces += 'L';
+							}
+							else {
+								AppendBuffer("{\n");
+								@skip_space := true;
+								tab_space += 1;
+								insert_tabs := true;
+								@braces += 'B';
+							};
 
 							if(in_label) {
 								in_label := false;
@@ -1756,35 +1481,46 @@ formatter->Format(src, false)->PrintLine();
 						}
 
 						label System.Utility.Token->Type->CCBRACE {
-							# an empty block closes on the line after its '{', with no
-							# line of indentation left between the two
-							if(@prev_token->GetType() = System.Utility.Token->Type->OCBRACE) {
-								TrimIndent();
+							closes_literal := @braces->EndsWith('L');
+							if(@braces->Size() > 0) {
+								@braces->Pop();
+							};
+
+							if(closes_literal) {
+								if(@prev_token->GetType() <> System.Utility.Token->Type->OCBRACE) {
+									PopBuffer();
+								};
+								AppendBuffer('}');
+								if(open_depth > 0) {
+									open_depth -= 1;
+								};
 							}
 							else {
-								AppendBuffer('\n');
-							};
+							# an empty block closes on the line after its '{', with no
+							# line of indentation left between the two
 							tab_space -= 1;
-							TabSpace(tab_space, @ident_space);
+							StartLine(tab_space);
 							AppendBuffer('}');
-						
+
 							if(in_consts) {
 								in_consts := false;
 							};
-						
+
 							# What follows the brace. AppendBuffer joins the next token to
 							# a '}', which is right for the few that belong on its line and
-							# wrong for the rest: a constructor, field, enum, comment or
-							# statement with no blank line before it came out as "}New() {".
+							# wrong for a constructor, field, comment or statement with no
+							# blank line before it: they came out as "}New() {", "}@y : Int;"
+							# and "}# note".
 							select(@next_token->GetType()) {
 								# stay on the brace's line
+								label System.Utility.Token->Type->TRAIL_COMMENT
 								label System.Utility.Token->Type->SEMI
 								label System.Utility.Token->Type->CPREN
 								label System.Utility.Token->Type->CBRACE
 								label System.Utility.Token->Type->COMMA
 								label System.Utility.Token->Type->ASSESSOR
 								label System.Utility.Token->Type->WHILE_ID
-								# start a line of their own
+								# start a line of their own, or are given one by VerticalSpace
 								label System.Utility.Token->Type->CCBRACE
 								label System.Utility.Token->Type->VTAB
 								label System.Utility.Token->Type->ELSE_ID
@@ -1793,52 +1529,71 @@ formatter->Format(src, false)->PrintLine();
 								label System.Utility.Token->Type->METHOD_ID
 								label System.Utility.Token->Type->LABEL_ID
 								label System.Utility.Token->Type->OTHER_ID
-								# end of the source
-								label System.Utility.Token->Type->OTHER {
-								}
-						
-								# a constructor and the other declarations are set apart like a method
-								label System.Utility.Token->Type->NEW_ID
 								label System.Utility.Token->Type->ENUM_ID
 								label System.Utility.Token->Type->CONSTS_ID
 								label System.Utility.Token->Type->ALIAS_ID
 								label System.Utility.Token->Type->BUNDLE_ID
-								label System.Utility.Token->Type->INTERFACE_ID {
+								label System.Utility.Token->Type->INTERFACE_ID
+								# end of the source
+								label System.Utility.Token->Type->OTHER {
+								}
+
+								# a constructor is set apart like a method
+								label System.Utility.Token->Type->NEW_ID {
 									AppendBuffer("\n\n");
 									TabSpace(tab_space, @ident_space);
 									@skip_space := true;
 								}
-						
+
 								other {
 									AppendBuffer('\n');
 									TabSpace(tab_space, @ident_space);
 									@skip_space := true;
 								}
 							};
-						}
-
-						label System.Utility.Token->Type->VTAB {
-							if(@next_token->GetType() <> System.Utility.Token->Type->CCBRACE) {
-								AppendBuffer("\n\n");
-								TabSpace(tab_space, @ident_space);
-								@skip_space := true;
 							};
 						}
 
+						# A blank line in the source is one blank line here, however many
+						# there were and whatever came before: the line that is ended has
+						# no indentation left on it, and the blank one is empty. Written as
+						# "\n\n" after whatever was there, a blank line after a '{' or a
+						# comment left a line of tabs behind and came back as two on the
+						# next pass, three on the one after.
+						label System.Utility.Token->Type->VTAB {
+							if(@next_token->GetType() <> System.Utility.Token->Type->CCBRACE & @next_token->GetType() <> System.Utility.Token->Type->VTAB) {
+								TrimIndent();
+								if(@buffer->EndsWith("\n\n")) {
+									# already one blank line
+								}
+								else if(@buffer->EndsWith('\n')) {
+									AppendVerbatim("\n");
+								}
+								else {
+									AppendVerbatim("\n\n");
+								};
+								TabSpace(tab_space, @ident_space);
+							};
+							@skip_space := true;
+						}
+
+						# no rule: written as it was read, never dropped
 						other {
-							"--- OTHER ---"->ErrorLine();
+							AppendBuffer(@token->GetValue());
 						}
 					};
 
 					if(<>@skip_space) {
-						AppendBuffer(' ');
+						if(InRange()) {
+							@buffer += ' ';
+						};
 					}
 					else {
 						@skip_space := false;
 					};
 				};
 			};
-			
+
 			# clean up output
 			offset_start := 0;
 			each(i : @buffer) {
@@ -1861,39 +1616,244 @@ formatter->Format(src, false)->PrintLine();
 			};
 
 			formatted := @buffer->SubString(offset_start, @buffer->Size() - offset_start - offset_end);
-			
-			if(@trim_trailing & formatted <> Nil) {
+
+			if(@trim_trailing) {
 				formatted := formatted->Trim();
 			};
-			
+
 			return formatted;
 		}
 
+		#
+		# The nesting depth the formatter indents each line of 'source' to: one level
+		# per open '{', one fewer for a line that starts with '}'. Index 1 is the
+		# first line. A blank line has the depth the code around it is at, which is
+		# where a new line typed there belongs; a line a multi-line comment runs
+		# over is -1, because the formatter leaves a comment's text alone. Nil when
+		# the source does not scan.
+		#
+		# The scanner's line numbers are not the source's, and this undoes how: a
+		# line comment ends at its newline without counting it, so every token after
+		# one is a line short, and a multi-line comment is numbered by the line it
+		# ends on. The formatter itself never reads the numbers (only a range format
+		# does), which is why they were never corrected there.
+		#
+		#~
+		The nesting depth each line of the source is indented to
+		@param source source code
+		@param line_count number of lines in the source
+		@return depth of each line, index 1 is the first line; -1 for a line a multi-line comment runs over
+		~#
+		method : public : LineDepths(source : String, line_count : Int) ~ Int[] {
+			scanner := Scanner->New(source);
+			scanner->SetLenient();
+			if(<>scanner->Scan()) {
+				return Nil;
+			};
+
+			depths := Int->New[line_count + 2];
+			depth := 0;
+			line := 1;
+			drift := 0;
+			tokens := scanner->GetTokens();
+			each(token in tokens) {
+				type := token->GetType();
+
+				# the blank-line marker shares a line with the token after it
+				if(type = System.Utility.Token->Type->VTAB) {
+					continue;
+				};
+
+				token_line := token->GetLine() + drift;
+				start_line := token_line;
+				comment_end := token_line;
+				if(type = System.Utility.Token->Type->MULTI_COMMENT | type = System.Utility.Token->Type->INLINE_COMMENT) {
+					comment := token->GetValue();
+					each(j : comment) {
+						if(comment->Get(j) = '\n') {
+							start_line -= 1;
+						};
+					};
+				};
+
+				# lines with no token take the depth the code before them left
+				while(line < start_line & line <= line_count) {
+					depths[line] := depth;
+					line += 1;
+				};
+
+				# the first token on a line sets its depth
+				if(line = start_line & line <= line_count) {
+					if(start_line < comment_end) {
+						depths[line] := -1;
+					}
+					else if(type = System.Utility.Token->Type->CCBRACE & depth > 0) {
+						depths[line] := depth - 1;
+					}
+					else {
+						depths[line] := depth;
+					};
+					line += 1;
+				};
+
+				select(type) {
+					label System.Utility.Token->Type->OCBRACE {
+						depth += 1;
+					}
+
+					label System.Utility.Token->Type->CCBRACE {
+						if(depth > 0) {
+							depth -= 1;
+						};
+					}
+
+					label System.Utility.Token->Type->LINE_COMMENT
+					label System.Utility.Token->Type->TRAIL_COMMENT {
+					}
+
+					label System.Utility.Token->Type->MULTI_COMMENT
+					label System.Utility.Token->Type->INLINE_COMMENT {
+						while(line <= comment_end & line <= line_count) {
+							depths[line] := -1;
+							line += 1;
+						};
+					}
+
+					other {
+					}
+				};
+			};
+
+			while(line <= line_count) {
+				depths[line] := depth;
+				line += 1;
+			};
+
+			return depths;
+		}
+
+		method : IsTypeName(token : Token) ~ Bool {
+			type := token->GetType();
+			return type = System.Utility.Token->Type->STRING_ID | type = System.Utility.Token->Type->INT_ID | type = System.Utility.Token->Type->FLOAT_ID |
+				type = System.Utility.Token->Type->CHAR_ID | type = System.Utility.Token->Type->BOOL_ID | type = System.Utility.Token->Type->BYTE_ID;
+		}
+
+		# Whether the '<' at 'at' opens type arguments: from it to the '>' that closes
+		# it there are only type names, commas, a bound's ':' and what a function
+		# type is written with. A comparison has an operand, an operator or a ';'
+		# before any '>' closes it.
+		method : IsTypeArguments(tokens : Vector<Token>, at : Int) ~ Bool {
+			depth := 0;
+			for(k := at; k < tokens->Size(); k += 1;) {
+				select(tokens->Get(k)->GetType()) {
+					label System.Utility.Token->Type->LESS {
+						depth += 1;
+					}
+
+					label System.Utility.Token->Type->GTR {
+						depth -= 1;
+						if(depth = 0) {
+							return k > at + 1;
+						};
+					}
+
+					label System.Utility.Token->Type->IDENT
+					label System.Utility.Token->Type->STRING_ID
+					label System.Utility.Token->Type->INT_ID
+					label System.Utility.Token->Type->FLOAT_ID
+					label System.Utility.Token->Type->CHAR_ID
+					label System.Utility.Token->Type->BOOL_ID
+					label System.Utility.Token->Type->BYTE_ID
+					label System.Utility.Token->Type->NIL_ID
+					label System.Utility.Token->Type->COMMA
+					label System.Utility.Token->Type->COLON
+					label System.Utility.Token->Type->OBRACE
+					label System.Utility.Token->Type->CBRACE
+					label System.Utility.Token->Type->FWD_SLASH
+					label System.Utility.Token->Type->TILDE
+					label System.Utility.Token->Type->OPREN
+					label System.Utility.Token->Type->CPREN {
+					}
+
+					other {
+						return false;
+					}
+				};
+			};
+
+			return false;
+		}
+
+		# whether the '+' or '-' being written is a sign: nothing that can end an operand comes before it
+		method : IsSign() ~ Bool {
+			return <>EndsOperand(@prev_token);
+		}
+
+		method : EndsOperand(token : Token) ~ Bool {
+			select(token->GetType()) {
+				label System.Utility.Token->Type->IDENT
+				label System.Utility.Token->Type->NUM_LIT
+				label System.Utility.Token->Type->STRING_LIT
+				label System.Utility.Token->Type->CHAR_LIT
+				label System.Utility.Token->Type->CPREN
+				label System.Utility.Token->Type->CBRACE
+				label System.Utility.Token->Type->TRUE_ID
+				label System.Utility.Token->Type->FALSE_ID
+				label System.Utility.Token->Type->NIL_ID {
+					return true;
+				}
+			};
+
+			return false;
+		}
+
+		# the whitespace the formatter writes before a line at this depth
+		#~
+		The whitespace written before a line at a nesting depth
+		@param depth nesting depth
+		@return indentation
+		~#
+		method : public : IndentFor(depth : Int) ~ String {
+			indent := "";
+			if(@ident_space > 0) {
+				each(i : depth) {
+					each(j : @ident_space) {
+						indent += ' ';
+					};
+					indent += ' ';
+				};
+			}
+			else {
+				each(i : depth) {
+					indent += '\t';
+				};
+			};
+
+			return indent;
+		}
+
+		# A declaration that follows a '}' starts on a line of its own, after a blank
+		# one. @skip_space is set for the caller, which clears it once the keyword is
+		# written: left set, it dropped the space AFTER the keyword, and a second class
+		# in a file came back as 'classB', which does not compile.
 		method : VerticalSpace(@prev_token : Token, tab_space : Int, @ident_space : Int) ~ Nil {
-			# the keyword that follows still takes its space: skipping it here
-			# joined the keyword to its name ("}" then "class B" gave "classB")
 			if(@prev_token->GetType() = System.Utility.Token->Type->CCBRACE) {
 				AppendBuffer("\n\n");
 				TabSpace(tab_space, @ident_space);
+				@skip_space := true;
 			};
 		}
 
-		# removes the indentation at the end of the buffer
-		method : TrimIndent() ~ Nil {
-			if(InRange()) {
-				while(@buffer->EndsWith(' ') | @buffer->EndsWith('\t')) {
-					@buffer->Pop();
-				};
-			};
-		}
-
-		method : TabSpace(tab_space : Int, F : Int) ~ Nil {
-			if(tab_space > 0) {
+		method : TabSpace(tab_space : Int, @ident_space : Int) ~ Nil {
+			if(@ident_space > 0) {
+				c := c2 := ' ';
+	# c := '·'; c2 := '•';
 				each(i : tab_space) {
+
 					each(j : @ident_space) {
-						AppendBuffer(' ');
+						AppendBuffer(c);
 					};
-					AppendBuffer(' ');
+					AppendBuffer(c2);
 				};
 			}
 			else {
@@ -1901,6 +1861,112 @@ formatter->Format(src, false)->PrintLine();
 					AppendBuffer('\t');
 				};
 			};
+		}
+		#~
+		Formats source code, optionally with ANSI colors for a terminal
+		@param source source code
+		@param is_color true for ascii color formatting, false otherwise
+		@return formatted code
+		```
+		opts := Map->New()<String, String>;
+		opts->Insert("ident-space", "3");
+		formatter := CodeFormatter->New(opts);
+		src := "class Foo{method:public:Bar()~Nil{x:=1;}}";
+		formatter->Format(src, false)->PrintLine();
+		```
+		~#
+		method : public : Format(source : String, is_color : Bool) ~ String {
+			formatted := Format(source);
+			if(is_color & formatted <> Nil) {
+				return Colorize(formatted);
+			};
+
+			return formatted;
+		}
+
+		# The formatted text with a color around each token, for a terminal. It is read
+		# again here, after formatting, so that the colors are never part of what the
+		# layout rules measure and trim.
+		method : Colorize(formatted : String) ~ String {
+			scanner := Scanner->New(formatted);
+			scanner->Scan();
+			tokens := scanner->GetTokens();
+
+			colored := "";
+			at := 0;
+			each(token in tokens) {
+				start := token->GetStart();
+				end := token->GetEnd();
+				if(start >= at & end > start & end <= formatted->Size()) {
+					colored += formatted->SubString(at, start - at);
+
+					color := "";
+					select(token->GetType()) {
+						label System.Utility.Token->Type->LINE_COMMENT
+						label System.Utility.Token->Type->TRAIL_COMMENT
+						label System.Utility.Token->Type->MULTI_COMMENT
+						label System.Utility.Token->Type->INLINE_COMMENT {
+							color := "\e[90m";
+						}
+
+						label System.Utility.Token->Type->STRING_LIT
+						label System.Utility.Token->Type->CHAR_LIT
+						label System.Utility.Token->Type->NUM_LIT
+						label System.Utility.Token->Type->TRUE_ID
+						label System.Utility.Token->Type->FALSE_ID
+						label System.Utility.Token->Type->NIL_ID {
+							color := "\e[36m";
+						}
+
+						label System.Utility.Token->Type->STRING_ID
+						label System.Utility.Token->Type->INT_ID
+						label System.Utility.Token->Type->FLOAT_ID
+						label System.Utility.Token->Type->CHAR_ID
+						label System.Utility.Token->Type->BOOL_ID
+						label System.Utility.Token->Type->BYTE_ID {
+							color := "\e[94m";
+						}
+
+						label System.Utility.Token->Type->OPREN
+						label System.Utility.Token->Type->CPREN
+						label System.Utility.Token->Type->OBRACE
+						label System.Utility.Token->Type->CBRACE
+						label System.Utility.Token->Type->OCBRACE
+						label System.Utility.Token->Type->CCBRACE {
+							color := "\e[31m";
+						}
+
+						label System.Utility.Token->Type->IDENT
+						label System.Utility.Token->Type->VTAB
+						label System.Utility.Token->Type->SEMI
+						label System.Utility.Token->Type->COMMA {
+						}
+
+						other {
+							# a keyword is a word; everything else left is an operator
+							if(formatted->Get(start)->IsChar()) {
+								color := "\e[33m";
+							}
+							else {
+								color := "\e[32m";
+							};
+						}
+					};
+
+					if(color->Size() > 0) {
+						colored += color;
+						colored += formatted->SubString(start, end - start);
+						colored += "\e[0m";
+					}
+					else {
+						colored += formatted->SubString(start, end - start);
+					};
+					at := end;
+				};
+			};
+			colored += formatted->SubString(at, formatted->Size() - at);
+
+			return colored;
 		}
 	}
 
@@ -1913,14 +1979,16 @@ formatter->Format(src, false)->PrintLine();
 		@line_pos : Int;
 		@keywords : Hash<String, Token>;
 		@tokens : Vector<Token>;
+		@lenient : Bool;
+		@code_on_line : Bool;
 
-		New(stream_in : String) {
-			@buffer := stream_in->ToCharArray();
+		New(input : String) {
+			@buffer := input->ToCharArray();
 			@line_num := @line_pos := 1;
 			@tokens := Vector->New()<Token>;
 
 			@keywords := Hash->New()<String, Token>;
-			
+
 			@keywords->Insert("and", Token->New(@line_num, System.Utility.Token->Type->AND_ID, "and_id"));
 			@keywords->Insert("or", Token->New(@line_num, System.Utility.Token->Type->OR_ID, "or_id"));
 			@keywords->Insert("xor", Token->New(@line_num, System.Utility.Token->Type->XOR_ID, "xor_id"));
@@ -1968,6 +2036,7 @@ formatter->Format(src, false)->PrintLine();
 			@keywords->Insert("Byte", Token->New(@line_num, System.Utility.Token->Type->BYTE_ID, "byte_id"));
 			@keywords->Insert("Nil", Token->New(@line_num, System.Utility.Token->Type->NIL_ID, "nil_id"));
 			@keywords->Insert("other", Token->New(@line_num, System.Utility.Token->Type->OTHER_ID, "other_id"));
+			@keywords->Insert("otherwise", Token->New(@line_num, System.Utility.Token->Type->OTHERWISE_ID, "otherwise_id"));
 		}
 
 		method : NextChar() ~ Nil {
@@ -1983,8 +2052,24 @@ formatter->Format(src, false)->PrintLine();
 				};
 			}
 			else {
-				@cur_char := next_char := '\0';
+				# '\0' is the end of the text: every loop below stops at it. They
+				# did not, and an unterminated string, character or block comment,
+				# or a line comment on the last line, spun the language server
+				# forever on a formatting request. (This assigned a stray local,
+				# 'next_char', not the field.)
+				@cur_char := '\0';
+				@next_char := '\0';
 			};
+		}
+
+		# the text from 'start' up to the current character; all of the rest at the
+		# end of the text, where the current character is not part of it
+		method : TextFrom(start : Int) ~ String {
+			if(@cur_char = '\0' & @buffer_index >= @buffer->Size()) {
+				return String->New(@buffer, start, @buffer->Size() - start);
+			};
+
+			return String->New(@buffer, start, @buffer_index - 1 - start);
 		}
 
 		method : Whitespace() ~ Nil {
@@ -1995,16 +2080,38 @@ formatter->Format(src, false)->PrintLine();
 					@line_num += 1;
 					new_line_count += 1;
 					@line_pos := 1;
+					@code_on_line := false;
 				};
 
 				NextChar();
 			};
-			
+
 			if(new_line_count > 1) {
 				for(i := 0; i < new_line_count; i += 2;) {
 					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->VTAB, "vtab"));
 				};
 			};
+		}
+
+		# leave out the characters that are tokens of their own (for a caller that only counts braces)
+		method : public : SetLenient() ~ Nil {
+			@lenient := true;
+		}
+
+		# What a name may start with, as the compiler reads one: a letter of any
+		# script (a name such as "Δ" stopped the formatter), '_', '@' for a field
+		# and '$'. The five characters that are operators in the alternative
+		# spelling are not letters.
+		method : IsWordStart(c : Char) ~ Bool {
+			if(c->IsChar() | c = '_' | c = '@' | c = '$') {
+				return true;
+			};
+
+			if(c->As(Int) > 127) {
+				return c <> '→' & c <> '←' & c <> '≠' & c <> '≥' & c <> '≤';
+			};
+
+			return false;
 		}
 
 		method : public : GetTokens() ~ Vector<Token> {
@@ -2013,18 +2120,27 @@ formatter->Format(src, false)->PrintLine();
 
 		method : public : Scan() ~ Bool {
 			NextChar();
+			token_count := 0;
 
 			while(@cur_char <> '\0') {
+				# what was read last time round is on the line a comment may now follow
+				if(@tokens->Size() > token_count) {
+					@code_on_line := true;
+				};
+				token_count := @tokens->Size();
 				Whitespace();
-				
+				token_count := @tokens->Size();
+				span_start := Position();
+
 				# comment
 				if(@cur_char = '#') {
+					after_hash := @buffer_index;
 					NextChar();
 
 					if(@cur_char = '~') {
+						start := @buffer_index;
 						NextChar();
-						start := @buffer_index - 1;
-						while(<>(@cur_char = '~' & @next_char = '#')) {
+						while(@cur_char <> '\0' & <>(@cur_char = '~' & @next_char = '#')) {
 							if(@cur_char = '\n') {
 								@line_num += 1;
 								@line_pos := 1;
@@ -2032,112 +2148,186 @@ formatter->Format(src, false)->PrintLine();
 
 							NextChar();
 						};
-						end := @buffer_index;
+						comment := TextFrom(start);
 						NextChar();
 						NextChar();
 
-						comment :=  String->New(@buffer, start, end - start - 1);
-						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->MULTI_COMMENT, comment));
+						# one that starts after code on its line is part of that line
+						if(@code_on_line) {
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->INLINE_COMMENT, comment));
+						}
+						else {
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->MULTI_COMMENT, comment));
+						};
 					}
 					else {
-						start := @buffer_index - 1;
-						while(<>@cur_char = '\n') {
+						start := after_hash;
+						while(@cur_char <> '\0' & @cur_char <> '\n') {
 							NextChar();
 						};
-						end := @buffer_index;
-						NextChar();
-
-						comment :=  String->New(@buffer, start, end - start - 1);
-						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LINE_COMMENT, comment));
-					};
-				}
-				# string literal
-				else if(@cur_char = '"') {
-					NextChar();				
-					is_escape := false;
-
-					start := @buffer_index - 1;
-					while(is_escape | @cur_char <> '"') {
-						if(is_escape) {
-							is_escape := false;
+						comment := TextFrom(start);
+						if(comment->EndsWith('\r')) {
+							comment->Pop();
 						};
 
-						if(@cur_char = '\\') {
+						# The newline that ends the comment is left for Whitespace to count.
+						# It was taken here, uncounted: every token after a line comment was
+						# numbered a line short, and a blank line after a comment was not
+						# seen as one (it takes two newlines), so it was dropped. A comment
+						# that follows code on its line is told apart from one on a line of
+						# its own, so that the formatter can leave it where it is.
+						if(@code_on_line) {
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->TRAIL_COMMENT, comment));
+						}
+						else {
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LINE_COMMENT, comment));
+						};
+					};
+				}
+				# string literal; a '$' directly before the quote ($"C:\\temp") is part of it
+				else if(@cur_char = '"' | (@cur_char = '$' & @next_char = '"')) {
+					is_raw := @cur_char = '$';
+					if(is_raw) {
+						NextChar();
+					};
+					start := @buffer_index;
+					NextChar();
+					is_escape := false;
+
+					while(@cur_char <> '\0' & (is_escape | @cur_char <> '"')) {
+						if(is_escape) {
+							is_escape := false;
+						}
+						else if(@cur_char = '\\') {
 							is_escape := true;
 						};
 
 						NextChar();
-					};				
-					end := @buffer_index;
+					};
+					string_lit := TextFrom(start);
+					# a string the text ends inside has no closing quote, and is not given one
+					unterminated := @cur_char = '\0';
 					NextChar();
 
-					string_lit :=  String->New(@buffer, start, end - start - 1);
-					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->STRING_LIT, string_lit));
+					if(unterminated) {
+						open_lit := is_raw ? "$\"" : "\"";
+						open_lit += string_lit;
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, open_lit));
+					}
+					else if(is_raw) {
+						# written back whole, with its '$' against the quote
+						raw_lit := "$\"";
+						raw_lit += string_lit;
+						raw_lit += '"';
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, raw_lit));
+					}
+					else {
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->STRING_LIT, string_lit));
+					};
 				}
 				# char const
 				else if(@cur_char = '\'') {
-					NextChar();				
-
-					start := @buffer_index - 1;
-					if(@cur_char <> '\\') {
-						NextChar();
-						if(@cur_char = '\\') {
-							NextChar();
-						};
-					};				
-					end := @buffer_index;
+					start := @buffer_index;
 					NextChar();
+					is_escape := false;
 
-					string_lit :=  String->New(@buffer, start, end - start - 1);
-					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CHAR_LIT, string_lit));
-				}
-				# keyword or variable
-				else if(@cur_char->IsChar() | @cur_char = '@' | @cur_char = '$') {
-					start := @buffer_index - 1;
-					while(@cur_char->IsChar() | @cur_char->IsDigit() | @cur_char = '_' | @cur_char = '@' | @cur_char = '.' | @cur_char = '$') {
+					while(@cur_char <> '\0' & (is_escape | @cur_char <> '\'')) {
+						if(is_escape) {
+							is_escape := false;
+						}
+						else if(@cur_char = '\\') {
+							is_escape := true;
+						};
+
 						NextChar();
 					};
-					end := @buffer_index;
-					word := String->New(@buffer, start, end - start - 1);
-					
+					string_lit := TextFrom(start);
+					unterminated := @cur_char = '\0';
+					NextChar();
+
+					if(unterminated) {
+						open_lit := "'";
+						open_lit += string_lit;
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, open_lit));
+					}
+					else {
+						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CHAR_LIT, string_lit));
+					};
+				}
+				# keyword or variable
+				else if(IsWordStart(@cur_char)) {
+					start := @buffer_index - 1;
+					while(IsWordStart(@cur_char) | @cur_char->IsDigit() | @cur_char = '.') {
+						NextChar();
+					};
+					word := TextFrom(start);
+
 					keyword := @keywords->Find(word);
 					if(keyword = Nil) {
+	# "|{$word}"->Print();
 						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->IDENT, word));
 					}
 					else {
 						@tokens->AddBack(keyword->Copy(@line_num));
 					};
 				}
-				# number or digit
-				else if(@cur_char->IsDigit() | @cur_char = '.' | (@cur_char = '+' & (@next_char->IsDigit()| @cur_char = '.')) | 
-						@cur_char = '-' & (@next_char->IsDigit() | @cur_char = '.')) {
+				# A number, read as the compiler reads one (core/compiler/scanner.cpp): it
+				# starts with a digit, or a '.' that a digit follows, and never with a sign
+				# (a sign is an operator of its own). Digits, '_' separators, a 0x, 0b or
+				# 0o prefix, one '.', an exponent with its sign, and a 'u' suffix that ends
+				# it. The literal is one token and is written back as it was read: split
+				# anywhere, "1.5e-3", "1_000" or "0o17" came back as two tokens with a
+				# space between them, which is not the number.
+				else if(@cur_char->IsDigit() | (@cur_char = '.' & @next_char->IsDigit())) {
 					start := @buffer_index - 1;
+					radix_prefix := false;
+					is_float := false;
+					after_exponent := false;
+					count := 0;
+					done := false;
 
-					if(@cur_char = '+' | @cur_char = '-') {
-						NextChar();
+					while(<>done) {
+						c := @cur_char;
+						if(c = 'u' | c = 'U') {
+							NextChar();
+							done := true;
+						}
+						else if(after_exponent & (c = '+' | c = '-') & @next_char->IsDigit()) {
+							after_exponent := false;
+							NextChar();
+						}
+						else if(c->IsDigit() | c = '_' | (c >= 'a' & c <= 'f') | (c >= 'A' & c <= 'F')) {
+							after_exponent := is_float & <>radix_prefix & (c = 'e' | c = 'E');
+							NextChar();
+						}
+						else if(c = '.') {
+							# a second '.', or one in a literal with a prefix, is not part of it
+							if(is_float | radix_prefix) {
+								done := true;
+							}
+							else {
+								is_float := true;
+								after_exponent := false;
+								NextChar();
+							};
+						}
+						else if(count = 1 & (c = 'x' | c = 'X' | c = 'o' | c = 'O') & @buffer[start] = '0') {
+							radix_prefix := true;
+							after_exponent := false;
+							NextChar();
+						}
+						else {
+							done := true;
+						};
+						count += 1;
 					};
 
-					while(@cur_char = '.' | @cur_char->IsDigit() | @cur_char = 'x' | @cur_char = 'X' | 
-							(@cur_char >= 'a' & @cur_char <= 'f') | (@cur_char >= 'A' & @cur_char <= 'F')) {
-						NextChar();
-					};
-					end := @buffer_index;
-
-					num_lit := String->New(@buffer, start, end - start - 1);
+					# "0b..." needs no case above ('b' is a hex digit); it has no exponent either
+					num_lit := TextFrom(start);
 					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NUM_LIT, num_lit));
 				}
 				else {
 					select(@cur_char) {
-						label '#' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->POUND, "pound"));
-							NextChar();
-						}
-
-						label '@' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->AT, "at"));
-							NextChar();
-						}
-
 						label '{' {
 							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OCBRACE, "ocbrace"));
 							NextChar();
@@ -2155,11 +2345,6 @@ formatter->Format(src, false)->PrintLine();
 
 						label ')' {
 							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->CPREN, "cpren"));
-							NextChar();
-						}
-
-						label '_' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->DASH, "dash"));
 							NextChar();
 						}
 
@@ -2252,14 +2437,9 @@ formatter->Format(src, false)->PrintLine();
 							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR_EQL, "gtr_eql"));
 							NextChar();
 						}
-						
+
 						label '≤' {
 							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LESS_EQL, "less_eql"));
-							NextChar();
-						}
-
-						label '\e' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->ESCAPE, "\e"));
 							NextChar();
 						}
 
@@ -2291,35 +2471,62 @@ formatter->Format(src, false)->PrintLine();
 						}
 
 						label '&' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->AND, "and"));
+							if(@next_char = '&') {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, "&&"));
+								NextChar();
+							}
+							else {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->AND, "and"));
+							};
 							NextChar();
 						}
 
 						label '|' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OR, "or"));
+							if(@next_char = '|') {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, "||"));
+								NextChar();
+							}
+							else {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->OR, "or"));
+							};
 							NextChar();
 						}
 
 						label '?' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->QUESTION, "question"));
+							# '??' must scan as one token; emitting two QUESTIONs makes
+							# the formatter write '? ?', which no longer compiles.
+							# '?->' needs nothing here: it scans as QUESTION followed by
+							# ASSESSOR, and neither adds a space between them.
+							if(@next_char = '?') {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->QUESTION_QUESTION, "question_question"));
+								NextChar();
+							}
+							else {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->QUESTION, "question"));
+							};
 							NextChar();
 						}
 
-						label '\'' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->QUOTE, "quote"));
-							NextChar();
-						}
-
+						# The '\' that starts a function type ("\Int ~ Int") or a lambda
+						# ("\^(a : Int) ~ Int => a + 1", "\Func->New(...)"). The label here
+						# read '\'', a quote, which the character-literal case above always
+						# takes first, so a backslash had no token and the formatter stopped
+						# at the first one in a file.
 						label '\\' {
-							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->FWD_SLASH, "fwd_slash"));
+							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->FWD_SLASH, "back_slash"));
 							NextChar();
 						}
 
 						label '=' {
+							# '=>' (a lambda's body, a 'match' arm) is one token. It was scanned
+							# as '<>' with the '>' left behind, so formatting wrote '<> >'.
 							if(@next_char = '>') {
-								# "=>" is the lambda arrow. It was scanned as "<>" with its '>' left
-								# behind, so a formatted lambda read "(x) <> > {".
 								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LAMBDA, "lambda"));
+								NextChar();
+								NextChar();
+							}
+							else if(@next_char = '=') {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, "=="));
 								NextChar();
 								NextChar();
 							}
@@ -2334,9 +2541,12 @@ formatter->Format(src, false)->PrintLine();
 								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->NEQL, "neql"));
 								NextChar();
 							}
+							else if(@next_char = '<') {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, "<<"));
+								NextChar();
+							}
 							else if(@next_char = '=') {
-								# "<=" is less-or-equal. It was scanned as the lambda arrow, so
-								# formatting rewrote "a <= b" as "a => b".
+								# '<=' was given the lambda's token, and formatting wrote '=>'
 								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LESS_EQL, "less_eql"));
 								NextChar();
 							}
@@ -2351,25 +2561,69 @@ formatter->Format(src, false)->PrintLine();
 								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR_EQL, "gtr_eql"));
 								NextChar();
 							}
-							else { 
-								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR, "gtr"));
+							else {
+								# One '>' at a time, also for ">>" and ">>>". The compiler reads
+								# those as shifts and its parser takes them apart again when they
+								# close type arguments ("Map<String, Vector<Int>>"), so which they
+								# are is not known here. Each carries whether the next character
+								# is another '>', and the formatter writes the run back unbroken.
+								if(@next_char = '>') {
+									@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR, "joined"));
+								}
+								else {
+									@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR, "gtr"));
+								};
+							};
+							NextChar();
+						}
+
+						# the alternative spellings: '==', '!=', '&&', '||', and '!'
+						label '!' {
+							if(@next_char = '=') {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, "!="));
+								NextChar();
+							}
+							else {
+								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, "!"));
 							};
 							NextChar();
 						}
 
 						other {
 							if(@cur_char <> '\0') {
-								id := @cur_char->As(Int);
-								next_id := @next_char->As(Int);
-								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'({$id}), '{$@next_char}'({$next_id})] ---"->ErrorLine();						
-								Runtime->Exit(1);
+								# Every other character is a token of its own and is written back
+								# as it is: '^' (a lambda's "\^"), a '.' that stands alone, '`',
+								# and anything a later compiler gives a meaning to. This used to
+								# end the process ("--- [Other ...] ---" and exit 1): a formatter
+								# cannot write what it did not read, but stopping lost the whole
+								# file for one character. The line-depth scan (SetLenient) still
+								# steps over them, since it counts braces and nothing else.
+								if(<>@lenient) {
+									@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->SYMBOL, @cur_char->ToString()));
+								};
+								NextChar();
 							};
 						}
 					};
 				};
+
+				# where in the text the token just read starts and ends
+				span_end := Position();
+				for(k := token_count; k < @tokens->Size(); k += 1;) {
+					@tokens->Get(k)->SetSpan(span_start, span_end);
+				};
 			};
 
 			return true;
+		}
+
+		# the index of the current character; the length of the text at its end
+		method : Position() ~ Int {
+			if(@cur_char = '\0' & @buffer_index >= @buffer->Size()) {
+				return @buffer->Size();
+			};
+
+			return @buffer_index - 1;
 		}
 	}
 
@@ -2377,10 +2631,9 @@ formatter->Format(src, false)->PrintLine();
 		@line_num : Int;
 		@type : Token->Type;
 		@value : String;
+		@start : Int;
+		@end : Int;
 
-		#~
-		The kind of a token read by CodeFormatter's scanner: a keyword (the _ID items), a literal, an operator or punctuation, a comment, or the end of the input.
-		~#
 		enum Type := -128 {
 			AND_ID,
 			OR_ID,
@@ -2400,7 +2653,8 @@ formatter->Format(src, false)->PrintLine();
 			AS_ID,
 			TYPE_OF_ID,
 			CRITICAL_ID,
-			LAMBDA,			
+			LAMBDA,
+	# ---
 			USE_ID,
 			DO_ID,
 			FOR_ID,
@@ -2433,11 +2687,11 @@ formatter->Format(src, false)->PrintLine();
 			SELECT_ID,
 			LABEL_ID,
 			OTHER_ID,
+			OTHERWISE_ID,
 			ASGN,
 			CHAR,
 			STR,
 			VAR,
-			DASH,
 			OPREN,
 			CPREN,
 			OBRACE,
@@ -2448,6 +2702,7 @@ formatter->Format(src, false)->PrintLine();
 			AND,
 			OR,
 			QUESTION,
+			QUESTION_QUESTION,
 			DIV,
 			MOD,
 			MUL,
@@ -2463,26 +2718,25 @@ formatter->Format(src, false)->PrintLine();
 			SEMI,
 			COMMA,
 			TILDE,
-			POUND,
-			AT,
-			QUOTE,
 			FWD_SLASH,
 			LESS,
 			LESS_EQL,
-			ESCAPE,
 			GTR,
 			GTR_EQL,
 			EQL,
 			NEQL,
 			NOT,
+			SYMBOL,
 			IDENT,
 			VTAB,
 			LINE_COMMENT,
+			TRAIL_COMMENT,
 			MULTI_COMMENT,
+			INLINE_COMMENT,
 			EOS,
 			OTHER
 		}
-		
+
 		New(line_num : Int, type : Token->Type, value : String) {
 			@line_num := line_num;
 			@type := type;
@@ -2492,17 +2746,32 @@ formatter->Format(src, false)->PrintLine();
 		method : public : Copy(line_num : Int) ~ Token {
 			return Token->New(line_num, @type, @value);
 		}
-		
+
 		method : public : GetLine() ~ Int {
 			return @line_num;
 		}
-		
+
 		method : public : GetType() ~ Token->Type {
 			return @type;
 		}
-		
+
 		method : public : GetValue() ~ String {
 			return @value;
 		}
+
+		# the token's place in the text it was read from: [start, end)
+		method : public : SetSpan(start : Int, end : Int) ~ Nil {
+			@start := start;
+			@end := end;
+		}
+
+		method : public : GetStart() ~ Int {
+			return @start;
+		}
+
+		method : public : GetEnd() ~ Int {
+			return @end;
+		}
 	}
+	# formatter:end
 }

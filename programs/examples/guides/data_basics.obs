@@ -71,8 +71,7 @@ class DataBasics {
     pattern := RegEx->New("(\\d{4})-(\\d{2})-(\\d{2})");
     text := "released 2026-10-31, patched 2026-11-02";
     found := pattern->Find(text);
-    each(i : found) {
-      match := found->Get(i);
+    each(match in found) {
       "  {$(match->GetValue())} -> month {$(match->GetGroup(2))}"->PrintLine();
     };
 

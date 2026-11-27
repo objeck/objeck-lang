@@ -38,7 +38,7 @@ row->Size()->PrintLine();       # column count
 			@read_only := read_only;
 			@columns := columns;
 		}
-		
+
 		#~
 		Gets the row ID
 		@return id
@@ -69,7 +69,7 @@ row->Get(1)->PrintLine();
 			if(index < @columns->Size()) {
 				return @columns->Get(index);
 			};
-			
+
 			return Nil;
 		}
 
@@ -90,10 +90,10 @@ row->Get("age")->PrintLine();
 			if(index < @columns->Size()) {
 				return @columns->Get(index);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Sets the indexed row value
 		@param value value to set
@@ -112,7 +112,7 @@ row->Get(1)->PrintLine();
 				# stored as given: ToString() escapes quotes when the row is written
 				return @columns->Set(value, index);
 			};
-			
+
 			return false;
 		}
 
@@ -132,7 +132,7 @@ row->Get("score")->PrintLine();
 		method : public : Set(name : String, value : String) ~ Bool {
 			return Set(@table->GetRowId(name), value);
 		}
-		
+
 		#~
 		Appends value to the end of the row
 		@param value to append
@@ -147,7 +147,7 @@ Console->PrintLine(row->Size());
 		method : public : Append(value : String) ~ Nil {
 			@columns->AddBack(value);
 		}
-		
+
 		#~
 		Gets the row size
 		@return row size
@@ -161,7 +161,7 @@ Console->PrintLine(row->Size());
 		method : public : Size() ~ Int {
 			return @columns->Size();
 		}
-		
+
 		#~
 		Calculates the row sum
 		@return row sum
@@ -193,7 +193,7 @@ Console->PrintLine(row->Sum());
 		~#
 		method : public : Sum(start : Int, end : Int) ~ Float {
 			sum := 0.0;
-			
+
 			length := end - start;
 			offset := start + length;
 
@@ -204,10 +204,10 @@ Console->PrintLine(row->Sum());
 					sum += @columns->Get(i)->ToFloat();
 				};
 			};
-			
+
 			return sum;
 		}
-		
+
 		#~
 		Calculates the row average
 		@return row average
@@ -238,7 +238,7 @@ Console->PrintLine(row->Average());
 		@return row average
 		~#
 		method : public : Average(start : Int, end : Int) ~ Float {
-			if(@columns->Size() = 0) {
+			if(@columns->IsEmpty()) {
 				return 0.0;
 			};
 
@@ -284,7 +284,7 @@ Console->PrintLine(row->Median());
 				return values[size / 2];
 			};
 		}
-		
+
 		#~
 		Formats the row as one CSV record: every field is quoted, a quote inside
 		a field is doubled, and fields are separated by the table's delimiter.
@@ -333,7 +333,7 @@ row->ToJson()->PrintLine();
 		~#
 		method : public : ToJson() ~ String {
 			headers := @table->GetHeaders();
-			
+
 			buffer := "{";
 			each(i : headers) {
 				header := headers->Get(i);
@@ -368,8 +368,7 @@ row->ToJson()->PrintLine();
 		function : AppendJsonString(str : String, buffer : String) ~ Nil {
 			hex := "0123456789abcdef";
 			buffer->Append('"');
-			each(i : str) {
-				c := str->Get(i);
+			each(c in str) {
 				if(c = '"') {
 					buffer->Append("\\\"");
 				}
@@ -397,13 +396,13 @@ row->ToJson()->PrintLine();
 			buffer->Append('"');
 		}
 	}
-	
+
 	#~
 	CSV column
 	~#
 	class CsvColumn {
 		@rows : Vector<String>;
-		
+
 		#~
 		Constructor
 		@param rows row values
@@ -411,7 +410,7 @@ row->ToJson()->PrintLine();
 		New(rows : Vector<String>) {
 			@rows := rows;
 		}
-		
+
 		#~
 		Gets the row size
 		@return row size
@@ -472,7 +471,7 @@ Console->PrintLine(col->Sum());
 		~#
 		method : public : Sum(start : Int, end : Int) ~ Float {
 			sum := 0.0;
-			
+
 			length := end - start;
 			offset := start + length;
 
@@ -483,7 +482,7 @@ Console->PrintLine(col->Sum());
 					sum += @rows->Get(i)->ToFloat();
 				};
 			};
-				
+
 			return sum;
 		}
 
@@ -517,7 +516,7 @@ Console->PrintLine(col->Average());
 		@return column average
 		~#
 		method : public : Average(start : Int, end : Int) ~ Float {
-			if(@rows->Size() = 0) {
+			if(@rows->IsEmpty()) {
 				return 0.0;
 			};
 
@@ -564,7 +563,7 @@ Console->PrintLine(col->Median());
 			};
 		}
 	}
-	
+
 	#~
 	CSV table. The first record is the header and it is also row 0: Size() counts it (a header and two records is 3), Get(0) is the header record, the data records are Get(1) upward, and GetHeaders() returns the same row 0. So a loop from 0 visits the header first; start at 1 for the data. A table is "parsed" only when it has a header and at least one more record and every record has as many fields as the header: an empty text, a header with no records and a record with too few or too many fields give IsParsed() false, Size() 0 and the reason in GetError() (Get and GetHeaders then return Nil).
 
@@ -718,7 +717,7 @@ Console->PrintLine(csv->GetErrorRow());
 
 			# No ending given (or an empty one): any of CRLF, LF or CR ends a record,
 			# and ToString() reuses the first one the data contains.
-			if(ending = Nil | ending->Size() = 0) {
+			if(ending = Nil | ending->IsEmpty()) {
 				@auto_ending := true;
 				@ending := "\r\n";
 			}
@@ -1008,9 +1007,7 @@ line->PrintLine();
 
 			each(i : values) {
 				value := values[i];
-				if(value = Nil) {
-					value := "";
-				};
+				value := value ?? "";
 
 				if(NeedsQuotes(value, delimiter) | (values->Size() = 1 & value->IsEmpty())) {
 					buffer->Append('"');
@@ -1058,7 +1055,7 @@ if(csv->IsParsed()) {
 		method : public : IsParsed() ~ Bool {
 			return @is_parsed;
 		}
-		
+
 		#~
 		Gets row name
 		@param name name
@@ -1074,7 +1071,7 @@ Console->PrintLine(csv->GetRowId("age"));
 			if(index <> Nil) {
 				return index->Get();
 			};
-			
+
 			return -1;
 		}
 
@@ -1093,7 +1090,7 @@ headers->Get(1)->PrintLine();
 			if(@is_parsed) {
 				return @data->Get(0)->As(CsvRow);
 			};
-			
+
 			return Nil;
 		}
 
@@ -1115,13 +1112,13 @@ Console->PrintLine(csv->RowSize());
 					@data->Get(i)->As(CsvRow)->Append("");
 				};
 				@header_names->Insert(name, RowSize() - 1);
-				
+
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~
 		Removes a row from the table
 		@param id row to delete
@@ -1137,10 +1134,10 @@ Console->PrintLine(csv->Size());
 			if(id = 0) {
 				return false;
 			};
-			
+
 			return @data->Remove(id) <> Nil;
 		}
-		
+
 		#~
 		Gets the size of rows
 		@return row size
@@ -1154,10 +1151,10 @@ Console->PrintLine(csv->RowSize());
 			if(<>@is_parsed) {
 				return 0;
 			};
-			
+
 			return @data->Get(0)->As(CsvRow)->Size();
 		}
-		
+
 		#~
 		Gets an indexed row
 		@param index index
@@ -1173,10 +1170,10 @@ row->Get("name")->PrintLine();
 			if(<>@is_parsed) {
 				return Nil;
 			};
-			
+
 			return @data->Get(index)->As(CsvRow);
 		}
-		
+
 		#~
 		Gets the number of rows
 		@return number of rows
@@ -1193,7 +1190,7 @@ Console->PrintLine(csv->Size());
 
 			return @data->Size();
 		}
-				
+
 		#~
 		Searches a given column for matching values
 		@param name column name
@@ -1211,34 +1208,34 @@ Console->PrintLine(results->Size());
 			if(index <> Nil) {
 				return Matches(index->Get(), value);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Searches a given column for matching values
 		@param index column index
 		@param value value to search for
-		@return table of matching results 
+		@return table of matching results
 		~#
 		method : public : Matches(index : Int, value : String) ~ CsvTable {
 			if(index >= RowSize()) {
 				return Nil;
 			};
-			
+
 			found := Vector->New()<CsvRow>;
 			found->AddBack(@data->Get(0));
-			
+
 			for(i := 1; i < @data->Size(); i +=1;) {
 				row := @data->Get(i);
 				if(row->Get(index)->Equals(value)) {
 					found->AddBack(row);
 				};
 			};
-			
+
 			return CsvTable->New(found, @header_names)->SetFormat(@ending, @delimiter);
 		}
-		
+
 		#~
 		Counts a column for matching values
 		@param name column name
@@ -1256,10 +1253,10 @@ Console->PrintLine(count);
 			if(index <> Nil) {
 				return CountMatches(index->Get(), value);
 			};
-			
+
 			return 0;
 		}
-		
+
 		#~
 		Counts a column for matching values
 		@param index column index
@@ -1270,7 +1267,7 @@ Console->PrintLine(count);
 			if(index >= RowSize()) {
 				return 0;
 			};
-			
+
 			count := 0;
 			for(i := 1; i < @data->Size(); i +=1;) {
 				row := @data->Get(i)->As(CsvRow);
@@ -1278,7 +1275,7 @@ Console->PrintLine(count);
 					count += 1;
 				};
 			};
-			
+
 			return count;
 		}
 
@@ -1299,34 +1296,34 @@ Console->PrintLine(results->Size());
 			if(index <> Nil) {
 				return Contains(index->Get(), value);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Searches a given column for like values
 		@param index column index
 		@param value value to search for
-		@return table of like results 
+		@return table of like results
 		~#
 		method : public : Contains(index : Int, value : String) ~ CsvTable {
 			if(index >= RowSize()) {
 				return Nil;
 			};
-			
+
 			found := Vector->New()<CsvRow>;
 			found->AddBack(@data->Get(0));
-			
+
 			for(i := 1; i < @data->Size(); i +=1;) {
 				row := @data->Get(i);
 				if(row->Get(index)->Has(value)) {
 					found->AddBack(row);
 				};
 			};
-			
+
 			return CsvTable->New(found, @header_names)->SetFormat(@ending, @delimiter);
 		}
-		
+
 		#~
 		Counts a column for like values
 		@param name column name
@@ -1344,10 +1341,10 @@ Console->PrintLine(count);
 			if(index <> Nil) {
 				return CountContains(index->Get(), value);
 			};
-			
+
 			return 0;
 		}
-		
+
 		#~
 		Counts a column for like values
 		@param index column index
@@ -1358,7 +1355,7 @@ Console->PrintLine(count);
 			if(index >= RowSize()) {
 				return 0;
 			};
-			
+
 			count := 0;
 			for(i := 1; i < @data->Size(); i +=1;) {
 				row := @data->Get(i)->As(CsvRow);
@@ -1366,7 +1363,7 @@ Console->PrintLine(count);
 					count += 1;
 				};
 			};
-			
+
 			return count;
 		}
 
@@ -1390,7 +1387,7 @@ csv->ToString()->PrintLine();
 				buffer->Append(row->ToString());
 				buffer->Append(@ending);
 			};
-		
+
 			return buffer;
 		}
 
@@ -1413,7 +1410,7 @@ csv->ToJson()->PrintLine();
 			for(i := 1; i < @data->Size(); i += 1;) {
 				row := @data->Get(i);
 				buffer->Append(row->ToJson());
-				
+
 				if(i + 1 < @data->Size()) {
 					buffer->Append(',');
 				};
@@ -1422,7 +1419,7 @@ csv->ToJson()->PrintLine();
 
 			return buffer;
 		}
-		
+
 		#~
 		Get unique values for a given row
 		@param name column name
@@ -1439,10 +1436,10 @@ Console->PrintLine(uniq->Size());
 			if(index <> Nil) {
 				return UniqueColumnValues(index->Get());
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Get values for a given row
 		@param index column index
@@ -1458,16 +1455,16 @@ Console->PrintLine(col->Sum());
 			if(index >= RowSize()) {
 				return Nil;
 			};
-			
+
 			values := Vector->New()<String>;
 			for(i := 1; i < @data->Size(); i +=1;) {
 				value := @data->Get(i)->As(CsvRow)->Get(index);
 				values->AddBack(value);
 			};
-			
+
 			return CsvColumn->New(values);
 		}
-		
+
 		#~
 		Get values for a given row
 		@param name column name
@@ -1484,10 +1481,10 @@ Console->PrintLine(col->Average());
 			if(index <> Nil) {
 				return ColumnValues(index->Get());
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Get unique values for a given row
 		@param index column index
@@ -1497,7 +1494,7 @@ Console->PrintLine(col->Average());
 			if(index >= RowSize()) {
 				return Nil;
 			};
-			
+
 			values := Vector->New()<String>;
 			uniques := Set->New()<String>;
 			for(i := 1; i < @data->Size(); i +=1;) {
@@ -1507,7 +1504,7 @@ Console->PrintLine(col->Average());
 					uniques->Insert(value);
 				};
 			};
-			
+
 			return CsvColumn->New(values);
 		}
 	}

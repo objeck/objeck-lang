@@ -83,15 +83,75 @@ class LibraryMethodCallSelection {
   }
 };
 
+/****************************
+ * Picks among the methods that take a call's arguments when one of them
+ * boxes or unboxes an argument. A parameter is matched 0 by an argument of
+ * its type, 1 by one that converts to it (an Int for a Float, a class for
+ * its parent), 2 by one boxed or unboxed to it (an Int for an IntRef, an
+ * IntRef for an Int) and 3 by one converted and boxed or unboxed (an Int for
+ * a FloatRef). The method chosen fits every argument at least as well as
+ * each other method and one argument better.
+ *
+ * Returns its index, -1 when no method boxes or unboxes (the caller's own
+ * rule applies) and -2 when no method is the best.
+ ****************************/
+template<typename S> int SelectBoxedMatch(const std::vector<S*> &valid)
+{
+  bool boxes = false;
+  for(size_t i = 0; !boxes && i < valid.size(); ++i) {
+    const std::vector<int> ranks = valid[i]->GetParameterMatches();
+    for(size_t k = 0; k < ranks.size(); ++k) {
+      if(ranks[k] > 1) {
+        boxes = true;
+      }
+    }
+  }
+
+  if(!boxes) {
+    return -1;
+  }
+
+  for(size_t i = 0; i < valid.size(); ++i) {
+    const std::vector<int> ranks = valid[i]->GetParameterMatches();
+    bool best = true;
+    for(size_t j = 0; best && j < valid.size(); ++j) {
+      if(i == j) {
+        continue;
+      }
+      const std::vector<int> other_ranks = valid[j]->GetParameterMatches();
+      bool better = false;
+      for(size_t k = 0; best && k < ranks.size() && k < other_ranks.size(); ++k) {
+        if(ranks[k] > other_ranks[k]) {
+          best = false;
+        }
+        else if(ranks[k] < other_ranks[k]) {
+          better = true;
+        }
+      }
+      if(!better) {
+        best = false;
+      }
+    }
+
+    if(best) {
+      return (int)i;
+    }
+  }
+
+  return -2;
+}
+
 class LibraryMethodCallSelector {
   MethodCall* method_call;
   std::vector<LibraryMethodCallSelection*> matches;
   std::vector<LibraryMethodCallSelection*> valid_matches;
+  bool is_ambiguous;
 
- public: 
+ public:
   LibraryMethodCallSelector(MethodCall* c, std::vector<LibraryMethodCallSelection*> &m) {
     method_call = c;
     matches = m;
+    is_ambiguous = false;
 
     // weed out invalid matches     
     for(size_t i = 0; i < matches.size(); ++i) {
@@ -109,6 +169,20 @@ class LibraryMethodCallSelector {
       delete tmp;
       tmp = nullptr;
     }
+  }
+
+  // two methods fit a boxed or unboxed argument as well as each other
+  bool IsAmbiguous() {
+    return is_ambiguous;
+  }
+
+  std::vector<std::wstring> GetValidMethodNames() {
+    std::vector<std::wstring> names;
+    for(size_t i = 0; i < valid_matches.size(); ++i) {
+      names.push_back(valid_matches[i]->GetLibraryMethod()->GetUserName());
+    }
+
+    return names;
   }
 
   std::vector<LibraryMethod*> GetAlternativeMethods() {
@@ -182,11 +256,13 @@ class MethodCallSelector {
   MethodCall* method_call;
   std::vector<MethodCallSelection*> matches;
   std::vector<MethodCallSelection*> valid_matches;
+  bool is_ambiguous;
 
- public: 
+ public:
   MethodCallSelector(MethodCall* c, std::vector<MethodCallSelection*> &m) {
     method_call = c;
     matches = m;
+    is_ambiguous = false;
 
     // weed out invalid matches
     for(size_t i = 0; i < matches.size(); ++i) {
@@ -204,6 +280,20 @@ class MethodCallSelector {
       delete tmp;
       tmp = nullptr;
     }
+  }
+
+  // two methods fit a boxed or unboxed argument as well as each other
+  bool IsAmbiguous() {
+    return is_ambiguous;
+  }
+
+  std::vector<std::wstring> GetValidMethodNames() {
+    std::vector<std::wstring> names;
+    for(size_t i = 0; i < valid_matches.size(); ++i) {
+      names.push_back(valid_matches[i]->GetMethod()->GetUserName());
+    }
+
+    return names;
   }
 
   std::vector<Method*> GetAlternativeMethods() {
@@ -252,6 +342,11 @@ class ContextAnalyzer {
   };
   std::vector<CaptureFrame> capture_frames;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
+  // the constructor call whose type arguments come from a declared type, and that type
+  MethodCall* expected_new_call;
+  Type* expected_new_type;
+  // constructor calls written as the value of a map literal's entry, with the map's value type (TypeMapLiteral)
+  std::map<MethodCall*, Type*> expected_entry_types;
   DiagnosticSink diagnostics;
 // the statement, expression or declaration being analyzed: where a name it
   // resolves is written (see CheckAmbiguousUse)
@@ -288,6 +383,9 @@ class ContextAnalyzer {
   // diagnostics about the same name can be suppressed
   std::set<std::wstring> undefined_classes;
 std::vector<std::wstring> alt_error_method_names;
+  // the call last reported as ambiguous between boxed overloads, and what was said
+  MethodCall* ambiguous_call;
+  std::wstring ambiguous_call_error;
   std::map<const std::wstring, Type*> type_map;
   std::unordered_set<std::wstring> holder_types;
   std::vector<Class*> anonymous_classes;
@@ -395,6 +493,7 @@ std::vector<std::wstring> alt_error_method_names;
   // returns a symbol table entry by name
   SymbolEntry* GetEntry(std::wstring name, bool is_parent = false);
   SymbolEntry* ResolveCaptureEntry(const std::wstring& name, size_t frame_index);
+  bool CaptureLambdaSelf(Variable* variable, SymbolEntry* entry);
   SymbolEntry* ResolveCapturedVariable(const std::wstring& name, ParseNode* node, const int depth);
 
   // returns a symbol table entry by name for a given method
@@ -643,6 +742,9 @@ std::vector<std::wstring> alt_error_method_names;
   [[noreturn]] void ProcessFatalError(ParseNode* n, const std::wstring& msg);
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
+  bool ReportJsonLiteralValue(MethodCall* method_call);
+  bool ReportMapLiteralEntry(MethodCall* method_call);
+  void ProcessAmbiguousCall(MethodCall* method_call, const std::vector<std::wstring> &names);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);
   bool CheckErrorsWarnings();
 
@@ -685,6 +787,10 @@ std::vector<std::wstring> alt_error_method_names;
   void AnalyzeExpression(Expression* expression, const int depth);
   void AnalyzeLambda(Lambda* param1, const int depth);
   Expression* WrapBareLambdaInFuncRef(Expression* expression, Type* expected, const int depth);
+  Expression* WrapMethodReferenceInFuncRef(Expression* expression, Type* expected, const int depth);
+  Expression* WrapCollectionLiteral(Expression* expression, Type* expected, const int depth);
+  MethodCall* MapLiteralConstructor(Expression* expression);
+  void TypeMapLiteral(Expression* expression, Type* expected);
   bool DerivedFuncRefLambdaArg(MethodCall* lambda_inferred_call, Type* resolved_param);
   Type* ResolveAlias(const std::wstring& name, const std::wstring& fn, int ln, int lp);
   Type* ResolveAlias(const std::wstring& name, ParseNode* node) {
@@ -699,7 +805,9 @@ std::vector<std::wstring> alt_error_method_names;
   void AnalyzeVariable(Variable* variable, const int depth);
   void AnalyzeEnumCall(MethodCall* method_call, bool regress, const int depth);
   void AnalyzeCharacterString(CharacterString* char_str, const int depth);
+  void AnalyzePromptHole(MethodCall* method_call, const int depth);
   void AnalyzeConditional(Cond* conditional, const int depth);
+  void AnalyzeSequence(SequenceExpression* sequence, const int depth);
   void AnalyzeTryIntrinsic(MethodCall* method_call, Expression* expression, const int depth);
   void AnalyzeOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, const int depth);
   void AnalyzeStaticArray(StaticArray* array, const int depth);
@@ -717,8 +825,12 @@ std::vector<std::wstring> alt_error_method_names;
   void AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth);
   void AnalyzeWhile(While* while_stmt, const int depth);
   void AnalyzeSelect(Select* select_stmt, const int depth);
+  void AnalyzeSelectSubjectEnum(Expression* expression, Enum*& eenum, LibraryEnum*& lib_eenum);
+  void AnalyzeSelectCoverage(Select* select_stmt, Enum* eenum, LibraryEnum* lib_eenum);
+  void AnalyzeSelectValues(Select* select_stmt, const int depth);
   void AnalyzeCritical(CriticalSection* mutex, const int depth);
   void AnalyzeTry(Try* try_stmt, const int depth);
+  void AnalyzeUsing(Using* using_stmt, const int depth);
   void AnalyzeFor(For* for_stmt, const int depth);
   void AnalyzeReturn(Return* rtrn, const int depth);
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);
@@ -731,6 +843,24 @@ std::vector<std::wstring> alt_error_method_names;
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
   bool UnboxingCalculation(Type* type, Expression* expression, CalculatedExpression* calc_expression, bool set_left, const int depth);
+  // a holder (IntRef, FloatRef, BoolRef, CharRef, ByteRef) where a primitive is wanted, and the reverse
+  bool HolderPrimitive(Type* type, EntryType &primitive);
+  bool PrimitiveConverts(EntryType to, EntryType from);
+  int BoxingRank(Type* method_type, Expression* expr_param, const int depth);
+  Expression* UnboxAs(Type* to_type, Expression* last, bool integral_only, bool &unboxed, const int depth);
+  Expression* UnboxCondition(Expression* expression, const int depth);
+  void UnboxedArgument(MethodCall* method_call, const size_t index, Expression* argument, Type* parameter, Expression* unboxed);
+  // an argument's types before a method is tried against it
+  struct ArgumentTypes {
+    Expression* expression;
+    Type* base_type;
+    Type* eval_type;
+    Type* cast_type;
+    Class* to_class;
+    LibraryClass* to_lib_class;
+  };
+  std::vector<ArgumentTypes> SaveArgumentTypes(const std::vector<Expression*> &arguments);
+  void RestoreArgumentTypes(const std::vector<ArgumentTypes> &saved);
   MethodCall* BoxUnboxingReturn(Type* to_type, Expression* from_expr, const int depth);
   void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
@@ -761,6 +891,12 @@ std::vector<std::wstring> alt_error_method_names;
   bool InferLibraryMethodGenerics(LibraryMethod* method, const std::vector<Expression*> &arguments, const size_t offset,
                                   std::map<std::wstring, Type*> &bindings, std::wstring &error, const int depth);
   Type* BoxedBindingType(Type* type);
+  // type arguments a constructor call leaves out
+  void ExpectNewType(Expression* expression, Type* type, bool is_element);
+  Type* WrittenTypeArgument(Type* type);
+  bool UnifyClassGeneric(Type* param, Type* arg, int arg_dimension, Class* klass, LibraryClass* lib_klass,
+                         std::vector<Type*> &bindings, std::wstring &error);
+  bool InferNewTypeArguments(Class* klass, LibraryClass* lib_klass, MethodCall* method_call, const int depth);
   Type* SubstituteAlong(Type* original, Type* resolved, const std::map<std::wstring, Type*> &bindings);
   Type* LambdaResultType(Lambda* lambda);
   bool ResolveConcatToString(const std::wstring &cls_name, Method* &method, LibraryMethod* &lib_method);
@@ -783,6 +919,9 @@ std::vector<std::wstring> alt_error_method_names;
     current_class = nullptr;
     current_method = nullptr;
     resolve_site = nullptr;
+    ambiguous_call = nullptr;
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
     skip_use_check = 0;
     in_use_check = false;
     // initialize linker

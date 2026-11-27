@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: (8,21): Invalid cast with classes: System.BoolRef and Int
+#~
+A primitive is boxed only into a holder it converts to: an Int is not a Bool,
+so it does not become a BoolRef.
+~#
+class BadBoxingIntForBoolRef {
+	function : Main(args : String[]) ~ Nil {
+		flag : BoolRef := 1;
+		flag->Get()->PrintLine();
+	}
+}

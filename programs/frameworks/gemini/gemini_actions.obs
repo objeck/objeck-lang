@@ -131,8 +131,7 @@ class Test {
 			else if(action->Equals("list_tuned_models") & args_size = 1) {
 				tuned_models := Tuner->List();
 				if(tuned_models <> Nil) {
-					each(i : tuned_models) {
-						tuned_model := tuned_models->Get(i);
+					each(tuned_model in tuned_models) {
 						tuned_model->ToString()->PrintLine();
 						"---"->PrintLine();			
 					};

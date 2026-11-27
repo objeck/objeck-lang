@@ -92,9 +92,7 @@ yhat := head->PredictClass(X_test, 0.5);
 
 		method : Init(hidden : Int[], learning_rate : Float, epochs : Int, batch_size : Int, seed : Int) ~ Nil {
 			@hidden := hidden;
-			if(@hidden = Nil) {
-				@hidden := Int->New[0];
-			};
+			@hidden := @hidden ?? Int->New[0];
 			@learning_rate := learning_rate;
 			@epochs := epochs;
 			@batch_size := batch_size;

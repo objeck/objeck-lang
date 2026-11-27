@@ -1,0 +1,114 @@
+#~
+The binding type test with a name that an enclosing block already has: the bound name is
+declared in the 'if' block as 'name : Type' is, and a block may declare a name that an
+enclosing block has, typed or inferred. The outer variable is hidden in the block and is
+unchanged after it, in each branch of an else-if chain, in a loop, and for a parameter.
+(The block itself cannot declare the name again: bad_type_test_name_taken.)
+~#
+use Collection;
+
+class Part {
+	New() {
+	}
+
+	method : public : Kind() ~ String {
+		return "part";
+	}
+}
+
+class TextPart from Part {
+	@text : String;
+
+	New(text : String) {
+		Parent();
+		@text := text;
+	}
+
+	method : public : Text() ~ String {
+		return @text;
+	}
+}
+
+class NumberPart from Part {
+	@n : Int;
+
+	New(n : Int) {
+		Parent();
+		@n := n;
+	}
+
+	method : public : Number() ~ Int {
+		return @n;
+	}
+}
+
+class InteractTypeTestShadow {
+	function : Measure(t : Int, part : Part) ~ Int {
+		# 't' is a parameter here and a TextPart in the block
+		if(part is TextPart t) {
+			return t->Text()->Size();
+		};
+		return t;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		p : Part := TextPart->New("four");
+		t : Int := 3;
+		size := 0;
+		if(p is TextPart t) {
+			size := t->Text()->Size();
+		};
+		assert size = 4 : "the bound name hides a typed local";
+		assert t = 3 : "the outer local after the block";
+
+		n := 7;
+		q : Part := NumberPart->New(5);
+		found := "";
+		if(q is TextPart n) {
+			found := n->Text();
+		}
+		else if(q is NumberPart n) {
+			found := "number {$n->Number()}";
+		}
+		else {
+			found := "neither, n is {$n}";
+		};
+		assert found->Equals("number 5") : "each branch binds the name of an inferred local";
+		assert n = 7 : "the inferred local after the chain";
+
+		q := Part->New();
+		if(q is TextPart n) {
+			found := n->Text();
+		}
+		else if(q is NumberPart n) {
+			found := "number";
+		}
+		else {
+			found := "neither, n is {$n}";
+		};
+		assert found->Equals("neither, n is 7") : "the outer local in the else";
+
+		parts : Vector<Part> := Vector->New();
+		parts->AddBack(TextPart->New("ab"));
+		parts->AddBack(NumberPart->New(2));
+		parts->AddBack(Part->New());
+		parts->AddBack(TextPart->New("cde"));
+		total := 0;
+		item := -1;
+		each(part in parts) {
+			if(part is TextPart item) {
+				total += item->Text()->Size();
+			}
+			else if(part is NumberPart item) {
+				total += item->Number() * 100;
+			};
+		};
+		assert total = 205 : "in a loop";
+		assert item = -1 : "the outer local after the loop";
+
+		assert Measure(9, TextPart->New("seven")) = 5 : "the bound name hides a parameter";
+		assert Measure(9, Part->New()) = 9 : "the parameter when the test fails";
+
+		"PASS: the type test's name over an outer variable"->PrintLine();
+	}
+}

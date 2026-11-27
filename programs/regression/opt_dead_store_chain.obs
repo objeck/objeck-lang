@@ -1,0 +1,260 @@
+#~
+Regression: a dead store inside a chained assignment kept its value on the stack.
+
+  seen := false;
+  each(i : 3) {
+    if(i = 1) {
+      seen := unused := true;
+    };
+  };
+
+`a := b := E` is lowered link by link, innermost first:
+
+  E; STOR b; LOAD b; STOR a
+
+Each store is tagged with its own assignment, but every value -- E, and the
+LOAD that feeds the next link -- is tagged with the statement being emitted,
+which is the outermost assignment. The dead-store pass (-opt s1 and above)
+found the instructions of a dead store's value by walking back over the
+instructions that share the store's statement. For the store to `b` nothing
+does: the walk stopped at once, the store went and E stayed.
+
+  E; LOAD b; STOR a        (and constant propagation had made LOAD b a literal)
+
+One word too many on the operand stack on that path. Where the path joins
+another -- the `if` above -- the load-time verifier refuses the method ("stack
+heights differ where control flow joins (0 and 1)"); in straight-line code it
+refuses the return ("a return with 1 words on the operand stack"). Before the
+verifier existed the word stayed on the interpreter's shared operand stack and
+the caller read it as one of its own operands.
+
+Only the non-outermost links are affected: the outermost store shares its
+statement with the LOAD before it. So `unused := seen := true` was always fine,
+and so was a plain `unused := true`.
+
+The pass now finds the value by what the instructions do to the stack, not by
+their tags. programs/regression/check_dead_store_chain.py generates the shapes
+around this one (chain length, what each target is, the value's type, where the
+statement sits) and compares -opt s0..s3 under the interpreter and the JIT.
+~#
+
+class Counter {
+  @n : Int;
+
+  New() {
+    @n := 0;
+  }
+
+  method : public : Next() ~ Int {
+    @n += 1;
+    return @n * 10;
+  }
+
+  method : public : Calls() ~ Int {
+    return @n;
+  }
+}
+
+class OptDeadStoreChain {
+  @failures : Int;
+  @field : Int;
+
+  New() {
+    @failures := 0;
+  }
+
+  method : Check(what : String, got : Int, want : Int) ~ Nil {
+    if(what = Nil) {
+      "FAIL: argument shifted (what=Nil, got="->Print(); got->Print(); ", want="->Print(); want->Print(); ")"->PrintLine();
+      @failures += 1;
+      return;
+    };
+
+    if(got <> want) {
+      "FAIL: "->Print(); what->Print(); " expected "->Print(); want->Print(); ", got "->Print(); got->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # the reported program: the dead link is first named by the chain, in a branch of a loop
+  function : InBranch() ~ Bool {
+    seen := false;
+    each(i : 3) {
+      if(i = 1) {
+        seen := unused := true;
+      };
+    };
+    return seen;
+  }
+
+  # straight-line: the leftover word is still on the stack at the return
+  function : Straight(k : Int) ~ Int {
+    dead : Int;
+    live : Int;
+    live := dead := k * 3 + 1;
+    return live;
+  }
+
+  # the dead link in the middle of three, and at the end
+  function : Middle(k : Int) ~ Int {
+    a : Int; dead : Int; c : Int;
+    a := dead := c := k + 5;
+    return a * 100 + c;
+  }
+
+  function : Last(k : Int) ~ Int {
+    a : Int; b : Int; dead : Int;
+    a := b := dead := k + 5;
+    return a * 100 + b;
+  }
+
+  # two dead links: two leftover words
+  function : TwoDead(k : Int) ~ Int {
+    a : Int; d1 : Int; d2 : Int;
+    a := d1 := d2 := 7;
+    return a + k;
+  }
+
+  # dead because it is overwritten before it is read, in a loop
+  function : Overwritten(k : Int) ~ Int {
+    sum := 0;
+    t : Int;
+    for(i := 0; i < k; i += 1;) {
+      sum := t := sum + i;
+      t := 1;
+      sum += t;
+    };
+    return sum;
+  }
+
+  # the value is a call: the store is dead, the call is not, and it runs once per link
+  function : WithCall(c : Counter) ~ Int {
+    a : Int; dead : Int;
+    a := dead := c->Next();
+    return a;
+  }
+
+  # a Float chain, and one that converts on the way (Int link, Float target)
+  function : Floats(k : Int) ~ Float {
+    f : Float; dead : Float;
+    f := dead := 1.5;
+    g : Float; n : Int;
+    g := n := 4;
+    return f + g + k;
+  }
+
+  # objects: the dead link holds a reference
+  function : Objects() ~ Int {
+    s : String; dead : String;
+    s := dead := "four";
+    return s->Size();
+  }
+
+  # a field and an array element fed from a dead local
+  method : ToField(k : Int) ~ Int {
+    dead : Int;
+    @field := dead := k + 1;
+    return @field;
+  }
+
+  function : ToElement(k : Int) ~ Int {
+    values := Int->New[3];
+    dead : Int;
+    values[1] := dead := 9;
+    return values[1] + k;
+  }
+
+  # in a select, a while and a do/while
+  function : InSelect(k : Int) ~ Int {
+    a := 0;
+    select(k) {
+      label 2: {
+        a := dead := 20;
+      }
+
+      other: {
+        a := 1;
+      }
+    };
+    return a;
+  }
+
+  function : InLoops() ~ Int {
+    a := 0;
+    i := 0;
+    while(i < 3) {
+      a := dead := a + 2;
+      i += 1;
+    };
+
+    do {
+      a := dead2 := a + 1;
+      i -= 1;
+    }
+    while(i > 0);
+    return a;
+  }
+
+  # in a for header: the second counter is never read
+  function : ForHeader() ~ Int {
+    sum := 0;
+    for(i := j := 0; i < 3; i += 1;) {
+      sum += i;
+    };
+    return sum;
+  }
+
+  # a function reference is two words on the stack
+  function : Twice(x : Int) ~ Int {
+    return x * 2;
+  }
+
+  function : FuncRefs(k : Int) ~ Int {
+    f : (Int) ~ Int;
+    dead : (Int) ~ Int;
+    each(i : 3) {
+      if(i = 1) {
+        f := dead := OptDeadStoreChain->Twice(Int) ~ Int;
+      };
+    };
+    return f(k);
+  }
+
+  method : Run() ~ Nil {
+    c := Counter->New();
+    for(r := 0; r < 3; r += 1;) {
+      Check("in a branch", InBranch() ? 1 : 0, 1);
+      Check("straight-line", Straight(2), 7);
+      Check("middle link", Middle(2), 707);
+      Check("last link", Last(2), 707);
+      Check("two dead links", TwoDead(2), 9);
+      Check("overwritten in a loop", Overwritten(4), 10);
+      Check("call value", WithCall(c), (r + 1) * 10);
+      Check("floats", Floats(2)->As(Int), 7);
+      Check("objects", Objects(), 4);
+      Check("field", ToField(2), 3);
+      Check("element", ToElement(2), 11);
+      Check("select", InSelect(2), 20);
+      Check("loops", InLoops(), 9);
+      Check("for header", ForHeader(), 3);
+      Check("function references", FuncRefs(2), 4);
+    };
+    Check("call count", c->Calls(), 3);
+
+    # inside arithmetic, where a leftover word is consumed by the operator
+    d := 0;
+    for(r := 0; r < 5; r += 1;) {
+      d := d * 31 + Straight(r) + Middle(r);
+    };
+    Check("arithmetic", d, 486186570);
+
+    if(@failures > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    OptDeadStoreChain->New()->Run();
+  }
+}

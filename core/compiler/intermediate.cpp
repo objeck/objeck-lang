@@ -1350,14 +1350,18 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
         mem_context = INST;
       }
 
-      if(mem_context == INST) {
+      if(capture_entry->IsSelf()) {
+        // the instance the lambda is created in; there is no field to load from it
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_INST_MEM));
+      }
+      else if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_INST_MEM));
       }
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, lambda, cur_line_num, LOAD_CLS_MEM));
       }
 
-      switch(capture_entry->GetType()->GetType()) {
+      switch(capture_entry->IsSelf() ? frontend::VAR_TYPE : capture_entry->GetType()->GetType()) {
       case frontend::BOOLEAN_TYPE:
       case frontend::BYTE_TYPE:
       case frontend::CHAR_TYPE:
@@ -1571,6 +1575,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
   case TRY_STMT:
     EmitTry(static_cast<Try*>(statement));
+    break;
+
+  case USING_STMT:
+    EmitUsing(static_cast<Using*>(statement));
     break;
     
   case SYSTEM_STMT:
@@ -4750,12 +4758,109 @@ void IntermediateEmitter::EmitCriticalUnlocks(size_t keep_depth, Statement* stat
         try_stmt->SetEmitPhase(phase);
       }
     }
+    else if(active->GetStatementType() == USING_STMT) {
+      // a jump out of a 'using' body leaves its try region, then closes the
+      // resource; a returned value is on the stack and stays there
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRY_END));
+      const int saved_char_str_count = new_char_str_count;
+      new_char_str_count = 0;
+      std::vector<Statement*> close_stmts = static_cast<Using*>(active)->GetClose()->GetStatements();
+      for(size_t j = 0; j < close_stmts.size(); ++j) {
+        EmitStatement(close_stmts[j]);
+      }
+      new_char_str_count = saved_char_str_count;
+    }
     else {
       CriticalSection* critical_stmt = static_cast<CriticalSection*>(active);
       EmitVariable(critical_stmt->GetVariable());
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, CRITICAL_END));
     }
   }
+}
+
+/****************************
+ * Translates 'using(w := E) { body }' (docs/design/USING_BLOCK.md):
+ *
+ *   w := E; raise := Nil
+ *   TRY_START H1; body; TRY_END; JMP NORMAL
+ * H1:
+ *   raise := GetLastError()          -- the body raised
+ *   TRY_START H2; close; TRY_END; JMP RAISE
+ * H2:
+ *   GetLastError() dropped           -- the original error wins over one from Close()
+ * RAISE:
+ *   Raise(raise)
+ * NORMAL:
+ *   close                            -- an error from Close() propagates
+ *
+ * 'close' is 'if(w <> Nil) { w->Close(); }'. EmitCriticalUnlocks emits TRY_END
+ * and the same close before each return, break and continue that leaves the
+ * body, with a returned value on the operand stack.
+ ****************************/
+void IntermediateEmitter::EmitUsing(Using* using_stmt)
+{
+  cur_line_num = using_stmt->GetLineNumber();
+  const long raise_id = using_stmt->GetRaiseEntry()->GetId();
+  const long handler_label = ++unconditional_label;
+  const long handler_error_label = ++unconditional_label;
+  const long raise_label = ++unconditional_label;
+  const long normal_label = ++unconditional_label;
+  std::vector<Statement*> close_stmts = using_stmt->GetClose()->GetStatements();
+
+  EmitStatement(using_stmt->GetResource());
+
+  // raise := Nil
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+
+  // the body's region
+  active_criticals.push_back(using_stmt);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_START, handler_label, -1));
+  std::vector<Statement*> body = using_stmt->GetBody()->GetStatements();
+  for(size_t i = 0; i < body.size(); ++i) {
+    EmitStatement(body[i]);
+  }
+  active_criticals.pop_back();
+  cur_line_num = using_stmt->GetLineNumber();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, JMP, normal_label, -1));
+
+  // the body raised: remember the error, close in a region of its own
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, handler_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, instructions::RUNTIME_GET_LAST_ERROR));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRAP_RTRN, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_START, handler_error_label, -1));
+  const int saved_char_str_count = new_char_str_count;
+  new_char_str_count = 0;
+  for(size_t i = 0; i < close_stmts.size(); ++i) {
+    EmitStatement(close_stmts[i]);
+  }
+  new_char_str_count = saved_char_str_count;
+  cur_line_num = using_stmt->GetLineNumber();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, JMP, raise_label, -1));
+
+  // Close() raised too: that error is dropped, the original goes on
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, handler_error_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, instructions::RUNTIME_GET_LAST_ERROR));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRAP_RTRN, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, POP_INT));
+
+  // Raise(raise)
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, raise_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LOAD_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(using_stmt, cur_line_num, instructions::RUNTIME_RAISE));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, TRAP, 3L));
+
+  // the body ended normally: an error from Close() is the caller's
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(using_stmt, cur_line_num, LBL, normal_label));
+  new_char_str_count = 0;
+  for(size_t i = 0; i < close_stmts.size(); ++i) {
+    EmitStatement(close_stmts[i]);
+  }
+  new_char_str_count = 0;
 }
 
 /****************************
@@ -4908,6 +5013,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
   case COND_EXPR:
     EmitConditional(static_cast<Cond*>(expression));
+    break;
+
+  case STMT_SEQ_EXPR:
+    EmitSequence(static_cast<SequenceExpression*>(expression));
     break;
     
   case CHAR_STR_EXPR:
@@ -5123,7 +5232,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // dimension, so the receiver is typed as a scalar and the call resolves
       // to 'System.$Int:Size'. That mistyping is a separate defect -- the
       // hoisted form 'x := t ? p : q; x->Size()' has always answered wrongly.
-      EmitMethodCall(method_call, is_nested || (expression->GetExpressionType() == COND_EXPR && is_instance_call));
+      // a sequence's value is on the stack as a conditional's is
+      EmitMethodCall(method_call, is_nested || ((expression->GetExpressionType() == COND_EXPR ||
+                                                 expression->GetExpressionType() == STMT_SEQ_EXPR) && is_instance_call));
       // subscript on the call result: GetItems()[0]
       EmitCallIndices(method_call);
 
@@ -5881,6 +5992,39 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   // expression end
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, load_type, temp_id, LOCL));
+}
+
+/****************************
+ * Translates statements that run where an expression is evaluated, then loads
+ * the value they left in a hidden local. The enclosing statement is part way
+ * through its own expression, so what it tracks per statement is set aside:
+ * a post-increment it has queued runs after it, not after one of these, and a
+ * string literal it has pushed does not pair with one of theirs.
+ ****************************/
+void IntermediateEmitter::EmitSequence(SequenceExpression* sequence)
+{
+  Statement* outer_statement = current_statement;
+  std::queue<OperationAssignment*> outer_post_statements;
+  outer_post_statements.swap(post_statements);
+  const int outer_char_str_count = new_char_str_count;
+  new_char_str_count = 0;
+
+  const std::vector<Statement*>& statements = sequence->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    EmitStatement(statements[i]);
+  }
+
+  post_statements.swap(outer_post_statements);
+  new_char_str_count = outer_char_str_count;
+  current_statement = outer_statement;
+  cur_line_num = static_cast<Expression*>(sequence)->GetLineNumber();
+
+  EmitExpression(sequence->GetValue());
+  // a cast of the value, as for a variable ('->TypeOf(..)' is emitted by EmitExpression)
+  if(sequence->GetCastType()) {
+    EmitCast(sequence);
+  }
+  EmitClassCast(sequence, true);
 }
 
 /****************************
@@ -7303,6 +7447,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_CLS_MEM));
     }
@@ -7365,6 +7510,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_CLS_MEM));
     }
@@ -7533,6 +7679,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
     }
@@ -7569,6 +7716,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     } 
     else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7591,6 +7739,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7611,6 +7760,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7631,6 +7781,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -7651,6 +7802,7 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
+        if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
       } 
       else if(mem_context == CLS) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_CLS_MEM));
@@ -9156,6 +9308,7 @@ void IntermediateEmitter::EmitOperatorVariable(Variable* variable, MemoryContext
     // load instance or class memory
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable,cur_line_num, LOAD_INST_MEM));
+      if(variable->GetLambdaSelf()) { imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INT_VAR, variable->GetLambdaSelf()->GetId(), INST)); }
     }
     else if(mem_context == CLS) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable,cur_line_num, LOAD_CLS_MEM));

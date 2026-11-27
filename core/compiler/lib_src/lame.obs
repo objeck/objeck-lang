@@ -11,18 +11,16 @@ MP3 encoding library wrapping LAME. Converts raw PCM audio data to MP3 byte stre
 bundle Game.SDL2.Aux {
 	class : private: Proxy {
 		@lib_proxy : static : DllProxy;
-		
+
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_lame");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_lame");
 
 			return @lib_proxy;
 		}
 	}
-	
+
 	#~
-	Converts a PCM audio stream to MP3 audio stream 
+	Converts a PCM audio stream to MP3 audio stream
 	~#
 	class Lame {
 		# Native entry-point names, held rather than written at each call
@@ -40,14 +38,14 @@ bundle Game.SDL2.Aux {
 			if(stream_in <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := ByteArrayRef->New(Nil->As(Byte[]));
-				array_args[1] := ByteArrayRef->New(stream_in);				
+				array_args[1] := ByteArrayRef->New(stream_in);
 				if(@fn_lame_pcm_mp3 = Nil) { @fn_lame_pcm_mp3 := "lame_pcm_mp3"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_lame_pcm_mp3, array_args);
-				
+
 				holder := array_args[0]->As(ByteArrayRef);
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 	}

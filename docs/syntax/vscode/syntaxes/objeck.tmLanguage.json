@@ -96,7 +96,22 @@
 		"keywords": {
 			"patterns": [
 				{
-					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|for|each|reverse|label|return|critical|from|implements|virtual)\\b",
+					"comment": "contextual: 'match subject { pattern => ... }'",
+					"match": "\\bmatch(?=\\s+[A-Za-z_@])",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"comment": "contextual: 'json{ ... }', a JSON literal",
+					"match": "\\bjson(?=\\s*\\{)",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"comment": "contextual: 'if(value is Type name) { ... }'",
+					"match": "\\bis(?=\\s+[A-Za-z_][\\w.]*\\s+[A-Za-z_]\\w*\\s*\\))",
+					"name": "keyword.control.objeck"
+				},
+				{
+					"match": "\\b(use|leaving|if|else|do|while|select|break|continue|in|other|for|each|reverse|label|return|critical|spawn|assert|using|from|implements|virtual)\\b",
 					"name": "keyword.control.objeck"
 				},
 				{

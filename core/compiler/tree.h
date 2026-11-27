@@ -69,6 +69,10 @@
 // a function type written as a function-reference argument, `(Int) ~ Int`;
 // the parser hangs the type on a variable of this name (#1183)
 #define FUNC_TYPE_MARKER L"#func_type#"
+// the class a map literal constructs, until the analyzer knows what the literal
+// is assigned to or returned as; and the same once an error has said why it cannot
+#define MAP_LITERAL_MARKER L"#map_literal#"
+#define MAP_LITERAL_REJECTED L"#map_literal_rejected#"
 
 namespace frontend {
   class TreeFactory;
@@ -107,7 +111,8 @@ namespace frontend {
     CRITICAL_STMT,
     SYSTEM_STMT,
     EMPTY_STMT,
-    TRY_STMT
+    TRY_STMT,
+    USING_STMT
   };
 
   /****************************
@@ -488,6 +493,10 @@ namespace frontend {
       statements.insert(statements.begin(), s);
     }
 
+    void InsertStatement(Statement* s, size_t index) {
+      statements.insert(statements.begin() + index, s);
+    }
+
     void AddStatement(Statement* s) {
       statements.push_back(s);
     }
@@ -527,7 +536,8 @@ namespace frontend {
     CHAR_STR_EXPR,
     STAT_ARY_EXPR,
     STR_CONCAT_EXPR,
-    LAMBDA_EXPR
+    LAMBDA_EXPR,
+    STMT_SEQ_EXPR
   };
 
   /****************************
@@ -644,6 +654,20 @@ namespace frontend {
       return cast_type;
     }
 
+    // the types as they are, to put back after a trial analysis: a method
+    // that is tried against this argument and not chosen
+    void GetTypeState(Type* &base, Type* &eval, Type* &cast) {
+      base = base_type;
+      eval = eval_type;
+      cast = cast_type;
+    }
+
+    void SetTypeState(Type* base, Type* eval, Type* cast) {
+      base_type = base;
+      eval_type = eval;
+      cast_type = cast;
+    }
+
     void SetTypeOf(Type* c) {
       type_of = TypeFactory::Instance()->MakeType(c);
     }
@@ -740,6 +764,8 @@ namespace frontend {
     // hidden local, rather than copied from the literal pool (#1245)
     bool is_dynamic = false;
     SymbolEntry* dynamic_entry = nullptr;
+    // the holder the numbers of the literal are boxed as (see SetBoxAs)
+    Type* box_as = nullptr;
 
     // the literal's extent in each dimension, outermost first: '[[1, 2, 3], [4, 5, 6]]'
     // is {2, 3}
@@ -787,6 +813,16 @@ namespace frontend {
     // literals of an object and a primitive are built at run time too
     void SetDynamic() {
       is_dynamic = true;
+    }
+
+    // the holder (IntRef, FloatRef, ...) the numbers of this literal are boxed as: set for the
+    // literal of a Vector or CompareVector of that holder (ContextAnalyzer::WrapCollectionLiteral)
+    void SetBoxAs(Type* t) {
+      box_as = t;
+    }
+
+    Type* GetBoxAs() {
+      return box_as;
     }
 
     // a ragged literal, '[[1], [1, 1]]', is one-dimensional: an array of rows (#1246)
@@ -1200,6 +1236,10 @@ namespace frontend {
     ~Variable() {
     }
 
+    // a field read or written inside a lambda: the closure copy of the instance
+    // that created the lambda (the field is loaded through it)
+    SymbolEntry* lambda_self = nullptr;
+
   public:
     const std::wstring GetName() const {
       return name;
@@ -1223,6 +1263,14 @@ namespace frontend {
 
     void SetEntry(SymbolEntry* e) {
       entry = e;
+    }
+
+    void SetLambdaSelf(SymbolEntry* e) {
+      lambda_self = e;
+    }
+
+    SymbolEntry* GetLambdaSelf() {
+      return lambda_self;
     }
 
     SymbolEntry* GetEntry() {
@@ -1486,6 +1534,56 @@ namespace frontend {
   };
 
   /****************************
+   * SequenceExpression class: statements that run where the expression is
+   * evaluated, followed by the value they leave behind (a hidden local the
+   * parser declared). It is how a construct that needs statements -- a value
+   * 'match', a literal that is built with Insert calls -- stays an expression:
+   * the statements are emitted in place, so they run exactly when and only if
+   * the expression is evaluated (inside a short-circuit, a '?' branch, a loop
+   * condition). The statements hold no blocks of their own, so they open no
+   * scope, and the node is analyzed once.
+   ****************************/
+  class SequenceExpression : public Expression {
+    friend class TreeFactory;
+    std::vector<Statement*> statements;
+    Expression* value;
+    bool analyzed;
+
+    SequenceExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* v) : Expression(file_name, line_num, line_pos) {
+      value = v;
+      analyzed = false;
+    }
+
+    ~SequenceExpression() {
+    }
+
+  public:
+    ExpressionType GetExpressionType() {
+      return STMT_SEQ_EXPR;
+    }
+
+    void AddStatement(Statement* s) {
+      statements.push_back(s);
+    }
+
+    const std::vector<Statement*>& GetStatements() {
+      return statements;
+    }
+
+    Expression* GetValue() {
+      return value;
+    }
+
+    bool IsAnalyzed() {
+      return analyzed;
+    }
+
+    void SetAnalyzed() {
+      analyzed = true;
+    }
+  };
+
+  /****************************
    * Return class
    ****************************/
   class Return : public Statement {
@@ -1587,6 +1685,11 @@ namespace frontend {
 
     Expression* GetExpression() {
       return expression;
+    }
+
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      expression = e;
     }
 
     StatementList* GetIfStatements() {
@@ -1808,6 +1911,14 @@ namespace frontend {
     std::vector<StatementList*> statement_lists;
     std::map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
+    // 'match' and a 'select' used as a value: the labels of an enum subject are
+    // items of that enum, and without 'other' they name every item
+    bool is_checked = false;
+    // used as a value: each arm is one assignment to the hidden local the value is
+    // read from, so an arm opens no scope and some arm must always be taken
+    bool is_value = false;
+    // "match" or "select", for messages
+    std::wstring keyword = L"select";
 
     Select(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos, 
            Assignment* e, std::map<ExpressionList*, StatementList*> &s, std::vector<StatementList*> &sl, StatementList* o) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -1847,6 +1958,27 @@ namespace frontend {
 
     StatementList* GetOther() {
       return other;
+    }
+
+    void SetChecked(const std::wstring &k) {
+      is_checked = true;
+      keyword = k;
+    }
+
+    bool IsChecked() {
+      return is_checked;
+    }
+
+    void SetValue() {
+      is_value = true;
+    }
+
+    bool IsValue() {
+      return is_value;
+    }
+
+    const std::wstring& GetKeyword() {
+      return keyword;
     }
   };
 
@@ -1964,6 +2096,55 @@ namespace frontend {
   };
 
   /****************************
+   * 'using(w := E) { ... }': 'w := E', the body, then 'w->Close()' on
+   * every way out of the body (docs/design/USING_BLOCK.md). The close
+   * is emitted inline at the end of the body and before each 'return',
+   * 'break' and 'continue' that leaves it, not through a try region, so
+   * a method that uses it is still compiled by the JIT.
+   ****************************/
+  class Using : public Statement {
+    Statement* resource;
+    StatementList* body;
+    StatementList* close;
+    SymbolEntry* raise_entry;
+
+  public:
+    Using(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+          Statement* r, StatementList* b, StatementList* c, SymbolEntry* e) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+      resource = r;
+      body = b;
+      close = c;
+      raise_entry = e;
+    }
+
+    // the hidden System.Error local that holds an error raised by the body while the resource closes
+    SymbolEntry* GetRaiseEntry() {
+      return raise_entry;
+    }
+
+    ~Using() {
+    }
+
+    // the declaration 'w := E'
+    Statement* GetResource() {
+      return resource;
+    }
+
+    StatementList* GetBody() {
+      return body;
+    }
+
+    // 'w->Close()'
+    StatementList* GetClose() {
+      return close;
+    }
+
+    StatementType GetStatementType() {
+      return USING_STMT;
+    }
+  };
+
+  /****************************
    * For class
    ****************************/
   class For : public Statement {
@@ -2030,6 +2211,11 @@ namespace frontend {
       return cond_expr;
     }
 
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      cond_expr = e;
+    }
+
     StatementList* GetUpdateStatements() {
       return update_stmts;
     }
@@ -2073,6 +2259,11 @@ namespace frontend {
       return expression;
     }
 
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      expression = e;
+    }
+
     StatementList* GetStatements() {
       return statements;
     }
@@ -2101,6 +2292,11 @@ namespace frontend {
 
     Expression* GetExpression() {
       return expression;
+    }
+
+    // a condition that is unboxed is replaced by the call that reads its value
+    void SetExpression(Expression* e) {
+      expression = e;
     }
 
     StatementList* GetStatements() {
@@ -2272,6 +2468,9 @@ namespace frontend {
     SymbolEntry* entry;
     Assignment* assignment;
     Declaration* child;
+    // field accessor modifiers: `@x : get : T` and `@x : get set : T`
+    bool accessor_get = false;
+    bool accessor_set = false;
 
     Declaration(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                 SymbolEntry* e, Declaration* c, Assignment* a) : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
@@ -2304,6 +2503,19 @@ namespace frontend {
 
     Declaration* GetChild() {
       return child;
+    }
+
+    void SetAccessors(bool g, bool s) {
+      accessor_get = g;
+      accessor_set = s;
+    }
+
+    bool HasGetter() {
+      return accessor_get;
+    }
+
+    bool HasSetter() {
+      return accessor_set;
     }
 
     Assignment* GetAssignment() {
@@ -2366,6 +2578,7 @@ namespace frontend {
     Leaving* leaving;
     MethodType method_type;
     bool is_lambda;
+    bool is_spawn_body;
     bool is_static;
     bool is_native;
     bool has_and_or;
@@ -2403,6 +2616,7 @@ namespace frontend {
       is_static = s;
       is_native = c;
       is_lambda = false;
+      is_spawn_body = false;
       statements = nullptr;
       return_type = nullptr;
       leaving = nullptr;
@@ -2422,6 +2636,7 @@ namespace frontend {
       is_static = true;
       is_native = false;
       is_lambda = true;
+      is_spawn_body = false;
       statements = nullptr;
       return_type = nullptr;
       leaving = nullptr;
@@ -2477,6 +2692,15 @@ namespace frontend {
 
     bool IsLambda() {
       return is_lambda;
+    }
+
+    // the block of a 'spawn': a lambda that runs as a thread and returns nothing
+    bool IsSpawnBody() {
+      return is_spawn_body;
+    }
+
+    void SetSpawnBody(bool s) {
+      is_spawn_body = s;
     }
 
     void SetReturn(Type* r) {
@@ -2720,6 +2944,8 @@ namespace frontend {
     bool is_public;
     bool is_record;
     bool is_readonly_record;
+    bool is_json = false;                       // 'class Name : json': the compiler writes JsonSchema, JsonFill and FromJson
+    std::vector<std::wstring> json_optional;    // the fields 'json(a, b)' marks optional
     MethodCall* anonymous_call;
     std::vector<std::wstring> interface_names;
     std::vector<Class*> generic_classes;
@@ -2943,6 +3169,19 @@ namespace frontend {
       return is_public;
     }
 
+    void SetJson(bool j, const std::vector<std::wstring>& optional) {
+      is_json = j;
+      json_optional = optional;
+    }
+
+    bool IsJson() {
+      return is_json;
+    }
+
+    const std::vector<std::wstring>& GetJsonOptional() {
+      return json_optional;
+    }
+
     void SetRecord(bool r) {
       is_record = r;
     }
@@ -3151,6 +3390,7 @@ namespace frontend {
    ****************************/
   class MethodCall : public Statement, public Expression {
     friend class TreeFactory;
+    bool is_map_literal = false;
     EnumItem* enum_item;
     Class* original_klass;
     Class* anonymous_klass;
@@ -3191,6 +3431,9 @@ namespace frontend {
     // previous link returned. It has no name; the analyzer binds it to a hidden
     // local holding that value (#1184).
     bool is_curried_call = false;
+    // A hole of a prompt literal, 'Slot("name", name)': 0 for any other call, 1 for '{name}', and for
+    // '{name : Type}' 2 String, 3 Int, 4 Float, 5 Bool, 6 Char, 7 Byte (docs/design/AGENT_SYNTAX.md).
+    int prompt_hole = 0;
 
     MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num,
                const int end_line_pos, MethodCallType t, const std::wstring &v, ExpressionList* e);
@@ -3314,6 +3557,8 @@ namespace frontend {
     // 'F(a)(b)': this link applies the previous link's function-valued result
     bool IsCurriedCall() const { return is_curried_call; }
     void SetCurriedCall() { is_curried_call = true; }
+    int GetPromptHole() const { return prompt_hole; }
+    void SetPromptHole(int h) { prompt_hole = h; }
     bool IsOtherwiseIntrinsic() const { return is_otherwise_intrinsic; }
     void SetOtherwiseIntrinsic(bool v) { is_otherwise_intrinsic = v; }
 
@@ -3393,6 +3638,15 @@ namespace frontend {
 
     const std::wstring GetVariableName() const {
       return variable_name;
+    }
+
+    // the constructor of a map literal, once the analyzer has named its class
+    void SetMapLiteral() {
+      is_map_literal = true;
+    }
+
+    bool IsMapLiteral() {
+      return is_map_literal;
     }
 
     void SetVariableName(const std::wstring v) {
@@ -3889,6 +4143,12 @@ namespace frontend {
       return tmp;
     }
 
+    SequenceExpression* MakeSequenceExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* value) {
+      SequenceExpression* tmp = new SequenceExpression(file_name, line_num, line_pos, value);
+      expressions.push_back(tmp);
+      return tmp;
+    }
+
     StaticArray* MakeStaticArray(const std::wstring &file_name, const int line_num, const int line_pos, ExpressionList* exprs) {
       StaticArray* tmp = new StaticArray(file_name, line_num, line_pos, exprs);
       expressions.push_back(tmp);
@@ -4049,6 +4309,13 @@ namespace frontend {
     Try* MakeTry(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                  StatementList* body, const std::vector<TryHandler*> &handlers, StatementList* finally_stmts, SymbolEntry* error_entry, SymbolEntry* raise_entry) {
       Try* tmp = new Try(file_name, line_num, line_pos, end_line_num, end_line_pos, body, handlers, finally_stmts, error_entry, raise_entry);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
+    Using* MakeUsing(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+                     Statement* resource, StatementList* body, StatementList* close, SymbolEntry* raise_entry) {
+      Using* tmp = new Using(file_name, line_num, line_pos, end_line_num, end_line_pos, resource, body, close, raise_entry);
       statements.push_back(tmp);
       return tmp;
     }

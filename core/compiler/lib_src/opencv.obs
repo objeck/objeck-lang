@@ -1,7 +1,7 @@
 #~~
 # Copyright (c) 2026 Randy Hollines
 # OpenCV wrapper
-~~#	
+~~#
 
 use System.API, Data.JSON;
 
@@ -11,18 +11,16 @@ OpenCV computer vision library. Image supports loading, saving, resizing, color 
 bundle API.OpenCV {
 	class : private : Proxy {
 		@lib_proxy : static : DllProxy;
-		
+
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_opencv");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_opencv");
 
 			return @lib_proxy;
 		}
 	}
 
 	#~
-	OpenCV VideoCapture 
+	OpenCV VideoCapture
 	~#
 	class VideoCapture {
 		# Native entry-point names, held rather than written at each call
@@ -505,7 +503,7 @@ image->Show("Preview");
 		#~
 		Shows an image
 		@param title dialog title
-		@param scale scaling percentage 
+		@param scale scaling percentage
 		~#
 		method : public : Show(title : String, scale : Float) ~ Nil {
 			array_args := Base->New[3];
@@ -521,7 +519,7 @@ image->Show("Preview");
 		#~
 		Shows an image
 		@param title dialog title
-		@param scale scaling percentage 
+		@param scale scaling percentage
 		@param wait ms wait time between images, 0 to wait for key
 		~#
 		method : public : Show(title : String, scale : Float, ms_wait : Int) ~ Nil {
@@ -547,7 +545,7 @@ png_bytes := image->Convert(Image->Format->PNG);
 "PNG bytes: {$png_bytes->Size()}"->PrintLine();
 ```
 		~#
-		method : public : Convert(format : Image->Format) ~ Byte[] {			
+		method : public : Convert(format : Image->Format) ~ Byte[] {
 			array_args := Base->New[3];
 
 			array_args[0] := ByteArrayRef->New();
@@ -596,14 +594,14 @@ annotated->Save("annotated.jpg");
 
 		#~
 		Draws a bounding circle
-		@param pt circle center 
-		@param radius circle radius 
+		@param pt circle center
+		@param radius circle radius
 		@param color bounding circle color
 		@param thickness bounding circle thickness
 		@param type bounding circle type
-		@return updated image		
+		@return updated image
 		~#
-		method : public : DrawCircle(pt : Point, radius : Int, color : Scalar, thickness : Int := 1, 
+		method : public : DrawCircle(pt : Point, radius : Int, color : Scalar, thickness : Int := 1,
 				type : LineType := LineType->LINE_8) ~ API.OpenCV.Image {
 			array_args := Base->New[7];
 
@@ -1458,8 +1456,8 @@ cropped->Save("cropped.jpg");
 		}
 
 		#~
-		JSON representation 
-		@return JSON representation 
+		JSON representation
+		@return JSON representation
 		~#
 		method : public : ToJson() ~ JsonElement {
 			elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);

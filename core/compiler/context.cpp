@@ -736,6 +736,9 @@ std::wstring ContextAnalyzer::CallDetail(MethodCall* method_call)
   return detail;
 }
 
+// what a value in a JSON literal can be (see Parser::ParseJsonObject)
+static const wchar_t* const JSON_VALUE_KINDS = L"a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]";
+
 /****************************
  * Makes an error specific from what
  * the analyzer knows when it raises it
@@ -744,6 +747,21 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
 {
   if(msg.find(L"Did you mean") != std::wstring::npos) {
     return msg;
+  }
+
+  // A Char or Byte among the values of a JSON literal matches the JsonElement
+  // overload of the literal's Insert or Add and then fails that cast. The call
+  // is the compiler's: the message is about the value.
+  const std::wstring json_cast = L"Invalid cast with classes: Data.JSON.JsonElement and ";
+  if(StartsWith(msg, json_cast.c_str()) && diag_call && StartsWith(diag_call->GetVariableName(), L"#json_") && diag_call->GetCallingParameters()) {
+    const std::vector<Expression*> args = diag_call->GetCallingParameters()->GetExpressions();
+    for(size_t i = 0; i < args.size(); ++i) {
+      if(node == static_cast<ParseNode*>(args[i])) {
+        const std::wstring found = PlainTypeName(msg.substr(json_cast.size(), msg.find(L'\n') == std::wstring::npos ? std::wstring::npos : msg.find(L'\n') - json_cast.size()));
+        return std::wstring(diag_call->GetMethodName() == L"Add" ? L"An element of a JSON array is " : L"The value of a JSON member is ") +
+          JSON_VALUE_KINDS + L"; this one is " + found;
+      }
+    }
   }
 
   // Only the first few errors are ever shown, and a suggestion searches every name in scope:
@@ -763,6 +781,15 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
       return msg;
     }
     return msg + ClassSuggestion(QuotedName(msg));
+  }
+
+  // This call was reported as ambiguous between boxed overloads
+  // (ProcessAmbiguousCall). The paths that go on to look for it elsewhere end
+  // by saying that no method takes its arguments, which is not so: they say
+  // the same thing again instead, and the repeat is dropped.
+  if(StartsWith(msg, L"Undefined function/method call: '") && ambiguous_call &&
+     node == static_cast<ParseNode*>(static_cast<Expression*>(ambiguous_call))) {
+    return ambiguous_call_error;
   }
 
   if(StartsWith(msg, L"Undefined function/method call: '") && diag_call &&
@@ -814,7 +841,14 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
       const std::wstring left = PlainTypeName(rest.substr(0, split));
       const std::wstring right = PlainTypeName(rest.substr(split + 5));
       std::wstring detail;
-      if(cast_kind == 1) {
+      // an arm of a 'match' or 'select' used as a value is assigned to a hidden
+      // local: the message is about the arms, not about a variable nobody wrote
+      const bool is_value_arm = cast_kind == 1 && (StartsWith(cast_subject, L"#match_") || StartsWith(cast_subject, L"#select_"));
+      if(is_value_arm) {
+        const std::wstring keyword = StartsWith(cast_subject, L"#match_") ? L"match" : L"select";
+        detail = L"The arms of a '" + keyword + L"' used as a value agree in type: this one is " + right + L", an earlier one is " + left;
+      }
+      else if(cast_kind == 1) {
         detail = L"\n\tCannot assign a value of type " + right + L" to '" + cast_subject + L"', which is " + left + L".";
       }
       else {
@@ -835,7 +869,7 @@ std::wstring ContextAnalyzer::Elaborate(ParseNode* node, const std::wstring& msg
         detail += L"\n\tConvert explicitly, as in value->As(" + left + L")";
       }
 
-      return msg + detail;
+      return is_value_arm ? detail : msg + detail;
     }
   }
 
@@ -868,6 +902,110 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(std::wstring &message)
     }
     alt_error_method_names.clear();
   }
+}
+
+/****************************
+ * A member or an element of a JSON literal that no 'Insert' or 'Add' of
+ * JsonElement takes. The call on the literal's hidden local is the compiler's;
+ * the error is about the name or value the programmer wrote, and is reported
+ * there. False when the call is not a JSON literal's.
+ ****************************/
+bool ContextAnalyzer::ReportJsonLiteralValue(MethodCall* method_call)
+{
+  if(!StartsWith(method_call->GetVariableName(), L"#json_") || !method_call->GetCallingParameters()) {
+    return false;
+  }
+
+  // the type at the end of a call chain is the value's
+  auto value_type = [](Expression* expression) {
+    while(expression->GetMethodCall()) {
+      expression = expression->GetMethodCall();
+    }
+    return expression->GetCastType() ? expression->GetCastType() : expression->GetEvalType();
+  };
+
+  alt_error_method_names.clear();
+  const std::wstring kinds = JSON_VALUE_KINDS;
+  const std::vector<Expression*> args = method_call->GetCallingParameters()->GetExpressions();
+  if(method_call->GetMethodName() == L"Insert" && args.size() == 2) {
+    Type* name_type = value_type(args[0]);
+    if(!name_type || name_type->GetType() != CLASS_TYPE || name_type->GetDimension() > 0 || name_type->GetName() != L"System.String") {
+      ProcessError(args[0], L"The name of a JSON member is a String; this one is " + DescribeType(name_type));
+    }
+    else {
+      ProcessError(args[1], L"The value of a JSON member is " + kinds + L"; this one is " + DescribeType(value_type(args[1])));
+    }
+    return true;
+  }
+
+  if(method_call->GetMethodName() == L"Add" && args.size() == 1) {
+    ProcessError(args[0], L"An element of a JSON array is " + kinds + L"; this one is " + DescribeType(value_type(args[0])));
+    return true;
+  }
+
+  return false;
+}
+
+/****************************
+ * An entry of a map literal whose key or value the map does not take. The
+ * 'Insert' on the literal's hidden local is the compiler's; the error is
+ * about the entry the programmer wrote. False when the call is not a map
+ * literal's.
+ ****************************/
+bool ContextAnalyzer::ReportMapLiteralEntry(MethodCall* method_call)
+{
+  if(!StartsWith(method_call->GetVariableName(), L"#map_") || method_call->GetMethodName() != L"Insert" || !method_call->GetCallingParameters()) {
+    return false;
+  }
+
+  const std::vector<Expression*> args = method_call->GetCallingParameters()->GetExpressions();
+  if(args.size() != 2) {
+    return false;
+  }
+
+  // the type at the end of a call chain is the value's
+  auto value_type = [](Expression* expression) {
+    while(expression->GetMethodCall()) {
+      expression = expression->GetMethodCall();
+    }
+    return expression->GetCastType() ? expression->GetCastType() : expression->GetEvalType();
+  };
+
+  alt_error_method_names.clear();
+  std::wstring wanted;
+  SymbolEntry* entry = GetEntry(method_call->GetVariableName());
+  if(entry && entry->GetType()) {
+    const std::vector<Type*> generics = entry->GetType()->GetGenerics();
+    if(generics.size() == 2) {
+      wanted = L"An entry of this map literal is " + DescribeType(generics[0]) + L": " + DescribeType(generics[1]) + L"; ";
+    }
+    else {
+      wanted = L"An entry of this map literal is Int: Int; ";
+    }
+  }
+  ProcessError(static_cast<Expression*>(method_call), wanted + L"this one is " + DescribeType(value_type(args[0])) + L": " + DescribeType(value_type(args[1])));
+
+  return true;
+}
+
+/****************************
+ * More than one method takes a
+ * call's arguments once one is
+ * boxed or unboxed, and none fits
+ * better than the rest
+ ****************************/
+void ContextAnalyzer::ProcessAmbiguousCall(MethodCall* method_call, const std::vector<std::wstring> &names)
+{
+  std::wstring message = L"Ambiguous function/method call: '" + method_call->GetMethodName() +
+    L"(..)' boxes or unboxes an argument to fit, and more than one method fits as well"
+    L"\n\tWrite the conversion ('IntRef->New(..)' or '->Get()') to choose one of:\n";
+  for(size_t i = 0; i < names.size(); ++i) {
+    message += L"\t\t" + names[i] + L'\n';
+  }
+
+  ambiguous_call = method_call;
+  ambiguous_call_error = message;
+  ProcessError(static_cast<Expression*>(method_call), message);
 }
 
 /****************************
@@ -2241,6 +2379,369 @@ Expression* ContextAnalyzer::WrapBareLambdaInFuncRef(Expression* expression, Typ
 }
 
 /****************************
+ * Method reference without ceremony: `Class->Function` (no argument list, no
+ * `~ R`) where a function value is wanted becomes
+ * `FuncNRef->New(Class->Function(T1, ...) ~ R)<T1, ..., R>`, the signature read
+ * from the function itself. The rewrite is the long form the programmer would
+ * have written, so everything after it is the existing, tested path.
+ * `expected` is the target type when the context has one (assignment, return)
+ * and null for a call argument; with a target it must be a FuncRef class.
+ * Anything that is not clearly a reference to one static function of a class
+ * is returned unchanged.
+ ****************************/
+Expression* ContextAnalyzer::WrapMethodReferenceInFuncRef(Expression* expression, Type* expected, const int depth)
+{
+  if(!expression || expression->GetExpressionType() != METHOD_CALL_EXPR) {
+    return expression;
+  }
+
+  MethodCall* ref = static_cast<MethodCall*>(expression);
+  if(ref->GetCallType() != ENUM_CALL || ref->GetCallingParameters() || ref->IsFunctionDefinition() ||
+     ref->GetMethodCall() || ref->GetVariable() || ref->GetCastType() || ref->GetTypeOf() ||
+     ref->GetMethodName().empty() || ref->GetVariableName().empty()) {
+    return expression;
+  }
+
+  if(expected && !(expected->GetType() == CLASS_TYPE && expected->GetDimension() == 0 &&
+     (expected->GetName() == L"System.FuncRef" || expected->GetName() == L"FuncRef" ||
+      expected->GetName() == L"System.Func2Ref" || expected->GetName() == L"Func2Ref" ||
+      expected->GetName() == L"System.Func3Ref" || expected->GetName() == L"Func3Ref" ||
+      expected->GetName() == L"System.Func4Ref" || expected->GetName() == L"Func4Ref"))) {
+    return expression;
+  }
+
+  // the left side must name a class (a variable of that name is a field or local access)
+  Class* klass = nullptr;
+  LibraryClass* lib_klass = nullptr;
+  if(!GetProgramOrLibraryClass(ref->GetVariableName(), klass, lib_klass)) {
+    return expression;
+  }
+
+  // the candidate functions: those named so, in the class itself
+  std::vector<Type*> param_types;
+  Type* rtrn_type = nullptr;
+  size_t named = 0;
+  bool all_static = true;
+  if(klass) {
+    const std::vector<Method*> methods = klass->GetUnqualifiedMethods(ref->GetMethodName());
+    named = methods.size();
+    for(Method* method : methods) {
+      all_static = all_static && method->IsStatic();
+    }
+    if(named == 1 && all_static && !methods[0]->IsVirtual() && !methods[0]->IsLambda()) {
+      for(Declaration* dclr : methods[0]->GetDeclarations()->GetDeclarations()) {
+        param_types.push_back(dclr->GetEntry() ? dclr->GetEntry()->GetType() : nullptr);
+      }
+      rtrn_type = methods[0]->GetReturn();
+    }
+  }
+  else if(lib_klass) {
+    const std::vector<LibraryMethod*> methods = lib_klass->GetUnqualifiedMethods(ref->GetMethodName());
+    named = methods.size();
+    for(LibraryMethod* method : methods) {
+      all_static = all_static && method->IsStatic();
+    }
+    if(named == 1 && all_static && !methods[0]->IsVirtual()) {
+      param_types = methods[0]->GetDeclarationTypes();
+      rtrn_type = methods[0]->GetReturn();
+    }
+  }
+
+  // not a function of that class: an enum item, a constant, ... as before
+  if(named == 0 || !all_static) {
+    return expression;
+  }
+
+  const std::wstring long_form = L"write the full reference: Func2Ref->New(" + ref->GetVariableName() + L"->" +
+    ref->GetMethodName() + L"(<types>) ~ <type>)<<types>>";
+  if(named > 1) {
+    ProcessError(expression, L"'" + ref->GetVariableName() + L"->" + ref->GetMethodName() +
+                 L"' is overloaded, so the reference is ambiguous; " + long_form);
+    return expression;
+  }
+
+  // a FuncRef takes plain class types (the long form cannot spell a generic one
+  // either): not primitives, arrays, generics or Nil, and at most 3 arguments
+  bool shaped = rtrn_type && param_types.size() <= 3 && rtrn_type->GetType() == CLASS_TYPE && rtrn_type->GetDimension() == 0 &&
+    rtrn_type->GetGenerics().empty();
+  for(size_t i = 0; shaped && i < param_types.size(); ++i) {
+    shaped = param_types[i] && param_types[i]->GetType() == CLASS_TYPE && param_types[i]->GetDimension() == 0 &&
+      param_types[i]->GetGenerics().empty();
+  }
+  if(!shaped) {
+    ProcessError(expression, L"Cannot take '" + ref->GetVariableName() + L"->" + ref->GetMethodName() +
+                 L"' as a function reference: its arguments and return must be plain classes, not Int/Float/arrays/generics (at most 3 arguments); " + long_form);
+    return expression;
+  }
+
+  const std::wstring file_name = expression->GetFileName();
+  const int line_num = expression->GetLineNumber();
+  const int line_pos = expression->GetLinePosition();
+
+  std::vector<Type*> concrete;
+  ExpressionList* func_params = TreeFactory::Instance()->MakeExpressionList();
+  for(Type* param_type : param_types) {
+    Type* copy = TypeFactory::Instance()->MakeType(param_type);
+    ResolveClassEnumType(copy);
+    Variable* name = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, copy->GetName());
+    func_params->AddExpression(name);
+    concrete.push_back(copy);
+  }
+  Type* rtrn_copy = TypeFactory::Instance()->MakeType(rtrn_type);
+  ResolveClassEnumType(rtrn_copy);
+  concrete.push_back(rtrn_copy);
+
+  MethodCall* func_def = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                           line_num, line_pos,
+                           ref->GetVariableName(), ref->GetMethodName(), func_params);
+  func_def->SetFunctionalReturn(TypeFactory::Instance()->MakeType(rtrn_copy));
+
+  static const wchar_t* const wrappers[] = { L"FuncRef", L"Func2Ref", L"Func3Ref", L"Func4Ref" };
+  ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+  args->AddExpression(func_def);
+  MethodCall* wrap = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                                                             NEW_INST_CALL, wrappers[param_types.size()], args);
+  wrap->SetConcreteTypes(concrete);
+  return wrap;
+}
+
+/****************************
+ * Collection literal: an array literal `[a, b, c]` where a Vector, CompareVector,
+ * IntVector or FloatVector is wanted (a declaration or assignment target, a
+ * `return`) is `Vector->New([a, b, c])<T>`, the constructor those classes already
+ * have for an array. The literal is typed by the target, so `v : Vector<IntRef> := [x, y]`
+ * needs neither the `->New(..)<IntRef>` nor an AddBack per element. The result is
+ * the long form the programmer would have written; anything else is unchanged.
+ ****************************/
+Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type* expected, const int depth)
+{
+  if(!expression || expression->GetExpressionType() != STAT_ARY_EXPR || !expected ||
+     expected->GetType() != CLASS_TYPE || expected->GetDimension() != 0) {
+    return expression;
+  }
+
+  const std::wstring name = expected->GetName();
+  const size_t dot = name.rfind(L'.');
+  const std::wstring bare = dot == std::wstring::npos ? name : name.substr(dot + 1);
+  const std::wstring scope = dot == std::wstring::npos ? L"" : name.substr(0, dot);
+  if(!(scope.empty() || scope == L"Collection") ||
+     !(bare == L"Vector" || bare == L"CompareVector" || bare == L"IntVector" || bare == L"FloatVector")) {
+    return expression;
+  }
+
+  const bool generic = bare == L"Vector" || bare == L"CompareVector";
+  const std::vector<Type*> generics = expected->GetGenerics();
+  if(generic != (generics.size() == 1)) {
+    return expression;
+  }
+
+  // The elements take their type from the target too.
+  if(generic && static_cast<StaticArray*>(expression)->GetDimension() == 1) {
+    Type* element_type = TypeFactory::Instance()->MakeType(generics[0]);
+    EntryType held = NIL_TYPE;
+    const std::wstring& element_name = element_type->GetName();
+    if(HolderPrimitive(element_type, held)) {
+      // A Vector of a holder ('v : Vector<IntRef> := [1, n, 3];'): each number is boxed as
+      // that holder where the array is built (AnalyzeDynamicArray), by the rule that boxes
+      // an argument: 'IntRef->New(1)'. Left as written, the array was an Int[] and the
+      // constructor's error said nothing of the elements.
+      static_cast<StaticArray*>(expression)->SetBoxAs(element_type);
+    }
+    else if(element_name == L"System.FuncRef" || element_name == L"FuncRef" ||
+            element_name == L"System.Func2Ref" || element_name == L"Func2Ref" ||
+            element_name == L"System.Func3Ref" || element_name == L"Func3Ref" ||
+            element_name == L"System.Func4Ref" || element_name == L"Func4Ref") {
+      // A Vector of function values ('[Text->Upper, Text->Twice]'): an element that names a
+      // function is the reference it would be as an argument (WrapMethodReferenceInFuncRef).
+      // One that cannot be (an overloaded name, a signature a FuncRef does not take) has been
+      // reported there; the literal is then replaced by Nil so that error is all there is.
+      ExpressionList* element_list = static_cast<StaticArray*>(expression)->GetElements();
+      const std::vector<Expression*> elements = element_list ? element_list->GetExpressions() : std::vector<Expression*>();
+      const size_t errors_before = diagnostics.ErrorCount();
+      for(size_t i = 0; i < elements.size(); ++i) {
+        Expression* reference = WrapMethodReferenceInFuncRef(elements[i], element_type, depth);
+        if(reference != elements[i]) {
+          element_list->SetExpression(reference, (int)i);
+        }
+      }
+      if(diagnostics.ErrorCount() != errors_before) {
+        return TreeFactory::Instance()->MakeNilLiteral(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition());
+      }
+      // an element built here is not a literal: the array is made when it is evaluated
+      static_cast<StaticArray*>(expression)->SetDynamic();
+    }
+  }
+
+  ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+  args->AddExpression(expression);
+  MethodCall* wrap = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+    expression->GetLinePosition(), expression->GetLineNumber(), expression->GetLinePosition(), NEW_INST_CALL, name, args);
+  if(generic) {
+    std::vector<Type*> concrete;
+    concrete.push_back(TypeFactory::Instance()->MakeType(generics[0]));
+    wrap->SetConcreteTypes(concrete);
+  }
+  return wrap;
+}
+
+/****************************
+ * The constructor call of a map literal ('{key: value, ...}', see
+ * Parser::ParseMapLiteral): the call its hidden local is declared with. Nil
+ * when the expression is not a map literal.
+ ****************************/
+MethodCall* ContextAnalyzer::MapLiteralConstructor(Expression* expression)
+{
+  if(!expression || expression->GetExpressionType() != STMT_SEQ_EXPR) {
+    return nullptr;
+  }
+
+  const std::vector<Statement*>& statements = static_cast<SequenceExpression*>(expression)->GetStatements();
+  if(statements.empty() || statements.front()->GetStatementType() != DECLARATION_STMT) {
+    return nullptr;
+  }
+
+  Assignment* assignment = static_cast<Declaration*>(statements.front())->GetAssignment();
+  if(!assignment || !assignment->GetExpression() || assignment->GetExpression()->GetExpressionType() != METHOD_CALL_EXPR) {
+    return nullptr;
+  }
+
+  MethodCall* constructor = static_cast<MethodCall*>(assignment->GetExpression());
+  if(constructor->GetCallType() != NEW_INST_CALL) {
+    return nullptr;
+  }
+
+  const std::wstring& name = constructor->GetVariableName();
+  return name == MAP_LITERAL_MARKER || name == MAP_LITERAL_REJECTED || constructor->IsMapLiteral() ? constructor : nullptr;
+}
+
+/****************************
+ * Gives a map literal its type: '{key: value, ...}' where a Map, Hash,
+ * OrderedHash, MultiMap, MultiHash, BiMap or IntMap is wanted (a declaration
+ * or assignment target, a 'return') constructs that class with the target's
+ * type arguments, as 'Map->New()<K, V>' written out would. The Insert calls
+ * are then resolved against it like any others, so a key or value of the
+ * wrong type is the error the long form gives. A map that keeps one value per
+ * key rejects a literal that writes the same constant key twice.
+ ****************************/
+void ContextAnalyzer::TypeMapLiteral(Expression* expression, Type* expected)
+{
+  MethodCall* constructor = MapLiteralConstructor(expression);
+  if(!constructor || constructor->GetVariableName() != MAP_LITERAL_MARKER || !expected || expected->GetType() == VAR_TYPE) {
+    return;
+  }
+
+  std::wstring bare;
+  bool generic = true;
+  if(expected->GetType() == CLASS_TYPE && expected->GetDimension() == 0) {
+    const std::wstring name = expected->GetName();
+    const size_t dot = name.rfind(L'.');
+    const std::wstring scope = dot == std::wstring::npos ? L"" : name.substr(0, dot);
+    if(scope.empty() || scope == L"Collection") {
+      bare = dot == std::wstring::npos ? name : name.substr(dot + 1);
+    }
+  }
+
+  bool unique_keys = true;
+  if(bare == L"MultiMap" || bare == L"MultiHash") {
+    unique_keys = false;
+  }
+  else if(bare == L"IntMap") {
+    generic = false;
+  }
+  else if(bare != L"Map" && bare != L"Hash" && bare != L"OrderedHash" && bare != L"BiMap") {
+    bare.clear();
+  }
+
+  const std::vector<Type*> generics = expected->GetGenerics();
+  if(bare.empty() || (generic ? generics.size() != 2 : !generics.empty())) {
+    constructor->SetVariableName(MAP_LITERAL_REJECTED);
+    ProcessError(expression, L"A map literal makes a Map, Hash, OrderedHash, MultiMap, MultiHash, BiMap or IntMap; here it is wanted as " +
+                 DescribeType(expected));
+    // typed as what was wanted, so the assignment has nothing to add
+    expression->SetEvalType(expected, false);
+    return;
+  }
+
+  constructor->SetVariableName(expected->GetName());
+  constructor->SetMapLiteral();
+  if(generic) {
+    std::vector<Type*> concrete;
+    concrete.push_back(TypeFactory::Instance()->MakeType(generics[0]));
+    concrete.push_back(TypeFactory::Instance()->MakeType(generics[1]));
+    constructor->SetConcreteTypes(concrete);
+  }
+
+  // A constructor call that is the value of an entry and leaves out its type arguments
+  // ('{"odds": Vector->New()}') is stored into the map as its value type, which is declared:
+  // the call takes its type arguments from there, as 'v : Vector<IntRef> := Vector->New();'
+  // takes them from 'v' (InferNewTypeArguments, rule 1). The entries are analyzed later, as the
+  // statements of the literal, so each call is noted with the type it is stored as.
+  if(generic && generics[1]->GetType() == CLASS_TYPE && generics[1]->GetDimension() == 0 && generics[1]->HasGenerics()) {
+    const std::vector<Statement*>& entries = static_cast<SequenceExpression*>(expression)->GetStatements();
+    for(size_t i = 1; i < entries.size(); ++i) {
+      if(entries[i]->GetStatementType() != METHOD_CALL_STMT) {
+        continue;
+      }
+      ExpressionList* entry_args = static_cast<MethodCall*>(entries[i])->GetCallingParameters();
+      if(!entry_args || entry_args->GetExpressions().size() != 2 || entry_args->GetExpressions()[1]->GetExpressionType() != METHOD_CALL_EXPR) {
+        continue;
+      }
+
+      // only the constructed object itself, as for a declared variable (ExpectNewType)
+      MethodCall* value = static_cast<MethodCall*>(entry_args->GetExpressions()[1]);
+      if(value->GetCallType() == NEW_INST_CALL && value->GetConcreteTypes().empty() && !value->GetMethodCall() && !value->GetCastType()) {
+        expected_entry_types[value] = generics[1];
+      }
+    }
+  }
+
+  // the same constant key twice: the second would replace the first without a word
+  if(unique_keys) {
+    std::set<std::wstring> seen;
+    const std::vector<Statement*>& statements = static_cast<SequenceExpression*>(expression)->GetStatements();
+    for(size_t i = 1; i < statements.size(); ++i) {
+      if(statements[i]->GetStatementType() != METHOD_CALL_STMT) {
+        continue;
+      }
+      ExpressionList* args = static_cast<MethodCall*>(statements[i])->GetCallingParameters();
+      if(!args || args->GetExpressions().empty()) {
+        continue;
+      }
+
+      Expression* key = args->GetExpressions().front();
+      if(key->GetMethodCall() || key->GetCastType()) {
+        continue;
+      }
+
+      std::wstring text;
+      switch(key->GetExpressionType()) {
+      case CHAR_STR_EXPR:
+        // an interpolated string is not a constant
+        if(static_cast<CharacterString*>(key)->GetString().find(L"{$") == std::wstring::npos) {
+          text = L'"' + static_cast<CharacterString*>(key)->GetString() + L'"';
+        }
+        break;
+
+      case INT_LIT_EXPR:
+        text = std::to_wstring(static_cast<IntegerLiteral*>(key)->GetValue());
+        break;
+
+      case CHAR_LIT_EXPR:
+        text = std::wstring(L"'") + static_cast<CharacterLiteral*>(key)->GetValue() + L"'";
+        break;
+
+      default:
+        break;
+      }
+
+      if(!text.empty() && !seen.insert(text).second) {
+        ProcessError(key, L"This map literal has the key " + text + L" twice");
+      }
+    }
+  }
+}
+
+/****************************
  * Analyzes a lambda function
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
@@ -2859,6 +3360,10 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const in
     case RETURN_STMT:
       return true;
 
+    // the body is the statement's value: it closes on the way out and returns
+    case USING_STMT:
+      return AnalyzeReturnPaths(static_cast<Using*>(last_statement)->GetBody(), depth + 1);
+
     case TRY_STMT: {
       // an error no handler takes is raised again, so only the body and the
       // handlers need to return (#1247)
@@ -3130,6 +3635,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       AnalyzeTry(static_cast<Try*>(statement), depth);
       break;
 
+    case USING_STMT:
+      AnalyzeUsing(static_cast<Using*>(statement), depth);
+      break;
+
     default:
       ProcessError(statement, L"Undefined statement");
       break;
@@ -3196,6 +3705,10 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 
       case COND_EXPR:
         AnalyzeConditional(static_cast<Cond*>(expression), depth);
+        break;
+
+      case STMT_SEQ_EXPR:
+        AnalyzeSequence(static_cast<SequenceExpression*>(expression), depth);
         break;
 
       case METHOD_CALL_EXPR:
@@ -3528,6 +4041,66 @@ static int FirstFreeHiddenIndex(SymbolTable* table, const std::wstring& prefix)
 }
 
 /****************************
+ * Analyzes statements that run where
+ * an expression is evaluated, and the
+ * value they leave in a hidden local
+ ****************************/
+void ContextAnalyzer::AnalyzeSequence(SequenceExpression* sequence, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"sequence expression", sequence->GetLineNumber(), depth);
+#endif
+
+  // once: the statements declare and assign, which a second visit would repeat
+  if(sequence->IsAnalyzed()) {
+    return;
+  }
+  sequence->SetAnalyzed();
+
+  // A map literal that nothing gave a type (or that an error has already been
+  // reported for) has no class to construct: say so once, and give the value a
+  // type so what uses it has nothing to add.
+  MethodCall* map_constructor = MapLiteralConstructor(sequence);
+  if(map_constructor && !map_constructor->IsMapLiteral()) {
+    if(map_constructor->GetVariableName() == MAP_LITERAL_MARKER) {
+      ProcessError(sequence, L"A map literal takes its type from the variable it is assigned to or the method it is returned from; "
+                   L"here it has neither, so declare one first, as in 'm : Map<String, IntRef> := {\"a\": 1};'");
+    }
+    if(!sequence->GetEvalType()) {
+      sequence->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base"), false);
+    }
+    return;
+  }
+
+  // The statements are analyzed from inside the enclosing statement (an
+  // assignment, a return, a call argument). Left set, its flags would make
+  // RogueReturn() treat a standalone call among them as a used value, and the
+  // result would stay on the operand stack (as for a lambda body).
+  const bool outer_in_assignment = in_assignment;
+  const bool outer_in_return = in_return;
+  const int outer_expression_depth = expression_depth;
+  const int outer_nested_call_depth = nested_call_depth;
+  in_assignment = in_return = false;
+  expression_depth = nested_call_depth = 0;
+
+  const std::vector<Statement*>& statements = sequence->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    AnalyzeStatement(statements[i], depth + 1);
+  }
+
+  in_assignment = outer_in_assignment;
+  in_return = outer_in_return;
+  expression_depth = outer_expression_depth;
+  nested_call_depth = outer_nested_call_depth;
+
+  Expression* value = sequence->GetValue();
+  AnalyzeExpression(value, depth + 1);
+  if(value->GetEvalType()) {
+    sequence->SetEvalType(value->GetEvalType(), false);
+  }
+}
+
+/****************************
  * Analyzes a character literal
  ****************************/
 void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth)
@@ -3810,6 +4383,52 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
     types.push_back(type);
   }
 
+  // The literal of a Vector or CompareVector of a holder (WrapCollectionLiteral): every
+  // number is boxed as that holder, by the rule for an argument (an Int or a Float for an
+  // IntRef or a FloatRef, converted as an assignment converts it; a Bool only for a
+  // BoolRef). The array is then an array of the holder, as if each 'IntRef->New(..)' had
+  // been written, and the numbers need not be of one type.
+  if(array->GetBoxAs() && !row_type && primitive_type) {
+    Type* holder_type = TypeFactory::Instance()->MakeType(array->GetBoxAs());
+    EntryType held = NIL_TYPE;
+    if(HolderPrimitive(holder_type, held)) {
+      const std::wstring holder = PlainTypeName(FormatTypeString(holder_type->GetName()));
+      for(size_t i = 0; i < elements.size(); ++i) {
+        switch(types[i]->GetType()) {
+        case BOOLEAN_TYPE:
+        case BYTE_TYPE:
+        case CHAR_TYPE:
+        case INT_TYPE:
+        case FLOAT_TYPE: {
+          Expression* boxed = PrimitiveConverts(held, types[i]->GetType()) ?
+            BoxExpression(TypeFactory::Instance()->MakeType(holder_type), elements[i], depth + 1) : nullptr;
+          if(boxed) {
+            array->GetElements()->SetExpression(boxed, (int)i);
+          }
+          else {
+            // said once, at the element; the array is still typed as the holder's so that
+            // nothing follows from it
+            ProcessError(elements[i], L"This element of the collection literal is " + DescribeType(types[i]) + L", which " + holder +
+                         L" does not hold: the elements are boxed as " + holder +
+                         (held == BOOLEAN_TYPE ? L", which is made from a Bool only" : L", which is made from a number, not from a Bool"));
+          }
+        }
+          break;
+
+        default:
+          break;
+        }
+      }
+
+      if(class_type && class_type->GetName() != holder_type->GetName()) {
+        mixed_classes = true;
+      }
+      class_type = holder_type;
+      primitive_type = nullptr;
+      mismatched_primitive = nullptr;
+    }
+  }
+
   // an enum value is an Int at run time: it neither boxes into a Base[] nor
   // has a Nil
   const bool is_enum = class_type && HasProgramOrLibraryEnum(class_type->GetName());
@@ -3942,7 +4561,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 
   // an element that is not a literal, or literals of an object and a primitive
   // ('["a", 1]'): built at run time (#1245)
-  if(array->IsDynamic() || (!array->IsMatchingTypes() && array->GetDimension() == 1)) {
+  if(array->IsDynamic() || array->GetBoxAs() || (!array->IsMatchingTypes() && array->GetDimension() == 1)) {
     AnalyzeDynamicArray(array, depth);
     return;
   }
@@ -4174,7 +4793,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     }
 
     // static check
-    if(InvalidStatic(entry)) {
+    if(InvalidStatic(entry) && !CaptureLambdaSelf(variable, entry)) {
       ProcessError(variable, L"Cannot reference an instance variable from this context");
     }
   }
@@ -4777,7 +5396,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
                        VariableSuggestion(variable_name));
         }
         else {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" + BundleSuggestion(variable_name));
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" +
+                       (variable_name == L"API.LlmUtil.Prompt" ? std::wstring(L"\n\tA prompt literal is made with the llm_util library: compile with -lib llm_util,regex,json,gen_collect")
+                                                               : BundleSuggestion(variable_name)));
         }
         undefined_classes.insert(variable_name);
       }
@@ -5259,6 +5880,11 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       AnalyzeCurriedCall(expression, method_call, depth);
     }
     else {
+      // a hole of a prompt literal is checked before the call that fills it
+      if(method_call->GetPromptHole()) {
+        AnalyzePromptHole(method_call, depth);
+      }
+
       // track rouge return
       ++nested_call_depth;
 
@@ -5343,6 +5969,65 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       --nested_call_depth;
       RogueReturn(method_call);
     }
+  }
+}
+
+/****************************
+ * A hole of a prompt literal, '{name}' or '{name : Type}', lowered by the parser
+ * to 'Slot("name", name)' (docs/design/AGENT_SYNTAX.md). The variable must exist
+ * and hold a String, Int, Float, Bool, Char or Byte, and a declared type must be
+ * the variable's type exactly. An error is reported at the hole; the value is
+ * then replaced by an empty string, so the call resolves and the holes after it
+ * are still checked.
+ ****************************/
+void ContextAnalyzer::AnalyzePromptHole(MethodCall* method_call, const int depth)
+{
+  ExpressionList* arguments = method_call->GetCallingParameters();
+  if(!arguments || arguments->GetExpressions().size() != 2 || arguments->GetExpressions()[1]->GetExpressionType() != VAR_EXPR) {
+    return;
+  }
+  Variable* variable = static_cast<Variable*>(arguments->GetExpressions()[1]);
+  const std::wstring name = variable->GetName();
+
+  AnalyzeExpression(variable, depth + 1);
+  Type* type = variable->GetEvalType();
+
+  // a name that is not declared has been reported as that, and has no type to check
+  bool valid = false;
+  if(type && type->GetType() != VAR_TYPE) {
+    // what the hole's value is: 2 String, 3 Int, 4 Float, 5 Bool, 6 Char, 7 Byte, as MethodCall::GetPromptHole
+    int found = 0;
+    if(type->GetDimension() == 0) {
+      switch(type->GetType()) {
+      case CLASS_TYPE:
+        found = (type->GetName() == L"System.String" || type->GetName() == L"String") ? 2 : 0;
+        break;
+      case INT_TYPE: found = 3; break;
+      case FLOAT_TYPE: found = 4; break;
+      case BOOLEAN_TYPE: found = 5; break;
+      case CHAR_TYPE: found = 6; break;
+      case BYTE_TYPE: found = 7; break;
+      default: break;
+      }
+    }
+
+    static const wchar_t* const names[] = { L"", L"", L"String", L"Int", L"Float", L"Bool", L"Char", L"Byte" };
+    const int declared = method_call->GetPromptHole();
+    if(!found) {
+      ProcessError(static_cast<Expression*>(method_call), L"The prompt hole '{" + name + L"}' cannot take '" + name + L"', which is " + DescribeType(type) +
+                   L": a hole takes a String, Int, Float, Bool, Char or Byte\n\tPut the text to send in a String variable first, then name that variable in the hole");
+    }
+    else if(declared > 1 && declared != found) {
+      ProcessError(static_cast<Expression*>(method_call), L"The prompt hole '{" + name + L" : " + names[declared] + L"}' declares " + names[declared] +
+                   L", but '" + name + L"' is " + DescribeType(type));
+    }
+    else {
+      valid = true;
+    }
+  }
+
+  if(!valid) {
+    arguments->SetExpression(TreeFactory::Instance()->MakeCharacterString(variable->GetFileName(), variable->GetLineNumber(), variable->GetLinePosition(), L"", true), 1);
   }
 }
 
@@ -5514,6 +6199,74 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
 }
 
 /*********************************
+ * The types analysis has given
+ * each argument (at the end of its
+ * call chain), and their return
+ *********************************/
+std::vector<ContextAnalyzer::ArgumentTypes> ContextAnalyzer::SaveArgumentTypes(const std::vector<Expression*> &arguments)
+{
+  std::vector<ArgumentTypes> saved;
+  for(size_t i = 0; i < arguments.size(); ++i) {
+    Expression* last = arguments[i];
+    while(last && last->GetMethodCall()) {
+      last = last->GetMethodCall();
+    }
+    if(last) {
+      ArgumentTypes types;
+      types.expression = last;
+      last->GetTypeState(types.base_type, types.eval_type, types.cast_type);
+      types.to_class = last->GetToClass();
+      types.to_lib_class = last->GetToLibraryClass();
+      saved.push_back(types);
+    }
+  }
+
+  return saved;
+}
+
+void ContextAnalyzer::RestoreArgumentTypes(const std::vector<ArgumentTypes> &saved)
+{
+  for(size_t i = 0; i < saved.size(); ++i) {
+    saved[i].expression->SetTypeState(saved[i].base_type, saved[i].eval_type, saved[i].cast_type);
+    saved[i].expression->SetToClass(saved[i].to_class);
+    saved[i].expression->SetToLibraryClass(saved[i].to_lib_class);
+  }
+}
+
+/*********************************
+ * A holder variable passed for a
+ * primitive parameter: the argument
+ * becomes the call that reads its
+ * value. (A call's result is
+ * unboxed in place.)
+ *********************************/
+void ContextAnalyzer::UnboxedArgument(MethodCall* method_call, const size_t index, Expression* argument, Type* parameter, Expression* unboxed)
+{
+  if(!unboxed || !argument || !parameter || parameter->GetDimension() > 0 || argument->GetExpressionType() != VAR_EXPR ||
+     unboxed == argument) {
+    return;
+  }
+
+  switch(parameter->GetType()) {
+  case BOOLEAN_TYPE:
+  case BYTE_TYPE:
+  case CHAR_TYPE:
+  case INT_TYPE:
+  case FLOAT_TYPE:
+    break;
+
+  default:
+    return;
+  }
+
+  std::vector<Expression*> arguments = method_call->GetCallingParameters()->GetExpressions();
+  if(index < arguments.size() && arguments[index] == argument) {
+    arguments[index] = unboxed;
+    method_call->GetCallingParameters()->SetExpressions(arguments);
+  }
+}
+
+/*********************************
  * Resolve method call parameter
  *********************************/
 int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type, Class* klass, 
@@ -5619,6 +6372,16 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
                SearchLibraryEnums(calling_type->GetName(), program->GetLibUses())) {
               return 1;
             }
+          }
+
+          // a holder for a primitive parameter is its value: an IntRef for an
+          // Int (2), or for a Float once converted (3). It fits less well than
+          // an argument that needs no unboxing.
+          EntryType held;
+          if(method_type->GetType() != CLASS_TYPE && method_type->GetType() != FUNC_TYPE && method_type->GetDimension() == 0 &&
+             HolderPrimitive(calling_type, held) &&
+             PrimitiveConverts(method_type->GetType(), held)) {
+            return held == method_type->GetType() ? 2 : 3;
           }
 
           return -1;
@@ -6136,6 +6899,312 @@ Type* ContextAnalyzer::BoxedBindingType(Type* type)
 }
 
 /****************************
+ * Notes the declared type a
+ * constructor call is about to
+ * be stored into or returned as,
+ * when the call names a class
+ * and leaves out '<..>'
+ ****************************/
+void ContextAnalyzer::ExpectNewType(Expression* expression, Type* type, bool is_element)
+{
+  expected_new_call = nullptr;
+  expected_new_type = nullptr;
+
+  if(!expression || !type || expression->GetExpressionType() != METHOD_CALL_EXPR) {
+    return;
+  }
+
+  MethodCall* method_call = static_cast<MethodCall*>(expression);
+  // only the constructed object itself: not 'X->New()->Call()' and not a cast of it
+  if(method_call->GetCallType() != NEW_INST_CALL || !method_call->GetConcreteTypes().empty() ||
+     method_call->GetMethodCall() || method_call->GetCastType()) {
+    return;
+  }
+
+  if(type->GetType() != CLASS_TYPE || !type->HasGenerics()) {
+    return;
+  }
+
+  // a plain variable, or one element of an array
+  if((type->GetDimension() > 0) != is_element) {
+    return;
+  }
+
+  expected_new_call = method_call;
+  expected_new_type = type;
+}
+
+/****************************
+ * A type argument as it would
+ * have been written: a class's
+ * own bounded parameter reads as
+ * its bound once it is resolved,
+ * and is put back to its name
+ ****************************/
+Type* ContextAnalyzer::WrittenTypeArgument(Type* type)
+{
+  const std::wstring name = type->GetClassGeneric().empty() ? type->GetName() : type->GetClassGeneric();
+  Type* written = TypeFactory::Instance()->MakeType(CLASS_TYPE, name, type->GetFileName(), type->GetLineNumber(), type->GetLinePosition());
+  if(type->GetType() != CLASS_TYPE) {
+    return TypeFactory::Instance()->MakeType(type);
+  }
+
+  std::vector<Type*> generics = type->GetGenerics();
+  for(size_t i = 0; i < generics.size(); ++i) {
+    generics[i] = WrittenTypeArgument(generics[i]);
+  }
+  written->SetGenerics(generics);
+
+  return written;
+}
+
+/****************************
+ * Binds a class's type parameter
+ * by matching a constructor
+ * parameter's type against the
+ * argument's: 'T' and
+ * 'C<.., T, ..>'
+ ****************************/
+bool ContextAnalyzer::UnifyClassGeneric(Type* param, Type* arg, int arg_dimension, Class* klass, LibraryClass* lib_klass,
+                                        std::vector<Type*> &bindings, std::wstring &error)
+{
+  if(!param || !arg || param->GetType() != CLASS_TYPE) {
+    return true;
+  }
+
+  const std::wstring param_name = param->GetClassGeneric().empty() ? param->GetName() : param->GetClassGeneric();
+  const int index = klass ? klass->GenericIndex(param_name) : lib_klass->GenericIndex(param_name);
+  if(index > -1 && index < (int)bindings.size()) {
+    // 'Nil' and an array say nothing about 'T'
+    if(arg->GetType() == NIL_TYPE || param->GetDimension() != arg_dimension) {
+      return true;
+    }
+
+    Type* scalar = TypeFactory::Instance()->MakeType(arg);
+    scalar->SetDimension(0);
+    // a primitive is held by its class, as it is when the type argument is written
+    Type* boxed = BoxedBindingType(scalar);
+    if(boxed->GetType() != CLASS_TYPE) {
+      return true;
+    }
+
+    // resolving renames a type in place (a bounded parameter reads as its
+    // bound), so the type that is kept is one that was not resolved
+    if(!ResolveClassEnumType(WrittenTypeArgument(boxed))) {
+      return true;
+    }
+    Type* binding = WrittenTypeArgument(boxed);
+
+    if(!bindings[index]) {
+      bindings[index] = binding;
+    }
+    else if(FormatGenericType(bindings[index]) != FormatGenericType(binding)) {
+      error = L"type parameter '" + param_name + L"' is both '" + FormatGenericType(bindings[index]) +
+        L"' and '" + FormatGenericType(binding) + L"'";
+      return false;
+    }
+    return true;
+  }
+
+  // C<.., T, ..>: match the type arguments pairwise, when it is the same class
+  if(arg->GetType() != CLASS_TYPE || param->GetDimension() != arg_dimension) {
+    return true;
+  }
+
+  const std::vector<Type*> param_generics = param->GetGenerics();
+  const std::vector<Type*> arg_generics = arg->GetGenerics();
+  if(param_generics.empty() || param_generics.size() != arg_generics.size()) {
+    return true;
+  }
+
+  Type* param_class = TypeFactory::Instance()->MakeType(CLASS_TYPE, param->GetName());
+  Type* arg_class = TypeFactory::Instance()->MakeType(CLASS_TYPE, arg->GetName());
+  const bool param_found = klass ? ResolveClassEnumType(param_class, klass) : ResolveClassEnumType(param_class);
+  if(!param_found || !ResolveClassEnumType(arg_class) || param_class->GetName() != arg_class->GetName()) {
+    return true;
+  }
+
+  for(size_t i = 0; i < param_generics.size(); ++i) {
+    if(!UnifyClassGeneric(param_generics[i], arg_generics[i], arg_generics[i]->GetDimension(), klass, lib_klass, bindings, error)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
+ * Gives a constructor call of a
+ * generic class the type
+ * arguments that were not
+ * written. In order:
+ *
+ *  1. the declared type the object
+ *     is stored into or returned
+ *     as, when it is the same
+ *     class: 'v : Vector<Foo> :=
+ *     Vector->New();'
+ *  2. the arguments, when one
+ *     constructor takes that many:
+ *     'Pair->New(a, b)'
+ *
+ * The result is set as if '<..>'
+ * had been written, so every check
+ * that follows is the one an
+ * explicit call gets. Returns false
+ * after reporting that the
+ * arguments do not settle them.
+ ****************************/
+bool ContextAnalyzer::InferNewTypeArguments(Class* klass, LibraryClass* lib_klass, MethodCall* method_call, const int depth)
+{
+  if(method_call->GetCallType() != NEW_INST_CALL || !method_call->GetConcreteTypes().empty()) {
+    return true;
+  }
+
+  const size_t generic_count = klass ? klass->GetGenericClasses().size() : lib_klass->GetGenericClasses().size();
+  if(!generic_count || (klass && klass->GetAnonymousCall()) || !GetConcreteTypes(method_call).empty()) {
+    return true;
+  }
+
+  const std::wstring class_name = klass ? klass->GetName() : lib_klass->GetName();
+
+  // 1. the declared type: of the variable, field, element or return the call is stored as,
+  // or of the map whose literal has the call as an entry's value
+  Type* declared = nullptr;
+  if(expected_new_call == method_call && expected_new_type) {
+    declared = expected_new_type;
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
+  }
+  else {
+    std::map<MethodCall*, Type*>::iterator noted = expected_entry_types.find(method_call);
+    if(noted != expected_entry_types.end()) {
+      declared = noted->second;
+      expected_entry_types.erase(noted);
+    }
+  }
+
+  if(declared) {
+    Type* expected = declared;
+
+    Class* expected_klass = nullptr; LibraryClass* expected_lib_klass = nullptr;
+    if(ResolveClassEnumType(expected) && GetProgramOrLibraryClass(expected, expected_klass, expected_lib_klass) &&
+       expected_klass == klass && expected_lib_klass == lib_klass && expected->GetGenerics().size() == generic_count) {
+      std::vector<Type*> concrete_types;
+      const std::vector<Type*> expected_generics = expected->GetGenerics();
+      for(size_t i = 0; i < expected_generics.size(); ++i) {
+        concrete_types.push_back(WrittenTypeArgument(expected_generics[i]));
+      }
+      method_call->SetConcreteTypes(concrete_types);
+      return true;
+    }
+  }
+
+  // 2. the arguments
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  if(!call_params || call_params->HasNames()) {
+    return true;
+  }
+
+  const std::vector<Expression*> arguments = call_params->GetExpressions();
+  if(arguments.empty()) {
+    return true;
+  }
+
+  // the parameter types of the constructors that take this many arguments
+  std::vector<std::vector<Type*> > candidates;
+  if(klass) {
+    std::vector<Method*> constructors = klass->GetUnqualifiedMethods(L"New");
+    for(size_t i = 0; i < constructors.size(); ++i) {
+      std::vector<Declaration*> declarations = constructors[i]->GetDeclarations()->GetDeclarations();
+      if(declarations.size() == arguments.size()) {
+        std::vector<Type*> params;
+        for(size_t j = 0; j < declarations.size(); ++j) {
+          params.push_back(declarations[j]->GetEntry() ? declarations[j]->GetEntry()->GetType() : nullptr);
+        }
+        candidates.push_back(params);
+      }
+    }
+  }
+  else {
+    std::vector<LibraryMethod*> constructors = lib_klass->GetUnqualifiedMethods(L"New");
+    for(size_t i = 0; i < constructors.size(); ++i) {
+      std::vector<Type*> params = constructors[i]->GetDeclarationTypes();
+      if(params.size() == arguments.size()) {
+        candidates.push_back(params);
+      }
+    }
+  }
+
+  // none: the call is reported as it always was
+  if(candidates.empty()) {
+    return true;
+  }
+
+  // Each constructor that takes this many arguments is matched against them.
+  // One that leaves a type parameter without a class, or gives one two
+  // classes, says nothing. The type arguments are settled when every
+  // constructor that says something says the same.
+  const std::wstring written = FormatTypeString(class_name) + L"->New(..)<..>";
+  std::wstring first_error;
+  std::vector<Type*> bindings;
+  for(size_t c = 0; c < candidates.size(); ++c) {
+    std::wstring error;
+    std::vector<Type*> candidate_bindings(generic_count, nullptr);
+    const std::vector<Type*> params = candidates[c];
+    bool settled = true;
+    for(size_t i = 0; settled && i < params.size(); ++i) {
+      Type* arg = arguments[i]->GetExpressionType() == LAMBDA_EXPR ? nullptr : GetExpressionType(arguments[i], depth + 1);
+      if(!arg) {
+        continue;
+      }
+      const int arg_dimension = IsScalar(arguments[i]) ? 0 : arg->GetDimension();
+      settled = UnifyClassGeneric(params[i], arg, arg_dimension, klass, lib_klass, candidate_bindings, error);
+    }
+
+    for(size_t i = 0; settled && i < candidate_bindings.size(); ++i) {
+      if(!candidate_bindings[i]) {
+        const std::wstring generic_name = klass ? klass->GetGenericClasses()[i]->GetName() : lib_klass->GetGenericClasses()[i]->GetName();
+        error = L"no argument gives type parameter '" + FormatTypeString(generic_name) + L"' a class";
+        settled = false;
+      }
+    }
+
+    if(!settled) {
+      if(first_error.empty()) {
+        first_error = error;
+      }
+      continue;
+    }
+
+    if(bindings.empty()) {
+      bindings = candidate_bindings;
+      continue;
+    }
+
+    for(size_t i = 0; i < bindings.size(); ++i) {
+      if(FormatGenericType(bindings[i]) != FormatGenericType(candidate_bindings[i])) {
+        const std::wstring generic_name = klass ? klass->GetGenericClasses()[i]->GetName() : lib_klass->GetGenericClasses()[i]->GetName();
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot infer the type arguments of '" + FormatTypeString(class_name) +
+                     L"': its constructors make type parameter '" + FormatTypeString(generic_name) + L"' both '" +
+                     FormatGenericType(bindings[i]) + L"' and '" + FormatGenericType(candidate_bindings[i]) +
+                     L"'\n\tWrite them: " + written);
+        return false;
+      }
+    }
+  }
+
+  if(bindings.empty()) {
+    ProcessError(static_cast<Expression*>(method_call), L"Cannot infer the type arguments of '" + FormatTypeString(class_name) +
+                 L"': " + first_error + L"\n\tWrite them: " + written);
+    return false;
+  }
+
+  method_call->SetConcreteTypes(bindings);
+  return true;
+}
+
+/****************************
  * Resolves method calls
  ****************************/
 Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth, Type* receiver)
@@ -6149,6 +7218,11 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
   // save all valid candidates; a generic method's type arguments, per candidate (#1242)
   std::vector<MethodCallSelection*> matches;
+  // Boxing an argument for one method analyzes 'IntRef->New(arg)', which casts
+  // 'arg' for that constructor. Each method is tried against the arguments
+  // as they were written, and so is the one that is chosen.
+  const std::vector<ArgumentTypes> written_types = SaveArgumentTypes(expr_params);
+  bool any_boxed = false;
   std::map<Method*, std::map<std::wstring, Type*> > candidate_bindings;
   std::wstring generic_error;
   for(size_t i = 0; i < candidates.size(); ++i) {
@@ -6172,15 +7246,24 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       }
 
       // box and unbox parameters
+      if(any_boxed) {
+        RestoreArgumentTypes(written_types);
+      }
       std::vector<Expression*> boxed_resolved_params;
+      std::vector<int> box_ranks;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         // cannot be set to method, need to preserve test against other selections
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
         Type* method_type = SubstituteMethodGenerics(ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false), bindings);
 
-        Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
+        // a primitive its holder cannot take (an Int for a BoolRef) is not
+        // boxed: this method does not fit, and another may
+        const int box_rank = BoxingRank(method_type, expr_param, depth);
+        Expression* boxed_param = box_rank < 0 ? nullptr : BoxExpression(method_type, expr_param, depth);
+        box_ranks.push_back(boxed_param ? (box_rank > 0 ? box_rank : 2) : 0);
         if(boxed_param) {
+          any_boxed = true;
           boxed_resolved_params.push_back(boxed_param);
         }
         else if((boxed_param = UnboxingExpression(expr_type, expr_param, false, depth))) {
@@ -6199,17 +7282,25 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       MethodCallSelection* match = new MethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         Type* method_type = SubstituteMethodGenerics(ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false), bindings);
-        // add parameter match
-        const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
+        // add parameter match: a boxed argument fits, but less well than one
+        // that is the parameter's type or converts to it
+        const int compare = box_ranks[j] ? box_ranks[j] : MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
     }
   }
 
+  if(any_boxed) {
+    RestoreArgumentTypes(written_types);
+  }
+
   // evaluate matches
   MethodCallSelector selector(method_call, matches);
   Method* method = selector.GetSelection();
+  if(selector.IsAmbiguous()) {
+    ProcessAmbiguousCall(method_call, selector.GetValidMethodNames());
+  }
   if(method) {
     std::map<Method*, std::map<std::wstring, Type*> >::iterator bound = candidate_bindings.find(method);
     if(bound != candidate_bindings.end()) {
@@ -6232,7 +7323,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       // erase/resolve type
       Type* left = SubstituteMethodGenerics(ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false),
                                             method_call->GetMethodGenericBindings());
-      AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
+      UnboxedArgument(method_call, j, expr_params[j], left, AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1));
     }
   }
   else if(!generic_error.empty() && matches.empty()) {
@@ -6286,6 +7377,12 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
   if(!TakeParamsAnalyzed(method_call)) {
     AnalyzeExpressions(call_params, depth + 1);
+  }
+
+  // 'Pair->New(a, b)' and 'v : Vector<Foo> := Vector->New()': the type
+  // arguments that were not written
+  if(!InferNewTypeArguments(klass, nullptr, method_call, depth)) {
+    return;
   }
 
   // named arguments bind to the forwarder generated for the call's shape (#1244)
@@ -6498,7 +7595,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     // static check
     if(!is_expr && InvalidStatic(method_call, method)) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context" +
+                   std::wstring(current_method && current_method->IsLambda() ? L"\n\tIn a lambda, call it through the instance: @self->" + method_call->GetMethodName() + L"(..)" : L""));
     }
     
     // cannot create an instance of a virtual class
@@ -6606,7 +7704,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
-    if(mthd_name.size() > 0) {
+    if(ReportJsonLiteralValue(method_call) || ReportMapLiteralEntry(method_call)) {
+      // said in terms of the literal
+    }
+    else if(mthd_name.size() > 0) {
       std::wstring message = L"Undefined function/method call: '" +
         mthd_name + L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
@@ -6635,6 +7736,11 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
   // save all valid candidates; a generic method's type arguments, per candidate (#1242)
   std::vector<LibraryMethodCallSelection*> matches;
+  // Boxing an argument for one method analyzes 'IntRef->New(arg)', which casts
+  // 'arg' for that constructor. Each method is tried against the arguments
+  // as they were written, and so is the one that is chosen.
+  const std::vector<ArgumentTypes> written_types = SaveArgumentTypes(expr_params);
+  bool any_boxed = false;
   std::map<LibraryMethod*, std::map<std::wstring, Type*> > candidate_bindings;
   std::wstring generic_error;
   for(size_t i = 0; i < candidates.size(); ++i) {
@@ -6656,14 +7762,22 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       }
 
       // box and unbox parameters
+      if(any_boxed) {
+        RestoreArgumentTypes(written_types);
+      }
       std::vector<Expression*> boxed_resolved_params;
+      std::vector<int> box_ranks;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
         Type* method_type = SubstituteAlong(method_parms[j + offset], ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false), bindings);
 
-        Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
+        // see the program-class path
+        const int box_rank = BoxingRank(method_type, expr_param, depth);
+        Expression* boxed_param = box_rank < 0 ? nullptr : BoxExpression(method_type, expr_param, depth);
+        box_ranks.push_back(boxed_param ? (box_rank > 0 ? box_rank : 2) : 0);
         if(boxed_param) {
+          any_boxed = true;
           boxed_resolved_params.push_back(boxed_param);
         }
         else if((boxed_param = UnboxingExpression(expr_type, expr_param, false, depth))) {
@@ -6682,16 +7796,23 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         Type* method_type = SubstituteAlong(method_parms[j + offset], ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false), bindings);
-        const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
+        const int compare = box_ranks[j] ? box_ranks[j] : MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
     }
   }
 
+  if(any_boxed) {
+    RestoreArgumentTypes(written_types);
+  }
+
   // evaluate matches
   LibraryMethodCallSelector selector(method_call, matches);
   LibraryMethod* lib_method = selector.GetSelection();
+  if(selector.IsAmbiguous()) {
+    ProcessAmbiguousCall(method_call, selector.GetValidMethodNames());
+  }
   if(lib_method) {
     std::map<LibraryMethod*, std::map<std::wstring, Type*> >::iterator bound = candidate_bindings.find(lib_method);
     if(bound != candidate_bindings.end()) {
@@ -6713,7 +7834,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       // map generic to concrete type, if needed
       Type* left = SubstituteAlong(method_parms[j + offset], ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false),
                                    method_call->GetMethodGenericBindings());
-      AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
+      UnboxedArgument(method_call, j, expr_params[j], left, AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1));
     }
 
     // public/private check
@@ -7048,6 +8169,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   if(!TakeParamsAnalyzed(method_call)) {
     AnalyzeExpressions(call_params, depth + 1);
   }
+
+  // the type arguments that were not written (see the program-class path)
+  if(!InferNewTypeArguments(nullptr, klass, method_call, depth)) {
+    return;
+  }
+
   // named arguments, through the parameter names the .obl records (#1244). The
   // method may be one this class inherits from a library parent.
   if(call_params->HasNames()) {
@@ -7081,6 +8208,22 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
     if(klass->GetUnqualifiedMethods(L"New").empty()) {
       ProcessError(static_cast<Expression*>(method_call), L"Class '" + klass->GetName() +
                    L"' declares no constructor; constructors are not inherited");
+    }
+    else if(IsHolderType(klass->GetName()) && method_call->GetCallingParameters() &&
+            method_call->GetCallingParameters()->GetExpressions().size() == 1 &&
+            method_call->GetCallingParameters()->GetExpressions()[0]->GetExpressionType() == STAT_ARY_EXPR) {
+      // A whole array literal where holders are wanted ('v : Vector<IntRef> := [n->Size()];',
+      // 'Vector->New([1, 2])<IntRef>'): the holder's constructor was tried on the array,
+      // and "IntRef->New(Int[])" says nothing of the elements that were written.
+      Expression* literal = method_call->GetCallingParameters()->GetExpressions()[0];
+      Type* literal_type = literal->GetEvalType() ? TypeFactory::Instance()->MakeType(literal->GetEvalType()) : nullptr;
+      if(literal_type) {
+        literal_type->SetDimension(0);
+      }
+      const std::wstring holder = PlainTypeName(FormatTypeString(klass->GetName()));
+      ProcessError(literal, L"The elements of an array literal are not boxed: these are " + DescribeType(literal_type) +
+                   L", where " + holder + L" is wanted for each\n\tWrite the holder for each element ('" + holder +
+                   L"->New(..)'), or add the values with AddBack(..), which boxes each one");
     }
     else {
       std::wstring message = L"Undefined function/method call: 'New(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
@@ -7187,7 +8330,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     
     // static check
     if(InvalidStatic(method_call, lib_method)) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context" +
+                   std::wstring(current_method && current_method->IsLambda() ? L"\n\tIn a lambda, call it through the instance: @self->" + method_call->GetMethodName() + L"(..)" : L""));
     }
     
     // cannot create an instance of a virtual class
@@ -7382,8 +8526,18 @@ void ContextAnalyzer::AnalyzeFunctionValueCall(MethodCall* method_call, SymbolEn
     if(boxed_param) {
       boxed_resolved_params->AddExpression(boxed_param);
     }
-    else if((boxed_param = UnboxingExpression(func_param, calling_param, false, depth + 1))) {
-      boxed_resolved_params->AddExpression(boxed_param);
+    else {
+      // a holder for a primitive parameter is its value, as in a call by name
+      Expression* last = calling_param;
+      while(last->GetMethodCall()) {
+        last = last->GetMethodCall();
+      }
+      bool unboxed = false;
+      Expression* replaced = UnboxAs(func_param, last, false, unboxed, depth + 1);
+      if(unboxed) {
+        boxed_param = replaced ? replaced : calling_param;
+        boxed_resolved_params->AddExpression(boxed_param);
+      }
     }
     // add default
     if(!boxed_param) {
@@ -7422,7 +8576,9 @@ void ContextAnalyzer::AnalyzeFunctionValueCall(MethodCall* method_call, SymbolEn
     params_match = true;
     const std::vector<Expression*> resolved_params = boxed_resolved_params->GetExpressions();
     for(size_t i = 0; i < resolved_params.size() && i < func_params.size(); ++i) {
-      if(MatchCallingParameter(resolved_params[i], func_params[i], nullptr, nullptr, depth) < 0) {
+      // 0 or 1: a function value's arguments are not unboxed
+      const int compare = MatchCallingParameter(resolved_params[i], func_params[i], nullptr, nullptr, depth);
+      if(compare < 0 || compare > 1) {
         params_match = false;
       }
     }
@@ -7575,7 +8731,10 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
-    if(mthd_name.size() > 0) {
+    if(ReportJsonLiteralValue(method_call) || ReportMapLiteralEntry(method_call)) {
+      // said in terms of the literal
+    }
+    else if(mthd_name.size() > 0) {
       std::wstring message = L"Undefined function/method call: '" + mthd_name +
         L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
       ProcessErrorAlternativeMethods(message);
@@ -7840,27 +8999,12 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
           unboxed_expressions.push_back(expression);
         }
         else {
-          // A holder (IntRef, ...) is unboxed where the chain ends. For a chain
-          // of calls the 'Get()' is added after the last one and only that call
-          // is analyzed: the index is still the whole chain.
-          Expression* unboxed_expresion = nullptr;
-          ResolveClassEnumType(eval_type);
-          if(index_value != expression) {
-            if(index_value->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(eval_type->GetName())) {
-              MethodCall* get_call = TreeFactory::Instance()->MakeMethodCall(index_value->GetFileName(), index_value->GetLineNumber(),
-                                                                             index_value->GetLinePosition(), -1, -1, -1, -1,
-                                                                             eval_type->GetName(), L"Get",
-                                                                             TreeFactory::Instance()->MakeExpressionList());
-              index_value->SetMethodCall(get_call);
-              AnalyzeExpressionMethodCall(index_value, depth + 1);
-              unboxed_expresion = expression;
-            }
-          }
-          else {
-            unboxed_expresion = UnboxingExpression(eval_type, expression, true, depth);
-          }
-          if(unboxed_expresion) {
-            unboxed_expressions.push_back(unboxed_expresion);
+          // an IntRef, CharRef or ByteRef index is its value; a FloatRef or a
+          // BoolRef is not an index, as a Float or a Bool is not
+          bool unboxed = false;
+          Expression* unboxed_expresion = UnboxAs(TypeFactory::Instance()->MakeType(INT_TYPE), index_value, true, unboxed, depth);
+          if(unboxed) {
+            unboxed_expressions.push_back(unboxed_expresion ? unboxed_expresion : expression);
           }
           else {
             // Check if this is a bound variable from each loop
@@ -7943,6 +9087,8 @@ void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
   Expression* expression = if_stmt->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+    expression = UnboxCondition(expression, depth);
+    if_stmt->SetExpression(expression);
     if(!IsBooleanExpression(expression)) {
       ProcessError(expression, L"Expected Bool expression");
     }
@@ -7971,13 +9117,32 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   // same kind. Both stay false when the expression is neither (reported here).
   bool is_int_select = false;
   bool is_str_select = false;
+  // 'match', or a 'select' used as a value, on an enum: its labels are checked against the enum
+  Enum* subject_enum = nullptr;
+  LibraryEnum* subject_lib_enum = nullptr;
 
   // expression
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+    // 'select(counts->Get(i))': an IntRef, CharRef or ByteRef is its value
+    if(!IsIntegerExpression(expression)) {
+      Expression* last = expression;
+      while(last->GetMethodCall()) {
+        last = last->GetMethodCall();
+      }
+      bool unboxed = false;
+      Expression* replaced = UnboxAs(TypeFactory::Instance()->MakeType(INT_TYPE), last, true, unboxed, depth);
+      if(unboxed && replaced) {
+        expression = replaced;
+        select_stmt->GetAssignment()->SetExpression(expression);
+      }
+    }
     const bool is_int_expr = IsIntegerExpression(expression);
     is_int_select = is_int_expr;
+    if(select_stmt->IsChecked() && is_int_expr) {
+      AnalyzeSelectSubjectEnum(expression, subject_enum, subject_lib_enum);
+    }
 
 #ifndef _SYSTEM
     const bool is_str_expr = IsStringExpression(expression);
@@ -8075,6 +9240,20 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     std::vector<Expression*> expression_list = expressions->GetExpressions();
     for(size_t i = 0; i < expression_list.size(); ++i) {
       Expression* expression = expression_list[i];
+      if(expression && (subject_enum || subject_lib_enum)) {
+        // an item of another enum, or a number, would be compared by value
+        MethodCall* item_call = expression->GetExpressionType() == METHOD_CALL_EXPR ? static_cast<MethodCall*>(expression) : nullptr;
+        if(item_call && item_call->GetMethodCall()) {
+          item_call = item_call->GetMethodCall();
+        }
+        const bool is_item = item_call && ((subject_enum && item_call->GetEnumItem() && item_call->GetEnumItem()->GetEnum() == subject_enum) ||
+                                           (subject_lib_enum && item_call->GetLibraryEnumItem() && item_call->GetLibraryEnumItem()->GetEnum() == subject_lib_enum));
+        if(!is_item) {
+          const std::wstring enum_name = FormatTypeString(subject_enum ? subject_enum->GetName() : subject_lib_enum->GetName());
+          ProcessError(expression, L"Expected an item of '" + enum_name + L"', the enum this '" + select_stmt->GetKeyword() + L"' is on");
+          continue;
+        }
+      }
       if(expression) {
         switch(expression->GetExpressionType()) {
         case CHAR_STR_EXPR: {
@@ -8152,10 +9331,193 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   }
   select_stmt->SetLabelStatements(label_statements);
 
+  if(select_stmt->IsChecked()) {
+    AnalyzeSelectCoverage(select_stmt, subject_enum, subject_lib_enum);
+  }
+
   // process statements (in parse order)
+  if(select_stmt->IsValue()) {
+    AnalyzeSelectValues(select_stmt, depth);
+  }
+  else {
+    std::vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
+    for(size_t i = 0; i < statement_lists.size(); ++i) {
+      AnalyzeStatements(statement_lists[i], depth + 1);
+    }
+  }
+}
+
+/****************************
+ * The enum a 'match' subject is, if it is one. A 'consts' group is a set of
+ * named integers, not a closed set of items, so it does not count.
+ ****************************/
+void ContextAnalyzer::AnalyzeSelectSubjectEnum(Expression* expression, Enum*& eenum, LibraryEnum*& lib_eenum)
+{
+  while(expression->GetMethodCall()) {
+    expression = expression->GetMethodCall();
+  }
+
+  Type* type = expression->GetCastType() ? expression->GetCastType() : expression->GetEvalType();
+  if(type && type->GetType() == CLASS_TYPE && type->GetDimension() == 0) {
+    eenum = SearchProgramEnums(type->GetName());
+    if(eenum && eenum->IsConsts()) {
+      eenum = nullptr;
+    }
+    else if(!eenum) {
+      lib_eenum = SearchLibraryEnums(type->GetName(), program->GetLibUses());
+      if(lib_eenum && lib_eenum->GetOffset() < 0) {
+        lib_eenum = nullptr;
+      }
+    }
+  }
+}
+
+/****************************
+ * A 'match' (or a 'select' used as a value) takes some arm for every value it
+ * can meet: with no 'other' arm, the labels of an enum subject name every item
+ * of the enum, and the error names the items that are missing. A value needs
+ * an arm for every subject, so one on anything but an enum needs 'other'.
+ ****************************/
+void ContextAnalyzer::AnalyzeSelectCoverage(Select* select_stmt, Enum* eenum, LibraryEnum* lib_eenum)
+{
+  if(select_stmt->GetOther()) {
+    return;
+  }
+
+  const std::wstring keyword = select_stmt->GetKeyword();
+  if(!eenum && !lib_eenum) {
+    if(select_stmt->IsValue()) {
+      ProcessError(select_stmt, L"A '" + keyword + L"' used as a value needs an 'other' arm, unless it is on an enum and names every item");
+    }
+    return;
+  }
+
+  // by value, in the order the items are numbered
+  std::map<INT64_VALUE, std::wstring> items;
+  if(eenum) {
+    std::map<const std::wstring, EnumItem*> enum_items = eenum->GetItems();
+    for(std::map<const std::wstring, EnumItem*>::iterator iter = enum_items.begin(); iter != enum_items.end(); ++iter) {
+      items.insert(std::pair<INT64_VALUE, std::wstring>(iter->second->GetId(), iter->first));
+    }
+  }
+  else {
+    std::map<const std::wstring, LibraryEnumItem*> enum_items = lib_eenum->GetItems();
+    for(std::map<const std::wstring, LibraryEnumItem*>::iterator iter = enum_items.begin(); iter != enum_items.end(); ++iter) {
+      items.insert(std::pair<INT64_VALUE, std::wstring>(iter->second->GetId(), iter->first));
+    }
+  }
+
+  const std::wstring enum_name = FormatTypeString(eenum ? eenum->GetName() : lib_eenum->GetName());
+  const std::map<INT64_VALUE, StatementList*> label_statements = select_stmt->GetLabelStatements();
+  std::wstring missing;
+  for(std::map<INT64_VALUE, std::wstring>::iterator iter = items.begin(); iter != items.end(); ++iter) {
+    if(label_statements.find(iter->first) == label_statements.end()) {
+      if(!missing.empty()) {
+        missing += L", ";
+      }
+      missing += iter->second;
+    }
+  }
+
+  if(!missing.empty()) {
+    ProcessError(select_stmt, L"This '" + keyword + L"' does not cover every item of '" + enum_name + L"', missing: " + missing +
+                 L"\n\tAdd an arm for each missing item, or an 'other' arm.");
+  }
+}
+
+/****************************
+ * The arms of a 'match' or 'select' used as a value. Each is one assignment to
+ * the hidden local the value is read from; the first gives the local its type
+ * and the rest must agree with it, as the two branches of '?' must. A Nil arm
+ * has no type of its own, so the typed arms go first. The arms hold no block,
+ * so none opens a scope.
+ ****************************/
+void ContextAnalyzer::AnalyzeSelectValues(Select* select_stmt, const int depth)
+{
+  const std::wstring keyword = select_stmt->GetKeyword();
+
+  std::vector<Assignment*> typed_arms;
+  std::vector<Assignment*> nil_arms;
   std::vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
   for(size_t i = 0; i < statement_lists.size(); ++i) {
-    AnalyzeStatements(statement_lists[i], depth + 1);
+    std::vector<Statement*> statements = statement_lists[i]->GetStatements();
+    if(!statements.empty()) {
+      Assignment* arm = static_cast<Assignment*>(statements.front());
+      Expression* value = arm->GetExpression();
+      if(value->GetExpressionType() == NIL_LIT_EXPR && !value->GetCastType() && !value->GetMethodCall()) {
+        nil_arms.push_back(arm);
+      }
+      else {
+        typed_arms.push_back(arm);
+      }
+    }
+  }
+
+  if(typed_arms.empty()) {
+    if(!nil_arms.empty()) {
+      ProcessError(select_stmt, L"Every arm of this '" + keyword + L"' is Nil, so its value has no type");
+      // one error: the value is given a type, so what uses it has nothing to add
+      Variable* value = nil_arms.front()->GetVariable();
+      AnalyzeVariable(value, depth + 1);
+      if(value->GetEntry()) {
+        Type* base_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base");
+        value->GetEntry()->SetType(base_type);
+        value->SetTypes(base_type);
+      }
+    }
+    return;
+  }
+
+  Type* value_type = nullptr;
+  for(size_t i = 0; i < typed_arms.size(); ++i) {
+    Assignment* arm = typed_arms[i];
+    // the casts the arm was written with: one more after the assignment is a
+    // conversion the assignment made to fit the arm to the value's type
+    Expression* head = arm->GetExpression();
+    Expression* tail = head;
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+    Type* head_cast = head->GetCastType();
+    Type* tail_cast = tail->GetCastType();
+
+    const size_t errors = diagnostics.ErrorCount();
+    AnalyzeStatement(arm, depth + 1);
+    if(diagnostics.ErrorCount() != errors) {
+      // the assignment has said what is wrong with this arm
+      continue;
+    }
+
+    Type* arm_type = GetExpressionType(arm->GetExpression(), depth + 1);
+    if(!arm_type || arm_type->GetType() == NIL_TYPE) {
+      continue;
+    }
+
+    if(!value_type) {
+      if(arm_type->GetType() == VAR_TYPE) {
+        ProcessError(arm->GetExpression(), L"An arm of a '" + keyword + L"' used as a value has no value");
+        return;
+      }
+      value_type = arm_type;
+      continue;
+    }
+
+    // An Int arm after a Float one (or a Char after an Int) would be converted
+    // without a word, and the value would depend on the order of the arms. Two
+    // classes are checked as a cast by the assignment.
+    Type* converted = head->GetCastType() != head_cast ? head->GetCastType() : (tail->GetCastType() != tail_cast ? tail->GetCastType() : nullptr);
+    // a literal takes the value's type without a cast ('a' then 66): its own type tells
+    Type* written = tail == head && !head_cast ? head->GetBaseType() : nullptr;
+    const bool retyped = written && written->GetType() != CLASS_TYPE && written->GetType() != NIL_TYPE &&
+      value_type->GetType() != CLASS_TYPE && written->GetType() != value_type->GetType();
+    if((converted && converted->GetType() != CLASS_TYPE) || retyped || arm_type->GetType() != value_type->GetType()) {
+      ProcessError(arm->GetExpression(), L"The arms of a '" + keyword + L"' used as a value differ in type: this one is not " + DescribeType(value_type) +
+                   L", as an earlier one is\n\tConvert it explicitly, as in value->As(" + DescribeType(value_type) + L")");
+    }
+  }
+
+  for(size_t i = 0; i < nil_arms.size(); ++i) {
+    AnalyzeStatement(nil_arms[i], depth + 1);
   }
 }
 
@@ -8216,6 +9578,29 @@ void ContextAnalyzer::AnalyzeTry(Try* try_stmt, const int depth)
     AnalyzeStatements(try_stmt->GetFinally(), depth + 1);
     finally_loops.pop_back();
   }
+}
+
+/****************************
+ * Analyzes 'using(w := E) { ... }': a scope holding 'w', the body (its own
+ * scope) and the 'w->Close()' that runs when the body is left. The parser
+ * made the same three scopes.
+ ****************************/
+void ContextAnalyzer::AnalyzeUsing(Using* using_stmt, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"using", using_stmt->GetLineNumber(), depth);
+#endif
+
+  current_table->NewScope();
+  ResolveClassEnumType(using_stmt->GetRaiseEntry()->GetType());
+  AnalyzeStatement(using_stmt->GetResource(), depth + 1);
+  AnalyzeStatements(using_stmt->GetBody(), depth + 1);
+  const size_t errors_before_close = diagnostics.ErrorCount();
+  AnalyzeStatements(using_stmt->GetClose(), depth + 1);
+  if(diagnostics.ErrorCount() > errors_before_close) {
+    ProcessError(using_stmt, L"'using' closes its resource with 'Close()': the type of the resource needs a method named 'Close' that takes no arguments");
+  }
+  current_table->PreviousScope();
 }
 
 void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
@@ -8330,6 +9715,8 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     Expression* expression = for_stmt->GetExpression();
     if(expression) {
       AnalyzeExpression(expression, depth + 1);
+      expression = UnboxCondition(expression, depth);
+      for_stmt->SetExpression(expression);
 
       if(!IsBooleanExpression(expression)) {
         ProcessError(expression, L"Expected Bool expression");
@@ -8485,6 +9872,8 @@ void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
   Expression* expression = do_while_stmt->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+    expression = UnboxCondition(expression, depth);
+    do_while_stmt->SetExpression(expression);
     if(!IsBooleanExpression(expression)) {
       ProcessError(expression, L"Expected Bool expression");
     }
@@ -8505,6 +9894,8 @@ void ContextAnalyzer::AnalyzeWhile(While* while_stmt, const int depth)
   Expression* expression = while_stmt->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+    expression = UnboxCondition(expression, depth);
+    while_stmt->SetExpression(expression);
     if(!IsBooleanExpression(expression)) {
       ProcessError(expression, L"Expected Bool expression");
     }
@@ -8529,14 +9920,32 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 
   Type* mthd_type = current_method->GetReturn();
   Expression* expression = rtrn->GetExpression();
+  // the block of a 'spawn' is a thread's body: there is nobody to return a value to
+  if(expression && current_method->IsSpawnBody()) {
+    AnalyzeExpression(expression, depth + 1);
+    ProcessError(rtrn, L"A 'spawn' block does not return a value\n\tUse 'return;' to end the thread, and hand a result back through an object the block shares");
+    in_return = false;
+    return;
+  }
   if(expression) {
     // auto-wrap a bare lambda when the return type is FuncRef<R>
+    TypeMapLiteral(expression, mthd_type);
     Expression* wrapped = WrapBareLambdaInFuncRef(expression, mthd_type, depth);
+    if(wrapped == expression) {
+      wrapped = WrapMethodReferenceInFuncRef(expression, mthd_type, depth);
+    }
+    if(wrapped == expression) {
+      wrapped = WrapCollectionLiteral(expression, mthd_type, depth);
+    }
     if(wrapped != expression) {
       rtrn->SetExpression(wrapped);
       expression = wrapped;
     }
+    // 'return Vector->New();' takes its type arguments from the method's return type
+    ExpectNewType(expression, mthd_type, false);
     AnalyzeExpression(expression, depth + 1);
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
     // Handle string concatenation: replace ADD_EXPR with STR_CONCAT_EXPR
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       expression = expression->GetPreviousExpression();
@@ -8742,13 +10151,26 @@ void ContextAnalyzer::AnalyzeAssignmentBody(Assignment* assignment, StatementTyp
   if(expression) {
     // auto-wrap a bare lambda when the assignment target is FuncRef<R>
     if(variable && variable->GetEvalType()) {
+      TypeMapLiteral(expression, variable->GetEvalType());
       Expression* wrapped = WrapBareLambdaInFuncRef(expression, variable->GetEvalType(), depth);
+      if(wrapped == expression) {
+        wrapped = WrapMethodReferenceInFuncRef(expression, variable->GetEvalType(), depth);
+      }
+      if(wrapped == expression) {
+        wrapped = WrapCollectionLiteral(expression, variable->GetEvalType(), depth);
+      }
       if(wrapped != expression) {
         assignment->SetExpression(wrapped);
         expression = wrapped;
       }
     }
+    // 'v : Vector<Foo> := Vector->New();' takes its type arguments from 'v'
+    if(type == ASSIGN_STMT && variable && variable->GetEntry()) {
+      ExpectNewType(expression, variable->GetEntry()->GetType(), variable->GetIndices() != nullptr);
+    }
     AnalyzeExpression(expression, depth + 1);
+    expected_new_call = nullptr;
+    expected_new_type = nullptr;
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       expression = expression->GetPreviousExpression();
       assignment->SetExpression(expression);
@@ -9149,6 +10571,10 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
 
     // check operations
     AnalyzeCalculationCast(expression, depth);
+
+    // a holder variable that was unboxed is now the call that reads its value
+    left = expression->GetLeft();
+    right = expression->GetRight();
 
     // check for valid operation cast; an operand whose cast is followed by a call
     // chain, `x->As(Kid)->Only() <> "only"`, casts the receiver, which AnalyzeCast
@@ -9674,6 +11100,14 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramOrLibraryEnum(right->GetName());
 
+        // Two holders: both are now their values, and the calculation was worked
+        // out for those (an Int and a Float, two Bools, ...). What follows reads
+        // the holders' types, which made every result an Int or a Float -- a
+        // 'BoolRef & BoolRef' an Int -- and cast one holder class to the other.
+        if(can_unbox_left && can_unbox_right) {
+          break;
+        }
+
         if(!can_unbox_left && !is_left_enum && !can_unbox_right && !is_right_enum &&
            expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
           ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and " + FormatTypeString(right->GetName()));
@@ -9703,7 +11137,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Bool");
+        // 'flags->Get(i) & done' and '<>flags->Get(i)': a BoolRef is its value
+        if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
+          ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: " + FormatTypeString(left->GetName()) + L" and Bool");
+        }
         break;
       }
       break;
@@ -9848,12 +11285,32 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
     return true;
   }
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(type->GetName())) {
+    // the holder is what the LAST call of the chain returned: 'a->B()->C() + 1'
+    // reads C's. Adding 'Get()' after the first call dropped the rest of the
+    // chain and called Get() on what B returned.
+    Expression* last = expression;
+    while(last->GetMethodCall()) {
+      last = last->GetMethodCall();
+    }
+    // Unboxing one operand works out the calculation again, which unboxes the
+    // other; the pass that started it then reaches that operand with the type
+    // it read before. The chain already ends in the value.
+    EntryType held;
+    if(!last->GetEvalType() || !HolderPrimitive(last->GetEvalType(), held)) {
+      return true;
+    }
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(), 
+    MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition(),
                                                                           -1, -1, expression->GetLineNumber(), expression->GetLinePosition(),
-                                                                          expression->GetEvalType()->GetName(), L"Get", box_expressions);
-    expression->SetMethodCall(box_method_call);
-    AnalyzeExpression(calc_expression, depth + 1);
+                                                                          type->GetName(), L"Get", box_expressions);
+    last->SetMethodCall(box_method_call);
+    // Only the added call is analyzed, and the calculation's types are worked
+    // out from its operands as they now are. Analyzing the whole calculation
+    // again analyzed both operands again, which unboxed again: two holders of
+    // different kinds ('ints->Get(0) + floats->Get(0)') never ended, and the
+    // compiler ran out of stack.
+    AnalyzeExpressionMethodCall(last, depth + 1);
+    AnalyzeCalculationCast(calc_expression, depth + 1);
     return true;
   }
 
@@ -9881,17 +11338,12 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
     case BYTE_TYPE:
     case CHAR_TYPE:
     case INT_TYPE:
-    case FLOAT_TYPE: {
-      if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(from_type->GetName())) {
-        ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(),
-                                                                              -1, -1, -1, -1, from_expr->GetEvalType()->GetName(), L"Get", box_expressions);
-        
-        from_expr->SetMethodCall(box_method_call);
-        AnalyzeMethodCall(static_cast<MethodCall*>(from_expr), depth);
-        return static_cast<MethodCall*>(from_expr);
-      }
-    }
+    case FLOAT_TYPE:
+      // a holder returned as a primitive is unboxed by the rule an assignment
+      // follows (AnalyzeRightCast, which the caller runs next). Unboxing it
+      // here returned the LAST call of a chain as the whole expression, so
+      // 'return a->B()->Get(0);' lost 'a->B()', and held a Float as an Int
+      // without converting it.
       break;
 
     case CLASS_TYPE: {
@@ -10084,8 +11536,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
-          if(unboxed_expresion) {
+          bool unboxed = false;
+          Expression* unboxed_expresion = UnboxAs(left, expression, false, unboxed, depth);
+          if(unboxed) {
             return unboxed_expresion;
           }
           else {
@@ -10140,8 +11593,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
-          if(unboxed_expresion) {
+          bool unboxed = false;
+          Expression* unboxed_expresion = UnboxAs(left, expression, false, unboxed, depth);
+          if(unboxed) {
             return unboxed_expresion;
           }
           else {
@@ -10196,8 +11650,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
-          if(unboxed_expresion) {
+          bool unboxed = false;
+          Expression* unboxed_expresion = UnboxAs(left, expression, false, unboxed, depth);
+          if(unboxed) {
             return unboxed_expresion;
           }
           else {
@@ -10251,6 +11706,12 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           expression->SetCastType(left, false);
         }
         else {
+          // 'f : Float := floats->Get(0);'
+          bool unboxed = false;
+          Expression* unboxed_expresion = UnboxAs(left, expression, false, unboxed, depth);
+          if(unboxed) {
+            return unboxed_expresion;
+          }
           ProcessError(expression, L"Invalid cast with classes: System.Float and " +
                        FormatTypeString(FormatTypeString(right->GetName())));
         }
@@ -10380,8 +11841,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramOrLibraryEnum(right->GetName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
-          if(unboxed_expresion) {
+          bool unboxed = false;
+          Expression* unboxed_expresion = UnboxAs(left, expression, false, unboxed, depth);
+          if(unboxed) {
             return unboxed_expresion;
           }
           else {
@@ -10474,6 +11936,214 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
   return nullptr;
 }
 
+/****************************
+ * The primitive a holder class
+ * holds: IntRef an Int, FloatRef
+ * a Float, BoolRef a Bool, CharRef
+ * a Char and ByteRef a Byte
+ ****************************/
+bool ContextAnalyzer::HolderPrimitive(Type* type, EntryType &primitive)
+{
+  // an element of an array of holders is a holder, and its type still carries
+  // the array's dimension: whether the value is a scalar is for the caller
+  if(!type || type->GetType() != CLASS_TYPE) {
+    return false;
+  }
+
+  ResolveClassEnumType(type);
+  const std::wstring &name = type->GetName();
+  if(name == L"System.IntRef") {
+    primitive = INT_TYPE;
+  }
+  else if(name == L"System.FloatRef") {
+    primitive = FLOAT_TYPE;
+  }
+  else if(name == L"System.BoolRef") {
+    primitive = BOOLEAN_TYPE;
+  }
+  else if(name == L"System.CharRef") {
+    primitive = CHAR_TYPE;
+  }
+  else if(name == L"System.ByteRef") {
+    primitive = BYTE_TYPE;
+  }
+  else {
+    return false;
+  }
+
+  return true;
+}
+
+/****************************
+ * Whether a primitive is stored
+ * as another, by the rule an
+ * assignment between two
+ * primitives follows: Byte, Char,
+ * Int and Float convert among
+ * themselves, a Bool is only a
+ * Bool
+ ****************************/
+bool ContextAnalyzer::PrimitiveConverts(EntryType to, EntryType from)
+{
+  const bool to_number = to == BYTE_TYPE || to == CHAR_TYPE || to == INT_TYPE || to == FLOAT_TYPE;
+  const bool from_number = from == BYTE_TYPE || from == CHAR_TYPE || from == INT_TYPE || from == FLOAT_TYPE;
+  if(to == BOOLEAN_TYPE || from == BOOLEAN_TYPE) {
+    return to == from;
+  }
+
+  return to_number && from_number;
+}
+
+/****************************
+ * How a primitive argument fits a
+ * holder parameter: 2 when the
+ * holder is the argument's own
+ * (an Int for an IntRef), 3 when
+ * the argument is converted first
+ * (an Int for a FloatRef), -1 when
+ * it cannot be (an Int for a
+ * BoolRef) and 0 when this is not
+ * a primitive for a holder
+ ****************************/
+int ContextAnalyzer::BoxingRank(Type* method_type, Expression* expr_param, const int depth)
+{
+  EntryType held;
+  if(!method_type || !expr_param || method_type->GetDimension() > 0 || !HolderPrimitive(method_type, held)) {
+    return 0;
+  }
+
+  // an enum item is boxed as it always was
+  if(expr_param->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expr_param)->GetEnumItem()) {
+    return 2;
+  }
+
+  Type* from_type = GetExpressionType(expr_param, depth);
+  if(!from_type || !IsScalar(expr_param)) {
+    return 0;
+  }
+
+  switch(from_type->GetType()) {
+  case BOOLEAN_TYPE:
+  case BYTE_TYPE:
+  case CHAR_TYPE:
+  case INT_TYPE:
+  case FLOAT_TYPE:
+    if(!PrimitiveConverts(held, from_type->GetType())) {
+      return -1;
+    }
+    return held == from_type->GetType() ? 2 : 3;
+
+  default:
+    return 0;
+  }
+}
+
+/****************************
+ * A holder where a primitive is
+ * wanted: reads its value with
+ * 'Get()' and converts it as the
+ * primitive it holds, so an
+ * IntRef for a Float is the Int
+ * made a Float, and a BoolRef for
+ * an Int is refused as a Bool is.
+ *
+ * 'last' is the end of the
+ * expression's call chain. A
+ * variable is replaced by the
+ * call that is returned; a call
+ * has the 'Get()' added after it
+ * and nothing is returned.
+ * 'unboxed' tells the two apart
+ * from "not a holder".
+ ****************************/
+Expression* ContextAnalyzer::UnboxAs(Type* to_type, Expression* last, bool integral_only, bool &unboxed, const int depth)
+{
+  // 'to_type' may carry an array's dimension: an element's type does
+  // ('a[i] := refs->Get(i)'), and the caller has found the value a scalar
+  unboxed = false;
+  if(!to_type || !last || last->GetMethodCall()) {
+    return nullptr;
+  }
+
+  switch(to_type->GetType()) {
+  case BOOLEAN_TYPE:
+  case BYTE_TYPE:
+  case CHAR_TYPE:
+  case INT_TYPE:
+  case FLOAT_TYPE:
+    break;
+
+  default:
+    return nullptr;
+  }
+
+  Type* from_type = GetExpressionType(last, depth + 1);
+  EntryType held;
+  if(!from_type || !IsScalar(last) || !HolderPrimitive(from_type, held) || !PrimitiveConverts(to_type->GetType(), held)) {
+    return nullptr;
+  }
+
+  // the conversion is of one value: the cast it leaves on the call must not
+  // carry an array's dimension
+  Type* value_type = TypeFactory::Instance()->MakeType(to_type);
+  value_type->SetDimension(0);
+  to_type = value_type;
+
+  if(integral_only && held != BYTE_TYPE && held != CHAR_TYPE && held != INT_TYPE) {
+    return nullptr;
+  }
+
+  if(last->GetExpressionType() == VAR_EXPR) {
+    MethodCall* get_call = TreeFactory::Instance()->MakeMethodCall(last->GetFileName(), last->GetLineNumber(), last->GetLinePosition(),
+                                                                   -1, -1, -1, -1, static_cast<Variable*>(last), L"Get",
+                                                                   TreeFactory::Instance()->MakeExpressionList());
+    AnalyzeMethodCall(get_call, depth);
+    if(!get_call->GetEvalType()) {
+      return nullptr;
+    }
+    AnalyzeRightCast(to_type, get_call->GetEvalType(), get_call, true, depth);
+    unboxed = true;
+    return get_call;
+  }
+
+  if(last->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* get_call = TreeFactory::Instance()->MakeMethodCall(last->GetFileName(), last->GetLineNumber(), last->GetLinePosition(),
+                                                                   -1, -1, -1, -1, from_type->GetName(), L"Get",
+                                                                   TreeFactory::Instance()->MakeExpressionList());
+    last->SetMethodCall(get_call);
+    AnalyzeExpressionMethodCall(last, depth + 1);
+    if(!get_call->GetEvalType()) {
+      return nullptr;
+    }
+    AnalyzeRightCast(to_type, get_call->GetEvalType(), get_call, true, depth);
+    unboxed = true;
+    return nullptr;
+  }
+
+  return nullptr;
+}
+
+/****************************
+ * A BoolRef where a condition is
+ * wanted is its value. Returns
+ * the expression to test.
+ ****************************/
+Expression* ContextAnalyzer::UnboxCondition(Expression* expression, const int depth)
+{
+  if(!expression || IsBooleanExpression(expression)) {
+    return expression;
+  }
+
+  Expression* last = expression;
+  while(last->GetMethodCall()) {
+    last = last->GetMethodCall();
+  }
+
+  bool unboxed = false;
+  Expression* replaced = UnboxAs(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), last, false, unboxed, depth);
+  return unboxed && replaced ? replaced : expression;
+}
+
 //
 // Unboxing expression
 //
@@ -10534,6 +12204,13 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
      from_type->GetType() == INT_TYPE || 
      from_type->GetType() == FLOAT_TYPE)) {
     if(IsHolderType(to_type->GetName())) {
+      // only into a holder the value converts to: an Int is not boxed as a
+      // BoolRef. The caller reports the two types; building the call reported
+      // a constructor that does not exist, 'BoolRef->New(Int)'.
+      EntryType held;
+      if(!is_enum && HolderPrimitive(to_type, held) && !PrimitiveConverts(held, from_type->GetType())) {
+        return nullptr;
+      }
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(), from_expr->GetLinePosition(), 
@@ -11085,7 +12762,11 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
       ProcessError(entry, L"Variables cannot be initialized at class scope");
     }
 
-    if(statement) {
+    // A value given at class scope has been refused above. It is not analyzed: there is no
+    // method to analyze it in, and the analysis of an assignment reads the current method
+    // (obc ended with a segmentation fault on 'keys : Vector<String> := Vector->New();'
+    // written between two methods).
+    if(statement && (current_method || entry->IsLocal())) {
       entry->WasLoaded();
       AnalyzeStatement(statement, depth);
     }
@@ -11104,6 +12785,13 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int d
   
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      Expression* wrapped = WrapMethodReferenceInFuncRef(expression, nullptr, depth);
+      if(wrapped != expression) {
+        parameters->SetExpression(wrapped, i);
+        expression = wrapped;
+      }
+    }
     AnalyzeExpression(expression, depth);    
     if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
       parameters->SetExpression(expression->GetPreviousExpression(), i);
@@ -11700,6 +13388,53 @@ SymbolEntry* ContextAnalyzer::ResolveCaptureEntry(const std::wstring& name, size
   }
 
   return copy_entry;
+}
+
+/****************************
+ * A lambda written in an instance method may read and write the instance's fields
+ * (@x) and name the instance (@self). It captures the instance it was created in
+ * as one more closure value, the way it captures a local; a field is then loaded
+ * through that copy, so a write is a write to the field, not to a copy of it, and
+ * a later read sees it. Returns false (the caller reports the usual error) when
+ * the use is not inside a lambda directly in an instance method; a lambda inside
+ * a lambda does not capture the instance.
+ ****************************/
+bool ContextAnalyzer::CaptureLambdaSelf(Variable* variable, SymbolEntry* entry)
+{
+  if(!current_method || !current_method->IsLambda() || !capture_lambda || capture_frames.size() != 1) {
+    return false;
+  }
+
+  Method* enclosing = capture_frames[0].method;
+  if(!enclosing || enclosing->IsStatic() || enclosing->IsLambda() ||
+     entry->IsLocal() || entry->IsStatic() || entry->IsClosureEntry()) {
+    return false;
+  }
+
+  SymbolEntry* self_entry = entry->IsSelf() ? entry : GetEntry(SELF_ID);
+  if(!self_entry || !self_entry->IsSelf()) {
+    return false;
+  }
+  self_entry->WasLoaded();
+
+  SymbolEntry* copy_entry = capture_lambda->GetClosure(self_entry);
+  if(!copy_entry) {
+    copy_entry = TreeFactory::Instance()->MakeSymbolEntry(current_method->GetName() + L':' + SELF_ID, self_entry->GetType(), false, false);
+    copy_entry->SetClosureEntry();
+    symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
+    capture_lambda->AddClosure(copy_entry, self_entry);
+  }
+
+  if(entry->IsSelf()) {
+    variable->SetTypes(copy_entry->GetType());
+    variable->SetEntry(copy_entry);
+    copy_entry->AddVariable(variable);
+  }
+  else {
+    variable->SetLambdaSelf(copy_entry);
+  }
+
+  return true;
 }
 
 SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const std::wstring& variable_name, int depth)
@@ -13685,6 +15420,18 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
     return valid_matches[0]->GetLibraryMethod();
   }
 
+  // an argument is boxed or unboxed to fit: the method every argument fits
+  // at least as well as it fits any other, or none
+  const int boxed_index = SelectBoxedMatch(valid_matches);
+  if(boxed_index == -2) {
+    is_ambiguous = true;
+    return nullptr;
+  }
+  else if(boxed_index > -1) {
+    method_call->GetCallingParameters()->SetExpressions(valid_matches[boxed_index]->GetCallingParameters());
+    return valid_matches[boxed_index]->GetLibraryMethod();
+  }
+
   int match_index = -1;
   int high_score = 0;
   for(size_t i = 0; i < matches.size(); ++i) {
@@ -13725,6 +15472,18 @@ Method* MethodCallSelector::GetSelection()
   else if(valid_matches.size() == 1) {
     method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetCallingParameters());
     return valid_matches[0]->GetMethod();
+  }
+
+  // an argument is boxed or unboxed to fit: the method every argument fits
+  // at least as well as it fits any other, or none
+  const int boxed_index = SelectBoxedMatch(valid_matches);
+  if(boxed_index == -2) {
+    is_ambiguous = true;
+    return nullptr;
+  }
+  else if(boxed_index > -1) {
+    method_call->GetCallingParameters()->SetExpressions(valid_matches[boxed_index]->GetCallingParameters());
+    return valid_matches[boxed_index]->GetMethod();
   }
 
   int match_index = -1;
@@ -13780,8 +15539,11 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   found_completion.push_back(std::pair<int, std::wstring>(14, L"label"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"return"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"critical"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"spawn"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"use"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"leaving"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"assert"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"using"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"virtual"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"Parent"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"from"));

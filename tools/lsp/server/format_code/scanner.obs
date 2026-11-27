@@ -10,6 +10,7 @@ class Scanner {
 	@keywords : Hash<String, Token>;
 	@tokens : Vector<Token>;
 	@lenient : Bool;
+	@code_on_line : Bool;
 
 	New(input : String) {
 		@buffer := input->ToCharArray();
@@ -109,6 +110,7 @@ class Scanner {
 				@line_num += 1;
 				new_line_count += 1;
 				@line_pos := 1;
+				@code_on_line := false;
 			};
 
 			NextChar();
@@ -121,9 +123,25 @@ class Scanner {
 		};
 	}
 
-	# step over a character with no token instead of ending the process
+	# leave out the characters that are tokens of their own (for a caller that only counts braces)
 	method : public : SetLenient() ~ Nil {
 		@lenient := true;
+	}
+
+	# What a name may start with, as the compiler reads one: a letter of any
+	# script (a name such as "Δ" stopped the formatter), '_', '@' for a field
+	# and '$'. The five characters that are operators in the alternative
+	# spelling are not letters.
+	method : IsWordStart(c : Char) ~ Bool {
+		if(c->IsChar() | c = '_' | c = '@' | c = '$') {
+			return true;
+		};
+
+		if(c->As(Int) > 127) {
+			return c <> '→' & c <> '←' & c <> '≠' & c <> '≥' & c <> '≤';
+		};
+
+		return false;
 	}
 
 	method : public : GetTokens() ~ Vector<Token> {
@@ -132,10 +150,18 @@ class Scanner {
 
 	method : public : Scan() ~ Bool {
 		NextChar();
+		token_count := 0;
 
 		while(@cur_char <> '\0') {
+			# what was read last time round is on the line a comment may now follow
+			if(@tokens->Size() > token_count) {
+				@code_on_line := true;
+			};
+			token_count := @tokens->Size();
 			Whitespace();
-			
+			token_count := @tokens->Size();
+			span_start := Position();
+
 			# comment
 			if(@cur_char = '#') {
 				after_hash := @buffer_index;
@@ -156,7 +182,13 @@ class Scanner {
 					NextChar();
 					NextChar();
 
-					@tokens->AddBack(Token->New(@line_num, Token->Type->MULTI_COMMENT, comment));
+					# one that starts after code on its line is part of that line
+					if(@code_on_line) {
+						@tokens->AddBack(Token->New(@line_num, Token->Type->INLINE_COMMENT, comment));
+					}
+					else {
+						@tokens->AddBack(Token->New(@line_num, Token->Type->MULTI_COMMENT, comment));
+					};
 				}
 				else {
 					start := after_hash;
@@ -164,13 +196,30 @@ class Scanner {
 						NextChar();
 					};
 					comment := TextFrom(start);
-					NextChar();
+					if(comment->EndsWith('\r')) {
+						comment->Pop();
+					};
 
-					@tokens->AddBack(Token->New(@line_num, Token->Type->LINE_COMMENT, comment));
+					# The newline that ends the comment is left for Whitespace to count.
+					# It was taken here, uncounted: every token after a line comment was
+					# numbered a line short, and a blank line after a comment was not
+					# seen as one (it takes two newlines), so it was dropped. A comment
+					# that follows code on its line is told apart from one on a line of
+					# its own, so that the formatter can leave it where it is.
+					if(@code_on_line) {
+						@tokens->AddBack(Token->New(@line_num, Token->Type->TRAIL_COMMENT, comment));
+					}
+					else {
+						@tokens->AddBack(Token->New(@line_num, Token->Type->LINE_COMMENT, comment));
+					};
 				};
 			}
-			# string literal
-			else if(@cur_char = '"') {
+			# string literal; a '$' directly before the quote ($"C:\\temp") is part of it
+			else if(@cur_char = '"' | (@cur_char = '$' & @next_char = '"')) {
+				is_raw := @cur_char = '$';
+				if(is_raw) {
+					NextChar();
+				};
 				start := @buffer_index;
 				NextChar();
 				is_escape := false;
@@ -186,9 +235,25 @@ class Scanner {
 					NextChar();
 				};
 				string_lit := TextFrom(start);
+				# a string the text ends inside has no closing quote, and is not given one
+				unterminated := @cur_char = '\0';
 				NextChar();
 
-				@tokens->AddBack(Token->New(@line_num, Token->Type->STRING_LIT, string_lit));
+				if(unterminated) {
+					open_lit := is_raw ? "$\"" : "\"";
+					open_lit += string_lit;
+					@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, open_lit));
+				}
+				else if(is_raw) {
+					# written back whole, with its '$' against the quote
+					raw_lit := "$\"";
+					raw_lit += string_lit;
+					raw_lit += '"';
+					@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, raw_lit));
+				}
+				else {
+					@tokens->AddBack(Token->New(@line_num, Token->Type->STRING_LIT, string_lit));
+				};
 			}
 			# char const
 			else if(@cur_char = '\'') {
@@ -207,18 +272,25 @@ class Scanner {
 					NextChar();
 				};
 				string_lit := TextFrom(start);
+				unterminated := @cur_char = '\0';
 				NextChar();
 
-				@tokens->AddBack(Token->New(@line_num, Token->Type->CHAR_LIT, string_lit));
+				if(unterminated) {
+					open_lit := "'";
+					open_lit += string_lit;
+					@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, open_lit));
+				}
+				else {
+					@tokens->AddBack(Token->New(@line_num, Token->Type->CHAR_LIT, string_lit));
+				};
 			}
 			# keyword or variable
-			else if(@cur_char->IsChar() | @cur_char = '@' | @cur_char = '$') {
+			else if(IsWordStart(@cur_char)) {
 				start := @buffer_index - 1;
-				while(@cur_char->IsChar() | @cur_char->IsDigit() | @cur_char = '_' | @cur_char = '@' | @cur_char = '.' | @cur_char = '$') {
+				while(IsWordStart(@cur_char) | @cur_char->IsDigit() | @cur_char = '.') {
 					NextChar();
 				};
-				end := @buffer_index;
-				word := String->New(@buffer, start, end - start - 1);
+				word := TextFrom(start);
 				
 				keyword := @keywords->Find(word);
 				if(keyword = Nil) {
@@ -229,22 +301,59 @@ class Scanner {
 					@tokens->AddBack(keyword->Copy(@line_num));
 				};
 			}
-			# number or digit
-			else if(@cur_char->IsDigit() | @cur_char = '.' | (@cur_char = '+' & (@next_char->IsDigit()| @cur_char = '.')) | 
-					@cur_char = '-' & (@next_char->IsDigit() | @cur_char = '.')) {
+			# A number, read as the compiler reads one (core/compiler/scanner.cpp): it
+			# starts with a digit, or a '.' that a digit follows, and never with a sign
+			# (a sign is an operator of its own). Digits, '_' separators, a 0x, 0b or
+			# 0o prefix, one '.', an exponent with its sign, and a 'u' suffix that ends
+			# it. The literal is one token and is written back as it was read: split
+			# anywhere, "1.5e-3", "1_000" or "0o17" came back as two tokens with a
+			# space between them, which is not the number.
+			else if(@cur_char->IsDigit() | (@cur_char = '.' & @next_char->IsDigit())) {
 				start := @buffer_index - 1;
+				radix_prefix := false;
+				is_float := false;
+				after_exponent := false;
+				count := 0;
+				done := false;
 
-				if(@cur_char = '+' | @cur_char = '-') {
-					NextChar();
+				while(<>done) {
+					c := @cur_char;
+					if(c = 'u' | c = 'U') {
+						NextChar();
+						done := true;
+					}
+					else if(after_exponent & (c = '+' | c = '-') & @next_char->IsDigit()) {
+						after_exponent := false;
+						NextChar();
+					}
+					else if(c->IsDigit() | c = '_' | (c >= 'a' & c <= 'f') | (c >= 'A' & c <= 'F')) {
+						after_exponent := is_float & <>radix_prefix & (c = 'e' | c = 'E');
+						NextChar();
+					}
+					else if(c = '.') {
+						# a second '.', or one in a literal with a prefix, is not part of it
+						if(is_float | radix_prefix) {
+							done := true;
+						}
+						else {
+							is_float := true;
+							after_exponent := false;
+							NextChar();
+						};
+					}
+					else if(count = 1 & (c = 'x' | c = 'X' | c = 'o' | c = 'O') & @buffer[start] = '0') {
+						radix_prefix := true;
+						after_exponent := false;
+						NextChar();
+					}
+					else {
+						done := true;
+					};
+					count += 1;
 				};
 
-				while(@cur_char = '.' | @cur_char->IsDigit() | @cur_char = 'x' | @cur_char = 'X' | @cur_char = 'o' | @cur_char = 'O' | 
-						(@cur_char >= 'a' & @cur_char <= 'f') | (@cur_char >= 'A' & @cur_char <= 'F')) {
-					NextChar();
-				};
-				end := @buffer_index;
-
-				num_lit := String->New(@buffer, start, end - start - 1);
+				# "0b..." needs no case above ('b' is a hex digit); it has no exponent either
+				num_lit := TextFrom(start);
 				@tokens->AddBack(Token->New(@line_num, Token->Type->NUM_LIT, num_lit));
 			}
 			else {
@@ -392,12 +501,24 @@ class Scanner {
 					}
 
 					label '&' {
-						@tokens->AddBack(Token->New(@line_num, Token->Type->AND, "and"));
+						if(@next_char = '&') {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, "&&"));
+							NextChar();
+						}
+						else {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->AND, "and"));
+						};
 						NextChar();
 					}
 
 					label '|' {
-						@tokens->AddBack(Token->New(@line_num, Token->Type->OR, "or"));
+						if(@next_char = '|') {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, "||"));
+							NextChar();
+						}
+						else {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->OR, "or"));
+						};
 						NextChar();
 					}
 
@@ -416,8 +537,13 @@ class Scanner {
 						NextChar();
 					}
 
-					label '\'' {
-						@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "mod"));
+					# The '\' that starts a function type ("\Int ~ Int") or a lambda
+					# ("\^(a : Int) ~ Int => a + 1", "\Func->New(...)"). The label here
+					# read '\'', a quote, which the character-literal case above always
+					# takes first, so a backslash had no token and the formatter stopped
+					# at the first one in a file.
+					label '\\' {
+						@tokens->AddBack(Token->New(@line_num, Token->Type->FWD_SLASH, "back_slash"));
 						NextChar();
 					}
 
@@ -426,6 +552,11 @@ class Scanner {
 						# as '<>' with the '>' left behind, so formatting wrote '<> >'.
 						if(@next_char = '>') {
 							@tokens->AddBack(Token->New(@line_num, Token->Type->LAMBDA, "lambda"));
+							NextChar();
+							NextChar();
+						}
+						else if(@next_char = '=') {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, "=="));
 							NextChar();
 							NextChar();
 						}
@@ -438,6 +569,10 @@ class Scanner {
 					label '<' {
 						if(@next_char = '>') {
 							@tokens->AddBack(Token->New(@line_num, Token->Type->NEQL, "neql"));
+							NextChar();
+						}
+						else if(@next_char = '<') {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, "<<"));
 							NextChar();
 						}
 						else if(@next_char = '=') {
@@ -456,32 +591,69 @@ class Scanner {
 							@tokens->AddBack(Token->New(@line_num, Token->Type->GTR_EQL, "gtr_eql"));
 							NextChar();
 						}
-						else { 
-							@tokens->AddBack(Token->New(@line_num, Token->Type->GTR, "gtr"));
+						else {
+							# One '>' at a time, also for ">>" and ">>>". The compiler reads
+							# those as shifts and its parser takes them apart again when they
+							# close type arguments ("Map<String, Vector<Int>>"), so which they
+							# are is not known here. Each carries whether the next character
+							# is another '>', and the formatter writes the run back unbroken.
+							if(@next_char = '>') {
+								@tokens->AddBack(Token->New(@line_num, Token->Type->GTR, "joined"));
+							}
+							else {
+								@tokens->AddBack(Token->New(@line_num, Token->Type->GTR, "gtr"));
+							};
+						};
+						NextChar();
+					}
+
+					# the alternative spellings: '==', '!=', '&&', '||', and '!'
+					label '!' {
+						if(@next_char = '=') {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, "!="));
+							NextChar();
+						}
+						else {
+							@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, "!"));
 						};
 						NextChar();
 					}
 
 					other {
 						if(@cur_char <> '\0') {
-							# A caller that only counts braces (CodeFormatter->LineDepths) steps
-							# over a character the scanner has no token for, such as the '\' of a
-							# function type. A formatter cannot write what it did not read, so
-							# for it this still ends the process.
-							if(@lenient) {
-								NextChar();
-							}
-							else {
-								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'] ---"->ErrorLine();
-								Runtime->Exit(1);
+							# Every other character is a token of its own and is written back
+							# as it is: '^' (a lambda's "\^"), a '.' that stands alone, '`',
+							# and anything a later compiler gives a meaning to. This used to
+							# end the process ("--- [Other ...] ---" and exit 1): a formatter
+							# cannot write what it did not read, but stopping lost the whole
+							# file for one character. The line-depth scan (SetLenient) still
+							# steps over them, since it counts braces and nothing else.
+							if(<>@lenient) {
+								@tokens->AddBack(Token->New(@line_num, Token->Type->SYMBOL, @cur_char->ToString()));
 							};
+							NextChar();
 						};
 					}
 				};
 			};
+
+			# where in the text the token just read starts and ends
+			span_end := Position();
+			for(k := token_count; k < @tokens->Size(); k += 1;) {
+				@tokens->Get(k)->SetSpan(span_start, span_end);
+			};
 		};
 
 		return true;
+	}
+
+	# the index of the current character; the length of the text at its end
+	method : Position() ~ Int {
+		if(@cur_char = '\0' & @buffer_index >= @buffer->Size()) {
+			return @buffer->Size();
+		};
+
+		return @buffer_index - 1;
 	}
 }
 
@@ -489,6 +661,8 @@ class Token {
 	@line_num : Int;
 	@type : Token->Type;
 	@value : String;
+	@start : Int;
+	@end : Int;
 
 	enum Type := -128 {
 		AND_ID,
@@ -582,10 +756,13 @@ class Token {
 		EQL,
 		NEQL,
 		NOT,
+		SYMBOL,
 		IDENT,
 		VTAB,
 		LINE_COMMENT,
+		TRAIL_COMMENT,
 		MULTI_COMMENT,
+		INLINE_COMMENT,
 		EOS,
 		OTHER
 	}
@@ -610,5 +787,19 @@ class Token {
 	
 	method : public : GetValue() ~ String {
 		return @value;
+	}
+
+	# the token's place in the text it was read from: [start, end)
+	method : public : SetSpan(start : Int, end : Int) ~ Nil {
+		@start := start;
+		@end := end;
+	}
+
+	method : public : GetStart() ~ Int {
+		return @start;
+	}
+
+	method : public : GetEnd() ~ Int {
+		return @end;
 	}
 }

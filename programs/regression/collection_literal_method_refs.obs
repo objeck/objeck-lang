@@ -1,0 +1,90 @@
+#~
+In a collection literal for a Vector of function values, an element that names a static
+function is the method reference it would be as an argument:
+  steps : Vector<Func2Ref<String, String>> := [Text->Upper, Text->Twice];
+A declared variable, a field, a return and an assignment as the target; a reference to
+a library class's function; references beside the full form and beside a lambda's
+FuncRef; FuncRef (no argument) and Func3Ref (two); the literal evaluated many times
+while the collector runs. Each function value is called and its result compared.
+~#
+use Collection;
+
+class Text {
+	function : Upper(s : String) ~ String {
+		return s->ToUpper();
+	}
+
+	function : Twice(s : String) ~ String {
+		return s + s;
+	}
+
+	function : Join(a : String, b : String) ~ String {
+		return a + "-" + b;
+	}
+
+	function : Seven() ~ IntRef {
+		return IntRef->New(7);
+	}
+
+	function : Eight() ~ IntRef {
+		return IntRef->New(8);
+	}
+}
+
+class Pipeline {
+	@steps : Vector<Func2Ref<String, String>>;
+
+	New() {
+		@steps := [Text->Twice, Text->Upper, Text->Twice];
+	}
+
+	method : public : Run(text : String) ~ String {
+		each(step in @steps) {
+			text := step->Get()(text);
+		};
+		return text;
+	}
+}
+
+class CollectionLiteralMethodRefs {
+	function : Steps() ~ Vector<Func2Ref<String, String>> {
+		return [Text->Twice, Text->Upper];
+	}
+
+	function : Apply(steps : Vector<Func2Ref<String, String>>, text : String) ~ String {
+		each(step in steps) {
+			text := step->Get()(text);
+		};
+		return text;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		steps : Vector<Func2Ref<String, String>> := [Text->Upper, Text->Twice];
+		assert Apply(steps, "ab")->Equals("ABAB") : "a declared variable";
+		assert Apply(Steps(), "ab")->Equals("ABAB") : "a return";
+		assert Pipeline->New()->Run("a")->Equals("AAAA") : "a field";
+
+		later : Vector<Func2Ref<String, String>>;
+		later := [Text->Twice];
+		assert Apply(later, "x")->Equals("xx") : "an assignment";
+
+		mixed : Vector<Func2Ref<String, String>> := [Text->Upper, Func2Ref->New(Text->Twice(String) ~ String)<String, String>];
+		assert Apply(mixed, "m")->Equals("MM") : "a reference beside the full form";
+
+		makers : Vector<FuncRef<IntRef>> := [Text->Seven, Text->Eight];
+		assert makers->Get(0)->Get()() + makers->Get(1)->Get()() = 15 : "FuncRef: no argument";
+
+		joins : Vector<Func3Ref<String, String, String>> := [Text->Join];
+		assert joins->Get(0)->Get()("a", "b")->Equals("a-b") : "Func3Ref: two arguments";
+
+		total := 0;
+		for(i := 0; i < 5000; i += 1;) {
+			each_time : Vector<Func2Ref<String, String>> := [Text->Upper, Text->Twice, Text->Twice];
+			total += Apply(each_time, "q{$i}")->Size();
+		};
+		# "q0".."q4999" times four: 10 of 2 characters, 90 of 3, 900 of 4, 4000 of 5
+		assert total = 95560 : "5,000 literals";
+
+		"PASS: method references in a collection literal"->PrintLine();
+	}
+}

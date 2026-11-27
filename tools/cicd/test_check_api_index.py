@@ -133,6 +133,38 @@ case("without --regenerated it still accepts matching copies",
      True, index_for(BASE_CLASSES))
 
 # ---------------------------------------------------------------- rejects -----
+# An index generated where the source paths use '/': every class's library was "".
+# This is the 2026-11-27 state (regenerated under WSL), which nothing rejected.
+nameless = index_for(BASE_CLASSES)
+for entries in nameless["class-bundle-names"].values():
+    for entry in entries:
+        entry["file"] = ""
+case("an index whose classes do not name their library is rejected",
+     False, nameless, must_mention=("do not name their library", "gen_json"))
+
+# a fresh generation that names no library, against a committed index that does
+root = tempfile.mkdtemp(prefix="apiindex_files_")
+try:
+    write_tree(root, index_for(BASE_CLASSES))
+    fresh_index = index_for(BASE_CLASSES)
+    for entries in fresh_index["class-bundle-names"].values():
+        for entry in entries:
+            entry["file"] = ""
+    fresh_path = os.path.join(root, "fresh.json")
+    io.open(fresh_path, "w", encoding="utf-8").write(json.dumps(fresh_index, indent=1))
+    code, output = run(root, fresh_path)
+    if code == 0 or "names another library" not in output:
+        failures.append("a fresh generation with empty libraries was not rejected (exit %d)\n%s" % (code, indent(output)))
+    else:
+        print("  ok    a fresh generation that names no library is rejected")
+finally:
+    shutil.rmtree(root, ignore_errors=True)
+
+one_nameless = index_for(BASE_CLASSES)
+one_nameless["class-bundle-names"]["Vector"][0]["file"] = ""
+case("and so is one with a single class that does not",
+     False, one_nameless, must_mention=("Collection.Vector",))
+
 # The real failure: the libraries gained a class and the index was not rebuilt.
 # This is the 2026-10-07 state, where API.Onnx.Session existed and was unindexed.
 case("a library ahead of the index is rejected, naming the class and its .obl",

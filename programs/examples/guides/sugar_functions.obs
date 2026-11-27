@@ -1,0 +1,50 @@
+#~
+# compile: obc -src sugar_functions.obs
+# run:     obr sugar_functions.obe
+#
+# Two ways to pass behavior around with less ceremony: a function named by itself
+# where a FuncRef is expected, and a lambda that uses the fields of the object it
+# was made in.
+~#
+class SugarFunctions {
+	@count : Int;
+
+	New() {
+		@count := 0;
+	}
+
+	method : public : Bump() ~ IntRef {
+		@count += 10;
+		return IntRef->New(@count);
+	}
+
+	# a lambda in an instance method: @count is the object's field, read and written live
+	method : public : Counter() ~ FuncRef<IntRef> {
+		return \() => { @count += 1; return IntRef->New(@count); };
+	}
+
+	# @self names the object, so an instance method is called through it
+	method : public : BumpLater() ~ FuncRef<IntRef> {
+		return \() => @self->Bump();
+	}
+
+	function : Double(x : IntRef) ~ IntRef {
+		return IntRef->New(x->Get() * 2);
+	}
+
+	function : Apply(f : Func2Ref<IntRef, IntRef>, n : Int) ~ Int {
+		return f->Get()(IntRef->New(n))->Get();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# a function by name: no Func2Ref->New(.. ~ ..)<..> around it
+		"Apply(Double, 21) = {$(Apply(SugarFunctions->Double, 21))}"->PrintLine();
+
+		s := SugarFunctions->New();
+		next := s->Counter();
+		"counter: {$(next()->Get())} {$(next()->Get())}"->PrintLine();
+
+		later := s->BumpLater();
+		"bump through @self: {$(later()->Get())}"->PrintLine();
+	}
+}

@@ -191,9 +191,7 @@ detector->Close();
 		~#
 		method : public : Detect(path : String, image : Byte[], width : Int, height : Int) ~ Detection[] {
 			if(<>IsOpen()) {
-				if(@error = Nil) {
-					@error := "the model is not loaded";
-				};
+				@error := @error ?? "the model is not loaded";
 				return Nil;
 			};
 			if(@labels = Nil | @labels->Size() = 0) {
@@ -662,8 +660,7 @@ catalog->Query("select i.folder, count(*) as n from detections d join images i o
 			};
 			Sort(names);
 
-			each(i : names) {
-				name := names[i];
+			each(name in names) {
 				if(<>name->Equals(".") & <>name->Equals("..")) {
 					path := String->New(folder);
 					path += name;
@@ -675,8 +672,7 @@ catalog->Query("select i.folder, count(*) as n from detections d join images i o
 			};
 
 			if(@recursive) {
-				each(i : names) {
-					name := names[i];
+				each(name in names) {
 					if(<>name->Equals(".") & <>name->Equals("..") & <>name->StartsWith('.')) {
 						path := String->New(folder);
 						path += name;
@@ -727,8 +723,7 @@ catalog->Query("select i.folder, count(*) as n from detections d join images i o
 			};
 
 			row->Set("detections", IntRef->New(found->Size()));
-			each(d : found) {
-				item := found[d];
+			each(item in found) {
 				if(item <> Nil) {
 					hit := detections->Insert();
 					hit->Set("id", IntRef->New(detections->Size() - 1));

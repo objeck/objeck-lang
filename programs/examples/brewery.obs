@@ -19,8 +19,7 @@ class Brewery {
 		else {
 			found_brewery : JsonElement;
 			breweries := JsonParser->TextToElement(text);
-			each(i : breweries) {
-				brewery := breweries->Get(i);
+			each(brewery in breweries) {
 				city := brewery->Get("city");
 				if(city->GetValue()->Equals("Fort Collins") | city->GetValue()->Equals("Petaluma")) {
 					found_brewery := brewery;
@@ -37,8 +36,7 @@ class Brewery {
 				else {
 					weather := JsonParser->TextToElement(text);
 					data_series := weather->Get("dataseries");
-					each(j : data_series) {
-						data := data_series->Get(j);
+					each(data in data_series) {
 						date := data->Get("date");
 						max := data->FindElements("temp2m/max");
 						if(date <> Nil & max <> Nil) {

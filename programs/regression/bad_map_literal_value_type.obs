@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: (16,5): An entry of this map literal is String: IntRef; this one is String: String
+# EXPECT_ERROR_COUNT: 1
+#~
+An entry's value is the map's value type, as for the Insert the entry stands for.
+~#
+use Collection;
+
+class BadMapLiteralValueType {
+	function : Take(m : Map<String, IntRef>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		m : Map<String, IntRef> := {
+			"a": 1,
+			"b": "two"
+		};
+		m->Size()->PrintLine();
+	}
+}

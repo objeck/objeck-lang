@@ -1,0 +1,27 @@
+# EXPECT_COMPILE_ERROR: (23,20): An arm of a 'match' statement is a block: 'pattern => { ... }'
+# EXPECT_ERROR_COUNT: 1
+#~
+The first arm of a 'match' that starts a statement decides its form: after a block, every arm is a block.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchStatementArm {
+	function : Main(args : String[]) ~ Nil {
+		c := Color->Red;
+		n := 0;
+		match c {
+			Color->Red => { n := 1; }
+			Color->Green => n,
+			other => { n := 3; }
+		};
+	}
+}

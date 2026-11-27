@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: (13,7): Expected expression
+#~
+A constructor with a promoted field ('New(@x : Int)') whose first statement does not
+parse is a syntax error. The promotion looks at the first statement for a 'Parent(..)'
+call, read the statement that did not parse, and obc ended with a segmentation fault
+(found by the syntax mutation run: the file cut short inside such a constructor).
+~#
+class BadCtorPromotionSyntax {
+	@x : Int;
+	@y : Int;
+
+	New(@x : Int) {
+		y :=;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		BadCtorPromotionSyntax->New(1);
+	}
+}

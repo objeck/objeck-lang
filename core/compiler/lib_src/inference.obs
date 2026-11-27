@@ -29,7 +29,7 @@ API.Onnx runs models directly. Compile with -lib inference.
 bundle API.Inference {
 	#~
 	Reading what came off the wire.
-	
+
 	Separate from API.Models.EndPoint, which carries the last error for every
 	backend. Finding an error inside a JSON body is HTTP's business, and a
 	backend-neutral bundle should not have to know what JSON is.
@@ -46,7 +46,7 @@ bundle API.Inference {
 		@return parsed element, or Nil
 		~#
 		function : ParseResponse(body : String) ~ JsonElement {
-			if(body = Nil | body->Size() = 0) {
+			if(body = Nil | body->IsEmpty()) {
 				EndPoint->SetLastError("empty response from the server");
 				return Nil;
 			};
@@ -231,7 +231,7 @@ bundle API.Inference {
 		@return output tensors, or Nil with EndPoint->GetLastError set
 		~#
 		method : public : Predict(model : String, inputs : Vector<Tensor>) ~ Vector<Tensor> {
-			if(model = Nil | model->Size() = 0) {
+			if(model = Nil | model->IsEmpty()) {
 				EndPoint->SetLastError("no model name");
 				return Nil;
 			};
@@ -406,7 +406,7 @@ bundle API.Inference {
 
 		#~
 		The request body this client would send, without sending it.
-		
+
 		A rejected request is reported by the server in terms of what it received,
 		which is hard to act on without seeing what was sent -- the two protocols
 		shape the same tensors very differently, and a tensor nested to the wrong
@@ -707,19 +707,19 @@ bundle API.Inference {
 
 	#~
 	A model server as an Engine.
-	
+
 	The remote counterpart of API.Onnx.OnnxEngine: the same interface, a model
 	reached over HTTP rather than loaded in-process. Swapping one for the other
 	changes nothing else in calling code, which is the point -- the backend is a
 	deployment decision.
-	
+
 	A server is the only GPU path Objeck has today, and the only route for a
 	model that will not convert to ONNX.
-	
+
 	IsOpen() asks the server whether the model is ready, so unlike an in-process
 	engine it is a network call and can change between calls. It is not cached:
 	a server that was ready a minute ago is not evidence about now.
-	
+
 	```
 	engine := HttpEngine->New("http://gpu-box:8000", "iris");
 	outputs := engine->Run(inputs);
@@ -764,7 +764,7 @@ bundle API.Inference {
 
 		#~
 		Whether the server reports the model ready.
-		
+
 		A network call, not a cached flag: unlike an in-process engine this can
 		change between calls, and a server that was ready a minute ago is not
 		evidence about now.

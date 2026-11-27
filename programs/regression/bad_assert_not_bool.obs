@@ -1,0 +1,7 @@
+# EXPECT_COMPILE_ERROR: bad_assert_not_bool.obs:(5,10): Invalid operation '=' between types: Int and Bool
+class BadAssertNotBool {
+	function : Main(args : String[]) ~ Nil {
+		x := 1;
+		assert x + 1 : "not a Bool";
+	}
+}

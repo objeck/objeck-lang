@@ -24,8 +24,7 @@ class CollectionsTour {
 
     # --- Hash: count words; Find gives Nil when the key is not there yet ---
     counts := Hash->New()<String, IntRef>;
-    each(i : words) {
-      word := words[i];
+    each(word in words) {
       seen := counts->Find(word);
       if(seen = Nil) {
         counts->Insert(word, IntRef->New(1));

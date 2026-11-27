@@ -1,0 +1,203 @@
+#~
+'spawn' and a lambda that names its instance, together (the block of a 'spawn' is
+compiled to a lambda, so in an instance method it reads and writes '@fields' and
+names '@self' as a lambda does):
+  - a 'spawn' block that writes a field, and one that calls a method through '@self'
+  - a lambda that captured '@self', handed to a 'spawn' block and called there
+  - a 'spawn' inside such a lambda's caller, many threads, each allocating, so that
+    collections run while threads hold the instance only through their closures
+  - an instance that nothing but its running threads refers to
+  - a 'spawn' block written in a lambda that is itself in an instance method names
+    the instance through a local, as a nested lambda must
+The totals are exact, so a lost or duplicated write fails the test.
+~#
+use Collection;
+use System.Concurrency;
+
+class Tally {
+	@count : Int;
+	@mutex : ThreadMutex;
+	@notes : Vector<String>;
+	@name : String;
+
+	New(name : String) {
+		@count := 0;
+		@mutex := ThreadMutex->New("tally");
+		@notes := Vector->New()<String>;
+		@name := name;
+	}
+
+	method : public : Add(n : Int) ~ Nil {
+		critical(@mutex) {
+			@count += n;
+		};
+	}
+
+	method : public : GetCount() ~ Int {
+		n := 0;
+		critical(@mutex) {
+			n := @count;
+		};
+		return n;
+	}
+
+	method : public : NoteCount() ~ Int {
+		n := 0;
+		critical(@mutex) {
+			n := @notes->Size();
+		};
+		return n;
+	}
+
+	# the field, through the block itself
+	method : public : FieldInSpawn(n : Int) ~ Thread {
+		return spawn {
+			critical(@mutex) {
+				@count += n;
+				# a field in an interpolation is still read through a local
+				name := @name;
+				@notes->AddBack("{$name}:{$n}");
+			};
+		};
+	}
+
+	# the instance, by name
+	method : public : SelfInSpawn(n : Int) ~ Thread {
+		return spawn {
+			@self->Add(n);
+		};
+	}
+
+	# a lambda that captured the instance
+	method : public : Adder() ~ FuncRef<IntRef> {
+		return \() => {
+			critical(@mutex) {
+				@count += 1;
+			};
+			return IntRef->New(@count);
+		};
+	}
+
+	# the lambda is a value the block captures; the block also allocates, so the
+	# collector runs while the instance is reached through closures
+	method : public : LambdaInSpawn(turns : Int) ~ Thread {
+		add := Adder();
+		return spawn {
+			junk := Vector->New()<String>;
+			for(i := 0; i < turns; i += 1;) {
+				add();
+				junk->AddBack("turn {$i}");
+				if(junk->Size() > 64) {
+					junk := Vector->New()<String>;
+				};
+			};
+		};
+	}
+
+	# a 'spawn' in a lambda: the instance by a local, as in any nested lambda
+	method : public : SpawnInLambda(n : Int) ~ Thread {
+		me := @self;
+		start := \() ~ Thread : () => spawn { me->Add(n); };
+		return start();
+	}
+
+	# started and dropped: only the threads hold the instance
+	function : Orphans(threads : Vector<Thread>, results : Vector<IntRef>, mutex : ThreadMutex) ~ Nil {
+		for(i := 0; i < 8; i += 1;) {
+			t := Tally->New("orphan {$i}");
+			threads->AddBack(t->Finish(i, results, mutex));
+		};
+	}
+
+	method : public : Finish(n : Int, results : Vector<IntRef>, mutex : ThreadMutex) ~ Thread {
+		return spawn {
+			junk := Vector->New()<String>;
+			name := @name;
+			for(i := 0; i < 2000; i += 1;) {
+				junk->AddBack("{$name} {$i}");
+				if(junk->Size() > 128) {
+					junk := Vector->New()<String>;
+				};
+				@count += 1;
+			};
+			critical(mutex) {
+				results->AddBack(IntRef->New(@count + n));
+			};
+		};
+	}
+}
+
+class InteractSpawnLambdaSelf {
+	function : Main(args : String[]) ~ Nil {
+		failed := 0;
+
+		t := Tally->New("t");
+		a := t->FieldInSpawn(100);
+		b := t->SelfInSpawn(1000);
+		c := t->SpawnInLambda(10000);
+		a->Join();
+		b->Join();
+		c->Join();
+		if(t->GetCount() <> 11100) {
+			"FAIL: field, @self and nested spawn: {$t->GetCount()}"->PrintLine();
+			failed += 1;
+		};
+		if(t->NoteCount() <> 1) {
+			"FAIL: the note the block wrote: {$t->NoteCount()}"->PrintLine();
+			failed += 1;
+		};
+
+		# 16 threads, each calling a lambda bound to the same instance 500 times
+		busy := Tally->New("busy");
+		workers := Vector->New()<Thread>;
+		for(i := 0; i < 16; i += 1;) {
+			workers->AddBack(busy->LambdaInSpawn(500));
+		};
+		each(worker in workers) {
+			worker->Join();
+		};
+		if(busy->GetCount() <> 8000) {
+			"FAIL: 16 threads through one lambda: {$busy->GetCount()}"->PrintLine();
+			failed += 1;
+		};
+
+		# many short threads writing a field and a collection of the instance
+		wide := Tally->New("wide");
+		workers := Vector->New()<Thread>;
+		for(i := 1; i <= 64; i += 1;) {
+			workers->AddBack(wide->FieldInSpawn(i));
+		};
+		each(worker in workers) {
+			worker->Join();
+		};
+		if(wide->GetCount() <> 2080 | wide->NoteCount() <> 64) {
+			"FAIL: 64 threads writing a field: {$wide->GetCount()}, {$wide->NoteCount()} notes"->PrintLine();
+			failed += 1;
+		};
+
+		# instances only their threads refer to
+		threads := Vector->New()<Thread>;
+		results := Vector->New()<IntRef>;
+		mutex := ThreadMutex->New("results");
+		Tally->Orphans(threads, results, mutex);
+		each(thread in threads) {
+			thread->Join();
+		};
+		sum := 0;
+		each(result in results) {
+			sum += result->Get();
+		};
+		# 8 instances, 2000 each, plus 0..7
+		if(results->Size() <> 8 | sum <> 16028) {
+			"FAIL: instances held by their threads: {$results->Size()} results, sum {$sum}"->PrintLine();
+			failed += 1;
+		};
+
+		if(failed = 0) {
+			"PASS: spawn with a lambda's @self and @fields"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -166,8 +166,7 @@ bundle Default {
 
 		function : Encode(str : String) ~ String {
 			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
+			each(c in str) {
 				select(c) {
 					label ' ': {
 						buffer->Append('+');

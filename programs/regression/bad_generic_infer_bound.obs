@@ -1,0 +1,24 @@
+# EXPECT_COMPILE_ERROR: (21,13): Concrete class: 'Plain' is incompatible with backing class/interface 'System.Compare'
+#~
+An inferred type argument is checked against the parameter's bound exactly as
+a written one is: 'Ranked->New(Plain->New())<Plain>' is refused, and so is the
+call that leaves '<Plain>' out.
+~#
+class Plain {
+	New() { }
+}
+
+class Ranked<T : Compare> {
+	@best : T;
+
+	New(best : T) {
+		@best := best;
+	}
+}
+
+class BadGenericInferBound {
+	function : Main(args : String[]) ~ Nil {
+		ranked := Ranked->New(Plain->New());
+		ranked->GetClassID()->PrintLine();
+	}
+}

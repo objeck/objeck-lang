@@ -108,7 +108,17 @@ std::wstring Parser::ParseBundleName()
         }
       }
       else if(Match(TOKEN_IDENT)) {
-        ProcessError(L"Expected '.'", TOKEN_SEMI_COLON);
+        // 'if(value is Type name)': the value's name ends before 'is', and the
+        // type's before the name (see ParseTypeTest)
+        if(in_type_test_type || (in_if_condition > 0 && scanner->GetToken()->GetIdentifier() == L"is")) {
+          break;
+        }
+        if(scanner->GetToken()->GetIdentifier() == L"is") {
+          ProcessError(L"'is' tests a type only as the whole condition of an 'if': 'if(value is Type name) { ... }'", TOKEN_SEMI_COLON);
+        }
+        else {
+          ProcessError(L"Expected '.'", TOKEN_SEMI_COLON);
+        }
         NextToken();
       }
     }
@@ -628,6 +638,10 @@ bool Parser::Parse()
   }
 
   GeneratePendingMcpTools();
+  // after the tools are derived: the check looks for the function they are registered by
+  if(!agent_tool_classes.empty()) {
+    CheckAgentToolClasses();
+  }
 
   return CheckErrors();
 }
@@ -889,6 +903,14 @@ void Parser::ParseBundle(int depth)
             break;
 
           default:
+            // 'agent Name {': a contextual keyword, so 'agent' stays an ordinary name
+            if(IsAgentDeclaration()) {
+              Class* agent_class = ParseAgent(bundle_name, depth + 1);
+              if(agent_class) {
+                bundle->AddClass(agent_class);
+              }
+              break;
+            }
             ProcessTopLevelError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
             NextToken();
             break;
@@ -913,7 +935,8 @@ void Parser::ParseBundle(int depth)
       program->AddUses(lib_uses, static_uses, file_name);
     }
     // parse class
-    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_RECORD_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
+    else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_RECORD_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID) ||
+            IsAgentDeclaration()) {
       if(scanner->GetToken()->GetDocId() >= 0) {
         RejectToolDoc(L"a class, enum or other declaration");
       }
@@ -959,6 +982,14 @@ void Parser::ParseBundle(int depth)
           break;
 
         default:
+          // 'agent Name {': a contextual keyword, so 'agent' stays an ordinary name
+          if(IsAgentDeclaration()) {
+            Class* agent_class = ParseAgent(bundle_name, depth + 1);
+            if(agent_class) {
+              bundle->AddClass(agent_class);
+            }
+            break;
+          }
           ProcessTopLevelError(L"Expected 'class', 'record', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
           NextToken();
           break;
@@ -1313,6 +1344,134 @@ void Parser::CalculateConst(Expression* expression, std::stack<INT64_VALUE>& val
 }
 
 /****************************
+ * `@x : get : T` / `@x : get set : T`: the getter and setter of the field,
+ * written as the methods a programmer would. The name is Get + the field name in
+ * PascalCase (input_tokens -> GetInputTokens); a Bool field is Is + the name, and
+ * a leading is_/has_ is the prefix itself (is_error -> IsError, has_uses -> HasUses);
+ * the setter is Set + the name without its is_/has_. A method of the same
+ * signature written by hand takes precedence.
+ ****************************/
+static std::wstring AccessorBaseName(std::wstring name, std::wstring& prefix, bool is_bool)
+{
+  if(!name.empty() && name[0] == L'@') {
+    name = name.substr(1);
+  }
+  prefix = is_bool ? L"Is" : L"Get";
+  if(name.compare(0, 3, L"is_") == 0 && name.size() > 3) {
+    name = name.substr(3);
+  }
+  else if(name.compare(0, 4, L"has_") == 0 && name.size() > 4) {
+    name = name.substr(4);
+    prefix = L"Has";
+  }
+
+  std::wstring result_name;
+  bool upper = true;
+  for(wchar_t c : name) {
+    if(c == L'_') {
+      upper = true;
+    }
+    else if(upper && c >= L'a' && c <= L'z') {
+      result_name += (wchar_t)(c - L'a' + L'A');
+      upper = false;
+    }
+    else {
+      result_name += c;
+      upper = false;
+    }
+  }
+  return result_name;
+}
+
+void Parser::GenerateFieldAccessors(Class* klass, const std::wstring& file_name, int line_num, int line_pos, int depth)
+{
+  (void)depth;
+  Method* previous_method = current_method;
+  std::vector<Statement*> statements = klass->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(!statements[i] || statements[i]->GetStatementType() != DECLARATION_STMT) {
+      continue;
+    }
+
+    std::vector<Declaration*> group;
+    for(Declaration* declaration = static_cast<Declaration*>(statements[i]); declaration; declaration = declaration->GetChild()) {
+      group.push_back(declaration);
+    }
+
+    for(size_t g = group.size(); g > 0; --g) {
+      Declaration* declaration = group[g - 1];
+      SymbolEntry* field_entry = declaration->GetEntry();
+      if(!declaration->HasGetter() || !field_entry || !field_entry->GetType()) {
+        continue;
+      }
+
+      std::wstring field_name = field_entry->GetName();
+      const size_t index = field_name.find_last_of(L':');
+      if(index != std::wstring::npos) {
+        field_name = field_name.substr(index + 1);
+      }
+
+      const bool is_bool = field_entry->GetType()->GetType() == BOOLEAN_TYPE && field_entry->GetType()->GetDimension() == 0;
+      std::wstring prefix;
+      const std::wstring base = AccessorBaseName(field_name, prefix, is_bool);
+
+      // getter
+      const std::wstring getter_name = klass->GetName() + L":" + prefix + base;
+      Method* getter = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, getter_name, PUBLIC_METHOD, false, false);
+      current_method = getter;
+      symbol_table->NewParseScope();
+      getter->SetDeclarations(TreeFactory::Instance()->MakeDeclarationList());
+      StatementList* getter_body = TreeFactory::Instance()->MakeStatementList();
+      getter_body->AddStatement(TreeFactory::Instance()->MakeReturn(file_name, line_num, line_pos, line_num, line_pos,
+                                                                    TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name)));
+      getter->SetStatements(getter_body);
+      getter->SetReturn(TypeFactory::Instance()->MakeType(field_entry->GetType()));
+      getter->SetEndLineNumber(line_num);
+      getter->SetEndLinePosition(line_pos);
+      if(klass->AddMethod(getter)) {
+        symbol_table->PreviousParseScope(getter->GetParsedName());
+      }
+      else {
+        symbol_table->PreviousParseScope(getter->GetParsedName() + L" <accessor-generated>");
+      }
+
+      // setter
+      if(declaration->HasSetter()) {
+        std::wstring ignored;
+        const std::wstring setter_name = klass->GetName() + L":Set" + AccessorBaseName(field_name, ignored, false);
+        Method* setter = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, line_num, line_pos, setter_name, PUBLIC_METHOD, false, false);
+        current_method = setter;
+        symbol_table->NewParseScope();
+
+        DeclarationList* declarations = TreeFactory::Instance()->MakeDeclarationList();
+        SymbolEntry* param_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(L"value"),
+                                                                            TypeFactory::Instance()->MakeType(field_entry->GetType()), false, true);
+        symbol_table->CurrentParseScope()->AddEntry(param_entry);
+        declarations->AddDeclaration(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, param_entry,
+                                                                              (Declaration*)nullptr));
+        setter->SetDeclarations(declarations);
+
+        StatementList* setter_body = TreeFactory::Instance()->MakeStatementList();
+        Variable* left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, field_name);
+        Variable* right = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"value");
+        setter_body->AddStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, left, right));
+        setter->SetStatements(setter_body);
+        setter->SetReturn(TypeFactory::Instance()->MakeType(NIL_TYPE));
+        setter->SetEndLineNumber(line_num);
+        setter->SetEndLinePosition(line_pos);
+        if(klass->AddMethod(setter)) {
+          symbol_table->PreviousParseScope(setter->GetParsedName());
+        }
+        else {
+          symbol_table->PreviousParseScope(setter->GetParsedName() + L" <accessor-generated>");
+        }
+      }
+    }
+  }
+  current_method = previous_method;
+}
+
+/****************************
  * Parses a class.
  ****************************/
 Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
@@ -1371,6 +1530,42 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
 
   // generic ids
   std::vector<Class*> generic_classes = ParseGenericClasses(bundle_name, depth);
+
+  // 'class Name : json' or 'class Name : json(optional_field, ...)': the compiler writes the JSON Schema and the reader
+  bool is_json = false;
+  std::vector<std::wstring> json_optional;
+  if(Match(TOKEN_COLON)) {
+    NextToken();
+    if(Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"json") {
+      is_json = true;
+      NextToken();
+      if(Match(TOKEN_OPEN_PAREN)) {
+        NextToken();
+        while(Match(TOKEN_IDENT)) {
+          json_optional.push_back(scanner->GetToken()->GetIdentifier());
+          NextToken();
+          if(Match(TOKEN_COMMA)) {
+            NextToken();
+          }
+          else {
+            break;
+          }
+        }
+        if(!Match(TOKEN_CLOSED_PAREN)) {
+          ProcessError(L"Expected ')' after the optional fields of 'json(...)'", TOKEN_CLOSED_PAREN);
+        }
+        else {
+          NextToken();
+        }
+      }
+      if(is_record) {
+        ProcessError(L"'json' belongs to a class; a record has its own constructor and is already readable from JSON");
+      }
+    }
+    else {
+      ProcessError(L"Expected 'json' after the class name, as in 'class Weather : json'");
+    }
+  }
 
   // from id
   std::wstring parent_cls_name;
@@ -1431,6 +1626,9 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
                                                     interface_names, generic_classes, is_public, false);
   klass->SetRecord(is_record);
   klass->SetReadonlyRecord(is_readonly_record);
+  if(is_json) {
+    klass->SetJson(true, json_optional);
+  }
   current_class = klass;
 
   // add '@self' entry
@@ -1522,14 +1720,22 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
     GenerateRecordMethods(klass, file_name, class_line_num, class_line_pos, depth + 1);
   }
 
-  // The tools are derived once every file has been read (GeneratePendingMcpTools): a parameter's record or
-  // enum may be declared below this class, or in a later file.
-  if(!mcp_tools.empty()) {
+  GenerateFieldAccessors(klass, file_name, class_line_num, class_line_pos, depth + 1);
+
+  // The tools, and the members of a 'class : json', are derived once every file has been read
+  // (GeneratePendingMcpTools): a parameter's or a field's record, enum or json class may be declared
+  // below this class, or in a later file.
+  if(!mcp_tools.empty() || is_json) {
     McpPending pending;
     pending.klass = klass;
     pending.bundle = current_bundle;
     pending.tools = mcp_tools;
     pending.uses_mcp = current_lib_uses && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.MCP")) != current_lib_uses->end();
+    pending.is_json = is_json;
+    pending.json_line = class_line_num;
+    if(current_lib_uses) {
+      pending.lib_uses = *current_lib_uses;
+    }
     mcp_pending.push_back(pending);
   }
 
@@ -1544,7 +1750,7 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
   std::vector<Declaration*> fields;
   std::vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
-    if(statements[i]->GetStatementType() == DECLARATION_STMT) {
+    if(statements[i] && statements[i]->GetStatementType() == DECLARATION_STMT) {
       // comma declaration lists chain names last-to-first; walk the chain and
       // reverse the group so generated constructor parameters follow source
       // order. Static fields are class-level state, not per-instance record
@@ -1830,7 +2036,7 @@ static bool HasUnclosedInterpolation(const std::wstring& str)
 /****************************
  * Parses lambda expression
  ****************************/
-Lambda* Parser::ParseLambda(int depth) {
+Lambda* Parser::ParseLambda(int depth, Type* block_type) {
   const int line_num = GetLineNumber();
   const int line_pos = GetLinePosition();
   const std::wstring file_name = GetFileName();
@@ -1846,9 +2052,17 @@ Lambda* Parser::ParseLambda(int depth) {
   symbol_table->NewParseScope();
 
   // parse derived, alias, or types
-  Type* type = nullptr;
+  Type* type = block_type;
   std::wstring alias_name;
-  if(Match(TOKEN_OPEN_PAREN)) {
+  // a block that is given its type (a 'spawn' body): no signature, no
+  // parameters and no '=>', only the '{ ... }' that follows
+  if(block_type) {
+    method->SetSpawnBody(true);
+    if(!Match(TOKEN_OPEN_BRACE)) {
+      ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+    }
+  }
+  else if(Match(TOKEN_OPEN_PAREN)) {
     // Disambiguate the explicit-type form `\(<sig>) ~ R : (<params>) => body`
     // from the bare form `\(<params>) => body` (type inferred from context).
     // Both start with `(...)`; in the typed form the matching `)` is followed
@@ -1887,7 +2101,7 @@ Lambda* Parser::ParseLambda(int depth) {
   }
 
   int end_pos = 0;
-  ExpressionList* parameter_list = ParseExpressionList(end_pos, depth + 1);
+  ExpressionList* parameter_list = block_type ? TreeFactory::Instance()->MakeExpressionList() : ParseExpressionList(end_pos, depth + 1);
 
   std::vector<Expression*> parameters = parameter_list->GetExpressions();
   DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
@@ -1910,10 +2124,12 @@ Lambda* Parser::ParseLambda(int depth) {
   method->SetDeclarations(declaration_list);
 
   // return type
-  if(!Match(TOKEN_LAMBDA)) {
-    ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
+  if(!block_type) {
+    if(!Match(TOKEN_LAMBDA)) {
+      ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
+    }
+    NextToken();
   }
-  NextToken();
 
   // parse body
   StatementList* statements;
@@ -2180,7 +2396,10 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // declarations
   symbol_table->NewParseScope();
+  promoted_fields.clear();
   method->SetDeclarations(ParseDecelerationList(depth + 1));
+  const std::vector<std::wstring> promoted = promoted_fields;
+  promoted_fields.clear();
 
   // return type
   Type* return_type;
@@ -2232,6 +2451,21 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   }
   else {
     method->SetStatements(ParseStatementList(depth + 1));
+    if(!promoted.empty() && method->GetStatements()) {
+      // after a leading Parent(...) call, ahead of the written statements
+      size_t at = 0;
+      std::vector<Statement*> written = method->GetStatements()->GetStatements();
+      // a first statement that did not parse is null: its syntax error has been reported
+      if(!written.empty() && written[0] && written[0]->GetStatementType() == METHOD_CALL_STMT &&
+         static_cast<MethodCall*>(written[0])->GetCallType() == PARENT_CALL) {
+        at = 1;
+      }
+      for(size_t i = 0; i < promoted.size(); ++i) {
+        Variable* left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"@" + promoted[i]);
+        Variable* right = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, promoted[i]);
+        method->GetStatements()->InsertStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, left, right), at + i);
+      }
+    }
   }
 
   method->SetEndLineNumber(GetLineNumber());
@@ -2274,6 +2508,10 @@ StatementList* Parser::ParseStatementList(int depth)
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     const size_t consumed = tokens_consumed;
     Statement* statement = ParseStatement(depth + 1);
+    if(nil_guard_bail) {
+      ProcessError(L"'?? return' guards a variable the statement assigns: 'x := E ?? return V;'");
+      nil_guard_bail = nullptr;
+    }
     TakePendingStatements(statements);
     statements->AddStatement(statement);
     TakeTrailingStatements(statements, statement);
@@ -2303,6 +2541,73 @@ StatementList* Parser::ParseStatementList(int depth)
 }
 
 /****************************
+ * Statements that ParseStatement and ParseIf hand to a function of their own,
+ * and that must stay there (PARSER_NO_INLINE). Those two are on every path of
+ * a nested block and of an 'else if' ladder, and the parser stops when its
+ * stack passes STACK_BUDGET: a local of a rarely taken branch (a name, a
+ * message being put together) is paid for at every level. With the branches
+ * below written in place, the longest 'else if' ladder obc reads fell from
+ * 1,800 rungs to 899 and the deepest block nesting from 395 to 332.
+ ****************************/
+
+// 'x ?? { ...; return };': leave when x is Nil
+PARSER_NO_INLINE Statement* Parser::ParseNilGuardStatement(int line_num, int line_pos, int depth)
+{
+  const std::wstring guard_name = scanner->GetToken()->GetIdentifier();
+  IdentifierContext guard_context(guard_name, line_num, line_pos);
+  NextToken();
+  Variable* guard_target = ParseVariable(guard_context, depth + 1);
+  NextToken();
+  StatementList* guard_bail = ParseNilGuardBail(depth + 1);
+  return MakeNilGuard(guard_target, guard_bail);
+}
+
+// 'match subject { ... }' as a statement
+PARSER_NO_INLINE Statement* Parser::ParseMatchStatement(int line_num, int line_pos, int depth)
+{
+  const std::wstring file_name = GetFileName();
+  std::wstring value_ident;
+  Select* select = ParseMatch(true, value_ident, depth + 1);
+  if(!select->IsValue()) {
+    return select;
+  }
+
+  // a value with a call on it, as any expression statement is
+  Expression* expression = MakeValueSelect(select, value_ident, line_num, line_pos);
+  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
+    ParseMethodCall(expression, depth + 1);
+  }
+  else {
+    ParseCastTypeOf(expression, depth + 1);
+  }
+  return TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
+}
+
+// 'if(value is Type name)': whether 'is' follows the tested value
+PARSER_NO_INLINE bool Parser::IsTypeTestStart()
+{
+  return Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"is";
+}
+
+// the bound name is declared in the scope of the 'if' block; false when the block's scope has the name
+PARSER_NO_INLINE bool Parser::DeclareTypeTestName(SymbolEntry* bind_entry, Assignment* bind_assign)
+{
+  if(!symbol_table->CurrentParseScope()->AddEntry(bind_entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + bind_assign->GetVariable()->GetName() + L"'");
+    return false;
+  }
+  return true;
+}
+
+// 'name := value->As(Type)' is the block's first statement
+PARSER_NO_INLINE void Parser::PrependTypeTestBinding(StatementList* if_statements, SymbolEntry* bind_entry, Assignment* bind_assign)
+{
+  if_statements->PrependStatement(TreeFactory::Instance()->MakeDeclaration(GetFileName(), bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
+                                                                           bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
+                                                                           bind_entry, bind_assign));
+}
+
+/****************************
  * Parses a statement.
  ****************************/
 Statement* Parser::ParseStatement(int depth, bool semi_colon)
@@ -2324,8 +2629,37 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
     statement = ParseTry(depth + 1);
   }
+  // 'x ?? { ...; return };': leave when x is Nil
+  else if(Match(TOKEN_IDENT) && Match(TOKEN_QUESTION_QUESTION, SECOND_INDEX) && Match(TOKEN_OPEN_BRACE, THIRD_INDEX)) {
+    statement = ParseNilGuardStatement(line_num, line_pos, depth);
+  }
+  // 'assert E : "label";': a contextual keyword too, taken only where a name could not follow
+  else if(Match(TOKEN_IDENT) && IsAssertStatement()) {
+    statement = ParseAssert(depth + 1);
+  }
+  // 'using(w := E) {': a contextual keyword; a '(' ... ')' closed by '{' cannot be a call
+  else if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_PAREN, 1) && scanner->GetToken()->GetIdentifier() == L"using" &&
+          scanner->PeekAfterParens(2) == TOKEN_OPEN_BRACE) {
+    statement = ParseUsing(depth + 1);
+  }
+  // 'json{...}->ToString()->PrintLine();': a JSON literal with a call on it
+  else if(IsJsonLiteralStart()) {
+    statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), ParseSimpleExpression(depth + 1));
+  }
+  // 'match subject {': a contextual keyword as well (see IsMatchStart)
+  else if(IsMatchStart()) {
+    statement = ParseMatchStatement(line_num, line_pos, depth);
+  }
+  // 'spawn {': a contextual keyword, so 'spawn' stays an ordinary name
+  else if(IsSpawn()) {
+    statement = ParseSpawn(depth + 1);
+  }
+  // a class named in an 'agent' declaration's tools, at the start of the statement written for it
+  else if(IsAgentSplice()) {
+    statement = ParseAgentName(depth);
+  }
   // identifier
-  else if(Match(TOKEN_IDENT)) {
+  else if(Match(TOKEN_IDENT) && !IsPromptLiteral()) {
     const std::wstring ident = ParseBundleName();
     statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
   }
@@ -4575,6 +4909,31 @@ void Parser::TakeTrailingStatements(StatementList* statements, Statement* statem
 }
 
 /****************************
+ * Declares the hidden local '#<what>_<n>' that a SequenceExpression leaves its
+ * value in. Its type is the type of the first value assigned to it. Such an
+ * expression needs a method's frame to hold the local, so it is an error where
+ * there is none.
+ ****************************/
+SymbolEntry* Parser::AddHiddenLocal(const std::wstring& what, std::wstring& ident, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  ident = L'#' + what + L'_' + std::to_wstring(hidden_local_id++);
+  if(!current_method) {
+    ProcessError(L"This expression is only allowed inside a function or method");
+    return nullptr;
+  }
+
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(ident),
+                                                                TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
+  if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
+    return nullptr;
+  }
+
+  return entry;
+}
+
+/****************************
  * Moves the hidden declarations the last statement needs into its list,
  * ahead of it.
  ****************************/
@@ -4923,6 +5282,267 @@ Statement* Parser::ParseControlFlowStatement(int line_num, int line_pos, const s
   }
 
   return statement;
+}
+
+/****************************
+ * Whether a JSON literal starts here: 'json' and then '{'. A name followed by
+ * '{' starts nothing else in an expression, so 'json' is a keyword only in
+ * this position and stays an ordinary name everywhere else.
+ ****************************/
+PARSER_NO_INLINE bool Parser::IsJsonLiteralStart()
+{
+  return Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"json";
+}
+
+/****************************
+ * 'Data.JSON.JsonElement->New(Data.JSON.JsonElement->JsonType-><type>)': an
+ * empty object or array, or null
+ ****************************/
+Expression* Parser::MakeJsonElement(const std::wstring& json_type, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+  args->AddExpression(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                                                              L"Data.JSON.JsonElement#JsonType", json_type));
+  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, NEW_INST_CALL,
+                                                 L"Data.JSON.JsonElement", args);
+}
+
+/****************************
+ * The start of a JSON object or array: a hidden local holding a new element,
+ * declared where the literal is evaluated. The members follow as calls on it.
+ ****************************/
+SequenceExpression* Parser::MakeJsonContainer(const std::wstring& json_type, std::wstring& ident, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  SymbolEntry* entry = AddHiddenLocal(L"json", ident, line_num, line_pos);
+  SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
+                                                                              TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+  if(entry) {
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
+    Assignment* assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, target,
+                                                                 MakeJsonElement(json_type, line_num, line_pos));
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, assign));
+  }
+
+  return sequence;
+}
+
+/****************************
+ * Parses a JSON object, from '{': '{ key: value, ... }'. It is a JsonElement
+ * of type OBJECT and an 'Insert(key, value)' on it for each member, in the
+ * order written. A key is any String expression; a value is a nested object
+ * or array, or any expression JsonElement has an Insert for (a String, Int,
+ * Float, Bool or JsonElement), and Nil is JSON's null.
+ ****************************/
+PARSER_NO_INLINE Expression* Parser::ParseJsonObject(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"JSON object", depth);
+#endif
+
+  std::wstring ident;
+  SequenceExpression* sequence = MakeJsonContainer(L"OBJECT", ident, line_num, line_pos);
+  NextToken();
+
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int member_line_num = GetLineNumber();
+    const int member_line_pos = GetLinePosition();
+
+    Expression* key = ParseExpression(depth + 1);
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ':' after the name of a JSON member: '\"name\": value'");
+    }
+    else {
+      NextToken();
+    }
+
+    Expression* value = ParseJsonValue(depth + 1);
+    if(key && value) {
+      ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+      args->AddExpression(key);
+      args->AddExpression(value);
+      sequence->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, member_line_num, member_line_pos, member_line_num, member_line_pos,
+                                                                     GetLineNumber(), GetLinePosition(), ident, L"Insert", args));
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or '}' after a JSON member");
+    }
+
+    // a member that read nothing would be read again from the same token
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return sequence;
+}
+
+/****************************
+ * Parses a JSON array, from '[': '[ value, ... ]'. It is a JsonElement of type
+ * ARRAY and an 'Add(value)' on it for each element, in the order written.
+ ****************************/
+Expression* Parser::ParseJsonArray(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"JSON array", depth);
+#endif
+
+  std::wstring ident;
+  SequenceExpression* sequence = MakeJsonContainer(L"ARRAY", ident, line_num, line_pos);
+  NextToken();
+
+  while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int element_line_num = GetLineNumber();
+    const int element_line_pos = GetLinePosition();
+
+    Expression* value = ParseJsonValue(depth + 1);
+    if(value) {
+      ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+      args->AddExpression(value);
+      sequence->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, element_line_num, element_line_pos, element_line_num, element_line_pos,
+                                                                     GetLineNumber(), GetLinePosition(), ident, L"Add", args));
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(!Match(TOKEN_CLOSED_BRACKET)) {
+      ProcessError(L"Expected ',' or ']' after a JSON array element");
+    }
+
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACKET)) {
+    ProcessError(L"Expected ']'", TOKEN_CLOSED_BRACKET);
+  }
+  NextToken();
+
+  return sequence;
+}
+
+/****************************
+ * Parses a value in a JSON literal: a nested object or array, Nil (null), or
+ * an expression whose value is inserted as it is
+ ****************************/
+Expression* Parser::ParseJsonValue(int depth)
+{
+  CheckDepth(depth);
+  if(Match(TOKEN_OPEN_BRACE)) {
+    return ParseJsonObject(depth + 1);
+  }
+
+  if(Match(TOKEN_OPEN_BRACKET)) {
+    return ParseJsonArray(depth + 1);
+  }
+
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  Expression* value = ParseExpression(depth + 1);
+  if(value && value->GetExpressionType() == NIL_LIT_EXPR && !value->GetCastType() && !value->GetMethodCall()) {
+    return MakeJsonElement(L"NULL", line_num, line_pos);
+  }
+
+  return value;
+}
+
+/****************************
+ * Parses a map literal, from '{': '{ key: value, ... }'. It is a map
+ * constructed into a hidden local where the literal is evaluated, and an
+ * 'Insert(key, value)' on it for each entry, in the order written. Which map
+ * (Map, Hash, ...) and of what, the parser cannot know: the constructor is
+ * left as MAP_LITERAL_MARKER and the analyzer names it from the type the
+ * literal is assigned to or returned as (ContextAnalyzer::TypeMapLiteral).
+ ****************************/
+PARSER_NO_INLINE Expression* Parser::ParseMapLiteral(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Map literal", depth);
+#endif
+
+  std::wstring ident;
+  SymbolEntry* entry = AddHiddenLocal(L"map", ident, line_num, line_pos);
+  SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
+                                                                              TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+  if(entry) {
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
+    MethodCall* constructor = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, NEW_INST_CALL,
+                                                                      MAP_LITERAL_MARKER, TreeFactory::Instance()->MakeExpressionList());
+    Assignment* assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, target, constructor);
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, assign));
+  }
+  NextToken();
+
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int entry_line_num = GetLineNumber();
+    const int entry_line_pos = GetLinePosition();
+
+    Expression* key = ParseExpression(depth + 1);
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ':' after a key of a map literal: '{key: value, ...}'");
+    }
+    else {
+      NextToken();
+    }
+
+    Expression* value = ParseExpression(depth + 1);
+    if(key && value) {
+      ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+      args->AddExpression(key);
+      args->AddExpression(value);
+      sequence->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, entry_line_num, entry_line_pos, entry_line_num, entry_line_pos,
+                                                                     GetLineNumber(), GetLinePosition(), ident, L"Insert", args));
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or '}' after an entry of a map literal");
+    }
+
+    // an entry that read nothing would be read again from the same token
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return sequence;
 }
 
 /****************************
@@ -5385,6 +6005,32 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
       NextToken();
     }
 
+    // accessors: `@x : get : T` or `@x : get set : T`. 'get' and 'set' are
+    // contextual: a modifier only when the word is followed by ':' (or by 'set'
+    // and ':'), so a type that happens to be named get is still a type.
+    bool want_get = false;
+    bool want_set = false;
+    if(Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"get" &&
+       (Match(TOKEN_COLON, SECOND_INDEX) ||
+        (Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken(SECOND_INDEX)->GetIdentifier() == L"set" && Match(TOKEN_COLON, THIRD_INDEX)))) {
+      if(!is_stmt || current_method) {
+        ProcessError(L"'get' and 'set' apply to a field of a class, not to a local variable");
+      }
+      if(is_static) {
+        ProcessError(L"'get' and 'set' apply to an instance field, not a static one");
+      }
+      want_get = true;
+      NextToken();
+      if(Match(TOKEN_IDENT)) {
+        want_set = true;
+        NextToken();
+      }
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+    }
+
     // type
     Type* type = ParseType(depth + 1);
 
@@ -5404,6 +6050,9 @@ Declaration* Parser::ParseDeclaration(IdentifierContext& context, bool is_stmt, 
         Variable* left = ParseVariable(add_context, depth + 1);
         Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), left, temp->GetExpression());
         declaration->SetAssignment(assignment);
+      }
+      if(want_get) {
+        declaration->SetAccessors(want_get, want_set);
       }
     }
   }
@@ -5448,6 +6097,33 @@ frontend::Declaration* Parser::AddDeclaration(IdentifierContext& context, Type* 
 }
 
 /****************************
+ * True when the class being parsed has already declared the field `name` ('@x')
+ ****************************/
+bool Parser::ClassDeclaresField(const std::wstring& name)
+{
+  if(!current_class) {
+    return false;
+  }
+
+  const std::wstring suffix = L":" + name;
+  std::vector<Statement*> statements = current_class->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(statements[i] && statements[i]->GetStatementType() == DECLARATION_STMT) {
+      for(Declaration* declaration = static_cast<Declaration*>(statements[i]); declaration; declaration = declaration->GetChild()) {
+        SymbolEntry* entry = declaration->GetEntry();
+        if(entry && !entry->IsStatic()) {
+          const std::wstring& full = entry->GetName();
+          if(full.size() >= suffix.size() && full.compare(full.size() - suffix.size(), suffix.size(), suffix) == 0) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/****************************
  * Parses a declaration std::list.
  ****************************/
 DeclarationList* Parser::ParseDecelerationList(int depth)
@@ -5456,6 +6132,13 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 #ifdef _DEBUG
   Debug(L"Declaration Parameters", depth);
 #endif
+
+  // a placeholder in the class written for an 'agent' declaration: the user's own parameter list is read in its place
+  if(IsAgentSplice()) {
+    DeclarationList* spliced = nullptr;
+    ParseAgentSplice(&spliced, depth);
+    return spliced;
+  }
 
   if(!Match(TOKEN_OPEN_PAREN)) {
     ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
@@ -5476,9 +6159,20 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
     }
 
     // identifier
-    const std::wstring ident = scanner->GetToken()->GetIdentifier();
+    std::wstring ident = scanner->GetToken()->GetIdentifier();
     const int line_num = GetLineNumber();
     const int line_pos = GetLinePosition();
+
+    // Field promotion: in a constructor, a parameter written '@name' where the class
+    // already declares the field '@name' fills that field. The parameter is 'name'
+    // (so it is also the argument's name for a named call), and the body starts with
+    // '@name := name'. Before this the parameter shadowed the field, which stayed 0.
+    if(ident.size() > 1 && ident[0] == L'@' && current_method &&
+       (current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       ClassDeclaresField(ident)) {
+      promoted_fields.push_back(ident.substr(1));
+      ident = ident.substr(1);
+    }
 
     IdentifierContext ident_context(ident, line_num, line_pos);
     NextToken();
@@ -5743,6 +6437,26 @@ Expression* Parser::ParseExpression(int depth)
       Debug(L"Nil coalesce", depth);
 #endif
       NextToken();
+
+      // 'E ?? return V', 'E ?? break', 'E ?? continue', 'E ?? { ...; return }': a statement
+      // leaves when E is Nil. The expression stays E; the assignment that owns it adds
+      // 'if(x = Nil) { ... }' after itself.
+      //
+      // A '{' whose first token is a literal followed by ':' is a map literal ('m ?? {"a": 1}'), which
+      // no statement of a block starts with: it is the default value, and is typed (or refused) as a
+      // map literal is anywhere inside an expression.
+      const bool map_literal_default = Match(TOKEN_OPEN_BRACE) && Match(TOKEN_COLON, THIRD_INDEX) &&
+        (Match(TOKEN_CHAR_STRING_LIT, SECOND_INDEX) || Match(TOKEN_INT_LIT, SECOND_INDEX) ||
+         Match(TOKEN_CHAR_LIT, SECOND_INDEX) || Match(TOKEN_FLOAT_LIT, SECOND_INDEX));
+      if(!map_literal_default &&
+         (Match(TOKEN_RETURN_ID) || Match(TOKEN_BREAK_ID) || Match(TOKEN_CONTINUE_ID) || Match(TOKEN_OPEN_BRACE))) {
+        if(nil_guard_bail) {
+          ProcessError(L"Only one '?? return' (or '?? { }') is allowed in a statement");
+        }
+        nil_guard_bail = ParseNilGuardBail(depth + 1);
+        break;
+      }
+
       Expression* default_expression = ParseLogic(depth + 1);
 
       ExpressionList* otherwise_args = TreeFactory::Instance()->MakeExpressionList();
@@ -6134,9 +6848,34 @@ Expression* Parser::ParseSimpleExpression(int depth)
   Debug(L"Simple expression", depth);
 #endif
 
+  // a placeholder in the class written for an 'agent' declaration: the user's own expression is read in its place
+  if(IsAgentSplice()) {
+    return ParseAgentSplice(nullptr, depth + 1);
+  }
+
   Expression* expression = nullptr;
 
-  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
+  // 'json{ ... }'
+  if(IsJsonLiteralStart()) {
+    NextToken();
+    expression = ParseJsonObject(depth + 1);
+  }
+  // 'match subject { ... }' and 'select(subject) { ... }' as values
+  else if(IsMatchStart()) {
+    expression = ParseMatchExpression(depth + 1);
+  }
+  else if(Match(TOKEN_SELECT_ID)) {
+    expression = ParseSelectExpression(depth + 1);
+  }
+  // 'spawn { ... }' is the started thread
+  else if(IsSpawn()) {
+    expression = ParseSpawn(depth + 1);
+  }
+  // 'prompt "..."': a contextual keyword, so 'prompt' stays an ordinary name
+  else if(IsPromptLiteral()) {
+    expression = ParsePromptLiteral(depth + 1);
+  }
+  else if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     std::wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;
@@ -6451,6 +7190,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
       if(Match(TOKEN_OPEN_BRACKET)) {
         static_cast<StaticArray*>(expression)->SetIndices(ParseIndices(depth + 1));
       }
+      break;
+
+    case TOKEN_OPEN_BRACE:
+      expression = ParseMapLiteral(depth + 1);
       break;
 
     case TOKEN_NIL_ID:
@@ -7007,6 +7750,109 @@ MethodCall* Parser::ParseCurriedCalls(MethodCall* method_call, int depth)
 }
 
 /****************************
+ * 'spawn' is a word of the language only in front of a '{'
+ ****************************/
+PARSER_NO_INLINE bool Parser::IsSpawn()
+{
+  return Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"spawn";
+}
+
+/****************************
+ * Parses 'spawn { ... }': the block runs on a new thread and the expression
+ * is that thread, already started. It is written out as constructs the
+ * language already has, so there is nothing new behind the parser:
+ *
+ *   System.Concurrency.Thread->New() {
+ *     @body : () ~ Nil;
+ *     New() { Parent("spawn:<file>:<line>"); }
+ *     method : public : SpawnStart(body : () ~ Nil) ~ System.Concurrency.Thread {
+ *       @body := body; Execute(Nil); return @self;
+ *     }
+ *     method : public : Run(param : System.Base) ~ Nil { body := @body; body(); }
+ *   }->SpawnStart(\() ~ Nil : () => { ... })
+ *
+ * The block is the lambda, so it holds the values of the locals it names as
+ * they were when the thread was started, exactly as a lambda does. The class
+ * is parsed from text; the block is parsed from the program.
+ ****************************/
+PARSER_NO_INLINE MethodCall* Parser::ParseSpawn(int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const std::wstring file_name = GetFileName();
+
+#ifdef _DEBUG
+  Debug(L"Spawn", depth);
+#endif
+
+  if(!current_class || !current_method) {
+    ProcessError(L"'spawn' must be used in a method or function", TOKEN_SEMI_COLON);
+    return nullptr;
+  }
+
+  // the class of a 'spawn' is an anonymous class, and those do not nest
+  if(prev_method) {
+    ProcessError(L"'spawn' cannot be used in a method of an anonymous class", TOKEN_SEMI_COLON);
+    return nullptr;
+  }
+
+  // 'spawn'
+  NextToken();
+
+  // the block
+  std::vector<Type*> no_params;
+  Type* body_type = TypeFactory::Instance()->MakeType(no_params, TypeFactory::Instance()->MakeType(NIL_TYPE));
+  Lambda* body = ParseLambda(depth + 1, body_type);
+  const int end_line_num = GetLineNumber();
+  const int end_line_pos = GetLinePosition();
+
+  // the thread's name tells where it was started
+  std::wstring file_base = file_name;
+  const size_t slash_pos = file_base.find_last_of(L"/\\");
+  if(slash_pos != std::wstring::npos) {
+    file_base = file_base.substr(slash_pos + 1);
+  }
+  std::wstring thread_name = L"spawn:";
+  for(const wchar_t c : file_base) {
+    const bool plain = (c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') || (c >= L'0' && c <= L'9') || c == L'.' || c == L'-';
+    thread_name += plain ? c : L'_';
+  }
+  thread_name += L':' + std::to_wstring(line_num);
+
+  // the class, placed at the position of 'spawn'
+  std::wstring text(line_num > 1 ? line_num - 1 : 0, L'\n');
+  text += std::wstring(line_pos > 1 ? line_pos - 1 : 0, L' ');
+  text += L"System.Concurrency.Thread->New() { @body : () ~ Nil; New() { Parent(\"" + thread_name + L"\"); } "
+          L"method : public : SpawnStart(body : () ~ Nil) ~ System.Concurrency.Thread { @body := body; Execute(Nil); return @self; } "
+          L"method : public : Run(param : System.Base) ~ Nil { body := @body; body(); } }";
+
+  Scanner* saved = scanner;
+  scanner = new Scanner(file_name, alt_syntax, text);
+  NextToken();
+  spawn_class = true;
+  Expression* thread = ParseSimpleExpression(depth + 1);
+  spawn_class = false;
+  const bool whole = Match(TOKEN_END_OF_STREAM);
+  delete scanner;
+  scanner = saved;
+
+  if(!thread || !whole || thread->GetExpressionType() != METHOD_CALL_EXPR) {
+    diagnostics.Error(file_name, line_num, line_pos, L"Unable to build the thread for 'spawn'");
+    return nullptr;
+  }
+
+  ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+  arguments->AddExpression(body);
+  MethodCall* start = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, -1, -1, end_line_num, end_line_pos,
+                                                              current_class->GetName(), L"SpawnStart", arguments);
+  MethodCall* thread_call = static_cast<MethodCall*>(thread);
+  thread_call->SetMethodCall(start);
+
+  return thread_call;
+}
+
+/****************************
  * Parses an anonymous class
  ****************************/
 void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
@@ -7037,7 +7883,13 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   if(dot_pos != std::wstring::npos) {
     file_base = file_base.substr(0, dot_pos);
   }
-  const std::wstring cls_name = method_call->GetVariableName() + L".#Anonymous." +
+  // The class a 'spawn' makes has a name of its own: its text is generated, so
+  // its position could be that of a class the programmer wrote on the same
+  // line. It is named for the class it is written in as well, so a library
+  // and a program with a 'spawn' at one position of two files of one name do
+  // not make the same class.
+  const std::wstring cls_name = method_call->GetVariableName() +
+    (spawn_class ? L".#Spawn." + (current_class ? current_class->GetName() + L'.' : L"") : L".#Anonymous.") +
     file_base + L'_' + std::to_wstring(line_num) + L'_' + std::to_wstring(line_pos) + L'#';
 
   std::vector<std::wstring> interface_names;
@@ -7174,14 +8026,32 @@ If* Parser::ParseIf(int depth)
   }
   NextToken();
 
+  ++in_if_condition;
   Expression* expression = ParseExpression(depth + 1);
+  --in_if_condition;
+
+  // 'if(value is Type name)': 'is' is a keyword only here, after the tested
+  // value, where a name cannot follow an expression. It stays an ordinary name.
+  SymbolEntry* bind_entry = nullptr;
+  Assignment* bind_assign = nullptr;
+  if(expression && IsTypeTestStart()) {
+    expression = ParseTypeTest(expression, bind_entry, bind_assign, depth + 1);
+  }
+
   if(!Match(TOKEN_CLOSED_PAREN)) {
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
+  // the name belongs to the block: declared in its scope, by its first statement
+  if(bind_entry && !DeclareTypeTestName(bind_entry, bind_assign)) {
+    bind_entry = nullptr;
+  }
   StatementList* if_statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
+  if(bind_entry) {
+    PrependTypeTestBinding(if_statements, bind_entry, bind_assign);
+  }
 
   If* if_stmt;
   if(Match(TOKEN_ELSE_ID) && Match(TOKEN_IF_ID, SECOND_INDEX)) {
@@ -7201,6 +8071,183 @@ If* Parser::ParseIf(int depth)
   }
 
   return if_stmt;
+}
+
+/****************************
+ * The statements after '??' in a guard: 'return V', 'break', 'continue' or a block
+ * that ends in one of those or Runtime->Exit(..). A block that can fall through would
+ * leave the variable Nil, which is the case the guard exists to rule out.
+ ****************************/
+PARSER_NO_INLINE StatementList* Parser::ParseNilGuardBail(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+  StatementList* bail = nullptr;
+  if(Match(TOKEN_OPEN_BRACE)) {
+    symbol_table->CurrentParseScope()->NewParseScope();
+    bail = ParseStatementList(depth + 1);
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+  }
+  else {
+    // the analyzer enters a scope for the 'if' block: one must exist here too
+    symbol_table->CurrentParseScope()->NewParseScope();
+    bail = TreeFactory::Instance()->MakeStatementList();
+    if(Match(TOKEN_RETURN_ID)) {
+      bail->AddStatement(ParseReturn(depth + 1));
+    }
+    else if(Match(TOKEN_BREAK_ID)) {
+      bail->AddStatement(TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), BREAK_STMT));
+      NextToken();
+    }
+    else {
+      bail->AddStatement(TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), CONTINUE_STMT));
+      NextToken();
+    }
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+    return bail;
+  }
+
+  const std::vector<Statement*> written = bail->GetStatements();
+  bool leaves = false;
+  // a statement that did not parse is null: its syntax error has been reported
+  if(!written.empty() && written.back()) {
+    Statement* last = written.back();
+    switch(last->GetStatementType()) {
+    case RETURN_STMT:
+    case BREAK_STMT:
+    case CONTINUE_STMT:
+      leaves = true;
+      break;
+
+    case METHOD_CALL_STMT: {
+      MethodCall* call = static_cast<MethodCall*>(last);
+      leaves = call->GetVariableName() == L"Runtime" && call->GetMethodName() == L"Exit";
+    }
+      break;
+
+    default:
+      break;
+    }
+  }
+  if(!leaves) {
+    // written in two pieces: "??'" in one literal is a trigraph to an older compiler (and a warning to this one)
+    ProcessError(L"The block after '?" L"?' must end in return, break, continue or Runtime->Exit(..), or the variable can still be Nil");
+  }
+
+  return bail;
+}
+
+/****************************
+ * if(target = Nil) { bail }
+ ****************************/
+PARSER_NO_INLINE If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
+{
+  const std::wstring file_name = GetFileName();
+  const int line_num = target->GetLineNumber();
+  const int line_pos = target->GetLinePosition();
+
+  Variable* subject = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, target->GetName());
+  CalculatedExpression* test = static_cast<CalculatedExpression*>(TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR));
+  test->SetLeft(subject);
+  test->SetRight(TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
+  return TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), test, bail);
+}
+
+/****************************
+ * Parses the rest of 'if(value is Type name)', from 'is'. It is
+ * 'if(value <> Nil & value->TypeOf(Type)) { name := value->As(Type); ... }':
+ * the test is returned, and the declaration that the block starts with is
+ * handed back for ParseIf to place. A value that is more than a variable is
+ * evaluated once, where the test is, into a hidden local that the test and the
+ * cast read. Nil is of no type: the test is false, where a bare TypeOf on Nil
+ * is a runtime error.
+ ****************************/
+PARSER_NO_INLINE Expression* Parser::ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = subject->GetLineNumber();
+  const int line_pos = subject->GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Type test", depth);
+#endif
+
+  // 'is'
+  NextToken();
+
+  const int type_line_num = GetLineNumber();
+  const int type_line_pos = GetLinePosition();
+  in_type_test_type = true;
+  Type* type = ParseType(depth + 1);
+  in_type_test_type = false;
+  if(!type || type->GetType() != CLASS_TYPE || type->GetDimension() > 0) {
+    ProcessError(L"Expected a class name after 'is': 'if(value is Type name)'");
+    return subject;
+  }
+
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(L"Expected a name for the value after its type: 'if(value is Type name)'");
+    return subject;
+  }
+  const std::wstring bind_ident = scanner->GetToken()->GetIdentifier();
+  const int bind_line_num = GetLineNumber();
+  const int bind_line_pos = GetLinePosition();
+  NextToken();
+
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(L"'value is Type name' is the whole condition of an 'if'; test anything further inside its block");
+    return subject;
+  }
+
+  // A variable is read as often as needed. Anything else is evaluated once into
+  // a hidden local: the test becomes a sequence that declares the local and then
+  // tests it, so the local has its type before the test that reads it is analyzed.
+  std::wstring source_ident;
+  SymbolEntry* source_entry = nullptr;
+  if(subject->GetExpressionType() == VAR_EXPR && !subject->GetMethodCall() && !subject->GetCastType() && !subject->GetTypeOf() &&
+     !static_cast<Variable*>(subject)->GetIndices() && !static_cast<Variable*>(subject)->GetPreStatement() &&
+     !static_cast<Variable*>(subject)->GetPostStatement()) {
+    source_ident = static_cast<Variable*>(subject)->GetName();
+  }
+  else {
+    source_entry = AddHiddenLocal(L"is", source_ident, line_num, line_pos);
+    if(!source_entry) {
+      return subject;
+    }
+  }
+
+  // value <> Nil & value->TypeOf(Type); the node of an '&' holds its first operand on the right (see ParseLogic)
+  CalculatedExpression* not_nil = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR);
+  not_nil->SetLeft(source_entry ? TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, source_ident) : subject);
+  not_nil->SetRight(TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
+  Variable* tested = TreeFactory::Instance()->MakeVariable(file_name, type_line_num, type_line_pos, source_ident);
+  tested->SetTypeOf(type);
+  CalculatedExpression* both = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, AND_EXPR);
+  both->SetLeft(tested);
+  both->SetRight(not_nil);
+
+  Expression* test = both;
+  if(source_entry) {
+    Variable* source_target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, source_ident);
+    Assignment* source_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), source_target, subject);
+    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos, both);
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), source_entry, source_assign));
+    test = sequence;
+  }
+
+  // name := value->As(Type)
+  Variable* source = TreeFactory::Instance()->MakeVariable(file_name, type_line_num, type_line_pos, source_ident);
+  source->SetCastType(type, false);
+  Variable* bind_target = TreeFactory::Instance()->MakeVariable(file_name, bind_line_num, bind_line_pos, bind_ident);
+  bind_assign = TreeFactory::Instance()->MakeAssignment(file_name, bind_line_num, bind_line_pos, bind_line_num, bind_line_pos, bind_target, source);
+  bind_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, bind_line_num, bind_line_pos, GetScopeName(bind_ident),
+                                                        TypeFactory::Instance()->MakeType(type), false, current_method != nullptr);
+
+  return test;
 }
 
 /****************************
@@ -7369,6 +8416,361 @@ Try* Parser::ParseTry(int depth)
 
   return TreeFactory::Instance()->MakeTry(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), body, handlers, finally_stmts,
                                          error_entry, raise_entry);
+}
+
+/****************************
+ * A copy of an assertion operand that is only read -- a variable, a literal,
+ * arithmetic over them -- so the failure message can show its value without a
+ * hidden local to hold it (a method has 768 bytes of locals). Null for anything
+ * else: a call, an indexed read, '++x', a cast, an interpolated string.
+ ****************************/
+Expression* Parser::ClonePureOperand(Expression* expression, const std::wstring& file_name, int line_num, int line_pos)
+{
+  if(!expression || expression->GetMethodCall() || expression->GetCastType() || expression->GetTypeOf()) {
+    return nullptr;
+  }
+
+  TreeFactory* factory = TreeFactory::Instance();
+  switch(expression->GetExpressionType()) {
+  case INT_LIT_EXPR:
+    return factory->MakeIntegerLiteral(file_name, line_num, line_pos, static_cast<IntegerLiteral*>(expression)->GetValue());
+
+  case FLOAT_LIT_EXPR:
+    return factory->MakeFloatLiteral(file_name, line_num, line_pos, static_cast<FloatLiteral*>(expression)->GetValue());
+
+  case CHAR_LIT_EXPR:
+    return factory->MakeCharacterLiteral(file_name, line_num, line_pos, static_cast<CharacterLiteral*>(expression)->GetValue());
+
+  case BOOLEAN_LIT_EXPR:
+    return factory->MakeBooleanLiteral(file_name, line_num, line_pos, static_cast<BooleanLiteral*>(expression)->GetValue());
+
+  case CHAR_STR_EXPR: {
+    const std::wstring text = static_cast<CharacterString*>(expression)->GetString();
+    return text.find(L'{') == std::wstring::npos ? factory->MakeCharacterString(file_name, line_num, line_pos, text, true) : nullptr;
+  }
+
+  case VAR_EXPR: {
+    Variable* variable = static_cast<Variable*>(expression);
+    if(variable->GetIndices() || !variable->GetChainedIndices().empty() || variable->GetPreStatement() || variable->GetPostStatement()) {
+      return nullptr;
+    }
+    return factory->MakeVariable(file_name, line_num, line_pos, variable->GetName());
+  }
+
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EQL_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EXPR:
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR: {
+    CalculatedExpression* calculated = static_cast<CalculatedExpression*>(expression);
+    Expression* left = ClonePureOperand(calculated->GetLeft(), file_name, line_num, line_pos);
+    Expression* right = left ? ClonePureOperand(calculated->GetRight(), file_name, line_num, line_pos) : nullptr;
+    return right ? factory->MakeCalculatedExpression(file_name, line_num, line_pos, calculated->GetExpressionType(), left, right) : nullptr;
+  }
+
+  default:
+    return nullptr;
+  }
+}
+
+/****************************
+ * 'assert' is a contextual word, as 'try' is: an identifier named 'assert' is
+ * the keyword only where what follows could not continue a statement that
+ * starts with a name -- an expression's first token. 'assert := x', 'assert : Bool',
+ * 'assert->Foo()', 'assert[0] := 1' and 'assert(x);' are what they always were.
+ * 'assert (a) = b' and 'assert (a) : "label"' are assertions: after the closing
+ * parenthesis comes a binary operator or the label's ':', which a call statement
+ * cannot have.
+ ****************************/
+PARSER_NO_INLINE bool Parser::IsAssertStatement()
+{
+  if(scanner->GetToken()->GetIdentifier() != L"assert") {
+    return false;
+  }
+
+  switch(GetToken(1)) {
+  case TOKEN_IDENT:
+  case TOKEN_INT_LIT:
+  case TOKEN_FLOAT_LIT:
+  case TOKEN_CHAR_LIT:
+  case TOKEN_CHAR_STRING_LIT:
+  case TOKEN_TRUE_ID:
+  case TOKEN_FALSE_ID:
+  case TOKEN_NIL_ID:
+  case TOKEN_NOT:
+  case TOKEN_NOT_ID:
+    return true;
+
+  case TOKEN_OPEN_PAREN:
+    switch(scanner->PeekAfterParens(2)) {
+    case TOKEN_COLON:
+    case TOKEN_LES:
+    case TOKEN_GTR:
+    case TOKEN_LEQL:
+    case TOKEN_GEQL:
+    case TOKEN_EQL:
+    case TOKEN_NEQL:
+    case TOKEN_AND:
+    case TOKEN_OR:
+    case TOKEN_ADD:
+    case TOKEN_SUB:
+    case TOKEN_MUL:
+    case TOKEN_DIV:
+    case TOKEN_MOD:
+      return true;
+
+    default:
+      return false;
+    }
+
+  default:
+    return false;
+  }
+}
+
+/****************************
+ * The source text of an assertion's expression, from the column of its first
+ * token to the column where it ended (both 1-based); an expression over several
+ * lines is joined with single spaces.
+ ****************************/
+std::wstring Parser::AssertSourceText(int start_line, int start_pos, int end_line, int end_pos)
+{
+  if(!scanner->HasSource() || start_line < 1 || end_line < start_line || start_pos < 1 || end_pos < 1) {
+    return L"";
+  }
+
+  std::wstring text;
+  for(int line = start_line; line <= end_line; ++line) {
+    std::wstring part = scanner->GetSourceLine(line);
+    if(line == end_line) {
+      part = part.substr(0, std::min<size_t>(part.size(), (size_t)(end_pos - 1)));
+    }
+    if(line == start_line) {
+      part = part.size() >= (size_t)(start_pos - 1) ? part.substr(start_pos - 1) : L"";
+    }
+
+    const size_t first = part.find_first_not_of(L" \t\r");
+    const size_t last = part.find_last_not_of(L" \t\r");
+    part = first == std::wstring::npos ? L"" : part.substr(first, last - first + 1);
+    if(!part.empty()) {
+      text += text.empty() ? part : L" " + part;
+    }
+  }
+
+  return text;
+}
+
+/****************************
+ * 'assert E : "label";' becomes
+ *
+ *   [#l := L; #r := R;]            when E is 'L op R' (a comparison)
+ *   if((E) = false) {
+ *     System.AssertCheck->Fail("file:line", "source of E", label, "" + #l, "" + #r);
+ *   };
+ *
+ * so the operands are evaluated once, and nothing but the test runs when the
+ * assertion holds. The label is any String expression, and is optional.
+ ****************************/
+PARSER_NO_INLINE Statement* Parser::ParseAssert(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Assert", depth);
+#endif
+
+  NextToken();
+  const int expr_line = GetLineNumber();
+  const int expr_pos = GetLinePosition();
+  Expression* expression = ParseExpression(depth + 1);
+  if(!expression) {
+    return TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition());
+  }
+  const std::wstring source = AssertSourceText(expr_line, expr_pos, GetLineNumber(), GetLinePosition());
+
+  // the label, which is the message of the failure
+  Expression* label = nullptr;
+  if(Match(TOKEN_COLON)) {
+    NextToken();
+    label = ParseExpression(depth + 1);
+  }
+  if(!label) {
+    label = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  }
+  const int end_line = GetLineNumber();
+  const int end_pos = GetLinePosition();
+
+  // a comparison shows both operands
+  Expression* left_text = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  Expression* right_text = TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  Expression* condition = expression;
+
+  if(expression->GetExpressionType() != METHOD_CALL_EXPR && !expression->GetMethodCall() && !expression->GetCastType()) {
+    switch(expression->GetExpressionType()) {
+    case EQL_EXPR:
+    case NEQL_EXPR:
+    case LES_EXPR:
+    case GTR_EXPR:
+    case LES_EQL_EXPR:
+    case GTR_EQL_EXPR: {
+      CalculatedExpression* comparison = static_cast<CalculatedExpression*>(expression);
+      Expression* operands[2] = { comparison->GetLeft(), comparison->GetRight() };
+      Expression* texts[2] = { nullptr, nullptr };
+      Expression* held[2] = { operands[0], operands[1] };
+
+      for(int i = 0; i < 2; ++i) {
+        // a 'Nil' operand has no type to hold in a local, and nothing to show
+        if(!operands[i] || operands[i]->GetExpressionType() == NIL_LIT_EXPR) {
+          continue;
+        }
+
+        // read-only operands are shown from a copy; anything else is held in a local
+        Expression* copy = ClonePureOperand(operands[i], file_name, line_num, line_pos);
+        if(copy) {
+          texts[i] = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, ADD_EXPR,
+                                                                      TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, L"", true), copy);
+          continue;
+        }
+
+        const std::wstring tmp_ident = L"#assert_" + std::to_wstring(hidden_local_id++);
+        SymbolEntry* tmp_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(tmp_ident),
+                                                                          TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+        symbol_table->CurrentParseScope()->AddEntry(tmp_entry);
+
+        Variable* tmp_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+        Assignment* tmp_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, end_line, end_pos, tmp_var, operands[i]);
+        pending_statements.push_back(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, end_line, end_pos, tmp_entry, tmp_assign));
+
+        held[i] = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+        texts[i] = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, ADD_EXPR,
+                                                                    TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, L"", true),
+                                                                    TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident));
+      }
+
+      if(held[0] != operands[0] || held[1] != operands[1]) {
+        condition = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, comparison->GetExpressionType(), held[0], held[1]);
+      }
+      if(texts[0]) {
+        left_text = texts[0];
+      }
+      if(texts[1]) {
+        right_text = texts[1];
+      }
+    }
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  // System.AssertCheck->Fail(where, source, label, left, right)
+  const std::wstring where = file_name + L":" + std::to_wstring(line_num);
+  ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+  arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, where, true));
+  arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, source, true));
+  arguments->AddExpression(label);
+  arguments->AddExpression(left_text);
+  arguments->AddExpression(right_text);
+  MethodCall* fail_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, end_line, end_pos,
+                                                                  L"System.AssertCheck", L"Fail", arguments);
+  // the block is a scope of its own, as an 'if' body is, so the analyzer's scopes stay in step
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* fail_statements = TreeFactory::Instance()->MakeStatementList();
+  fail_statements->AddStatement(fail_call);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  // '(condition) = false'
+  Expression* failed = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR, condition,
+                                                                        TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, line_pos, false));
+  return TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, end_line, end_pos, failed, fail_statements);
+}
+
+/****************************
+ * Parses 'using(w := E) { ... }'. 'using' is contextual, as 'try' is: the
+ * keyword only where the parenthesis that follows is closed by a '{', which a
+ * call never is. The resource's name lives in a scope of its own around the
+ * body, so two blocks in a method may both name theirs 'f'.
+ ****************************/
+PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Using", depth);
+#endif
+
+  NextToken();
+  NextToken();
+
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  const std::wstring name = scanner->GetToken()->GetIdentifier();
+  NextToken();
+
+  if(!Match(TOKEN_ASSIGN)) {
+    ProcessError(L"Expected ':=' after the resource name in 'using'", TOKEN_ASSIGN);
+  }
+  NextToken();
+  Expression* initial = ParseExpression(depth + 1);
+
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+
+  // scope of the resource: its declaration, the body, the close
+  symbol_table->CurrentParseScope()->NewParseScope();
+  // the error the body raised, held while the resource closes and raised again
+  const std::wstring raise_ident = L"#using_raise_" + std::to_wstring(hidden_local_id++);
+  SymbolEntry* raise_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(raise_ident),
+                                                                      TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Error", file_name, line_num, line_pos),
+                                                                      false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(raise_entry);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(name),
+                                                                TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  if(!symbol_table->CurrentParseScope()->AddEntry(entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + name + L"'");
+  }
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name);
+  Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, initial);
+  Statement* resource = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, assignment);
+
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* body = ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  // if(w <> Nil) { w->Close(); } -- a Nil resource has nothing to close
+  symbol_table->CurrentParseScope()->NewParseScope();   // the close list
+  symbol_table->CurrentParseScope()->NewParseScope();   // the 'if' body
+  StatementList* close_call = TreeFactory::Instance()->MakeStatementList();
+  close_call->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, line_num, line_pos,
+                                                                   name, L"Close", TreeFactory::Instance()->MakeExpressionList()));
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  Expression* not_nil = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR,
+                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name),
+                                                                         TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
+  StatementList* close = TreeFactory::Instance()->MakeStatementList();
+  close->AddStatement(TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, line_num, line_pos, not_nil, close_call));
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  return TreeFactory::Instance()->MakeUsing(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), resource, body, close, raise_entry);
 }
 
 CriticalSection* Parser::ParseCritical(int depth)
@@ -7916,6 +9318,303 @@ Select* Parser::ParseSelect(int depth)
 }
 
 /****************************
+ * Whether 'match' starts here: the word, then the first name of its subject.
+ * Two names in a row start nothing else, so 'match' is a keyword only in this
+ * position and stays an ordinary name everywhere else.
+ ****************************/
+PARSER_NO_INLINE bool Parser::IsMatchStart()
+{
+  return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"match";
+}
+
+/****************************
+ * Parses 'match subject { pattern | pattern => arm, ..., other => arm }'.
+ * It is a 'select' on the subject whose labels are checked: for an enum
+ * subject they are items of that enum, and without 'other' they name every
+ * item. As a statement an arm is a block. As a value an arm is an expression,
+ * assigned to a hidden local that 'value_ident' then names. Where a statement
+ * starts the first arm decides which it is, so 'match c { A => "a", other =>
+ * "b" }->PrintLine();' is a value like any other expression statement.
+ ****************************/
+PARSER_NO_INLINE Select* Parser::ParseMatch(bool is_statement, std::wstring& value_ident, int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const std::wstring file_name = GetFileName();
+  bool is_value = !is_statement;
+  bool is_first = true;
+  if(is_value) {
+    AddHiddenLocal(L"match", value_ident, line_num, line_pos);
+  }
+
+#ifdef _DEBUG
+  Debug(L"Match", depth);
+#endif
+
+  NextToken();
+  Expression* eval_expression = ParseExpression(depth + 1);
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"#");
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, -1, -1, variable, eval_expression);
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  StatementList* other = nullptr;
+  std::vector<StatementList*> statement_lists;
+  std::map<ExpressionList*, StatementList*> statement_map;
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int arm_line_num = GetLineNumber();
+    const int arm_line_pos = GetLinePosition();
+
+    // patterns
+    bool is_other = false;
+    ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
+    if(Match(TOKEN_OTHER_ID)) {
+      is_other = true;
+      NextToken();
+    }
+    else {
+      labels->AddExpression(ParseSimpleExpression(depth + 1));
+      while(Match(TOKEN_OR)) {
+        NextToken();
+        labels->AddExpression(ParseSimpleExpression(depth + 1));
+      }
+    }
+
+    if(!Match(TOKEN_LAMBDA)) {
+      ProcessError(L"Expected '=>' after a 'match' pattern");
+    }
+    else {
+      NextToken();
+    }
+
+    // arm
+    if(is_first && is_statement && !Match(TOKEN_OPEN_BRACE)) {
+      is_value = true;
+      AddHiddenLocal(L"match", value_ident, line_num, line_pos);
+    }
+    is_first = false;
+
+    StatementList* statements;
+    if(is_value) {
+      statements = MakeValueArm(value_ident, ParseExpression(depth + 1), arm_line_num, arm_line_pos);
+    }
+    else if(Match(TOKEN_OPEN_BRACE)) {
+      symbol_table->CurrentParseScope()->NewParseScope();
+      statements = ParseStatementList(depth + 1);
+      symbol_table->CurrentParseScope()->PreviousParseScope();
+    }
+    else {
+      ProcessError(L"An arm of a 'match' statement is a block: 'pattern => { ... }'", TOKEN_CLOSED_BRACE);
+      statements = TreeFactory::Instance()->MakeStatementList();
+    }
+
+    if(is_other) {
+      if(other) {
+        ProcessError(L"Duplicate 'other' arm");
+      }
+      else {
+        other = statements;
+      }
+    }
+    else {
+      statement_map.insert(std::pair<ExpressionList*, StatementList*>(labels, statements));
+    }
+    // note: order matters during contextual analysis (see ParseSelect)
+    statement_lists.push_back(statements);
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(is_value && !Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or '}' after a 'match' arm");
+    }
+
+    // an arm that read nothing would be read again from the same token
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  if(statement_lists.empty()) {
+    ProcessError(L"A 'match' needs at least one arm: 'pattern => ...'");
+  }
+
+  Select* select = TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), eval_assignment, statement_map, statement_lists, other);
+  select->SetChecked(L"match");
+  if(is_value) {
+    select->SetValue();
+  }
+
+  return select;
+}
+
+/****************************
+ * Parses 'match' where a value is expected
+ ****************************/
+PARSER_NO_INLINE Expression* Parser::ParseMatchExpression(int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+  std::wstring value_ident;
+  Select* select = ParseMatch(false, value_ident, depth + 1);
+  return MakeValueSelect(select, value_ident, line_num, line_pos);
+}
+
+/****************************
+ * Parses 'select' where a value is expected: a table of values,
+ * 'select(subject) { label a, b: value  other: value }'. The arms are
+ * expressions; apart from the spelling it is 'match' used as a value.
+ ****************************/
+PARSER_NO_INLINE Expression* Parser::ParseSelectExpression(int depth)
+{
+  CheckDepth(depth);
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+  const std::wstring file_name = GetFileName();
+
+#ifdef _DEBUG
+  Debug(L"Select value", depth);
+#endif
+
+  std::wstring value_ident;
+  AddHiddenLocal(L"select", value_ident, line_num, line_pos);
+
+  NextToken();
+  if(!Match(TOKEN_OPEN_PAREN)) {
+    ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
+  }
+  NextToken();
+
+  Expression* eval_expression = ParseExpression(depth + 1);
+  if(!Match(TOKEN_CLOSED_PAREN)) {
+    ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+  }
+  NextToken();
+
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"#");
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, -1, -1, variable, eval_expression);
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  StatementList* other = nullptr;
+  std::vector<StatementList*> statement_lists;
+  std::map<ExpressionList*, StatementList*> statement_map;
+  while(Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) {
+    const int arm_line_num = GetLineNumber();
+    const int arm_line_pos = GetLinePosition();
+
+    // labels
+    bool is_other = false;
+    ExpressionList* labels = TreeFactory::Instance()->MakeExpressionList();
+    while(Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) {
+      if(Match(TOKEN_LABEL_ID)) {
+        NextToken();
+        labels->AddExpression(ParseSimpleExpression(depth + 1));
+        while(Match(TOKEN_COMMA)) {
+          NextToken();
+          labels->AddExpression(ParseSimpleExpression(depth + 1));
+        }
+      }
+      else {
+        if(is_other) {
+          ProcessError(L"Duplicate 'other' label");
+        }
+        is_other = true;
+        NextToken();
+      }
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':' after the label of a 'select' value");
+      }
+      else {
+        NextToken();
+      }
+    }
+
+    // value
+    if(Match(TOKEN_OPEN_BRACE)) {
+      ProcessError(L"A 'select' used as a value takes a value after each label, not a block: 'label 1: \"one\"'", TOKEN_CLOSED_BRACE);
+    }
+    StatementList* statements = MakeValueArm(value_ident, ParseExpression(depth + 1), arm_line_num, arm_line_pos);
+    if(Match(TOKEN_SEMI_COLON) || Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+
+    if(is_other) {
+      if(other) {
+        ProcessError(L"Duplicate 'other' label");
+      }
+      else {
+        other = statements;
+      }
+    }
+    else {
+      statement_map.insert(std::pair<ExpressionList*, StatementList*>(labels, statements));
+    }
+    statement_lists.push_back(statements);
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  if(statement_lists.empty()) {
+    ProcessError(L"A 'select' used as a value needs at least one label: 'label 1: \"one\"'");
+  }
+
+  Select* select = TreeFactory::Instance()->MakeSelect(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), eval_assignment, statement_map, statement_lists, other);
+  select->SetChecked(L"select");
+  select->SetValue();
+
+  return MakeValueSelect(select, value_ident, line_num, line_pos);
+}
+
+/****************************
+ * One arm of a 'match' or 'select' used as a value: 'value_ident := value'
+ ****************************/
+StatementList* Parser::MakeValueArm(const std::wstring& value_ident, Expression* value, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  StatementList* statements = TreeFactory::Instance()->MakeStatementList();
+  if(value) {
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, value_ident);
+    statements->AddStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), target, value));
+  }
+
+  return statements;
+}
+
+/****************************
+ * The value of a 'match' or 'select': the select runs where the expression is
+ * evaluated, then the hidden local its arms assigned is read
+ ****************************/
+Expression* Parser::MakeValueSelect(Select* select, const std::wstring& value_ident, int line_num, int line_pos)
+{
+  const std::wstring file_name = GetFileName();
+  Variable* value = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, value_ident);
+  SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos, value);
+  sequence->AddStatement(select);
+
+  return sequence;
+}
+
+/****************************
  * Parses a return statement
  ****************************/
 Return* Parser::ParseReturn(int depth)
@@ -8011,6 +9710,11 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
     }
   }
 
+  if(nil_guard_bail && assignment) {
+    trailing_statements.push_back(MakeNilGuard(assignment->GetVariable(), nil_guard_bail));
+    nil_guard_bail = nullptr;
+  }
+
   return assignment;
 }
 
@@ -8038,6 +9742,11 @@ Type* Parser::ParseType(int depth)
       alias_name += L"#";
       alias_name += ParseBundleName();
       type = TypeFactory::Instance()->MakeType(ALIAS_TYPE, alias_name, file_name, line_num, line_pos);
+    }
+    else {
+      // '\Name' alone names nothing: no type was made and none was reported, so a method
+      // declared '~ \String' reached the analyzer with no return type, which it reads
+      ProcessError(L"Expected '->' after the alias group: an alias type is written '\\Group->Name'", TOKEN_ASSESSOR);
     }
   }
     break;
@@ -8431,6 +10140,20 @@ namespace {
       }
       return L"{\"type\":\"object\",\"properties\":{" + props + L"},\"required\":[" + required + L"]}";
     }
+    case MK_JSONCLS: {
+      std::wstring props;
+      std::wstring required;
+      for(size_t i = 0; i < t.items.size(); ++i) {
+        const bool optional = i < t.optional.size() && t.optional[i];
+        // an optional field may be left out or be null (a model often writes null for what it does not know)
+        props += (i ? L"," : L"") + McpJsonString(t.items[i]) + L":" +
+                 (optional ? L"{\"anyOf\":[" + McpSchemaText(t.kids[i]) + L",{\"type\":\"null\"}]}" : McpSchemaText(t.kids[i]));
+        if(!optional) {
+          required += (required.empty() ? L"" : L",") + McpJsonString(t.items[i]);
+        }
+      }
+      return L"{\"type\":\"object\",\"properties\":{" + props + L"},\"required\":[" + required + L"]}";
+    }
     case MK_ARRAY:
     case MK_VECTOR:
       return L"{\"type\":\"array\",\"items\":" + McpSchemaText(t.kids[0]) + L"}";
@@ -8444,6 +10167,7 @@ namespace {
   // what the helper functions of one class are called, so one is written once per type
   struct McpHelpers {
     std::wstring cls;
+    std::wstring prefix = L"McpRead_";                        // 'class : json' writes JsonRead_, so a class with both has no clash
     std::map<std::wstring, std::wstring> names;               // type text -> function name
     std::vector<std::pair<std::wstring, std::wstring> > code; // function name -> source text
     int count = 0;
@@ -8460,7 +10184,7 @@ namespace {
       return found->second;
     }
 
-    const std::wstring name = L"McpRead_" + std::to_wstring(++helpers.count);
+    const std::wstring name = helpers.prefix + std::to_wstring(++helpers.count);
     helpers.names[key] = name;
 
     const std::wstring head = L"function : " + name + L"(mcp_j : Data.JSON.JsonElement) ~ " + t.text + L" { ";
@@ -8549,6 +10273,8 @@ namespace {
       return j + L"->GetString()";
     case MK_JSON:
       return j;
+    case MK_JSONCLS:
+      return t.name + L"->FromJson(" + j + L")";
     default:
       return helpers.cls + L"->" + McpHelper(t, helpers) + L"(" + j + L")";
     }
@@ -8812,6 +10538,65 @@ static std::wstring McpTypeText(Type* type)
   return text;
 }
 
+// The fields of a record or of a 'class : json' class: their names, types and (json) which are optional.
+bool Parser::McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, int depth)
+{
+  const std::wstring name = record->GetName();
+  std::vector<Statement*> statements = record->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(!statements[i] || statements[i]->GetStatementType() != DECLARATION_STMT) {
+      continue;
+    }
+    std::vector<Declaration*> group;
+    Declaration* declaration = static_cast<Declaration*>(statements[i]);
+    while(declaration) {
+      SymbolEntry* entry = declaration->GetEntry();
+      if(entry && !entry->IsStatic()) {
+        group.push_back(declaration);
+      }
+      declaration = declaration->GetChild();
+    }
+    for(size_t g = group.size(); g > 0; --g) {
+      SymbolEntry* entry = group[g - 1]->GetEntry();
+      std::wstring field = McpAfterColon(entry->GetName());
+      if(!field.empty() && field[0] == L'@') {
+        field = field.substr(1);
+      }
+      McpTy kid;
+      std::wstring kid_why;
+      if(!McpAnalyze(entry->GetType(), kid, kid_why, false, depth + 1)) {
+        if(kid_why.empty()) {
+          // the field's type is in a file with a syntax error, which is the answer
+          why.clear();
+          return false;
+        }
+        if(record->IsJson()) {
+          for(size_t at = kid_why.find(L"tool parameter"); at != std::wstring::npos; at = kid_why.find(L"tool parameter", at)) {
+            kid_why.replace(at, 14, L"JSON field");
+          }
+        }
+        why = L"the field '" + field + L"' of the " + (record->IsJson() ? L"class '" : L"record '") + name + L"': " + kid_why;
+        return false;
+      }
+      if(kid.kind == MK_CALL) {
+        why = L"the field '" + field + L"' of the " + (record->IsJson() ? L"class '" : L"record '") + name + L"' cannot be a McpCall";
+        return false;
+      }
+      element.items.push_back(field);
+      element.kids.push_back(std::move(kid));
+      if(record->IsJson()) {
+        const std::vector<std::wstring>& optional = record->GetJsonOptional();
+        element.optional.push_back(std::find(optional.begin(), optional.end(), field) != optional.end());
+      }
+    }
+  }
+  if(element.items.empty()) {
+    why = L"the " + std::wstring(record->IsJson() ? L"class '" : L"record '") + name + L"' has no fields";
+    return false;
+  }
+  return true;
+}
+
 // Reads what MCP needs to know of a type. False, with the reason in 'why', for a type that cannot be a tool's
 // parameter. 'in_collection' is true for the element of a Vector or Map, which holds IntRef, not Int.
 bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_collection, int depth)
@@ -8938,47 +10723,21 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
         why.clear();
         return false;
       }
-      if(!record->IsRecord()) {
-        why = L"the class '" + name + L"' cannot be a tool parameter: declare it as a record, or take a JsonElement";
+      if(!record->IsRecord() && !record->IsJson()) {
+        why = L"the class '" + name + L"' cannot be a tool parameter: declare it as a record or as 'class " + name + L" : json', or take a JsonElement";
         return false;
       }
-      element.kind = MK_RECORD;
-      std::vector<Statement*> statements = record->GetStatements();
-      for(size_t i = 0; i < statements.size(); ++i) {
-        if(statements[i]->GetStatementType() != DECLARATION_STMT) {
-          continue;
-        }
-        std::vector<Declaration*> group;
-        Declaration* declaration = static_cast<Declaration*>(statements[i]);
-        while(declaration) {
-          SymbolEntry* entry = declaration->GetEntry();
-          if(entry && !entry->IsStatic()) {
-            group.push_back(declaration);
-          }
-          declaration = declaration->GetChild();
-        }
-        for(size_t g = group.size(); g > 0; --g) {
-          SymbolEntry* entry = group[g - 1]->GetEntry();
-          std::wstring field = McpAfterColon(entry->GetName());
-          if(!field.empty() && field[0] == L'@') {
-            field = field.substr(1);
-          }
-          McpTy kid;
-          std::wstring kid_why;
-          if(!McpAnalyze(entry->GetType(), kid, kid_why, false, depth + 1)) {
-            why = kid_why.empty() ? kid_why : L"the field '" + field + L"' of the record '" + name + L"': " + kid_why;
-            return false;
-          }
-          if(kid.kind == MK_CALL) {
-            why = L"the field '" + field + L"' of the record '" + name + L"' cannot be a McpCall";
-            return false;
-          }
-          element.items.push_back(std::move(field));
-          element.kids.push_back(std::move(kid));
-        }
+      element.kind = record->IsJson() ? MK_JSONCLS : MK_RECORD;
+      // A class may be declared below the class that holds it, so a class can now be reached from
+      // itself. A schema describes a value of a known shape: one that contains itself has none.
+      if(std::find(mcp_class_stack.begin(), mcp_class_stack.end(), record) != mcp_class_stack.end()) {
+        why = L"the class '" + name + L"' holds itself, directly or through its fields, and a JSON Schema describes a value of a known depth: use a JsonElement for the part that repeats";
+        return false;
       }
-      if(element.items.empty()) {
-        why = L"the record '" + name + L"' has no fields";
+      mcp_class_stack.push_back(record);
+      const bool fields_ok = McpAnalyzeFields(record, element, why, depth);
+      mcp_class_stack.pop_back();
+      if(!fields_ok) {
         return false;
       }
     }
@@ -8988,7 +10747,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
       return false;
     }
     else {
-      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those";
+      why = L"the type '" + name + L"' cannot be a tool parameter: use Int, Float, Bool, Byte, Char, String, JsonElement, an enum, a record, or an array, Vector or Map of those (a class must be a record, or 'class X : json')";
       return false;
     }
   }
@@ -9013,7 +10772,7 @@ bool Parser::McpAnalyze(Type* type, McpTy& out, std::wstring& why, bool in_colle
 }
 
 // parses one generated function and adds it to the class
-void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth)
+void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, int depth, const wchar_t* needed_by)
 {
   std::wstring text(line > 1 ? line - 1 : 0, L'\n');
   text += code;
@@ -9023,12 +10782,16 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   scanner = new Scanner(klass->GetFileName(), alt_syntax, std::move(text));
   NextToken();
 
+  const std::wstring owner = needed_by ? needed_by : L"an '@tool' function";
   Method* method = nullptr;
   if(Match(TOKEN_FUNCTION_ID)) {
     method = ParseMethod(true, false, depth + 1);
   }
+  else if(needed_by && Match(TOKEN_METHOD_ID)) {
+    method = ParseMethod(false, false, depth + 1);
+  }
   if(!Match(TOKEN_END_OF_STREAM)) {
-    ProcessError(L"The code written for an '@tool' function has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
+    ProcessError(L"The code written for " + owner + L" has an extra '" + scanner->DescribeToken(scanner->GetToken()) + L"'");
   }
 
   delete scanner;
@@ -9036,12 +10799,13 @@ void Parser::McpAddFunction(Class* klass, const std::wstring& code, int line, in
   current_method = previous_method;
 
   if(method && !klass->AddMethod(method)) {
-    diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which an '@tool' function needs for itself");
+    diagnostics.Error(klass->GetFileName(), line, 1, L"The class already has a function named '" + McpAfterColon(method->GetName()) + L"', which " + owner + L" needs for itself");
   }
 }
 
-// Derives the tools of every class that has some, once every file has been read: a parameter's record or
-// enum may be declared below the class that takes it, or in a later file. A file with a syntax error is left
+// Derives the tools of every class that has some, and the members of every 'class : json', once every file
+// has been read: a parameter's or a field's record, enum or json class may be declared below the class that
+// takes it, or in a later file. A file with a syntax error is left
 // alone (its functions may be half built, and the syntax error is the answer); the other files are not.
 void Parser::GeneratePendingMcpTools()
 {
@@ -9056,12 +10820,20 @@ void Parser::GeneratePendingMcpTools()
     current_bundle = pending.bundle;
     symbol_table = pending.bundle->GetSymbolTableManager();
     current_class = pending.klass;
+    std::vector<std::wstring>* previous_uses = current_lib_uses;
+    current_lib_uses = &pending.lib_uses;
     try {
-      GenerateMcpTools(pending.klass, pending.tools, pending.uses_mcp, 1);
+      if(pending.is_json) {
+        GenerateJsonClass(pending.klass, pending.json_line, 1);
+      }
+      if(!pending.tools.empty()) {
+        GenerateMcpTools(pending.klass, pending.tools, pending.uses_mcp, 1);
+      }
     }
     catch(const NestingTooDeep&) {
       // reported where it was found
     }
+    current_lib_uses = previous_uses;
     current_class = nullptr;
   }
   mcp_pending.clear();
@@ -9551,6 +11323,119 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bo
   }
 }
 
+/****************************************************************************
+ * 'class Name : json'.
+ *
+ * Writes into the class, as source text parsed by this same parser, from the class's own fields (the same
+ * derivation an '@tool' parameter gets; docs/design/AGENT_SYNTAX.md):
+ *
+ *   JsonSchema() ~ JsonElement          the JSON Schema of the class (fields; 'json(a, b)' marks a and b optional)
+ *   JsonFill(mcp_j)                     sets every field from a JSON object
+ *   FromJson(mcp_j) ~ Name              checks the value against the schema, then makes and fills an object
+ *   Ask(agent, prompt) ~ Name           asks the agent's model for a value of the class (needs 'use API.AgentJson;')
+ *
+ * A class without ': json' gets none of this, and nothing here runs for it.
+ ****************************************************************************/
+void Parser::GenerateJsonClass(Class* klass, int line, int depth)
+{
+  const std::wstring file_name = klass->GetFileName();
+  const std::wstring cls = klass->GetName();
+  const std::wstring qcls = McpLit(cls);
+
+  if(!current_lib_uses || std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.LlmUtil")) == current_lib_uses->end()) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class needs 'use API.LlmUtil;' (and -lib llm_util,json): FromJson checks the value against the schema with that library");
+    return;
+  }
+  if(!klass->GetParentName().empty()) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class cannot extend another class: its schema is made from its own fields");
+    return;
+  }
+  if(!klass->GetGenericClasses().empty()) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class cannot be generic: its schema is made from its own field types");
+    return;
+  }
+
+  // FromJson makes the object with New()
+  bool has_new = false;
+  const bool has_default_new = klass->HasDefaultNew();
+  std::vector<Method*> methods = klass->GetMethods();
+  for(size_t i = 0; i < methods.size(); ++i) {
+    if(McpAfterColon(methods[i]->GetName()) == L"New") {
+      has_new = true;
+    }
+  }
+  // the names the compiler writes: a function of the class with one of them (any parameters) would be a second overload, not a replacement
+  for(size_t i = 0; i < methods.size(); ++i) {
+    const std::wstring existing = McpAfterColon(methods[i]->GetName());
+    if(existing == L"JsonSchema" || existing == L"JsonFill" || existing == L"FromJson" ||
+       (existing == L"Ask" && std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.AgentJson")) != current_lib_uses->end())) {
+      diagnostics.Error(file_name, line, 1, L"The class already has a function named '" + existing + L"', which a 'json' class needs for itself");
+      return;
+    }
+  }
+  if(has_new && !has_default_new) {
+    diagnostics.Error(file_name, line, 1, L"a 'json' class needs a constructor with no parameters: FromJson makes the object with '" + cls + L"->New()' and sets the fields");
+    return;
+  }
+
+  McpTy ty;
+  ty.kind = MK_JSONCLS;
+  ty.name = cls;
+  ty.text = cls;
+  std::wstring why;
+  mcp_class_stack.push_back(klass);
+  const bool fields_ok = McpAnalyzeFields(klass, ty, why, 0);
+  mcp_class_stack.pop_back();
+  if(!fields_ok) {
+    // no reason: a field's type is in a file with a syntax error, and that error is the answer
+    if(!why.empty()) {
+      diagnostics.Error(file_name, line, 1, why);
+    }
+    return;
+  }
+  const std::vector<std::wstring>& optional = klass->GetJsonOptional();
+  for(size_t o = 0; o < optional.size(); ++o) {
+    if(std::find(ty.items.begin(), ty.items.end(), optional[o]) == ty.items.end()) {
+      diagnostics.Error(file_name, line, 1, L"'json(" + optional[o] + L")': the class '" + cls + L"' has no field of that name");
+      return;
+    }
+  }
+
+  McpHelpers helpers;
+  helpers.cls = cls;
+  helpers.prefix = L"JsonRead_";
+
+  std::wstring fill = L"method : public : JsonFill(mcp_j : Data.JSON.JsonElement) ~ Nil { ";
+  for(size_t i = 0; i < ty.items.size(); ++i) {
+    const std::wstring name = McpLit(ty.items[i]);
+    const std::wstring read = McpRead(ty.kids[i], L"mcp_j->Get(\"" + name + L"\")", helpers);
+    if(i < ty.optional.size() && ty.optional[i]) {
+      fill += L"if(mcp_j->Has(\"" + name + L"\") & mcp_j->Get(\"" + name + L"\")->GetType() <> Data.JSON.JsonElement->JsonType->NULL) { @" + ty.items[i] + L" := " + read + L"; }; ";
+    }
+    else {
+      fill += L"if(<>mcp_j->Has(\"" + name + L"\")) { Runtime->Raise(Error->New(\"missing field '" + name + L"' of " + qcls + L"\")); }; @" + ty.items[i] + L" := " + read + L"; ";
+    }
+  }
+  fill += L"}";
+
+  const wchar_t* owner = L"a 'json' class";
+  for(size_t i = 0; i < helpers.code.size(); ++i) {
+    McpAddFunction(klass, helpers.code[i].second, line, depth, owner);
+  }
+  McpAddFunction(klass, L"function : JsonSchema() ~ Data.JSON.JsonElement { return Data.JSON.JsonParser->TextToElement(\"" + McpLit(McpSchemaText(ty)) + L"\"); }", line, depth, owner);
+  McpAddFunction(klass, fill, line, depth, owner);
+  McpAddFunction(klass, L"function : FromJson(mcp_j : Data.JSON.JsonElement) ~ " + cls + L" { " +
+                        L"if(mcp_j = Nil) { Runtime->Raise(Error->New(\"" + qcls + L": there is no JSON value\")); }; " +
+                        L"mcp_e := API.LlmUtil.JsonSchema->Check(" + cls + L"->JsonSchema(), mcp_j); " +
+                        L"if(mcp_e->Size() > 0) { Runtime->Raise(Error->New(\"" + qcls + L": \" + API.LlmUtil.JsonSchema->Describe(mcp_e))); }; " +
+                        L"mcp_o := " + cls + L"->New(); mcp_o->JsonFill(mcp_j); return mcp_o; }", line, depth, owner);
+
+  if(std::find(current_lib_uses->begin(), current_lib_uses->end(), std::wstring(L"API.AgentJson")) != current_lib_uses->end()) {
+    McpAddFunction(klass, L"function : Ask(mcp_agent : API.Agent.Agent, mcp_prompt : String) ~ " + cls + L" { return " + cls +
+                          L"->FromJson(API.AgentJson.AgentAsk->Value(mcp_agent, mcp_prompt, " + cls + L"->JsonSchema())); }", line, depth, owner);
+  }
+}
+
 // '@tool' belongs to a function: say so where it sits before anything else
 void Parser::RejectToolDoc(const wchar_t* what)
 {
@@ -9558,4 +11443,903 @@ void Parser::RejectToolDoc(const wchar_t* what)
   if(doc) {
     diagnostics.Error(GetFileName(), doc->line, doc->pos, std::wstring(L"'@tool' marks a function, but its doc comment is before ") + what + L"; move the comment to the function");
   }
+}
+
+/****************************************************************************
+ * Prompt literals (docs/design/AGENT_SYNTAX.md, section 2).
+ *
+ *   p := prompt "Summarise {text} in {count : Int} bullets.";
+ *
+ * 'prompt' is a word only where a string literal follows it, so a variable, a parameter or a method called
+ * 'prompt' is untouched. The literal is rewritten here into the calls a person would write,
+ *
+ *   API.LlmUtil.Prompt->New()->Text("Summarise ")->Slot("text", text)->Text(" in ")->Slot("count", count)->Text(" bullets.")
+ *
+ * with every node placed at the line and column of the text it came from. A hole is '{name}' or
+ * '{name : Type}'; '{{' and '}}' are literal braces; '{$...}' is the ordinary string interpolation and is left
+ * to the text piece it sits in. What a hole may name, and whether its value has the declared type, is checked
+ * by the analyzer (ContextAnalyzer::AnalyzePromptHole), where the types are known.
+ ****************************************************************************/
+namespace {
+  // the code of a hole's declared type: 1 none, 2 String, 3 Int, 4 Float, 5 Bool, 6 Char, 7 Byte; 0 when the name is no hole type
+  int PromptHoleType(const std::wstring& name)
+  {
+    if(name.empty()) { return 1; }
+    if(name == L"String") { return 2; }
+    if(name == L"Int") { return 3; }
+    if(name == L"Float") { return 4; }
+    if(name == L"Bool") { return 5; }
+    if(name == L"Char") { return 6; }
+    if(name == L"Byte") { return 7; }
+    return 0;
+  }
+
+  bool PromptIsName(const std::wstring& name)
+  {
+    size_t i = 0;
+    if(!name.empty() && name[0] == L'@') {
+      i = 1;
+    }
+    if(i >= name.size() || !(iswalpha(name[i]) || name[i] == L'_')) {
+      return false;
+    }
+    for(; i < name.size(); ++i) {
+      if(!(iswalnum(name[i]) || name[i] == L'_')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  std::wstring PromptTrim(const std::wstring& text)
+  {
+    const size_t a = text.find_first_not_of(L" \t");
+    if(a == std::wstring::npos) {
+      return L"";
+    }
+    return text.substr(a, text.find_last_not_of(L" \t") - a + 1);
+  }
+}
+
+PARSER_NO_INLINE Expression* Parser::ParsePromptLiteral(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int word_line = GetLineNumber();
+  const int word_pos = GetLinePosition();
+  NextToken();
+
+  // a string the scanner rejected gets the errors any string gets
+  if(Match(TOKEN_BAD_CHAR_STRING_LIT)) {
+    return ParseSimpleExpression(depth + 1);
+  }
+
+  // the string: its text as written (escapes not yet read), and where its opening quote is
+  const std::wstring text = scanner->GetToken()->GetIdentifier();
+  const bool is_raw = scanner->GetToken()->GetByteLit();
+  // (line, pos) is the first character of the text: a string's token is placed there when the string is on one
+  // line, and on its last line when it is not
+  const int end_line = GetLineNumber();
+  int line = end_line;
+  int pos = GetLinePosition();
+  if(text.find(L'\n') != std::wstring::npos) {
+    const Scanner::MultiLineString* multi = scanner->FindMultiLineStringEndingOn(end_line);
+    if(multi) {
+      line = multi->line;
+      pos = multi->pos + 1;
+    }
+  }
+  NextToken();
+  size_t i = 0;
+
+  const std::wstring klass_name = current_class ? current_class->GetName() : L"";
+  MethodCall* head = TreeFactory::Instance()->MakeMethodCall(file_name, word_line, word_pos, word_line, word_pos, NEW_INST_CALL,
+                                                             L"API.LlmUtil.Prompt", TreeFactory::Instance()->MakeExpressionList());
+  if(is_raw) {
+    diagnostics.Error(file_name, word_line, word_pos, L"A prompt literal takes an ordinary string, not a '$\"...\"' string: its holes and escapes are read from the text");
+    return head;
+  }
+
+  MethodCall* tail = head;
+  // the text piece being collected and where it began; (at_line, at_pos) is where the character at 'i' is
+  std::wstring piece;
+  int piece_line = line;
+  int piece_pos = pos;
+  int at_line = line;
+  int at_pos = pos;
+
+  // ends the piece: '->Text("...")'
+  auto flush = [&]() {
+    if(piece.empty()) {
+      return;
+    }
+    if(HasUnclosedInterpolation(piece)) {
+      diagnostics.Error(file_name, piece_line, piece_pos, L"A '{$' interpolation in a prompt literal is not closed: expected '}'");
+    }
+    ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+    arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, piece_line, piece_pos, piece, false));
+    MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, piece_line, piece_pos, -1, -1, at_line, at_pos,
+                                                               klass_name, L"Text", arguments);
+    tail->SetMethodCall(call);
+    tail = call;
+    piece.clear();
+  };
+
+  // takes 'count' characters of the text into the piece
+  auto take = [&](size_t count) {
+    if(piece.empty()) {
+      piece_line = at_line;
+      piece_pos = at_pos;
+    }
+    for(size_t k = 0; k < count; ++k) {
+      piece += text[i + k];
+      if(text[i + k] == L'\n') {
+        at_line += 1;
+        at_pos = 1;
+      }
+      else {
+        at_pos += 1;
+      }
+    }
+    i += count;
+  };
+
+  const size_t size = text.size();
+  while(i < size) {
+    const wchar_t c = text[i];
+    // an escape is two characters of text, whatever it escapes
+    if(c == L'\\' && i + 1 < size) {
+      take(2);
+    }
+    // '{{' and '}}' are one literal brace
+    else if((c == L'{' || c == L'}') && i + 1 < size && text[i + 1] == c) {
+      if(piece.empty()) {
+        piece_line = at_line;
+        piece_pos = at_pos;
+      }
+      piece += c;
+      at_pos += 2;
+      i += 2;
+      // a brace and then a dollar are not the start of an interpolation: they go to separate pieces
+      if(c == L'{' && i < size && text[i] == L'$') {
+        flush();
+      }
+    }
+    // '{$...}' is the string's own interpolation: kept whole, braces and all
+    else if(c == L'{' && i + 1 < size && text[i + 1] == L'$') {
+      size_t close = i;
+      while(close < size && text[close] != L'}') {
+        ++close;
+      }
+      take((close < size ? close + 1 : size) - i);
+    }
+    // a hole, which closes on its own line
+    else if(c == L'{') {
+      size_t close = i + 1;
+      while(close < size && text[close] != L'}' && text[close] != L'{' && text[close] != L'\n' && text[close] != L'\r') {
+        ++close;
+      }
+      if(close >= size || text[close] != L'}') {
+        diagnostics.Error(file_name, at_line, at_pos, L"A prompt hole is not closed: expected '}' on the line of its '{'\n\tWrite a hole as {name} or {name : Type}; write {{ for a literal '{'");
+        // the brace is taken as text, so the rest of the literal is still read
+        take(1);
+        continue;
+      }
+      flush();
+
+      const std::wstring inner = text.substr(i + 1, close - i - 1);
+      const size_t colon = inner.find(L':');
+      const std::wstring name = PromptTrim(colon == std::wstring::npos ? inner : inner.substr(0, colon));
+      const std::wstring type_name = colon == std::wstring::npos ? L"" : PromptTrim(inner.substr(colon + 1));
+      const int hole_type = PromptHoleType(type_name);
+      const std::wstring shown = L"'{" + inner + L"}'";
+      if(PromptTrim(inner).empty()) {
+        diagnostics.Error(file_name, at_line, at_pos, L"An empty prompt hole '{}' names no variable\n\tWrite a hole as {name} or {name : Type}; write {{ and }} for literal braces");
+      }
+      else if(!PromptIsName(name)) {
+        diagnostics.Error(file_name, at_line, at_pos, shown + L" is not a prompt hole: a hole names one variable, as in {text} or {count : Int}\n\tCompute other values into a local first; write {{ and }} for literal braces");
+      }
+      else if(colon != std::wstring::npos && (type_name.empty() || !hole_type)) {
+        diagnostics.Error(file_name, at_line, at_pos, L"Unknown type '" + type_name + L"' in the prompt hole " + shown + L": a hole takes a String, Int, Float, Bool, Char or Byte");
+      }
+      else {
+        const int name_pos = at_pos + 1 + (int)inner.find(name);
+        const int end_pos = at_pos + (int)(close - i) + 1;
+        ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
+        arguments->AddExpression(TreeFactory::Instance()->MakeCharacterString(file_name, at_line, at_pos, name[0] == L'@' ? name.substr(1) : name, true));
+        arguments->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, at_line, name_pos, name));
+        MethodCall* call = TreeFactory::Instance()->MakeMethodCall(file_name, at_line, at_pos, -1, -1, at_line, end_pos, klass_name, L"Slot", arguments);
+        call->SetPromptHole(hole_type);
+        tail->SetMethodCall(call);
+        tail = call;
+      }
+      at_pos += (int)(close - i) + 1;
+      i = close + 1;
+    }
+    else if(c == L'}') {
+      diagnostics.Error(file_name, at_line, at_pos, L"A '}' in a prompt literal closes no hole\n\tWrite }} for a literal '}'");
+      take(1);
+    }
+    else {
+      take(1);
+    }
+  }
+  flush();
+
+  return head;
+}
+
+/****************************************************************************
+ * Agent declarations (docs/design/AGENT_SYNTAX.md, section 3).
+ *
+ *   agent Helper(script : Vector<AgentReply>) {
+ *     backend : ScriptedBackend->New(script);
+ *     instructions : "Answer in one sentence.";
+ *     tools : Tools, AgentTools->Calculator();
+ *     budget { steps : 8; }
+ *   }
+ *
+ * 'agent' is a word only as the first token of a declaration at class level, before a name and '(' or '{'.
+ * The declaration becomes the class a person would write, parsed by this same parser as the '@tool' code is:
+ *
+ *   class Helper { function : Build(script : Vector<AgentReply>) ~ API.Agent.Agent { ... return agent__a; } }
+ *
+ * The user's own text (the parameter list, each expression) is not copied into that source. The written class
+ * has a placeholder name where a piece belongs, and when the parser meets one it reads the piece with a second
+ * scanner over the original characters, started at the piece's own line and column (Scanner::StartAt). An error
+ * in 'backend : ...' is therefore reported exactly where it was written, and the expression is parsed inside
+ * 'Build', where its parameters and lambdas mean what they should.
+ ****************************************************************************/
+namespace {
+  // one setting or list entry of a declaration, as the first pass found it
+  struct AgentItem {
+    std::wstring key;           // backend, instructions, trace, tools, mcp, allow, deny, or a budget limit
+    bool is_limit = false;      // a limit of the 'budget' block
+    bool is_class = false;      // a 'tools' entry that names a class of '@tool' functions
+    std::wstring class_name;
+    int line = 0;               // where the setting's name is (for a later entry of a list: the entry)
+    int pos = 0;
+    int splice = -1;            // index of the entry's expression, or of a class entry's name, in the splices
+    int name_splice = -1;       // index of the name declared for the value, placed where the value starts
+  };
+
+  // the name a placeholder starts with, followed by the index of its piece
+  const std::wstring AGENT_SPLICE_PREFIX = L"agent__x";
+
+  // the budget limits and the AgentBudget method each one sets; 'cost' is a Float, the others an Int
+  const wchar_t* const AGENT_LIMITS[][2] = {
+    { L"steps", L"SetMaxSteps" }, { L"tokens", L"SetMaxTokens" }, { L"tool_calls", L"SetMaxToolCalls" },
+    { L"model_calls", L"SetMaxModelCalls" }, { L"wall_ms", L"SetMaxWallMs" }, { L"model_call_ms", L"SetModelCallMs" },
+    { L"cost", L"SetMaxCost" }
+  };
+
+  const wchar_t* AgentLimitSetter(const std::wstring& name)
+  {
+    for(size_t i = 0; i < sizeof(AGENT_LIMITS) / sizeof(AGENT_LIMITS[0]); ++i) {
+      if(name == AGENT_LIMITS[i][0]) {
+        return AGENT_LIMITS[i][1];
+      }
+    }
+    return nullptr;
+  }
+
+  // source text laid out so that a piece lands on a line and column of the user's file
+  struct AgentText {
+    std::wstring text;
+    int line = 1;
+    int pos = 1;
+
+    void Add(const std::wstring& code) {
+      text += code;
+      pos += (int)code.size();
+    }
+
+    // moves to (to_line, to_pos) when that is still ahead, else adds one space
+    void At(int to_line, int to_pos) {
+      if(to_line > line) {
+        text.append(to_line - line, L'\n');
+        line = to_line;
+        pos = 1;
+      }
+      if(to_line == line && to_pos >= pos) {
+        text.append(to_pos - pos, L' ');
+        pos = to_pos;
+      }
+      else {
+        Add(L" ");
+      }
+    }
+  };
+}
+
+bool Parser::IsAgentSpliceName()
+{
+  return Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier().compare(0, AGENT_SPLICE_PREFIX.size(), AGENT_SPLICE_PREFIX) == 0;
+}
+
+/****************************
+ * After every file is parsed: a class of the program that an agent's 'tools' names must have an '@tool'
+ * function. A name that is no class of the program is left to the analyzer (a library's class, or none).
+ ****************************/
+void Parser::CheckAgentToolClasses()
+{
+  for(size_t i = 0; i < agent_tool_classes.size(); ++i) {
+    const AgentToolClass& named = agent_tool_classes[i];
+    bool is_class = false;
+    bool has_tools = false;
+    const std::vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t b = 0; b < bundles.size(); ++b) {
+      const std::vector<Class*> classes = bundles[b]->GetClasses();
+      for(size_t c = 0; c < classes.size(); ++c) {
+        const std::wstring& full_name = classes[c]->GetName();
+        const bool same = full_name == named.class_name ||
+          (full_name.size() > named.class_name.size() && full_name[full_name.size() - named.class_name.size() - 1] == L'.' &&
+           full_name.compare(full_name.size() - named.class_name.size(), named.class_name.size(), named.class_name) == 0);
+        if(!same) {
+          continue;
+        }
+        is_class = true;
+        if(mcp_broken_files.find(classes[c]->GetFileName()) != mcp_broken_files.end()) {
+          // its file has a syntax error, which is the answer: its tools were not derived
+          has_tools = true;
+        }
+        const std::vector<Method*> methods = classes[c]->GetMethods();
+        for(size_t m = 0; m < methods.size(); ++m) {
+          if(McpAfterColon(methods[m]->GetName()) == L"McpTools") {
+            has_tools = true;
+          }
+        }
+      }
+    }
+    if(is_class && !has_tools) {
+      diagnostics.Error(named.file_name, named.line, named.pos, L"The class '" + named.class_name + L"', named in 'tools' of the agent '" + named.agent_name +
+                        L"', has no '@tool' function\n\tAn agent's tools are the functions of the class whose doc comment has an '@tool' line; a value that is"
+                        L" an AgentTool, such as AgentTools->Calculator(), can be listed as well");
+    }
+  }
+  agent_tool_classes.clear();
+}
+
+/****************************
+ * A class named in an agent's 'tools': the statement written for it starts with a placeholder, and
+ * the name is given the place it has in the user's file.
+ ****************************/
+PARSER_NO_INLINE Statement* Parser::ParseAgentName(int depth)
+{
+  const std::wstring ident = scanner->GetToken()->GetIdentifier();
+  const AgentSplice& splice = (*agent_splices)[(size_t)std::stoi(ident.substr(AGENT_SPLICE_PREFIX.size()))];
+  NextToken();
+
+  return ParseIdentifierStatement(splice.name, splice.line, splice.pos, splice.file_name, depth);
+}
+
+/****************************
+ * Reads the piece a placeholder stands for, in place. 'declarations' is set for the
+ * parameter list, and the piece is then read as one; otherwise it is an expression.
+ ****************************/
+Expression* Parser::ParseAgentSplice(DeclarationList** declarations, int depth)
+{
+  const std::wstring ident = scanner->GetToken()->GetIdentifier();
+  const AgentSplice& splice = (*agent_splices)[(size_t)std::stoi(ident.substr(AGENT_SPLICE_PREFIX.size()))];
+  NextToken();
+
+  // the user's text is read with no placeholders of its own: a name that looks like one is just a name
+  Scanner* saved_scanner = scanner;
+  std::vector<AgentSplice>* saved_splices = agent_splices;
+  agent_splices = nullptr;
+  scanner = new Scanner(splice.file_name, alt_syntax, splice.text);
+  scanner->StartAt(splice.line, splice.pos);
+  NextToken();
+
+  Expression* expression = nullptr;
+  if(declarations) {
+    *declarations = ParseDecelerationList(depth + 1);
+  }
+  else {
+    expression = ParseExpression(depth + 1);
+    // the ';', ',' or '}' that ended the piece is part of its text, so that an expression cut short is
+    // reported against the token the user wrote, not against an end of file that is not there
+    if((Match(TOKEN_SEMI_COLON) || Match(TOKEN_COMMA) || Match(TOKEN_CLOSED_BRACE)) && Match(TOKEN_END_OF_STREAM, SECOND_INDEX)) {
+      NextToken();
+    }
+  }
+  if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
+    ProcessError(L"Unexpected " + scanner->DescribeToken(scanner->GetToken()) + L" in " + splice.what);
+  }
+
+  delete scanner;
+  scanner = saved_scanner;
+  agent_splices = saved_splices;
+
+  return expression;
+}
+
+Class* Parser::ParseAgent(const std::wstring& bundle_name, int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int agent_line = GetLineNumber();
+  const int agent_pos = GetLinePosition();
+  NextToken();
+
+  const std::wstring name = scanner->GetToken()->GetIdentifier();
+  const int name_line = GetLineNumber();
+  const int name_pos = GetLinePosition();
+  NextToken();
+
+  std::vector<AgentSplice> splices;
+  std::vector<AgentItem> items;
+  std::vector<std::wstring> parameters;
+  bool ok = true;
+
+  // reports an error of the declaration itself; the class is then not written
+  auto fail = [&](int line, int pos, const std::wstring& message) {
+    diagnostics.Error(file_name, line, pos, message);
+    ok = false;
+  };
+
+  // The tokens from the current one up to a ';' or '}' outside any brace, or a ',' outside any bracket when
+  // 'in_list', are one piece; it starts after (from_line, from_pos). A ';' inside an open parenthesis ends
+  // the piece too: the parenthesis is then reported as not closed, where it is. Leaves the scanner on the
+  // token that ended the piece and returns the piece's index, or -1 when it is empty. 'shape' is told what
+  // the piece is made of, and (first_line, first_pos) where it starts.
+  enum Shape { SHAPE_OTHER, SHAPE_NAME, SHAPE_FUNCTION };
+  auto piece = [&](int from_line, int from_pos, bool in_list, const std::wstring& what, Shape& shape, std::wstring& shape_name,
+                   int& first_line, int& first_pos) -> int {
+    int braces = 0;
+    int brackets = 0;
+    size_t count = 0;
+    bool names_only = true;         // IDENT ('.' IDENT)*
+    bool function_only = false;     // the names, then '->' IDENT, then nothing
+    size_t after_accessor = 0;
+    shape_name.clear();
+    // a string's token is placed inside the string, and on its last line: the place after the separator serves
+    const bool starts_with_string = Match(TOKEN_CHAR_STRING_LIT) || Match(TOKEN_BAD_CHAR_STRING_LIT);
+    first_line = starts_with_string ? from_line : GetLineNumber();
+    first_pos = starts_with_string ? from_pos : GetLinePosition();
+    while(!Match(TOKEN_END_OF_STREAM)) {
+      const ScannerTokenType type = GetToken();
+      if(braces == 0 && (type == TOKEN_SEMI_COLON || type == TOKEN_CLOSED_BRACE || (in_list && brackets == 0 && type == TOKEN_COMMA))) {
+        break;
+      }
+      if(type == TOKEN_OPEN_BRACE) {
+        ++braces;
+      }
+      else if(type == TOKEN_CLOSED_BRACE) {
+        --braces;
+      }
+      else if(type == TOKEN_OPEN_PAREN || type == TOKEN_OPEN_BRACKET) {
+        ++brackets;
+      }
+      else if((type == TOKEN_CLOSED_PAREN || type == TOKEN_CLOSED_BRACKET) && brackets > 0) {
+        --brackets;
+      }
+
+      if(names_only) {
+        const bool want_name = count % 2 == 0;
+        if(want_name && type == TOKEN_IDENT) {
+          shape_name += scanner->GetToken()->GetIdentifier();
+        }
+        else if(!want_name && type == TOKEN_PERIOD) {
+          shape_name += L'.';
+        }
+        else {
+          names_only = false;
+          function_only = !want_name && type == TOKEN_ASSESSOR;
+          after_accessor = 0;
+        }
+      }
+      else if(function_only) {
+        ++after_accessor;
+        if(after_accessor > 1 || type != TOKEN_IDENT) {
+          function_only = false;
+        }
+      }
+      ++count;
+      NextToken();
+    }
+
+    shape = SHAPE_OTHER;
+    if(count > 0 && names_only && count % 2 == 1) {
+      shape = SHAPE_NAME;
+    }
+    else if(count > 0 && !names_only && function_only && after_accessor == 1) {
+      shape = SHAPE_FUNCTION;
+    }
+
+    if(count == 0) {
+      fail(GetLineNumber(), GetLinePosition(), L"Expected a value for " + what);
+      return -1;
+    }
+
+    AgentSplice splice;
+    splice.file_name = file_name;
+    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + (Match(TOKEN_END_OF_STREAM) ? 0 : 1));
+    splice.line = from_line;
+    splice.pos = from_pos;
+    splice.what = what;
+    splices.push_back(splice);
+    return (int)splices.size() - 1;
+  };
+
+  // a name the compiler declares for a value, to be placed where the value starts: what the analyzer says about
+  // the declaration is then said at the value
+  auto declared = [&](const std::wstring& declared_name, int line, int pos) -> int {
+    AgentSplice splice;
+    splice.file_name = file_name;
+    splice.name = declared_name;
+    splice.line = line;
+    splice.pos = pos;
+    splices.push_back(splice);
+    return (int)splices.size() - 1;
+  };
+
+  if(name.find(L'.') != std::wstring::npos) {
+    fail(name_line, name_pos, L"An agent's name is one word; put the declaration in a 'bundle' to give it a bundle's name");
+  }
+
+  // the parameter list: kept as written, its names noted
+  int parameters_splice = -1;
+  if(Match(TOKEN_OPEN_PAREN)) {
+    const int open_line = GetLineNumber();
+    const int open_pos = GetLinePosition();
+    NextToken();
+    int nesting = 1;
+    bool at_start = true;
+    while(nesting > 0 && !Match(TOKEN_END_OF_STREAM)) {
+      const ScannerTokenType type = GetToken();
+      if(type == TOKEN_OPEN_PAREN) {
+        ++nesting;
+      }
+      else if(type == TOKEN_CLOSED_PAREN) {
+        --nesting;
+        if(nesting == 0) {
+          break;
+        }
+      }
+      else if(nesting == 1 && at_start && type == TOKEN_IDENT) {
+        const std::wstring parameter = scanner->GetToken()->GetIdentifier();
+        // 'ref name : Type'
+        if(!(parameter == L"ref" && Match(TOKEN_IDENT, SECOND_INDEX))) {
+          parameters.push_back(parameter);
+          if(parameter.compare(0, 7, L"agent__") == 0) {
+            fail(GetLineNumber(), GetLinePosition(), L"A parameter of an agent may not start with 'agent__': the names the compiler writes for the agent do");
+          }
+          at_start = false;
+        }
+      }
+      if(type != TOKEN_IDENT) {
+        at_start = nesting == 1 && type == TOKEN_COMMA;
+      }
+      NextToken();
+    }
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      fail(open_line, open_pos, L"The parameter list of the agent '" + name + L"' is not closed: expected ')'");
+      return nullptr;
+    }
+
+    AgentSplice splice;
+    splice.file_name = file_name;
+    splice.text = scanner->GetSourceBefore(GetLineNumber(), GetLinePosition() + 1);
+    splice.line = open_line;
+    splice.pos = open_pos;
+    splice.what = L"the parameters of the agent '" + name + L"'";
+    splices.push_back(splice);
+    parameters_splice = (int)splices.size() - 1;
+    NextToken();
+  }
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+    return nullptr;
+  }
+  NextToken();
+
+  // the settings
+  const std::wstring settings = L"backend, instructions, tools, mcp, allow, deny, budget and trace";
+  std::vector<std::wstring> seen;
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const int key_line = GetLineNumber();
+    const int key_pos = GetLinePosition();
+    if(!Match(TOKEN_IDENT)) {
+      fail(key_line, key_pos, L"Expected a setting of the agent '" + name + L"', found " + scanner->DescribeToken(scanner->GetToken()) +
+           L"\n\tAn agent has " + settings + L", each written 'name : value;'");
+      // on to the next setting
+      int nesting = 0;
+      while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+        if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+          ++nesting;
+        }
+        else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
+          --nesting;
+        }
+        NextToken();
+      }
+      if(Match(TOKEN_SEMI_COLON)) {
+        NextToken();
+      }
+      continue;
+    }
+    const std::wstring key = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    const bool is_list = key == L"tools" || key == L"mcp" || key == L"allow" || key == L"deny";
+    const bool is_single = key == L"backend" || key == L"instructions" || key == L"trace";
+    const bool is_budget = key == L"budget";
+    if(!is_list && !is_single && !is_budget) {
+      fail(key_line, key_pos, L"Unknown setting '" + key + L"' in the agent '" + name + L"': an agent has " + settings);
+    }
+    else if(std::find(seen.begin(), seen.end(), key) != seen.end()) {
+      fail(key_line, key_pos, L"The agent '" + name + L"' has '" + key + L"' twice; give all of it in one place");
+    }
+    seen.push_back(key);
+
+    if(is_budget) {
+      if(!Match(TOKEN_OPEN_BRACE)) {
+        fail(GetLineNumber(), GetLinePosition(), L"Expected '{' after 'budget': the limits are written 'budget { steps : 8; tokens : 5000; }'");
+        // on to the next setting
+        int nesting = 0;
+        while(!Match(TOKEN_END_OF_STREAM) && !(nesting == 0 && (Match(TOKEN_SEMI_COLON) || Match(TOKEN_CLOSED_BRACE)))) {
+          if(Match(TOKEN_OPEN_PAREN) || Match(TOKEN_OPEN_BRACKET) || Match(TOKEN_OPEN_BRACE)) {
+            ++nesting;
+          }
+          else if(Match(TOKEN_CLOSED_PAREN) || Match(TOKEN_CLOSED_BRACKET) || Match(TOKEN_CLOSED_BRACE)) {
+            --nesting;
+          }
+          NextToken();
+        }
+        if(Match(TOKEN_SEMI_COLON)) {
+          NextToken();
+        }
+        continue;
+      }
+      NextToken();
+      std::vector<std::wstring> limits_seen;
+      size_t limits = 0;
+      while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+        const int limit_line = GetLineNumber();
+        const int limit_pos = GetLinePosition();
+        std::wstring limit = Match(TOKEN_IDENT) ? scanner->GetToken()->GetIdentifier() : L"";
+        if(limit.empty()) {
+          fail(limit_line, limit_pos, L"Expected a limit of the budget, found " + scanner->DescribeToken(scanner->GetToken()) +
+               L"\n\tA budget has steps, tokens, tool_calls, model_calls, wall_ms, model_call_ms and cost, each written 'name : value;'");
+        }
+        else {
+          NextToken();
+          if(!AgentLimitSetter(limit)) {
+            fail(limit_line, limit_pos, L"Unknown limit '" + limit + L"' in the budget of the agent '" + name +
+                 L"': a budget has steps, tokens, tool_calls, model_calls, wall_ms, model_call_ms and cost");
+          }
+          else if(std::find(limits_seen.begin(), limits_seen.end(), limit) != limits_seen.end()) {
+            fail(limit_line, limit_pos, L"The budget of the agent '" + name + L"' has '" + limit + L"' twice");
+          }
+          limits_seen.push_back(limit);
+        }
+
+        int colon_line = GetLineNumber();
+        int colon_pos = GetLinePosition();
+        if(Match(TOKEN_COLON)) {
+          NextToken();
+        }
+        else {
+          fail(colon_line, colon_pos, L"Expected ':' after the limit '" + limit + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+          colon_pos -= 1;
+        }
+
+        Shape shape; std::wstring shape_name; int first_line, first_pos;
+        AgentItem item;
+        item.key = limit;
+        item.is_limit = true;
+        item.line = limit_line;
+        item.pos = limit_pos;
+        item.splice = piece(colon_line, colon_pos + 1, false, L"the limit '" + limit + L"' of the agent '" + name + L"'", shape, shape_name, first_line, first_pos);
+        if(item.splice >= 0 && AgentLimitSetter(limit)) {
+          item.name_splice = declared(L"agent__l" + std::to_wstring(items.size()), first_line, first_pos);
+          items.push_back(item);
+        }
+        ++limits;
+
+        if(Match(TOKEN_SEMI_COLON)) {
+          NextToken();
+        }
+        else if(ok) {
+          fail(GetLineNumber(), GetLinePosition(), L"Expected ';' after the limit '" + limit + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+        }
+      }
+      if(!Match(TOKEN_CLOSED_BRACE)) {
+        fail(key_line, key_pos, L"The budget of the agent '" + name + L"' is not closed: expected '}'");
+        return nullptr;
+      }
+      NextToken();
+      if(limits == 0) {
+        fail(key_line, key_pos, L"The budget of the agent '" + name + L"' is empty; give a limit, as in 'budget { steps : 8; }', or leave the budget out");
+      }
+      // a ';' after the block is allowed
+      if(Match(TOKEN_SEMI_COLON)) {
+        NextToken();
+      }
+      continue;
+    }
+
+    int sep_line = GetLineNumber();
+    int sep_pos = GetLinePosition();
+    if(Match(TOKEN_COLON)) {
+      NextToken();
+    }
+    else {
+      fail(sep_line, sep_pos, L"Expected ':' after '" + key + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+      sep_pos -= 1;
+    }
+
+    // one value, or the entries of a list
+    bool more = true;
+    bool first = true;
+    while(more) {
+      const std::wstring what = (is_list ? L"an entry of '" : L"'") + key + L"' of the agent '" + name + L"'";
+      Shape shape; std::wstring shape_name; int first_line, first_pos;
+      AgentItem item;
+      item.key = key;
+      item.line = first ? key_line : sep_line;
+      item.pos = first ? key_pos : sep_pos;
+      item.splice = piece(sep_line, sep_pos + 1, is_list, what, shape, shape_name, first_line, first_pos);
+      if(item.splice >= 0) {
+        if(key == L"tools" && shape == SHAPE_NAME && std::find(parameters.begin(), parameters.end(), shape_name) == parameters.end()) {
+          // the name is the piece: it is put back at its own place when the class is parsed
+          item.is_class = true;
+          item.class_name = shape_name;
+          splices[item.splice].name = shape_name;
+          splices[item.splice].line = first_line;
+          splices[item.splice].pos = first_pos;
+          AgentToolClass tool_class;
+          tool_class.file_name = file_name;
+          tool_class.class_name = shape_name;
+          tool_class.agent_name = name;
+          tool_class.line = first_line;
+          tool_class.pos = first_pos;
+          agent_tool_classes.push_back(tool_class);
+          if(shape_name.compare(0, 7, L"agent__") == 0) {
+            fail(first_line, first_pos, L"A class named in 'tools' may not start with 'agent__': the names the compiler writes for the agent do");
+          }
+        }
+        else if(key == L"tools" && shape == SHAPE_FUNCTION) {
+          fail(first_line, first_pos, L"A tool of an agent is a class, not one function: name the class and the agent gets each of its '@tool' functions"
+               L"\n\tTo let the agent use only some of them, name the class here and list the tool names in 'allow' or 'deny'");
+        }
+        if(is_list || is_single) {
+          if(!item.is_class) {
+            const std::wstring declared_name = key == L"backend" ? L"agent__b" : key == L"instructions" ? L"agent__i" : key == L"trace" ? L"agent__t" :
+              (key == L"tools" ? L"agent__t" : key == L"mcp" ? L"agent__m" : L"agent__n") + std::to_wstring(items.size());
+            item.name_splice = declared(declared_name, first_line, first_pos);
+          }
+          items.push_back(item);
+        }
+      }
+
+      more = is_list && Match(TOKEN_COMMA);
+      if(more) {
+        sep_line = GetLineNumber();
+        sep_pos = GetLinePosition();
+        NextToken();
+        first = false;
+      }
+    }
+
+    if(Match(TOKEN_SEMI_COLON)) {
+      NextToken();
+    }
+    else if(ok) {
+      fail(GetLineNumber(), GetLinePosition(), L"Expected ';' after '" + key + L"' of the agent '" + name + L"', found " + scanner->DescribeToken(scanner->GetToken()));
+    }
+  }
+
+  const int end_line = GetLineNumber();
+  const int end_pos = GetLinePosition();
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    fail(agent_line, agent_pos, L"The agent '" + name + L"' is not closed: expected '}'");
+    return nullptr;
+  }
+  NextToken();
+
+  if(std::find(seen.begin(), seen.end(), std::wstring(L"backend")) == seen.end()) {
+    fail(name_line, name_pos, L"The agent '" + name + L"' has no backend: say which model it talks to, as in 'backend : AnthropicBackend->New(model, Nil);'");
+  }
+  if(!ok) {
+    return nullptr;
+  }
+
+  // the class, written so that each statement starts where the setting it comes from does
+  const std::wstring quoted = L"\"" + name + L"\"";
+  bool has_budget = false;
+  bool has_instructions = false;
+  bool has_trace = false;
+  for(size_t i = 0; i < items.size(); ++i) {
+    has_budget = has_budget || items[i].is_limit;
+    has_instructions = has_instructions || items[i].key == L"instructions";
+    has_trace = has_trace || items[i].key == L"trace";
+  }
+
+  AgentText code;
+  code.At(agent_line, agent_pos);
+  code.Add(L"class");
+  code.At(name_line, name_pos);
+  code.Add(name + L" { function : Build" +
+           (parameters_splice >= 0 ? L" " + AGENT_SPLICE_PREFIX + std::to_wstring(parameters_splice) + L" " : std::wstring(L"()")) +
+           L" ~ API.Agent.Agent { agent__r := API.Agent.ToolRegistry->New();");
+  if(has_budget) {
+    code.Add(L" agent__g := API.Agent.AgentBudget->New();");
+  }
+
+  for(size_t i = 0; i < items.size(); ++i) {
+    const AgentItem& item = items[i];
+    const std::wstring n = std::to_wstring(i);
+    const std::wstring value = AGENT_SPLICE_PREFIX + std::to_wstring(item.splice);
+    if(item.is_class) {
+      code.At(item.line, item.pos);
+      code.Add(L"agent__s" + n + L" := API.MCP.McpService->New(\"" + item.class_name + L"\", \"1.0\"); " + value + L"->McpTools(agent__s" + n + L"); agent__c" + n + L" := API.MCP.McpClient->InProcess(agent__s" + n + L"); agent__c" + n +
+               L"->Initialize(" + quoted + L", \"1.0\"); if(API.MCP.McpAgentTools->AddAll(agent__r, agent__c" + n +
+               L") < 0) { Runtime->Raise(Error->New(\"agent '" + name + L"': the tools of the class '" + item.class_name + L"' could not be listed\")); };");
+      continue;
+    }
+
+    code.At(item.line, item.pos);
+    const std::wstring placed = AGENT_SPLICE_PREFIX + std::to_wstring(item.name_splice);
+    if(item.is_limit) {
+      code.Add(placed + (item.key == L"cost" ? L" : Float := " : L" : Int := ") + value + L"; agent__g->" + AgentLimitSetter(item.key) + L"(agent__l" + n + L");");
+    }
+    else if(item.key == L"backend") {
+      code.Add(placed + L" : API.Agent.ChatBackend := " + value + L";");
+    }
+    else if(item.key == L"instructions") {
+      code.Add(placed + L" : String := " + value + L";");
+    }
+    else if(item.key == L"trace") {
+      code.Add(placed + L" : API.Agent.AgentTraceSink := " + value + L";");
+    }
+    else if(item.key == L"tools") {
+      code.Add(placed + L" : API.Agent.AgentTool := " + value + L"; if(agent__t" + n + L" = Nil) { Runtime->Raise(Error->New(\"agent '" + name +
+               L"': a tool is Nil\")); }; agent__r->Add(agent__t" + n + L");");
+    }
+    else if(item.key == L"mcp") {
+      code.Add(placed + L" : API.MCP.McpClient := " + value + L"; if(agent__m" + n + L" = Nil) { Runtime->Raise(Error->New(\"agent '" + name +
+               L"': an 'mcp' server is Nil\")); }; if(API.MCP.McpAgentTools->AddAll(agent__r, agent__m" + n +
+               L") < 0) { Runtime->Raise(Error->New(\"agent '" + name + L"': the tools of an 'mcp' server could not be listed\")); };");
+    }
+    else {
+      code.Add(placed + L" : String := " + value + L"; agent__r->" + (item.key == L"allow" ? L"Allow" : L"Deny") + L"(agent__n" + n + L");");
+    }
+  }
+
+  code.At(end_line, end_pos);
+  code.Add(L"agent__a := API.Agent.Agent->New(agent__b, agent__r);");
+  if(has_instructions) {
+    code.Add(L" agent__a->SetSystem(agent__i);");
+  }
+  if(has_budget) {
+    code.Add(L" agent__a->SetBudget(agent__g);");
+  }
+  if(has_trace) {
+    code.Add(L" agent__a->SetTrace(agent__t);");
+  }
+  code.Add(L" return agent__a; } }");
+
+  Scanner* saved_scanner = scanner;
+  Method* saved_method = current_method;
+  scanner = new Scanner(file_name, alt_syntax, code.text);
+  agent_splices = &splices;
+  NextToken();
+
+  Class* klass = nullptr;
+  if(Match(TOKEN_CLASS_ID)) {
+    klass = ParseClass(bundle_name, depth + 1);
+  }
+  if(!Match(TOKEN_END_OF_STREAM) && !diagnostics.HasErrors()) {
+    ProcessError(L"The code written for the agent '" + name + L"' has an extra " + scanner->DescribeToken(scanner->GetToken()));
+  }
+
+  agent_splices = nullptr;
+  delete scanner;
+  scanner = saved_scanner;
+  current_method = saved_method;
+
+  return klass;
 }

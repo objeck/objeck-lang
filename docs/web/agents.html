@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agents — Objeck Language</title>
+  <meta name="description" content="Objeck is an agentic language and runtime. A function is a tool, a program is an MCP server, and an agent is a loop with limits. Each program below was compiled and run with v2026.11.4; the output shown is what it printed. None needs a key ">
+  <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://www.objeck.org/agents.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Objeck">
+  <meta property="og:title" content="Agents — Objeck Language">
+  <meta property="og:description" content="Objeck is an agentic language and runtime. A function is a tool, a program is an MCP server, and an agent is a loop with limits. Each program below was compiled and run with v2026.11.4; the output shown is what it printed. None needs a key ">
+  <meta property="og:url" content="https://www.objeck.org/agents.html">
+  <meta property="og:image" content="https://www.objeck.org/style/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="agents.html" aria-current="page">Agents</a></li>
+     <li><a href="learn.html">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li aria-current="page">Agents</li></ol></nav>
+  <div class="layout has-toc">
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Agents</h1>
+    <p class="page-lead">Objeck is an agentic language and runtime. A function is a tool, a program is an MCP server, and an agent is a loop with limits. Each program below was compiled and run with v2026.11.4; the output shown is what it printed. None needs a key or a network.</p>
+
+    <h2 id="declare-a-tool">Declare a tool</h2>
+    <p>A doc comment with <code>@tool</code> is the whole declaration. The description is the comment, the JSON Schema comes from the parameter types, and <code>@readonly</code> becomes the MCP <code>readOnlyHint</code>. A call with a bad argument is refused before the function runs.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP, <span class="t-cls">Data</span>.JSON;
+
+<span class="t-kw">class</span> <span class="t-cls">Tools</span> {
+  <span class="t-com">#~
+  Greet a person.
+  @tool
+  @readonly
+  @param name who to greet
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Greet</span>(name : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"Hello, {$name}"</span>;
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    server <span class="t-op">:=</span> <span class="t-cls">McpService</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"greeter"</span>, <span class="t-str">"1.0.0"</span>);
+    <span class="t-cls">Tools</span><span class="t-op">-&gt;</span>McpTools(server);
+
+    client <span class="t-op">:=</span> <span class="t-cls">McpClient</span><span class="t-op">-&gt;</span>InProcess(server);
+    client<span class="t-op">-&gt;</span>Initialize(<span class="t-str">"demo"</span>, <span class="t-str">"1.0"</span>);
+    <span class="t-kw">each</span>(tool <span class="t-kw">in</span> client<span class="t-op">-&gt;</span>ListTools()) {
+      <span class="t-str">"{$tool-&gt;GetName()}: {$tool-&gt;GetDescription()}"</span><span class="t-op">-&gt;</span>PrintLine();
+      tool<span class="t-op">-&gt;</span>GetInputSchema()<span class="t-op">-&gt;</span>ToString()<span class="t-op">-&gt;</span>PrintLine();
+    };
+    client<span class="t-op">-&gt;</span>CallTool(<span class="t-str">"greet"</span>, <span class="t-str">"{\"name\":\"Ada\"}"</span>)<span class="t-op">-&gt;</span>GetText()<span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src tool.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr tool.obe
+greet: Greet a person.
+{"properties":{"name":{"description":"who to greet","type":"string"}},"required":["name"],"type":"object"}
+Hello, Ada</pre>
+    <h2 id="serve-it">Serve it</h2>
+    <p>A program with <code>@tool</code>, <code>@resource</code> or <code>@prompt</code> functions needs no server code. <code>obr --mcp</code> starts it as an MCP server on standard input and output, which is what Claude Code and Claude Desktop launch; <code>obr --mcp-http=8080</code> serves the same program over HTTP.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP;
+
+<span class="t-kw">class</span> <span class="t-cls">Notes</span> {
+  <span class="t-com">#~
+  Count the words in a text.
+  @tool
+  @readonly
+  @param text the text to count
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">CountWords</span>(text : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> text<span class="t-op">-&gt;</span>Split(<span class="t-str">" "</span>)<span class="t-op">-&gt;</span>Size();
+  }
+
+  <span class="t-com">#~
+  A greeting for a name.
+  @resource greeting://{name}
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Greeting</span>(name : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"Hello, {$name}!"</span>;
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-str">"Serve me: obr --mcp serve.obe"</span><span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src serve.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr serve.obe
+Serve me: obr --mcp serve.obe</pre>
+    <p>Here is a session with it. Each <code>&gt;</code> is what a client sent and each <code>&lt;</code> the reply, played against the real server by the same check that keeps this page honest:</p>
+<pre class="cmd">$ obr --mcp serve.obe
+&gt; {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"claude","version":"1.0"}}}
+&lt; {"id":1,"jsonrpc":"2.0","result":{"capabilities":{"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":false}},"protocolVersion":"2025-11-25","serverInfo":{"name":"Notes","version":"1.0"}}}
+&gt; {"jsonrpc":"2.0","method":"notifications/initialized"}
+&gt; {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"count_words","arguments":{"text":"tools are plain functions"}}}
+&lt; {"id":2,"jsonrpc":"2.0","result":{"content":[{"text":"4","type":"text"}],"isError":false}}
+&gt; {"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"greeting://Ada"}}
+&lt; {"id":3,"jsonrpc":"2.0","result":{"contents":[{"mimeType":"text/plain","text":"Hello, Ada!","uri":"greeting://Ada"}]}}</pre>
+    <p>To use it from Claude Code, give the client the command:</p>
+<pre class="line-numbers"><code class="language-json">{<span class="t-str">"mcpServers"</span>:{<span class="t-str">"notes"</span>:{<span class="t-str">"command"</span>:<span class="t-str">"obr"</span>,<span class="t-str">"args"</span>:[<span class="t-str">"--mcp"</span>,<span class="t-str">"/path/to/serve.obe"</span>]}}}
+</code></pre>
+    <p>Standard output carries the protocol, so a tool logs with <code>ErrorLine()</code>, which goes to standard error.</p>
+    <h2 id="call-a-server-through-a-typed-client">Call a server through a typed client</h2>
+    <p><code>mcp_stubs</code> asks a server for its tools and writes a class with one typed method per tool. A wrong argument is a compile error, and <code>--check</code> fails the build when the server's tools have changed since the client was generated. The generated class (about 100 lines) is in the sample's source; the page shows the part you write.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP, <span class="t-cls">Data</span>.JSON;
+
+<span class="t-kw">class</span> <span class="t-cls">Shop</span> {
+  <span class="t-com">#~
+  The price of an item.
+  @tool
+  @readonly
+  @param item the item name
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Price</span>(item : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">if</span>(item<span class="t-op">-&gt;</span>Equals(<span class="t-str">"tea"</span>)) {
+      <span class="t-kw">return</span> <span class="t-str">"4.50"</span>;
+    };
+    <span class="t-cls">Runtime</span><span class="t-op">-&gt;</span>Raise(<span class="t-cls">Error</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"no such item: {$item}"</span>));
+    <span class="t-kw">return</span> <span class="t-const">Nil</span>;
+  }
+
+  <span class="t-com">#~
+  Order more of an item.
+  @tool
+  @param item the item name
+  @param count how many
+  @param rush rush delivery
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Restock</span>(item : <span class="t-type">String</span>, count : <span class="t-type">Int</span>, rush : <span class="t-type">Bool</span> <span class="t-op">:=</span> <span class="t-const">false</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+    speed <span class="t-op">:=</span> <span class="t-str">"standard"</span>;
+    <span class="t-kw">if</span>(rush) {
+      speed <span class="t-op">:=</span> <span class="t-str">"rush"</span>;
+    };
+    <span class="t-kw">return</span> <span class="t-str">"{$count} x {$item}, {$speed} delivery"</span>;
+  }
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Demo</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    server <span class="t-op">:=</span> <span class="t-cls">McpService</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"shop"</span>, <span class="t-str">"1.0.0"</span>);
+    <span class="t-cls">Shop</span><span class="t-op">-&gt;</span>McpTools(server);
+    client <span class="t-op">:=</span> <span class="t-cls">McpClient</span><span class="t-op">-&gt;</span>InProcess(server);
+    client<span class="t-op">-&gt;</span>Initialize(<span class="t-str">"demo"</span>, <span class="t-str">"1.0"</span>);
+
+    <span class="t-com"># ShopClient was generated from the server's tools: one typed method per tool</span>
+    shop <span class="t-op">:=</span> <span class="t-cls">ShopClient</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(client);
+    shop<span class="t-op">-&gt;</span>Price(<span class="t-str">"tea"</span>)<span class="t-op">-&gt;</span>PrintLine();
+    shop<span class="t-op">-&gt;</span>Restock(<span class="t-str">"tea"</span>, <span class="t-num">12</span>, <span class="t-const">true</span>)<span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-kw">if</span>(shop<span class="t-op">-&gt;</span>Price(<span class="t-str">"coffee"</span>) = <span class="t-const">Nil</span>) {
+      shop<span class="t-op">-&gt;</span>GetError()<span class="t-op">-&gt;</span>PrintLine();
+    };
+    <span class="t-com"># shop-&gt;Price("tea", 3);   does not compile</span>
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src client.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp
+$ obr client.obe
+4.50
+12 x tea, rush delivery
+Tool price failed: no such item: coffee</pre>
+    <h2 id="run-an-agent">Run an agent</h2>
+    <p><code>McpAgentTools</code> hands a server's tools to an <code>Agent</code>. The effect hints decide who approves: the read-only <code>add</code> ran without a question, the destructive <code>delete_file</code> asked, and the approver said no, so its function never ran. A budget ends a run that would not stop. The model here is a <code>ScriptedBackend</code>, which replays fixed replies; swap in <code>AnthropicBackend</code>, <code>OpenAIBackend</code>, <code>GeminiBackend</code> or <code>OllamaBackend</code> and nothing else changes.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.MCP, <span class="t-cls">API</span>.Agent, <span class="t-cls">Data</span>.JSON, Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">Tools</span> {
+  <span class="t-com">#~
+  Add two integers.
+  @tool
+  @readonly
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">Add</span>(a : <span class="t-type">Int</span>, b : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+    <span class="t-kw">return</span> a + b;
+  }
+
+  <span class="t-com">#~
+  Delete a file.
+  @tool
+  @destructive
+  ~#</span>
+  <span class="t-kw">function</span> : <span class="t-fn">DeleteFile</span>(path : <span class="t-type">String</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"deleted {$path}"</span>;
+  }
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Cautious</span> <span class="t-kw">implements</span> <span class="t-cls">AgentApprover</span> {
+  <span class="t-kw">New</span>() {
+  }
+
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Approve</span>(call : AgentToolCall, tool : AgentTool) <span class="t-op">~</span> <span class="t-type">Bool</span> {
+    <span class="t-str">"asked about {$call-&gt;GetName()}: no"</span><span class="t-op">-&gt;</span>PrintLine();
+    <span class="t-kw">return</span> <span class="t-const">false</span>;
+  }
+}
+
+<span class="t-kw">class</span> <span class="t-cls">Demo</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    server <span class="t-op">:=</span> <span class="t-cls">McpService</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"tools"</span>, <span class="t-str">"1.0.0"</span>);
+    <span class="t-cls">Tools</span><span class="t-op">-&gt;</span>McpTools(server);
+    client <span class="t-op">:=</span> <span class="t-cls">McpClient</span><span class="t-op">-&gt;</span>InProcess(server);
+    client<span class="t-op">-&gt;</span>Initialize(<span class="t-str">"agent"</span>, <span class="t-str">"1.0"</span>);
+    registry <span class="t-op">:=</span> <span class="t-cls">ToolRegistry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    <span class="t-cls">McpAgentTools</span><span class="t-op">-&gt;</span>AddAll(registry, client);
+
+    <span class="t-com"># a scripted model: no key, no network</span>
+    calls <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;AgentToolCall&gt;;
+    calls<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentToolCall</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"1"</span>, <span class="t-str">"add"</span>, <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"a\":17,\"b\":25}"</span>)));
+    calls<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentToolCall</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"2"</span>, <span class="t-str">"delete_file"</span>, <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"path\":\"old.txt\"}"</span>)));
+    script <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;AgentReply&gt;;
+    script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>AskAll(calls));
+    script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>Say(<span class="t-str">"The sum is 42. I left old.txt alone."</span>));
+
+    agent <span class="t-op">:=</span> <span class="t-cls">Agent</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">ScriptedBackend</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(script), registry);
+    agent<span class="t-op">-&gt;</span>SetApprover(<span class="t-cls">Cautious</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>())<span class="t-op">-&gt;</span>SetApproveUnlessReadOnly(<span class="t-const">true</span>);
+    agent<span class="t-op">-&gt;</span>SetBudget(<span class="t-cls">AgentBudget</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">5</span>)<span class="t-op">-&gt;</span>SetMaxToolCalls(<span class="t-num">4</span>));
+
+    result <span class="t-op">:=</span> agent<span class="t-op">-&gt;</span>Run(<span class="t-str">"Add 17 and 25, then delete old.txt"</span>);
+    <span class="t-kw">each</span>(step <span class="t-kw">in</span> result<span class="t-op">-&gt;</span>GetSteps()) {
+      <span class="t-kw">each</span>(r <span class="t-kw">in</span> step<span class="t-op">-&gt;</span>GetResults()) {
+        <span class="t-str">"{$r-&gt;GetToolName()}: {$r-&gt;GetStatus()} - {$r-&gt;GetContent()}"</span><span class="t-op">-&gt;</span>PrintLine();
+      };
+    };
+    <span class="t-str">"{$result-&gt;GetText()} ({$result-&gt;GetStopReason()})"</span><span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src agent.obs -lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent
+$ obr agent.obe
+asked about delete_file: no
+add: ok - 42
+delete_file: refused - Error: the user declined to run 'delete_file'
+The sum is 42. I left old.txt alone. (completed)</pre>
+    <p>Every run says why it ended in one word: <code>completed</code>, <code>cancelled</code>, <code>deadline</code>, <code>budget_steps</code>, <code>budget_tool_calls</code>, <code>budget_tokens</code> and so on. An <code>AgentCancel</code> token that any thread can trip stops a run between steps, and a tool in a bounded mode is abandoned at its time limit.</p>
+    <h2 id="limits-for-a-block">Limits for a block</h2>
+    <p><code>AgentScope</code> puts one set of limits, one cancel switch and one trace around every agent run inside a block, so a program does not hand a budget to each agent it makes. The limits are totals: the second question gets only what the first one left, and a run with nothing left is not started, so the model is not called at all.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Agent, <span class="t-cls">Data</span>.JSON, Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">Demo</span> {
+  @agent : <span class="t-mod">static</span> : Agent;
+
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    script <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;AgentReply&gt;;
+    script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>Ask(<span class="t-str">"t1"</span>, <span class="t-str">"clock"</span>, <span class="t-str">"{}"</span>));
+    script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>Say(<span class="t-str">"It is noon."</span>));
+    script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>Say(<span class="t-str">"never asked"</span>));
+
+    registry <span class="t-op">:=</span> <span class="t-cls">ToolRegistry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    schema <span class="t-op">:=</span> <span class="t-cls">JsonParser</span><span class="t-op">-&gt;</span>TextToElement(<span class="t-str">"{\"type\":\"object\",\"properties\":{}}"</span>);
+    registry<span class="t-op">-&gt;</span>Add(<span class="t-cls">AgentTool</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"clock"</span>, <span class="t-str">"The time"</span>, schema,
+      <span class="t-type">Func2Ref</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">Demo</span><span class="t-op">-&gt;</span>Clock(JsonElement) <span class="t-op">~</span> <span class="t-type">String</span>)&lt;JsonElement, <span class="t-type">String</span>&gt;));
+    @agent <span class="t-op">:=</span> <span class="t-cls">Agent</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">ScriptedBackend</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(script), registry);
+
+    <span class="t-com"># two steps for everything inside the block, then no more model calls</span>
+    <span class="t-cls">AgentScope</span><span class="t-op">-&gt;</span>Run(<span class="t-cls">AgentScope</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">2</span>), Ask() <span class="t-op">~</span> <span class="t-const">Nil</span>);
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Ask</span>() <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    <span class="t-kw">for</span>(i <span class="t-op">:=</span> <span class="t-num">1</span>; i &lt;= <span class="t-num">3</span>; i += <span class="t-num">1</span>;) {
+      result <span class="t-op">:=</span> @agent<span class="t-op">-&gt;</span>Run(<span class="t-str">"question {$i}"</span>);
+      <span class="t-str">"question {$i}: {$result-&gt;GetStopReason()}"</span><span class="t-op">-&gt;</span>PrintLine();
+    };
+  }
+
+  <span class="t-kw">function</span> : <span class="t-fn">Clock</span>(args : JsonElement) <span class="t-op">~</span> <span class="t-type">String</span> {
+    <span class="t-kw">return</span> <span class="t-str">"12:00"</span>;
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src scope.obs -lib agent,json,net,cipher,misc
+$ obr scope.obe
+question 1: completed
+question 2: budget_steps
+question 3: budget_steps</pre>
+    <h2 id="local-models-no-key">Local models, no key</h2>
+    <p><code>OllamaBackend</code> talks to a model on your own machine at <code>localhost:11434</code>. There is no key and nothing leaves the box. The program below runs the scripted model by default and a local one with <code>obr local.obe ollama</code>; the agent, the tool and the budget are the same code.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">API</span>.Agent, Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">Local</span> {
+  <span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    registry <span class="t-op">:=</span> <span class="t-cls">ToolRegistry</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+    registry<span class="t-op">-&gt;</span>Add(<span class="t-cls">AgentTools</span><span class="t-op">-&gt;</span>Calculator());
+
+    backend : ChatBackend;
+    <span class="t-kw">if</span>(args<span class="t-op">-&gt;</span>Size() &gt; <span class="t-num">0</span> &amp; args[<span class="t-num">0</span>]<span class="t-op">-&gt;</span>Equals(<span class="t-str">"ollama"</span>)) {
+      <span class="t-com"># a local model: http://localhost:11434, no key, nothing leaves the machine</span>
+      backend <span class="t-op">:=</span> <span class="t-cls">OllamaBackend</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"llama3.2"</span>);
+    }
+    <span class="t-kw">else</span> {
+      script <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;AgentReply&gt;;
+      script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>Ask(<span class="t-str">"c1"</span>, <span class="t-str">"calculator"</span>, <span class="t-str">"{\"expression\":\"17 * 23\"}"</span>));
+      script<span class="t-op">-&gt;</span>AddBack(<span class="t-cls">AgentReply</span><span class="t-op">-&gt;</span>Say(<span class="t-str">"17 * 23 is 391."</span>));
+      backend <span class="t-op">:=</span> <span class="t-cls">ScriptedBackend</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(script);
+    };
+
+    agent <span class="t-op">:=</span> <span class="t-cls">Agent</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(backend, registry);
+    agent<span class="t-op">-&gt;</span>SetBudget(<span class="t-cls">AgentBudget</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()<span class="t-op">-&gt;</span>SetMaxSteps(<span class="t-num">4</span>));
+    result <span class="t-op">:=</span> agent<span class="t-op">-&gt;</span>Run(<span class="t-str">"What is 17 * 23?"</span>);
+    <span class="t-str">"{$result-&gt;GetText()} ({$result-&gt;GetStopReason()}, {$result-&gt;GetToolCallCount()} tool call)"</span><span class="t-op">-&gt;</span>PrintLine();
+  }
+}
+</code></pre>
+<pre class="cmd">$ obc -src local.obs -lib agent,json,net,cipher,misc
+$ obr local.obe
+17 * 23 is 391. (completed, 1 tool call)</pre>
+    <p>The Ollama branch needs a running Ollama and a model that supports tools. The default run, shown above, needs neither.</p>
+    <h2 id="built-to-run-agents">Built to run agents</h2>
+    <ul>
+     <li><strong>Collector-cooperative inference.</strong> An ONNX session running on a thread does not hold up the garbage collector, and a session can be shared by threads. <a href="doc_architecture.html">Architecture</a> and <a href="doc_performance.html">performance</a> have the measurements.</li>
+     <li><strong>Actors with supervision.</strong> <code>System.Actor</code> gives cooperating agents a mailbox each, links and monitors, and a <code>Supervisor</code> that restarts the ones that fail.</li>
+     <li><strong>Telemetry.</strong> <code>System.Telemetry</code> records inference latency and predicts it from past runs, so a run can be accounted for.</li>
+     <li><strong>Generational collector and a JIT.</strong> The runtime under the agents is the same one that runs the <a href="doc_performance.html">benchmarks</a>.</li>
+    </ul>
+    <h2 id="reference">Reference</h2>
+    <ul>
+     <li><a href="doc_mcp.html">MCP walkthrough</a>: declare, serve, consume, hand to an agent, with a real model</li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/mcp.md" target="_blank" rel="noopener">MCP reference</a>: what the server and client support, and what they do not</li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/agent.md" target="_blank" rel="noopener">Agent reference</a> and <a href="https://github.com/objeck/objeck-lang/blob/master/docs/ai_sections/agent_control.md" target="_blank" rel="noopener">run control</a>: the loop, the gates, budgets, cancel, scope</li>
+     <li><a href="libraries.html">Libraries</a>: <code>agent</code>, <code>mcp</code>, <code>mcp_agent</code>, <code>actor</code>, <code>telemetry</code>, <code>llm_util</code>, <code>rag</code></li>
+     <li><a href="ai_guide.html">AI and ML guide</a></li>
+    </ul>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#declare-a-tool">Declare a tool</a></li><li><a href="#serve-it">Serve it</a></li><li><a href="#call-a-server-through-a-typed-client">Call a server through a typed client</a></li><li><a href="#run-an-agent">Run an agent</a></li><li><a href="#limits-for-a-block">Limits for a block</a></li><li><a href="#local-models-no-key">Local models, no key</a></li><li><a href="#built-to-run-agents">Built to run agents</a></li><li><a href="#reference">Reference</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="agents.html">Agents</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>

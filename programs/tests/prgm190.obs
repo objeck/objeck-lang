@@ -14,8 +14,7 @@ class Test {
                     "---"->PrintLine();
                 };
 
-                each(i : multipart_content) {
-                    content_part := multipart_content->Get(i);
+                each(content_part in multipart_content) {
                     fields := content_part->GetHeader("Content-Disposition")->Split(';');
                     if(fields->Size() = 3) {
                         file_name_value := fields[2]->Split('=');

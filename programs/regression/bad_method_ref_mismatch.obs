@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Generic type mismatch
+#~
+The function's own signature is what is taken, so a target of another shape is
+still a type error (line 8), not a silent conversion.
+~#
+class BadMethodRefMismatch {
+	function : Main(args : String[]) ~ Nil {
+		f : Func2Ref<IntRef, FloatRef> := BadMethodRefMismatch->Dbl;
+	}
+
+	function : Dbl(x : IntRef) ~ IntRef { return x; }
+}

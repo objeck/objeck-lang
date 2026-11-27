@@ -16,9 +16,7 @@ bundle System.ML.Cnn {
 		@lib_proxy : static : DllProxy;
 
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_ml");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_ml");
 
 			return @lib_proxy;
 		}
@@ -915,9 +913,7 @@ probabilities := model->Predict(images);
 			if(@handle = 0 | pixels = Nil) {
 				return false;
 			};
-			if(aug = Nil) {
-				aug := @no_augment;
-			};
+			aug := aug ?? @no_augment;
 
 			array_args := Base->New[8];
 			array_args[0] := IntRef->New();
@@ -1260,7 +1256,7 @@ train->SetAugmentation(aug);
 		@return true if added
 		~#
 		method : public : AddFile(path : String, cls : Int) ~ Bool {
-			if(path = Nil | path->Size() = 0 | (cls <> 0 & cls <> 1)) {
+			if(path = Nil | path->IsEmpty() | (cls <> 0 & cls <> 1)) {
 				@error := "a Nil or empty path, or a label other than 0 or 1";
 				return false;
 			};
@@ -1313,8 +1309,7 @@ train->SetAugmentation(aug);
 			};
 
 			files := Vector->New()<String>;
-			each(i : names) {
-				name := names[i];
+			each(name in names) {
 				lower := name->ToLower();
 				if(lower->EndsWith(".jpg") | lower->EndsWith(".jpeg") | lower->EndsWith(".png") | lower->EndsWith(".bmp")) {
 					files->AddBack(name);
@@ -1961,7 +1956,7 @@ train->SetAugmentation(aug);
 		@return true if written
 		~#
 		method : public : SaveCsv(path : String) ~ Bool {
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return false;
 			};
 

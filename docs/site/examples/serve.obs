@@ -1,0 +1,25 @@
+use API.MCP;
+
+class Notes {
+  #~
+  Count the words in a text.
+  @tool
+  @readonly
+  @param text the text to count
+  ~#
+  function : CountWords(text : String) ~ Int {
+    return text->Split(" ")->Size();
+  }
+
+  #~
+  A greeting for a name.
+  @resource greeting://{name}
+  ~#
+  function : Greeting(name : String) ~ String {
+    return "Hello, {$name}!";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    "Serve me: obr --mcp serve.obe"->PrintLine();
+  }
+}

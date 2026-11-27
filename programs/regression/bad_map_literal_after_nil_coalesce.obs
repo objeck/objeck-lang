@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: (13,39): A map literal takes its type from the variable it is assigned to or the method it is returned from
+# EXPECT_ERROR_COUNT: 1
+#~
+A map literal after '??' is the default value, not the block of a nil-guard
+('x := E ?? { ...; return };'): a block's statement never starts with a literal and ':'.
+Inside another expression a map literal has no target of its own, so it is refused as
+it is inside '?' (bad_map_literal_in_conditional), with the map literal's own message.
+~#
+use Collection;
+
+class BadMapLiteralAfterNilCoalesce {
+	function : Size(given : Map<String, IntRef>) ~ Int {
+		m : Map<String, IntRef> := given ?? {"a": 1};
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Size(Nil)->PrintLine();
+	}
+}

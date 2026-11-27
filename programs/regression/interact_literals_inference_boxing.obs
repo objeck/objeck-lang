@@ -1,0 +1,127 @@
+#~
+Collection literals, map literals, type-argument inference and boxing in the same
+statements, each checked with 'assert' (whose operands are unboxed too):
+  - a map literal boxes its values as its Insert does; a Vector literal of objects
+    whose elements are constructor calls with inferred type arguments
+  - fields typed by the literal's target; '{}' for an empty map of the field's type
+  - 'Vector->New()' and 'Map->New()' inferred from a declared target, then filled
+    with primitives that are boxed, read back unboxed in calculations and as indices
+  - a generic class of the program inferred from its argument
+  - a map literal whose values are collections: a declared local, a constructor with
+    its type arguments written, and one that takes them from the map's value type
+  - a collection literal of numbers for a Vector of a holder, boxed element by element
+~#
+use Collection;
+
+class Box<T : Stringify> {
+	@value : T;
+
+	New(value : T) {
+		@value := value;
+	}
+
+	method : public : Get() ~ T {
+		return @value;
+	}
+}
+
+class Ledger {
+	@scores : Map<String, IntRef>;
+	@names : Vector<String>;
+	@ratio : Hash<String, FloatRef>;
+	@seen : Vector<IntRef>;
+
+	New() {
+		@scores := {"ada": 3, "bob": 4};
+		@names := ["ada", "bob"];
+		@ratio := {};
+		@ratio->Insert("half", 0.5);
+		@seen := Vector->New();
+	}
+
+	method : public : Total() ~ Int {
+		total := 0;
+		each(name in @names) {
+			total += @scores->Find(name);
+			@seen->AddBack(total);
+		};
+		return total;
+	}
+
+	method : public : Seen() ~ Vector<IntRef> {
+		return @seen;
+	}
+
+	method : public : Pairs() ~ Vector<Pair<String, IntRef>> {
+		return [Pair->New("x", 1), Pair->New("y", 2)];
+	}
+
+	method : public : Ratio() ~ Float {
+		return @ratio->Find("half") * 4;
+	}
+
+	method : public : Limits() ~ Hash<String, FloatRef> {
+		return {"low": 0.25, "high": 4};
+	}
+}
+
+class InteractLiteralsInferenceBoxing {
+	function : Main(args : String[]) ~ Nil {
+		m : Map<String, IntRef> := {"a": 1, "b": 2};
+		p := Pair->New("k", 7);
+		n : Int := p->GetSecond() + m->Find("b");
+		assert n = 9 : "an inferred Pair's IntRef plus a map literal's";
+		assert m->Find("a") = 1 : "a holder compared with a number";
+
+		ledger := Ledger->New();
+		assert ledger->Total() = 7 : "a map literal field read in a calculation";
+		assert ledger->Seen()->Size() = 2 & ledger->Seen()->Get(0) = 3 & ledger->Seen()->Get(1) = 7 : "an inferred Vector field filled with Ints";
+		assert ledger->Pairs()->Size() = 2 : "a returned Vector literal of inferred Pairs";
+		assert ledger->Pairs()->Get(1)->GetSecond() = 2 : "its element";
+		assert ledger->Ratio() = 2.0 : "an empty map literal field, filled, read as a Float";
+		limits := ledger->Limits();
+		assert limits->Find("high") = 4.0 : "an Int entry of a Hash<String, FloatRef> literal";
+		assert limits->Find("low") = 0.25 : "a Float entry";
+
+		h : Hash<IntRef, String> := {1: "one", 2: "two"};
+		assert h->Find(2)->Equals("two") : "boxed keys";
+
+		q : Vector<String> := Vector->New();
+		q->AddBack("z");
+		assert q->Size() = 1 : "Vector->New() from the declared target";
+
+		im : IntVector := [m->Find("a")->Get(), p->GetSecond()->Get()];
+		assert im->Get(1) = 7 : "an IntVector literal";
+		fv : FloatVector := [1.5, 2.5];
+		half : FloatRef := fv->Get(0);
+		assert half = 1.5 : "a FloatVector element boxed into a declared FloatRef";
+
+		b := Box->New("boxed");
+		assert b->Get()->Equals("boxed") : "a program's generic class inferred from its argument";
+
+		counts : Vector<IntRef> := Vector->New();
+		counts->AddBack(5);
+		counts->AddBack(p->GetSecond());
+		bins := Int->New[8];
+		bins[counts->Get(0)] += 1;
+		bins[counts->Get(1)] += counts->Get(0);
+		assert bins[5] = 1 : "a holder as an index";
+		assert bins[7] = 5 : "a holder as an index and as an operand";
+
+		odds : Vector<IntRef> := Vector->New();
+		nested : Map<String, Vector<IntRef>> := {"evens": Vector->New()<IntRef>, "odds": odds, "all": Vector->New()};
+		nested->Find("odds")->AddBack(1);
+		nested->Find("evens")->AddBack(2);
+		nested->Find("all")->AddBack(3);
+		assert odds->Size() = 1 & nested->Find("evens")->Get(0) = 2 & nested->Find("all")->Get(0) = 3 : "a map literal of Vectors";
+
+		primes : Vector<IntRef> := [2, 3, counts->Get(0), p->GetSecond()];
+		assert primes->Size() = 4 & primes->Get(2) = 5 & primes->Get(0) + primes->Get(3) = 9 : "numbers and holders in a Vector<IntRef> literal";
+
+		words : Vector<String> := ["b", "a"];
+		lookup : Map<String, Vector<String>> := {"w": words};
+		assert lookup->Find("w")->Get(1)->Equals("a") : "a Vector literal as a map literal's value, through a local";
+
+		"PASS: collection and map literals, inference and boxing"->PrintLine();
+	}
+}

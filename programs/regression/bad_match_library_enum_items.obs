@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (22,8): This 'match' does not cover every item of 'Data.JSON.JsonElement->JsonType', missing: TRUE, FALSE, NULL, ARRAY, OBJECT, OTHER
+# EXPECT_ERROR_COUNT: 1
+#~
+An enum from a library is checked the same way.
+~#
+use Data.JSON;
+
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadMatchLibraryEnumItems {
+	function : Main(args : String[]) ~ Nil {
+		e := JsonElement->New("x");
+		k := match e->GetType() {
+			JsonElement->JsonType->STRING => "string",
+			JsonElement->JsonType->NUMBER => "number"
+		};
+		k->PrintLine();
+	}
+}

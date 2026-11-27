@@ -364,7 +364,7 @@ bundle System.Plot.SDL {
 		}
 
 		method : DrawLine(x1 : Float, y1 : Float, x2 : Float, y2 : Float, stroke : String, width : Float, dash : String) ~ Nil {
-			if(stroke = Nil | stroke->Size() = 0) {
+			if(stroke = Nil | stroke->IsEmpty()) {
 				return;
 			};
 
@@ -528,7 +528,7 @@ bundle System.Plot.SDL {
 		}
 
 		method : GetFontFor(size : Int, bold : Bool) ~ Font {
-			if(@font_path->Size() = 0 | @font_failed) {
+			if(@font_path->IsEmpty() | @font_failed) {
 				return Nil;
 			};
 
@@ -557,7 +557,7 @@ bundle System.Plot.SDL {
 
 		method : DrawText(p : PlotPrimitive) ~ Nil {
 			text := p->GetText();
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return;
 			};
 			# far off the canvas: nothing to draw, and nothing to overflow

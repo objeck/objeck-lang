@@ -1,0 +1,17 @@
+# EXPECT_RUNTIME_ERROR
+# EXTRA_LIBS: gen_collect
+#~
+A holder that is Nil has no value. Unboxing it is the 'Nil' dereference that
+calling 'Get()' on it is: a run-time error, with the program's exit status
+non-zero, not a zero.
+~#
+use Collection;
+
+class CoreBoxingNilUnbox {
+	function : Main(args : String[]) ~ Nil {
+		counts := Map->New()<String, IntRef>;
+		counts->Insert("here", 1);
+		missing : Int := counts->Find("gone");
+		"not reached: {$missing}"->PrintLine();
+	}
+}

@@ -1,0 +1,67 @@
+#~
+A JSON literal is the Insert and Add calls it stands for, so a holder (IntRef, FloatRef,
+BoolRef) is unboxed as it is for any argument, and values from collections of holders,
+a 'match' value, a '??' value and a typed result's own json go in as written:
+  json{"n": counts->Get(0), "ratio": weights->Find("w"), "ok": flag, "kind": match k {...}}
+The text is compared with the same element built by hand.
+~#
+use Collection;
+use Data.JSON;
+
+enum Kind { SMALL, LARGE }
+
+class InteractJsonLiteralBoxing {
+	function : Main(args : String[]) ~ Nil {
+		boxed := IntRef->New(4);
+		counts : Vector<IntRef> := Vector->New();
+		counts->AddBack(11);
+		counts->AddBack(22);
+		weights : Map<String, FloatRef> := {"w": 0.5};
+		flag := BoolRef->New(true);
+		kind := Kind->LARGE;
+		missing : String := Nil;
+
+		request := json{
+			"n": boxed,
+			"first": counts->Get(0),
+			"sum": counts->Get(0) + counts->Get(1),
+			"ratio": weights->Find("w"),
+			"ok": flag,
+			"kind": match kind { Kind->SMALL => "small", Kind->LARGE => "large" },
+			"name": missing ?? "unnamed",
+			"list": [boxed, counts->Get(1), 2.5, "text", Nil],
+			"inner": {"again": boxed}
+		};
+
+		by_hand := JsonElement->New(JsonElement->JsonType->OBJECT);
+		by_hand->Insert("n", 4);
+		by_hand->Insert("first", 11);
+		by_hand->Insert("sum", 33);
+		by_hand->Insert("ratio", 0.5);
+		by_hand->Insert("ok", true);
+		by_hand->Insert("kind", "large");
+		by_hand->Insert("name", "unnamed");
+		list := JsonElement->New(JsonElement->JsonType->ARRAY);
+		list->Add(4);
+		list->Add(22);
+		list->Add(2.5);
+		list->Add("text");
+		list->Add(JsonElement->New(JsonElement->JsonType->NULL));
+		by_hand->Insert("list", list);
+		inner := JsonElement->New(JsonElement->JsonType->OBJECT);
+		inner->Insert("again", 4);
+		by_hand->Insert("inner", inner);
+
+		got := request->ToString();
+		want := by_hand->ToString();
+		if(<>got->Equals(want)) {
+			"FAIL: {$got}"->PrintLine();
+			"want: {$want}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		assert request->Get("n")->GetType() = JsonElement->JsonType->NUMBER : "a holder is a number, not an object";
+		assert request->Get("ok")->GetType() = JsonElement->JsonType->TRUE : "a BoolRef is a boolean";
+
+		"PASS: holders in a JSON literal"->PrintLine();
+	}
+}

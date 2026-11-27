@@ -1,0 +1,26 @@
+# EXPECT_COMPILE_ERROR: (20,8): A 'select' used as a value needs an 'other' arm, unless it is on an enum and names every item
+# EXPECT_ERROR_COUNT: 1
+#~
+A 'select' used as a value yields one for every subject: on an Int that takes 'other'.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+enum Size {
+	Small,
+	Large
+}
+
+class BadSelectValueNeedsOther {
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		x := select(n) {
+			label 1: "a"
+			label 2: "b"
+		};
+		x->PrintLine();
+	}
+}

@@ -6,6 +6,17 @@
   <title>Objeck example programs — Objeck Language</title>
   <meta name="description" content="The programs in this folder ship with every Objeck release, in the examples/ directory of the distribution. welcome.obs prints this same index at the terminal:">
   <meta name="color-scheme" content="dark light">
+  <link rel="canonical" href="https://www.objeck.org/doc_deploy_examples.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Objeck">
+  <meta property="og:title" content="Objeck example programs — Objeck Language">
+  <meta property="og:description" content="The programs in this folder ship with every Objeck release, in the examples/ directory of the distribution. welcome.obs prints this same index at the terminal:">
+  <meta property="og:url" content="https://www.objeck.org/doc_deploy_examples.html">
+  <meta property="og:image" content="https://www.objeck.org/style/social-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP.">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="style/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="style/site.css">
   <script>document.documentElement.className = "js";</script>
@@ -19,6 +30,7 @@
     <nav class="site-nav" id="site-nav" aria-label="Main">
      <ul>
      <li><a href="start.html">Get started</a></li>
+     <li><a href="agents.html">Agents</a></li>
      <li><a href="learn.html">Learn</a></li>
      <li><a href="docs.html" aria-current="page">Docs</a></li>
      <li><a href="libraries.html">Libraries</a></li>
@@ -104,6 +116,9 @@ obr welcome.obe</pre>
       <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/mcp_resources_43.obs" target="_blank" rel="noopener"><code>mcp_resources_43.obs</code></a></td><td data-label="Libraries"><code>-lib gen_collect,json,net,net_server,cipher,misc,mcp</code></td><td data-label="What it shows">MCP: @resource and @prompt functions next to a @tool, read through a client</td></tr>
       <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/mcp_serve_44.obs" target="_blank" rel="noopener"><code>mcp_serve_44.obs</code></a></td><td data-label="Libraries"><code>-lib gen_collect,json,net,net_server,cipher,misc,mcp</code></td><td data-label="What it shows">MCP: obr --mcp and --mcp-http serve the tagged functions with no server code</td></tr>
       <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/agent_scope_45.obs" target="_blank" rel="noopener"><code>agent_scope_45.obs</code></a></td><td data-label="Libraries"><code>-lib agent,json,net,cipher,misc</code></td><td data-label="What it shows">AgentScope: one set of step, token and tool limits for every agent run in a block</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/json_class_46.obs" target="_blank" rel="noopener"><code>json_class_46.obs</code></a></td><td data-label="Libraries"><code>-lib gen_collect,json,regex,llm_util,net,cipher,misc,agent,agent_json</code></td><td data-label="What it shows">class Weather : json: a model's answer as a typed object, with the schema and the reader written for you</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/prompt_literal_47.obs" target="_blank" rel="noopener"><code>prompt_literal_47.obs</code></a></td><td data-label="Libraries"><code>-lib llm_util,json,regex,gen_collect</code></td><td data-label="What it shows">prompt literals: holes the compiler checks, and values that cannot leave their slot</td></tr>
+      <tr><td data-label="Example"><a href="https://github.com/objeck/objeck-lang/blob/master/programs/deploy/agent_decl_48.obs" target="_blank" rel="noopener"><code>agent_decl_48.obs</code></a></td><td data-label="Libraries"><code>-lib gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent</code></td><td data-label="What it shows">agent declarations: model, instructions, tools and budget stated in one place</td></tr>
      </tbody>
     </table>
     <h2 id="building-all-of-them">Building all of them</h2>
@@ -143,6 +158,7 @@ obr json_14.obe</pre>
    <div class="wrap">
     <nav aria-label="Footer"><ul class="footer-links">
      <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="agents.html">Agents</a></li>
      <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
      <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
      <li><a href="ai_guide.html">AI &amp; ML guide</a></li>

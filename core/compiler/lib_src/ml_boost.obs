@@ -1944,9 +1944,7 @@ bundle System.ML.Boost {
 			s->Write(@learning_rate);
 			s->Write(@best_iter);
 			s->Write(@base);
-			if(classes = Nil) {
-				classes := Int->New[0];
-			};
+			classes := classes ?? Int->New[0];
 
 			s->Write(classes);
 			s->Write(@train_loss);

@@ -27,12 +27,40 @@ contexts:
     - match: \'(.|{{escaped_char}})\'
       scope: constant.character.escape.objeck-obs
 
+    # agent Name(...) { backend : ...; ... }: 'agent' is a word only at the start of a declaration,
+    # and the setting names are words only inside its braces (docs/design/AGENT_SYNTAX.md)
+    - match: '^\s*(agent)\s+({{identifier}})(?=\s*[({])'
+      captures:
+        1: storage.type.class.objeck-obs
+        2: entity.name.class.objeck-obs
+      push: agent_head
+
+    # prompt "...": 'prompt' is a word only before a string; {name} and {name : Type} are
+    # holes, {{ and }} literal braces (docs/design/AGENT_SYNTAX.md)
+    - match: '\b(prompt)(\s*)(")'
+      captures:
+        1: keyword.control.objeck-obs
+        3: string.quoted.double.objeck-obs
+      push: prompt_string
+
     - match: '"'
       scope: string.quoted.double.objeck-obs
       push: double_quoted_string
 
     # Keywords 
-    - match: '\b(if|in|else|do|while|static|select|break|continue|other|for|each|reverse|label|return|critical)\b'
+    - match: '\b(if|in|else|do|while|static|select|break|continue|other|for|each|reverse|label|return|critical|spawn)\b'
+      scope: keyword.control.objeck-obs
+
+    # contextual: 'if(value is Type name) { ... }'
+    - match: '\bis(?=\s+[A-Za-z_][\w.]*\s+[A-Za-z_]\w*\s*\))'
+      scope: keyword.control.objeck-obs
+
+    # contextual: 'json{ ... }', a JSON literal
+    - match: '\bjson(?=\s*\{)'
+      scope: keyword.control.objeck-obs
+
+    # contextual: 'match subject { pattern => ... }'
+    - match: '\bmatch(?=\s+[A-Za-z_@])'
       scope: keyword.control.objeck-obs
 
     - match: '\b(use|leaving|virtual|Parent|As|TypeOf|from|implements)\b'
@@ -157,8 +185,46 @@ contexts:
     - match: \\.
     - match: '"'
       pop: true
+
+  agent_head:
+    - match: '\{'
+      set: agent_body
+    - include: main
+
+  agent_body:
+    - match: '\}'
+      pop: true
+    - match: '\b(backend|instructions|tools|mcp|allow|deny|trace)(?=\s*:(?!=))'
+      scope: keyword.other.objeck-obs
+    - match: '\b(budget)(?=\s*\{)'
+      scope: keyword.other.objeck-obs
+    - match: '\b(steps|tokens|tool_calls|model_calls|wall_ms|model_call_ms|cost)(?=\s*:(?!=))'
+      scope: variable.parameter.objeck-obs
+    - match: '\{'
+      push: agent_body
+    - include: main
+
+  prompt_string:
+    - meta_content_scope: string.quoted.double.objeck-obs
+    - match: \\.
+    - match: '\{\{|\}\}'
+      scope: constant.character.escape.objeck-obs
+    - match: '\{\$[^}"]*\}'
+      scope: meta.interpolation.objeck-obs
+    - match: '(\{)\s*(@?[[:alpha:]_][[:alnum:]_]*)\s*(?:(:)\s*(String|Int|Float|Bool|Char|Byte)\s*)?(\})'
+      captures:
+        2: variable.parameter.objeck-obs
+        4: storage.type.objeck-obs
+    - match: '"'
+      scope: string.quoted.double.objeck-obs
+      pop: true
       
   cls_def:
+    - match: '({{identifier}})(\s*:\s*)(json)\b'
+      captures:
+        1: entity.name.class.objeck-obs
+        3: storage.modifier.objeck-obs
+      pop: true
     - match: '{{identifier}}'
       scope: entity.name.class.objeck-obs
       pop: true

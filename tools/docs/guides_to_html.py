@@ -6,14 +6,15 @@ Source files that become pages in docs/web:
   * docs/guides/*.md     ->  guides.html and guide_*.html (the getting-started guides)
   * the files in DOCS    ->  docs.html (an index) and doc_*.html (architecture, design notes,
                              the language reference, performance, editors and so on)
-  * the files in SITE    ->  start.html, learn.html and community.html (docs/site/*.md)
+  * the files in SITE    ->  start.html, agents.html, learn.html and community.html (docs/site/*.md)
   * core/compiler/build_libs.sh + lib_src/*.obs + the LIBS table below  ->  libraries.html
 
 The head, the top navigation, the section list, the breadcrumbs and the footer are written by this script
 (see CHROME below). The hand-written pages (index.html, getting_started.html, ai_guide.html, readme.html)
 keep their own <main> content; this script rewrites everything around it, and fills the marked regions
 (<!-- version:start --> ... <!-- version:end --> and <!-- release:start --> ... <!-- release:end -->) from
-core/shared/version.h and CHANGELOG.md. A change to the navigation or footer here reaches every page the next time it runs.
+core/shared/version.h and CHANGELOG.md. README.md carries the hero sample between <!-- agent-hero:start --> and
+<!-- agent-hero:end -->, written from docs/site/examples/tool so it cannot drift from the page. A change to the navigation or footer here reaches every page the next time it runs.
 
   python tools/docs/guides_to_html.py           write the pages
   python tools/docs/guides_to_html.py --check   exit 1 if a page on disk differs from what the
@@ -56,6 +57,8 @@ GUIDES = {
                                      "Parse JSON, XML and regular expressions, and what they do with missing or malformed input."),
     "docs/guides/collections.md": ("guide_collections.html", "Collections Guide",
                                    "Hash, Map, Vector, Set and MultiHash in one short program."),
+    "docs/guides/language_sugar.md": ("guide_language_sugar.html", "Less Ceremony: Six Small Language Additions",
+                                      "A function by name, lambdas that use their object, field accessors, constructor promotion, collection literals and the nil guard."),
     "docs/guides/ai.md": ("guide_ai.html", "Game AI Guide",
                           "Minimax and Monte Carlo tree search with System.AI, on tic-tac-toe, and the checkers example."),
     "docs/guides/language_server.md": ("guide_editors.html", "Editor and Language Server Guide",
@@ -469,6 +472,8 @@ def render(md_text, srcdir, doc=False):
 SITE = {
     "docs/site/start.md": ("start.html", "Get started",
                            "Install Objeck on Windows, macOS or Linux, write and run a first program, or skip the install and use the browser playground."),
+    "docs/site/agents.md": ("agents.html", "Agents",
+                            "Build agents in Objeck: declare tools with a doc comment, serve a program over MCP, call servers through typed clients, run agents with budgets and approval, scope limits, and use local models."),
     "docs/site/learn.md": ("learn.html", "Learn",
                            "Where to learn Objeck: the quick start, the task-oriented guides, the AI and ML guide, the language reference and worked examples."),
     "docs/site/community.md": ("community.html", "Community",
@@ -484,10 +489,10 @@ API_URL = "https://www.objeck.org/api/latest/index.html"
 PLAYGROUND = "https://playground.objeck.org"
 
 # top navigation: (label, page, key)
-NAV = [("Get started", "start.html", "start"), ("Learn", "learn.html", "learn"), ("Docs", "docs.html", "docs"),
+NAV = [("Get started", "start.html", "start"), ("Agents", "agents.html", "agents"), ("Learn", "learn.html", "learn"), ("Docs", "docs.html", "docs"),
        ("Libraries", "libraries.html", "libraries"), ("Community", "community.html", "community")]
 
-FOOTER_LINKS = [("Playground", PLAYGROUND), ("Download", GH + "/releases/latest"), ("API reference", API_URL),
+FOOTER_LINKS = [("Playground", PLAYGROUND), ("Agents", "agents.html"), ("Download", GH + "/releases/latest"), ("API reference", API_URL),
                 ("AI &amp; ML guide", "ai_guide.html"), ("Changelog", "readme.html"), ("GitHub", GH),
                 ("Discussions", GH + "/discussions"), ("Issues", GH + "/issues"),
                 ("Code of conduct", GH + "/blob/master/CODE_OF_CONDUCT.md"), ("License", GH + "/blob/master/LICENSE")]
@@ -532,6 +537,7 @@ LIBS = {
     "agent": (3, "A provider-neutral tool-use loop: an agent that calls the functions you give it."),
     "actor_agents": (3, "Run an agent as a supervised actor."),
     "mcp": (3, "Model Context Protocol server and client."),
+    "agent_json": (3, "Typed answers from an agent's model: the run-time half of `class Name : json`."),
     "mcp_agent": (3, "Declared MCP tools and servers as agent tools, with approval by effect."),
     "models": (3, "Backend-neutral inference types shared by the model libraries."),
     "inference": (3, "A client for HTTP model-inference servers."),
@@ -670,15 +676,28 @@ def long_date(iso):
     return "%d %s %s" % (int(d), months[int(mo) - 1], y)
 
 
+HIDE_BELOW = "# ---- generated, not shown on the page ----"
+
+
 def example_files(name):
     """(source, transcript) of a tested sample in docs/site/examples (see tools/cicd/check_site_examples.py)."""
     base = os.path.join(ROOT, "docs", "site", "examples", name)
-    return read(base + ".obs").strip("\n"), read(base + ".out").strip("\n")
+    src = read(base + ".obs")
+    cut = src.find(HIDE_BELOW)
+    if cut >= 0:  # the sample compiles with the generated code; the page shows the part a person writes
+        src = src[:cut]
+    return src.strip("\n"), read(base + ".out").strip("\n")
 
 
 def example_md(name):
     src, out = example_files(name)
     return "```objeck\n%s\n```\n\n```text\n%s\n```" % (src, out)
+
+
+def mcp_md(name):
+    """A tested MCP session (docs/site/examples/NAME.mcp.out, written by tools/cicd/check_site_examples.py)."""
+    base = os.path.join(ROOT, "docs", "site", "examples", name)
+    return "```text\n%s\n```" % read(base + ".mcp.out").strip("\n")
 
 
 def example_html(name):
@@ -738,12 +757,31 @@ def plain_text(para_html):
     return html.unescape(t).strip()
 
 
-def page_head(title, desc, mermaid=False):
+SITE_URL = "https://www.objeck.org/"
+CARD = "style/social-card.png"
+CARD_ALT = "Objeck: an agentic language and runtime. A function with a @tool doc comment, served over MCP."
+
+
+def page_head(title, desc, mermaid=False, name="index.html"):
+    d = html.escape(desc)
+    t = html.escape(html.unescape(title), quote=True)
+    url = SITE_URL + ("" if name == "index.html" else name)
     h = ['<!DOCTYPE html>', '<html lang="en">', ' <head>', '  <meta charset="utf-8">',
          '  <meta name="viewport" content="width=device-width, initial-scale=1">',
          '  <title>%s</title>' % title,
-         '  <meta name="description" content="%s">' % html.escape(desc),
+         '  <meta name="description" content="%s">' % d,
          '  <meta name="color-scheme" content="dark light">',
+         '  <link rel="canonical" href="%s">' % url,
+         '  <meta property="og:type" content="website">',
+         '  <meta property="og:site_name" content="Objeck">',
+         '  <meta property="og:title" content="%s">' % t,
+         '  <meta property="og:description" content="%s">' % d,
+         '  <meta property="og:url" content="%s">' % url,
+         '  <meta property="og:image" content="%s%s">' % (SITE_URL, CARD),
+         '  <meta property="og:image:width" content="1200">',
+         '  <meta property="og:image:height" content="630">',
+         '  <meta property="og:image:alt" content="%s">' % html.escape(CARD_ALT),
+         '  <meta name="twitter:card" content="summary_large_image">',
          '  <link rel="icon" href="style/favicon.ico" type="image/x-icon">',
          '  <link rel="stylesheet" href="style/site.css">',
          '  <script>document.documentElement.className = "js";</script>']
@@ -823,7 +861,7 @@ def sidebar(area, current):
                 gl.append(link(esc(guide_short(title)), page))
         parts.append("<p class=\"nav-title\">Guides</p><ul>%s</ul>" % "".join(gl))
         parts.append("<p class=\"nav-title\">AI and ML</p><ul>%s</ul>" % "".join(link(l, p) for l, p in [
-            ("AI &amp; ML developer guide", "ai_guide.html"), ("Which models run", "doc_models.html"), ("AI examples", "doc_ai.html")]))
+            ("Agents", "agents.html"), ("AI &amp; ML developer guide", "ai_guide.html"), ("Which models run", "doc_models.html"), ("AI examples", "doc_ai.html")]))
         label = "Learn"
     elif area == "docs":
         groups = []
@@ -853,6 +891,8 @@ def classify(name, group=None):
         return "start", "learn", []
     if name == "learn.html":
         return "learn", "learn", []
+    if name == "agents.html":
+        return "agents", None, []
     if name in ("getting_started.html", "guides.html"):
         return "learn", "learn", [("Learn", "learn.html")]
     if name.startswith("guide_"):
@@ -879,12 +919,12 @@ def shell(name, title, desc, inner, toc=(), mermaid=False, group=None, wrap=True
     """A whole page: chrome around `inner` (the <main> content)."""
     inner = "<!-- content:start -->\n%s\n<!-- content:end -->" % inner
     if name == "index.html":
-        page = [page_head(title, desc), site_header(""), '  <main id="main" tabindex="-1">', inner, "  </main>", site_footer()]
+        page = [page_head(title, desc, False, name), site_header(""), '  <main id="main" tabindex="-1">', inner, "  </main>", site_footer()]
         return "\n".join(page)
     active, area, trail = classify(name, group)
     side = sidebar(area, name) if area else ""
     tocn = toc_nav(list(toc)) if toc else ""
-    page = [page_head("%s — Objeck Language" % title, desc, mermaid), site_header(active), '  <main id="main" tabindex="-1">',
+    page = [page_head("%s — Objeck Language" % title, desc, mermaid, name), site_header(active), '  <main id="main" tabindex="-1">',
             crumbs(trail + [(esc(title), None)])]
     cls = "layout" + (" has-side" if side else "") + (" has-toc" if tocn else "")
     page.append('  <div class="%s">' % cls)
@@ -907,6 +947,7 @@ def build_page(md_rel, text, name, title_hint, desc, doc, group=None, site=False
     if site:
         text = text.replace("{{version}}", version)
         text = re.sub(r"\{\{example:(\w+)\}\}", lambda m: example_md(m.group(1)), text)
+        text = re.sub(r"\{\{mcp:(\w+)\}\}", lambda m: mcp_md(m.group(1)), text)
     t, toc, body, mermaid = render(text, srcdir, doc)
     t = t or title_hint
     plain_title = t.replace("`", "")
@@ -981,6 +1022,13 @@ def rechrome(name, text, version, release):
     return shell(name, html.unescape(short), desc, inner.strip("\n"))
 
 
+def readme_hero():
+    """README.md with the tested hero sample (docs/site/examples/tool) written between its markers."""
+    path = os.path.join(ROOT, "README.md")
+    text = read(path)
+    return fill(text, "agent-hero", "\n" + example_md("tool") + "\n")
+
+
 def main():
     check = "--check" in sys.argv
     stale = []
@@ -1008,6 +1056,15 @@ def main():
             with open(target, "w", encoding="utf-8", newline="\n") as f:
                 f.write(text_out)
             print("wrote", name)
+    readme = os.path.join(ROOT, "README.md")
+    want = readme_hero()
+    if check:
+        if read(readme) != want:
+            stale.append("README.md")
+    elif read(readme) != want:
+        with open(readme, "w", encoding="utf-8", newline="\n") as f:
+            f.write(want)
+        print("wrote README.md")
     if check:
         for name in stale:
             print("stale:", name)

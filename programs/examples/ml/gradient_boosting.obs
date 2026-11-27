@@ -52,8 +52,7 @@ class GradientBoostingDemo {
 		# the prediction after each stage: the error falls as stages are added
 		staged := model->StagedPredict(test_x);
 		shown := [0, 9, 49, 99];
-		each(s : shown) {
-			stage := shown[s];
+		each(stage in shown) {
 			sum := 0.0;
 			each(i : 200) {
 				d := staged[stage, i] - test_y[i];

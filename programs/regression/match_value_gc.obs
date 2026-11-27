@@ -1,0 +1,115 @@
+#~
+A 'match' used as a value runs its select in the middle of the enclosing
+expression, so whatever that expression has already evaluated is waiting on the
+operand stack (interpreter) or in registers and spill slots (JIT) while an arm
+runs. This test makes those waiting values objects and makes the arms allocate
+enough to collect many times over: every object evaluated before the match must
+still be the same object, with the same contents, after it. A value lost or
+moved without its reference being updated shows as a wrong sum or a crash.
+~#
+use Collection;
+
+enum Kind {
+	Small,
+	Medium,
+	Large
+}
+
+class MatchValueGc {
+	function : Sum(a : IntRef, values : Int[], b : String, c : IntRef) ~ Int {
+		total := a->Get() + b->Size() + c->Get();
+		each(i : values->Size()) {
+			total += values[i];
+		};
+
+		return total;
+	}
+
+	function : Fill(size : Int, value : Int) ~ Int[] {
+		values := Int->New[size];
+		each(i : size) {
+			values[i] := value;
+		};
+
+		return values;
+	}
+
+	function : Join(a : String, b : String, c : String) ~ String {
+		out := String->New(a);
+		out->Append(b);
+		out->Append(c);
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		fails := 0;
+
+		# objects before and after the match, arrays allocated in its arms
+		expected := 0;
+		actual := 0;
+		each(i : 1500) {
+			kind := (i % 3)->As(Kind);
+			size := match kind { Kind->Small => 1000, Kind->Medium => 20000, Kind->Large => 60000 };
+			expected += i + size * 2 + 5 + (i + 1);
+			actual += Sum(IntRef->New(i), match kind {
+				Kind->Small => Fill(1000, 2),
+				Kind->Medium => Fill(20000, 2),
+				Kind->Large => Fill(60000, 2)
+			}, String->New("abcde"), IntRef->New(i + 1));
+		};
+		if(actual <> expected) {
+			"FAIL arrays: {$actual} <> {$expected}"->PrintLine();
+			fails += 1;
+		};
+
+		# strings built in the arms, between two strings built before and after
+		text_fails := 0;
+		each(i : 10000) {
+			pick := i % 4;
+			joined := Join(String->New("<"), match pick {
+				0 => Join("a", "b", "c"),
+				1 => Join("dd", "ee", "ff"),
+				2 => String->New("ggg"),
+				other => Join(Join("h", "i", "j"), "k", "l")
+			}, String->New(">"));
+			want := match pick { 0 => "<abc>", 1 => "<ddeeff>", 2 => "<ggg>", other => "<hijkl>" };
+			if(<>joined->Equals(want)) {
+				text_fails += 1;
+			};
+		};
+		if(text_fails <> 0) {
+			"FAIL strings: {$text_fails}"->PrintLine();
+			fails += 1;
+		};
+
+		# the value itself is an object that outlives collections made by later arms
+		kept := Vector->New()<IntRef>;
+		each(i : 1000) {
+			pick := i % 2;
+			kept->AddBack(match pick { 0 => IntRef->New(i), other => IntRef->New(-i) });
+			junk := match pick { 0 => Fill(30000, 1), other => Fill(10, 1) };
+			if(junk->Size() = 0) {
+				fails += 1;
+			};
+		};
+		kept_fails := 0;
+		each(i : kept->Size()) {
+			want := i % 2 = 0 ? i : -i;
+			if(kept->Get(i)->Get() <> want) {
+				kept_fails += 1;
+			};
+		};
+		if(kept_fails <> 0) {
+			"FAIL kept: {$kept_fails}"->PrintLine();
+			fails += 1;
+		};
+
+		if(fails = 0) {
+			"PASS: match value gc"->PrintLine();
+		}
+		else {
+			"FAIL: match value gc"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -67,8 +67,7 @@ class RfLab {
 		"1. n_estimators (max_depth None, min_samples_leaf 1)"->PrintLine();
 		LabData->PrintHeader("n_estimators");
 		counts := [10, 50, 100, 200, 500];
-		each(i : counts) {
-			n := counts[i];
+		each(n in counts) {
 			Run("trees={$n}", RandomForestClassifier->New(n, unlimited, 1, 42), 1, x, y, tx, ty, true);
 		};
 
@@ -77,8 +76,7 @@ class RfLab {
 		"2. max_depth (100 trees, min_samples_leaf 1)"->PrintLine();
 		LabData->PrintHeader("max_depth");
 		depths := [4, 8, 16, 32];
-		each(i : depths) {
-			depth := depths[i];
+		each(depth in depths) {
 			Run("depth={$depth}", RandomForestClassifier->New(100, depth, 1, 42), 1, x, y, tx, ty, false);
 		};
 		Run("depth=None", RandomForestClassifier->New(100, unlimited, 1, 42), 1, x, y, tx, ty, false);
@@ -88,8 +86,7 @@ class RfLab {
 		"3. min_samples_leaf (100 trees, max_depth None)"->PrintLine();
 		LabData->PrintHeader("min_samples_leaf");
 		leaves := [1, 2, 5, 10];
-		each(i : leaves) {
-			leaf := leaves[i];
+		each(leaf in leaves) {
 			Run("leaf={$leaf}", RandomForestClassifier->New(100, unlimited, 1, 42), leaf, x, y, tx, ty, false);
 		};
 	}

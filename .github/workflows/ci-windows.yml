@@ -836,6 +836,15 @@ jobs:
         if not exist "%BIN%" set BIN=core\release\deploy\bin
         python tools\llm_eval\run_tests.py "%BIN%"
 
+    # The samples on objeck.org (docs/site/examples) are compiled and run here, and the MCP session the
+    # Agents page shows is played against `obr --mcp`, so a page cannot show a program that stopped working.
+    - name: Site code samples compile, run and print what the pages show (Windows)
+      shell: cmd
+      run: |
+        set DIR=core\release\deploy-${{ env.ARCH }}
+        if not exist "%DIR%\bin" set DIR=core\release\deploy
+        python tools\cicd\check_site_examples.py --toolchain "%DIR%"
+
     - name: GC root coverage, 30 seeds (advisory, Windows)
       continue-on-error: true
       timeout-minutes: 20
@@ -955,6 +964,30 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python mcp_tool_tags_diag_test.py "%BIN%"
 
+    - name: the json class diagnostics hold (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python json_class_diag_test.py "%BIN%"
+
+    - name: the prompt literal diagnostics hold (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python prompt_literal_diag_test.py "%BIN%"
+
+    - name: the agent declaration diagnostics hold (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python agent_decl_diag_test.py "%BIN%"
+
     - name: obr --mcp serves a program's tools (Windows)
       working-directory: ./programs/regression
       shell: cmd
@@ -1019,6 +1052,46 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obc_debug_reproducible.py "%BIN%"
 
+    - name: assert statement fails a program with its FAIL line and exit code 1 (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_assert_statement.py "%BIN%"
+
+    - name: a binding type test compiles to the test and cast it stands for (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_type_test_lowering.py "%BIN%"
+
+    - name: a JSON literal compiles to the JsonElement calls it stands for (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_json_literal_lowering.py "%BIN%"
+
+    - name: a map literal compiles to the constructor and Insert calls it stands for (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_map_literal_lowering.py "%BIN%"
+
+    - name: a value match compiles to the select statement it stands for (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_match_lowering.py "%BIN%"
+
     - name: obc and obr find their libraries from another working directory (Windows)
       working-directory: ./programs/regression
       shell: cmd
@@ -1035,6 +1108,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_named_args.py "%BIN%"
 
+    - name: a dead store leaves nothing on the operand stack (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_dead_store_chain.py "%BIN%"
+
     - name: a library's generic methods infer their type arguments (Windows)
       working-directory: ./programs/regression
       shell: cmd
@@ -1050,6 +1131,42 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_generic_chain.py "%BIN%"
+
+    # A primitive is boxed and a holder unboxed to fit a parameter, and the method
+    # that fits best is called. A library's methods are matched and ranked by the
+    # analyzer's library path, from the signatures in the .obl; this builds a library
+    # whose overloads are declared holder-first and calls each of them.
+    - name: boxing and unboxing choose among a library's overloads (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_boxing_overloads.py "%BIN%"
+
+    # A constructor call may leave out its type arguments ('Pair->New(a, b)',
+    # 'v : Vector<Foo> := Vector->New();'). For a library class the constructors'
+    # parameter types and the type parameters' bounds are read back from the .obl,
+    # and a second library may have a class of the same short name; this builds two.
+    - name: type arguments are inferred for a library generic class (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_generic_inference.py "%BIN%"
+
+    # 'spawn { ... }' is written out as an anonymous Thread class and a lambda, named
+    # for the class, file and position it is written at. A library stores them in
+    # its .obl beside the ones a program makes for its own 'spawn' blocks; this
+    # builds both, with a 'spawn' at one position of two files of one name.
+    - name: a spawn block in a library and in the program that uses it (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_spawn.py "%BIN%"
 
     - name: a generic array parameter survives the .obl round trip (Windows)
       working-directory: ./programs/regression

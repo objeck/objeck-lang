@@ -1,0 +1,10 @@
+class FailCall {
+	function : Make(n : Int) ~ Int {
+		"made"->PrintLine();
+		return n * 2;
+	}
+	function : Main(args : String[]) ~ Nil {
+		assert Make(2) = 5;
+		"NOT REACHED"->PrintLine();
+	}
+}

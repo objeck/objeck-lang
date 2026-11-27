@@ -632,6 +632,61 @@ std::wstring Scanner::GetSourceLine(int line) const
 }
 
 /****************************
+ * The offset of a 1-based
+ * (line, column); the end of
+ * the text when it is past it
+ ****************************/
+static size_t SourceOffset(const wchar_t* buffer, size_t size, int line, int pos)
+{
+  size_t i = 0;
+  for(int n = 1; n < line && i < size; ++i) {
+    if(buffer[i] == L'\n') {
+      n++;
+    }
+  }
+  for(int column = 1; column < pos && i < size && buffer[i] != L'\n'; ++column) {
+    ++i;
+  }
+
+  return i;
+}
+
+/****************************
+ * The source before a place
+ ****************************/
+std::wstring Scanner::GetSourceBefore(int line, int pos) const
+{
+  if(!buffer || line < 1) {
+    return L"";
+  }
+
+  size_t end = SourceOffset(buffer, buffer_size, line, pos);
+  for(size_t i = 0; i < end; ++i) {
+    if(buffer[i] == EOB) {
+      end = i;
+    }
+  }
+
+  return std::wstring(buffer, end);
+}
+
+/****************************
+ * Starts at a place of the
+ * text; call before the first
+ * token is read
+ ****************************/
+void Scanner::StartAt(int line, int pos)
+{
+  if(!buffer || !is_first_token || line < 1 || pos < 1) {
+    return;
+  }
+
+  buffer_pos = SourceOffset(buffer, buffer_size, line, pos);
+  line_nbr = line;
+  line_pos = pos;
+}
+
+/****************************
  * The source line and a caret
  * under the column, indented
  * as a detail of a message

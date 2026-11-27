@@ -10,8 +10,7 @@ class Test {
 			sorter := Sorter->New();
 			if(table->IsParsed()) {
 				records := CompareVector->New()<Record>;
-				each(i : table) {
-					row := table->Get(i);
+				each(row in table) {
 					year := row->Get("year")->ToInt();
 					state := row->Get("state");
 					state_po := row->Get("state_po");

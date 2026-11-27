@@ -15,8 +15,7 @@ class DammAlgorithm  {
             [2, 5, 8, 1, 4, 3, 6, 7, 9, 0]];
 
         numbers := [ 5724, 5727, 112946, 112949 ];
-        each (i : numbers) {
-            number := numbers[i];
+        each(number in numbers) {
             isValid := Damm(number->ToString());
             if (isValid) {
                 "{$number} is valid"->PrintLine();

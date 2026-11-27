@@ -1,6 +1,6 @@
 #~~
 Copyright (c) 2024 Randy Hollines
-~~#	
+~~#
 
 use Web.HTTP, Collection, System.IO.Filesystem, Data.JSON, Data.JSON.Scheme;
 
@@ -75,7 +75,7 @@ bundle API.OpenAI.Audio {
 			boundary := encoder->GetBoundary();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/transcriptions"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/transcriptions"), data,
 				"multipart/form-data; boundary={$boundary}", headers);
 
 			if(response <> Nil) {
@@ -84,7 +84,7 @@ bundle API.OpenAI.Audio {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(model_json->Has("error")) {
 					error_str := ParseErrorMessage(model_json);
 					SetLastError(error_str);
@@ -106,7 +106,7 @@ bundle API.OpenAI.Audio {
 		Generates audio from the input text
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
 		@param input the text to generate audio for, the maximum length is 4096 characters
-		@param voice voice to use when generating the audio, supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param voice voice to use when generating the audio, supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'.
 		@param token API token
 		@return response with type and content, Nil if unsuccessful
 		~#
@@ -118,7 +118,7 @@ bundle API.OpenAI.Audio {
 		Generates audio from the input text
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
 		@param input the text to generate audio for, the maximum length is 4096 characters
-		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'.
 		@param response_format format to audio in, supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
 		@param token API token
 		@return response with type and content, Nil if unsuccessful
@@ -131,7 +131,7 @@ bundle API.OpenAI.Audio {
 		Generates audio from the input text
 		@param model available TTS models 'tts-1' or 'tts-1-hd'
 		@param input the text to generate audio for, the maximum length is 4096 characters
-		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'. 
+		@param voice voice to use when generating the audio. Supported voices are alloy, 'echo', 'fable', 'onyx', 'nova', and 'shimmer'.
 		@param speed speed of the generated audio 0.25 to 4.0. 1.0 is the default.
 		@param response_format format to audio in, supported formats are 'mp3', 'opus', 'aac', 'flac', 'wav', and 'pcm'.
 		@param token API token
@@ -157,7 +157,7 @@ bundle API.OpenAI.Audio {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			
+
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/audio/speech"), data, "application/json", headers);
 			if(NoReply(response)) {
 				return Nil;
@@ -170,14 +170,14 @@ bundle API.OpenAI.Audio {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(audio_json->Has("error")) {
 					error_str := ParseErrorMessage(audio_json);
 					SetLastError(error_str);
 					return Nil;
 				};
 			};
-			
+
 			if(response->GetContent() = Nil) {
 				code := response->GetCode();
 				SetLastError("Empty response (HTTP {$code})");
@@ -198,8 +198,8 @@ bundle API.OpenAI.Responses {
 	~#
 	enum ReasoningEffort {
 		NA,
-		LOW, 
-		MEDIUM, 
+		LOW,
+		MEDIUM,
 		HIGH
 	}
 
@@ -208,17 +208,17 @@ bundle API.OpenAI.Responses {
 	~#
 	enum Verbosity {
 		NA,
-		LOW, 
-		MEDIUM, 
+		LOW,
+		MEDIUM,
 		HIGH
 	}
 
 	#~
-	Tool like remote MCP servers or web search to extend the model's capabilities 
+	Tool like remote MCP servers or web search to extend the model's capabilities
 	~#
 	class Tool {
 		@tool_name : String;
-		
+
 		@vector_store_ids : Vector<String>;
 
 		@func_name : String;
@@ -229,7 +229,7 @@ bundle API.OpenAI.Responses {
 		@server_url : Url;
 
 		#~
-		Constructor 
+		Constructor
 		@param tool_name name of tool
 		~#
 		New(tool_name : String) {
@@ -237,7 +237,7 @@ bundle API.OpenAI.Responses {
 		}
 
 		#~
-		Constructor 
+		Constructor
 		@param vector_store_ids list of vector store IDs
 		~#
 		New(vector_store_ids : Vector<String>) {
@@ -247,7 +247,7 @@ bundle API.OpenAI.Responses {
 		}
 
 		#~
-		Constructor 
+		Constructor
 		@param func_name function name
 		@param func_desc function description
 		@param func_params function parameters
@@ -261,7 +261,7 @@ bundle API.OpenAI.Responses {
 		}
 
 		#~
-		Constructor 
+		Constructor
 		@param server_label server label
 		@param server_url server URL
 		~#
@@ -280,33 +280,62 @@ bundle API.OpenAI.Responses {
 			return @tool_name;
 		}
 
+		#~
+		Get the vector store IDs of a file search tool
+		@return vector store IDs, or Nil if this is not a file search tool
+		~#
 		method : public : GetStoreIds() ~  Vector<String> {
 			return @vector_store_ids;
 		}
 
+		#~
+		Get the function name of a function tool
+		@return function name, or Nil if this is not a function tool
+		~#
 		method : public : GetFunctionName() ~ String {
 			return @func_name;
 		}
 
+		#~
+		Get the function description of a function tool
+		@return function description, or Nil if this is not a function tool
+		~#
 		method : public : GetDescription() ~ String {
 			return @func_desc;
 		}
 
+		#~
+		Get the parameter definition of a function tool
+		@return function parameters, or Nil if this is not a function tool
+		~#
 		method : public : GetParameters() ~ ParameterType {
 			return @func_params;
 		}
 
+		#~
+		Get the label of a remote MCP server tool
+		@return server label, or Nil if this is not an MCP tool
+		~#
 		method : public : GetServerLabel() ~ String {
 			return @server_label;
 		}
 
+		#~
+		Get the URL of a remote MCP server tool
+		@return server URL, or Nil if this is not an MCP tool
+		~#
 		method : public : GetServerUrl() ~ Url {
 			return @server_url;
 		}
 
+		#~
+		Builds the JSON object that describes the tool in a request: the type, plus vector_store_ids for file search,
+		name, description and parameters for a function, or server_label, server_url and require_approval ('never') for MCP.
+		@return tool JSON object
+		~#
 		method : public : ToJson() ~ JsonElement {
 			tools_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			
+
 			# type (i.e. 'web_search_preview')
 			tools_json->Insert("type", @tool_name);
 
@@ -319,7 +348,7 @@ bundle API.OpenAI.Responses {
 				};
 
 				tools_json->Insert("vector_store_ids", vector_store_ids_json);
-			
+
 			}
 			# function
 			else if(@func_name <> Nil & @func_desc <> Nil & @func_params <> Nil) {
@@ -352,6 +381,10 @@ bundle API.OpenAI.Responses {
 		@model : String;
 		@outputs : Vector<Output>;
 
+		#~
+		Constructor; reads a Responses API result: id, object, created_at, model and the output items
+		@param json_elem response JSON object
+		~#
 		New(json_elem : JsonElement) {
 			Parent();
 
@@ -452,9 +485,7 @@ resp->GetText()->PrintLine();
 						content_type := content->GetType();
 						text := content->GetText();
 						if(content_type <> Nil & content_type->Equals("output_text") & text <> Nil) {
-							if(buffer = Nil) {
-								buffer := "";
-							};
+							buffer := buffer ?? "";
 							buffer += text;
 						};
 					};
@@ -476,7 +507,7 @@ resp->GetText()->PrintLine();
 		String representation of the object
 		@return string representation
 		~#
-		method : public : ToString() ~ String {			
+		method : public : ToString() ~ String {
 			buffer := "Response: [short_id='";
 			if(@id <> Nil) {
 				buffer += @id->Size() > 10 ? @id->SubString(10) : @id;
@@ -518,7 +549,7 @@ resp->GetText()->PrintLine();
 		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param tools list of tools
 		@param token API token
@@ -550,9 +581,9 @@ resp->GetText()->PrintLine();
 		Model response for the given query
 		@param message completion message and image query.
 		@param model ID of the model to use
-		@param reasoning_effort model's reasoning reasoning_effort 		
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param schema output schema
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param tools list of tools
 		@param token API token
@@ -572,7 +603,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param tools list of tools
 		@param token API token
@@ -592,7 +623,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param schema output schema
 		@param tools list of tools
@@ -668,7 +699,7 @@ resp->GetText()->PrintLine();
 
 			if(reasoning_effort <> ReasoningEffort->NA) {
 				reasoning_effort_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				
+
 				if(reasoning_effort = ReasoningEffort->LOW) {
 					reasoning_effort_json->Insert("effort", "low");
 				}
@@ -687,9 +718,10 @@ resp->GetText()->PrintLine();
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				message_json->Insert("role", message->GetFirst());
 
-				# TODO: support files
+				# the content is sent as plain text; file and image input parts ('input_file', 'input_image') are not
+				# built by this overload (use the FileQuery overload for files)
 				message_json->Insert("content", message->GetSecond());
-				
+
 				messages_json->Add(message_json);
 			};
 			completion_json->Insert("input", messages_json);
@@ -706,7 +738,7 @@ resp->GetText()->PrintLine();
 					openai_schema := schema->ToJson();
 					openai_schema->Insert("additionalProperties", false);
 					format_json->Insert("schema", openai_schema);
-					
+
 					text_json->Insert("format", format_json);
 				};
 
@@ -735,7 +767,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param schema output schema
 		@param tools list of tools
@@ -751,12 +783,11 @@ resp->GetText()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/responses' ---"->PrintLine();
-					ResponseText(response)->PrintLine();				
+					ResponseText(response)->PrintLine();
 				};
 
 				return ParseResponse(ResponseText(response));
@@ -801,7 +832,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param schema output schema
 		@param tools list of tools
@@ -822,7 +853,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param tools list of tools
 		@param token API token
@@ -854,7 +885,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param schema output schema
 		@param tools list of tools
@@ -897,7 +928,7 @@ resp->GetText()->PrintLine();
 
 				#message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				#message_json->Insert("role", message->GetRole());
-			
+
 				messages_json->Add(message_json);
 			};
 			completion_json->Insert("input", messages_json);
@@ -925,12 +956,11 @@ resp->GetText()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/responses' ---"->PrintLine();
-					ResponseText(response)->PrintLine();				
+					ResponseText(response)->PrintLine();
 				};
 
 				return ParseResponse(ResponseText(response));
@@ -938,7 +968,7 @@ resp->GetText()->PrintLine();
 
 			return Nil;
 		}
-		
+
 		#~
 		Model response for the given image and query
 		@param message completion message and image query.
@@ -982,7 +1012,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param schema output schema
 		@param tools list of tools
@@ -997,7 +1027,7 @@ resp->GetText()->PrintLine();
 			# position resolves to the text one, which is what used to happen here
 			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, tools, schema, token);
 		}
-		
+
 		#~
 		Model response for the given image and query
 		@param model ID of the model to use
@@ -1006,7 +1036,7 @@ resp->GetText()->PrintLine();
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
 		@param schema output schema
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param token API token
 		@param tools list of tools
@@ -1044,7 +1074,7 @@ resp->GetText()->PrintLine();
 		@param max_tokens maximum number of completion tokens returned by the API
 		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
 		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
-		@param reasoning_effort model's reasoning reasoning_effort 
+		@param reasoning_effort model's reasoning reasoning_effort
 		@param verbosity verbosity of response
 		@param tools list of tools
 		@param schema output schema
@@ -1078,7 +1108,7 @@ resp->GetText()->PrintLine();
 			each(message in messages) {
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				message_json->Insert("role", message->GetFirst());
-				
+
 				image_query := message->GetSecond();
 
 				if(image_query->GetQuery() = Nil) {
@@ -1126,12 +1156,11 @@ resp->GetText()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/responses"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/responses' ---"->PrintLine();
-					ResponseText(response)->PrintLine();				
+					ResponseText(response)->PrintLine();
 				};
 
 				return ParseResponse(ResponseText(response));
@@ -1152,9 +1181,13 @@ resp->GetText()->PrintLine();
 		@summaries : Vector<Pair<String, String>>;
 		@contents : Vector<Content>;
 
+		#~
+		Constructor; reads one item of a response's output array. A field the item type does not carry (id, status, content) is left unset.
+		@param json_elem output item JSON object
+		~#
 		New(json_elem : JsonElement) {
 			Parent();
-			
+
 			# a function_call output has no 'content'; a reasoning output may
 			# carry neither 'id' nor 'status' on some deployments
 			if(json_elem->Has("id")) {
@@ -1216,7 +1249,7 @@ resp->GetText()->PrintLine();
 		~#
 		method : public : GetSummaries() ~ Vector<Pair<String, String>> {
 			return @summaries;
-		}		
+		}
 
 		#~
 		Get role
@@ -1260,7 +1293,7 @@ resp->GetText()->PrintLine();
 			if(@role <> Nil) {
 				buffer += ", role='{$@role}'";
 			};
-			
+
 			if(@contents <> Nil) {
 				each(content in @contents) {
 					buffer += "\n\t\t";
@@ -1274,16 +1307,20 @@ resp->GetText()->PrintLine();
 	}
 
 	#~
-	Response content 
+	Response content
 	~#
 	class Content {
 		@type : String;
 		@text : String;
-		# TODO: @annotations : Vector<Annotation>;
-		
+		# the response part's 'annotations' (url and file citations) are not parsed; only type, text and refusal are read
+
+		#~
+		Constructor; reads a content part: its type and its text, or its refusal for a refusal part
+		@param json_elem content part JSON object
+		~#
 		New(json_elem : JsonElement) {
 			Parent();
-			
+
 			if(json_elem->Has("type")) {
 				@type := json_elem->Get("type")->GetString();
 			};
@@ -1324,7 +1361,7 @@ resp->GetText()->PrintLine();
 			};
 			text_len := @text->Size();
 			short_text := @text->SubString(64);
-			return "Content: [type='{$@type}', short_text='{$short_text}', text_len={$text_len}]"; 
+			return "Content: [type='{$@type}', short_text='{$short_text}', text_len={$text_len}]";
 		}
 	}
 }
@@ -1343,6 +1380,10 @@ bundle API.OpenAI.Chat {
 		@model : String;
 		@choices : Vector<API.OpenAI.Chat.Choice>;
 
+		#~
+		Constructor; reads a chat completion result: id, object, created, model and choices
+		@param chat_json chat completion JSON object
+		~#
 		New(chat_json : JsonElement) {
 			Parent();
 
@@ -1452,7 +1493,7 @@ text := choice->GetMessage()->GetSecond();
 		String representation of the object
 		@return string representation
 		~#
-		method : public : ToString() ~ String {			
+		method : public : ToString() ~ String {
 			buffer := "[id='";
 			buffer += @id;
 
@@ -1469,9 +1510,9 @@ text := choice->GetMessage()->GetSecond();
 			for(i := 0; i < @choices->Size(); i +=1 ;) {
 				buffer += i;
 				buffer += ": ";
-				
+
 				buffer += @choices->Get(i)->ToString();
-				
+
 				if(i + 1 < @choices->Size()) {
 					buffer += ',';
 				};
@@ -1596,12 +1637,11 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/chat/completions' ---"->PrintLine();
-					ResponseText(response)->PrintLine();				
+					ResponseText(response)->PrintLine();
 				};
 
 				return ParseCompletion(ResponseText(response));
@@ -1609,7 +1649,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 			return Nil;
 		}
-		
+
 		#~
 		Builds the JSON body POSTed to the chat completions endpoint for a tool-calling turn. The messages
 		are raw message objects, so an assistant message with 'tool_calls' (Choice->GetMessageJson) and a
@@ -1772,7 +1812,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			each(message in messages) {
 				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				message_json->Insert("role", message->GetFirst());
-				
+
 				image_query := message->GetSecond();
 
 				if(image_query->GetQuery() = Nil) {
@@ -1820,12 +1860,11 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/chat/completions"), data, "application/json", headers);
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/chat/completions' ---"->PrintLine();
-					ResponseText(response)->PrintLine();				
+					ResponseText(response)->PrintLine();
 				};
 
 				return ParseCompletion(ResponseText(response));
@@ -1843,6 +1882,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@name : String;
 		@arguments : String;
 
+		#~
+		Constructor; reads the call's id and the function's name and arguments. A missing value reads as an empty string.
+		@param call_json tool call JSON object
+		~#
 		New(call_json : JsonElement) {
 			@id := Text(call_json, "id");
 			@name := "";
@@ -1855,6 +1898,12 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		# a member read as text; empty if it is missing or not a string
+		#~
+		Reads a member of a JSON object as text
+		@param json JSON object
+		@param name member name
+		@return the string value, or an empty string if the member is missing or not a string
+		~#
 		function : Text(json : JsonElement, name : String) ~ String {
 			member_json := json->Get(name);
 			if(member_json <> Nil & member_json->GetType() = JsonElement->JsonType->STRING) {
@@ -1957,6 +2006,10 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@message_json : JsonElement;
 		@tool_calls : Vector<API.OpenAI.Chat.ToolCall>;
 
+		#~
+		Constructor; reads a chat choice: index, finish reason, the message's role and content, the tool calls and the message object itself
+		@param chat_json choice JSON object
+		~#
 		New(chat_json : JsonElement) {
 			Parent();
 			@tool_calls := Vector->New()<API.OpenAI.Chat.ToolCall>;
@@ -2040,12 +2093,12 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		method : public : ToString() ~ String {
 			role := @message->GetFirst();
 			content := @message->GetSecond();
-			return "[index={$@index}, finish_reason='{$@finish_reason}', role={$role}, content={$content}]"; 
+			return "[index={$@index}, finish_reason='{$@finish_reason}', role={$role}, content={$content}]";
 		}
 	}
 
 	#~
-	Chat conversation assistant 
+	Chat conversation assistant
 	~#
 	class Conversation {
 		@assistant : Assistant;
@@ -2055,7 +2108,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@funcs : Map<String, Func2Ref<JsonElement, JsonElement>>;
 
 		#~
-		Constructor 
+		Constructor
 		@param assistant assistant
 		@param enable_spinner true to enable console spinner, false to disable
 		@param token API token
@@ -2069,7 +2122,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		#~
-		Constructor 
+		Constructor
 		@param assistant assistant
 		@param token API token
 		~#
@@ -2081,7 +2134,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		}
 
 		#~
-		Maps an OpenAI function call (via webhooks) 
+		Maps an OpenAI function call (via webhooks)
 		@param name OpenAI function name
 		@param func function to map
 		@return true if successful, false otherwise
@@ -2095,6 +2148,12 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			return true;
 		}
 
+		#~
+		Runs the function that was registered under a name with AddFunction
+		@param name function name
+		@param params function parameters as JSON
+		@return the function's result, or Nil if no function is registered under the name
+		~#
 		method : CallFunction(name : String, params : JsonElement) ~ JsonElement {
 			func_ref := @funcs->Find(name)<Func2Ref<JsonElement, JsonElement>>;
 			if(func_ref <> Nil) {
@@ -2131,7 +2190,7 @@ session->Close();
 			for(i := 0; <>is_done & i < 20; i += 1;) {
 				System.Concurrency.Thread->Sleep(750);
 				run->Refresh(@token);
-				
+
 				if(@enable_spinner) {
 					System.Utility.Spinner->Next();
 				};
@@ -2186,7 +2245,7 @@ Support for fine-tuning models (-lib openai)
 ~#
 bundle API.OpenAI.Tuning {
 	#~
-	OpenAI fine tuning 
+	OpenAI fine tuning
 	~#
 	class Tuner from EndPoint {
 		@id : String;
@@ -2205,11 +2264,15 @@ bundle API.OpenAI.Tuning {
 		@validation_file : String;
 		@trained_tokens : String;
 		@user_provided_suffix : String;
-		@estimated_finish : String;		
+		@estimated_finish : String;
 		@error_code : String;
 		@error_param : String;
 		@error_message : String;
 
+		#~
+		Constructor; reads a fine-tuning job object: id, object, model, timestamps, organization, status, training file and error details
+		@param tune_json fine-tuning job JSON object
+		~#
 		New(tune_json : JsonElement) {
 			Parent();
 
@@ -2217,7 +2280,7 @@ bundle API.OpenAI.Tuning {
 			@object := tune_json->Get("object")->GetString();
 			@model := tune_json->Get("model")->GetString();
 			@created_at := tune_json->Get("created_at")->GetInt();
-			
+
 			finished_at_json := tune_json->Get("finished_at");
 			if(finished_at_json <> Nil & <>finished_at_json->IsNull()) {
 				@finished_at := finished_at_json->GetInt();
@@ -2334,7 +2397,7 @@ bundle API.OpenAI.Tuning {
 			error_code := @error_code = Nil ? "<null>" : @error_code;
 			error_param := @error_param = Nil ? "<null>" : @error_param;
 			error_message := @error_message = Nil ? "<null>" : @error_message;
-			
+
 			buffer := "[id='{$@id}', object='{$@object}', model={$@model}, created_at={$@created_at}, ";
 			buffer += "finished_at='{$@finished_at}', fine_tuned_model='{$fine_tuned_model}', ";
 			buffer += "n_epochs='{$@n_epochs}', batch_size='{$@batch_size}, learning_rate_multiplier='{$@learning_rate_multiplier}', ";
@@ -2370,7 +2433,7 @@ bundle API.OpenAI.Tuning {
 					return Nil;
 				};
 
-				error_str := tune_json->FindElements("error/message");				
+				error_str := tune_json->FindElements("error/message");
 				if(error_str <> Nil) {
 					SetLastError(error_str->GetString());
 					return Nil;
@@ -2402,7 +2465,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			
+
 			url_str := GetBaseUrl() + "/fine_tuning/jobs";
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
@@ -2416,7 +2479,7 @@ bundle API.OpenAI.Tuning {
 					return Nil;
 				};
 
-				error_str := root_json->FindElements("error/message");				
+				error_str := root_json->FindElements("error/message");
 				if(error_str <> Nil) {
 					SetLastError(error_str->GetString());
 					return Nil;
@@ -2444,7 +2507,7 @@ bundle API.OpenAI.Tuning {
 		#~
 		Lists events for a job
 		@param job_id job ID
-		@param limit number of jobs to retrieve		
+		@param limit number of jobs to retrieve
 		@param token API token
 		@return job events
 		~#
@@ -2453,7 +2516,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			
+
 			url_str := GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/events";
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
@@ -2467,7 +2530,7 @@ bundle API.OpenAI.Tuning {
 					return Nil;
 				};
 
-				error_str := root_json->FindElements("error/message");				
+				error_str := root_json->FindElements("error/message");
 				if(error_str <> Nil) {
 					SetLastError(error_str->GetString());
 					return Nil;
@@ -2495,7 +2558,7 @@ bundle API.OpenAI.Tuning {
 		#~
 		Lists checkpoints for a fine-tuning job
 		@param job_id job ID
-		@param limit number of jobs to retrieve		
+		@param limit number of jobs to retrieve
 		@param token API token
 		@return job checkpoints
 		~#
@@ -2504,7 +2567,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			
+
 			url_str := GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/checkpoints";
 			if(limit > 0) {
 				url_str += "?limit={$limit}";
@@ -2512,14 +2575,14 @@ bundle API.OpenAI.Tuning {
 
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response <> Nil) {
-				
+
 				root_json := JsonParser->TextToElement(ResponseText(response));
 
 				if(root_json = Nil) {
 					return Nil;
 				};
 
-				error_str := root_json->FindElements("error/message");				
+				error_str := root_json->FindElements("error/message");
 				if(error_str <> Nil) {
 					SetLastError(error_str->GetString());
 					return Nil;
@@ -2546,7 +2609,7 @@ bundle API.OpenAI.Tuning {
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				tuning_json := JsonParser->TextToElement(ResponseText(response));
 				if(tuning_json = Nil) {
@@ -2570,7 +2633,7 @@ bundle API.OpenAI.Tuning {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/cancel"), 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/fine_tuning/jobs/{$job_id}/cancel"),
 				Byte->New[0], "application/json", headers);
 			if(response <> Nil) {
 				tuning_json := JsonParser->TextToElement(ResponseText(response));
@@ -2596,7 +2659,11 @@ bundle API.OpenAI.Tuning {
 		@step_number : Int;
 		@full_valid_loss : String;
 		@full_valid_mean_token_accuracy : Float;
-		
+
+		#~
+		Constructor; reads a fine-tuning checkpoint: id, object, creation time, job ID, step number and the full validation loss and token accuracy metrics
+		@param job_json checkpoint JSON object
+		~#
 		New(job_json : JsonElement) {
 			@id := job_json->Get("id")->GetString();
 			@object := job_json->Get("object")->GetString();
@@ -2617,7 +2684,7 @@ bundle API.OpenAI.Tuning {
 		~#
 		method : public : ToString() ~ String {
 			full_valid_loss := @full_valid_loss = Nil ? "<null>" : @full_valid_loss;
-			
+
 			buffer := "[id='{$@id}', object='{$@object}', created_at={$@created_at}, ";
 			buffer += "fine_tuning_job_id='{$@fine_tuning_job_id}', step_number={$@step_number}, ";
 			buffer += "full_valid_loss='{$full_valid_loss}', full_valid_mean_token_accuracy={$@full_valid_mean_token_accuracy}]";
@@ -2679,6 +2746,10 @@ bundle API.OpenAI.Tuning {
 		@error_code : String;
 		@error_param : String;
 
+		#~
+		Constructor; reads a fine-tuning job event: id, object, creation time, level, message, type and the error code and parameter if present
+		@param tune_json event JSON object
+		~#
 		New(tune_json : JsonElement) {
 			@id := tune_json->Get("id")->GetString();
 			@object := tune_json->Get("object")->GetString();
@@ -2781,7 +2852,7 @@ bundle API.OpenAI {
 		Query with text input and respond with text and audio outputs
 		@param audio audio byte stream
 		@param model model name
-		@param voice voice use when generating the audio 
+		@param voice voice use when generating the audio
 		@param token API token
 		@return pair with text and binary audio outputs
 		~#
@@ -2814,7 +2885,7 @@ bundle API.OpenAI {
 		Query with text input and respond with text and audio outputs
 		@param text text query
 		@param model model name
-		@param voice voice use when generating the audio 
+		@param voice voice use when generating the audio
 		@param token API token
 		@return pair with text and binary audio outputs
 		~#
@@ -2864,7 +2935,7 @@ bundle API.OpenAI {
 
 			return Nil;
 		}
-		
+
 		function : private : SendQuery(audio : Byte[], voice : String, client : SecureWebSocket) ~ Bool {
 			# create conversation
 			builder := JsonBuilder->New();
@@ -2874,7 +2945,7 @@ bundle API.OpenAI {
 			item_json := builder->PushObject("item");
 			item_json->Insert("type", "message");
 			item_json->Insert("role", "user");
-			
+
 			content_elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			content_elem_json->Insert("type", "input_audio");
 	        content_elem_json->Insert("audio", Cipher.Encrypt->Base64(audio));
@@ -2995,7 +3066,7 @@ bundle API.OpenAI {
 			item_json := builder->PushObject("item");
 			item_json->Insert("type", "message");
 			item_json->Insert("role", "user");
-			
+
 			content_elem_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			content_elem_json->Insert("type", "input_text");
 	        content_elem_json->Insert("text", query);
@@ -3110,7 +3181,7 @@ bundle API.OpenAI {
 		function : private : ReceiveResponse(client : SecureWebSocket) ~ Pair<String, ByteArrayRef> {
 			response_text := "";
 			response_audio := "";
-				
+
 			is_done := false;
 			while(<>is_done) {
 				recv_msg := client->ReadSocketText();
@@ -3171,7 +3242,7 @@ bundle API.OpenAI {
 		@file : API.OpenAI.File;
 
 		#~
-		Constructor 
+		Constructor
 		@param query text query
 		@param file upload file
 		@param role user role
@@ -3233,14 +3304,14 @@ bundle API.OpenAI {
 		}
 
 		@query : String;
-		
+
 		@image_url : Url;
 
 		@image : Byte[];
 		@mime_type : ImageQuery->MimeType;
 
 		#~
-		Constructor 
+		Constructor
 		@param query text query
 		@param image_url URL to image
 		~#
@@ -3250,7 +3321,7 @@ bundle API.OpenAI {
 		}
 
 		#~
-		Constructor 
+		Constructor
 		@param query text query
 		@param image binary image
 		@param mime_type imag MIME type
@@ -3318,7 +3389,7 @@ bundle API.OpenAI {
 		method : public : ToString() ~ String {
 			buffer := "[query='{$@query}'";
 
-			
+
 			if(@image_url <> Nil) {
 				image_url_str := @image_url->GetUrl();
 				buffer += ", image_url='{$image_url_str}";
@@ -3350,7 +3421,7 @@ bundle API.OpenAI {
 			#~
 			256x256 (DALL-E 2)
 			~#
-			DALLE2_256_256, 
+			DALLE2_256_256,
 			#~
 			512x512 (DALL-E 2)
 			~#
@@ -3377,6 +3448,10 @@ bundle API.OpenAI {
 			DALLE_DEFAULT
 		}
 
+		#~
+		Constructor; reads an image result: the creation time and, per image, its URL or its base64 data
+		@param image_json image response JSON object
+		~#
 		New(image_json : JsonElement) {
 			Parent();
 
@@ -3470,7 +3545,7 @@ bundle API.OpenAI {
 		@param prompt text description of the desired image
 		@param model model name
 		@param n number of images
-		@param quality quality of the image that will be generated		
+		@param quality quality of the image that will be generated
 		@param response_format format in which the generated images are returned
 		@param size size of the generated image
 		@param style style of the generated image
@@ -3482,15 +3557,15 @@ bundle API.OpenAI {
 				size : Image->Size, style : String, user : String, token : String) ~ API.OpenAI.Image {
 			image_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			image_json->Insert("prompt", prompt);
-			
+
 			if(model <> Nil) {
 				image_json->Insert("model", model);
 			}
-			
+
 			if(n > 0 & n <= 10) {
 				image_json->Insert("n", n);
 			};
-			
+
 			if(quality <> Nil) {
 				image_json->Insert("quality", quality);
 			};
@@ -3498,7 +3573,7 @@ bundle API.OpenAI {
 			if(response_format <> Nil) {
 				image_json->Insert("response_format", response_format);
 			};
-			
+
 			select(size) {
 				label Image->Size->DALLE2_256_256 {
 					image_json->Insert("size", "256x256");
@@ -3541,7 +3616,7 @@ bundle API.OpenAI {
 
 			return Nil;
 		}
-		
+
 		#~
 		Creates an edited or extended image given an original image and a prompt
 		@param image_name image name
@@ -3560,18 +3635,18 @@ bundle API.OpenAI {
 		@param image_content image content
 		@param prompt text description of the desired image
 		@param mask_name mask name
-		@param mask_content additional image whose fully transparent areas (e.g. where alpha is zero) 
+		@param mask_content additional image whose fully transparent areas (e.g. where alpha is zero)
 		@param model model name
 		@param n number of images
 		@param size size of the generated image
-		@param response_format format in which the generated images are returned		
+		@param response_format format in which the generated images are returned
 		@param user identifier representing your end-user
 		@param token API token
 		@return edited image
 		~#
-		function : Edit(image_name : String, image_content : Byte[], prompt : String, mask_name : String, mask_content : Byte[], 
+		function : Edit(image_name : String, image_content : Byte[], prompt : String, mask_name : String, mask_content : Byte[],
 				model : String, n : Int, size : Image->Size, response_format : String, user : String, token : String) ~ API.OpenAI.Image {
-			
+
 			encoder := Web.HTTP.Server.MultipartEncoder->New();
 
 			# image
@@ -3606,7 +3681,7 @@ bundle API.OpenAI {
 				n_headers->Insert("Content-Disposition", "form-data; name=\"n\"");
 				encoder->Add(Web.HTTP.Server.MultipartContent->New(n_headers, n->ToString()->ToByteArray()));
 			};
-			
+
 			# size
 			select(size) {
 				label Image->Size->DALLE2_256_256 {
@@ -3660,10 +3735,10 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/edits"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/edits"), data,
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				return ParseImage(ResponseText(response));					
+				return ParseImage(ResponseText(response));
 			};
 
 			return Nil;
@@ -3686,14 +3761,14 @@ bundle API.OpenAI {
 		@param image_content image content
 		@param model model name
 		@param n number of images
-		@param response_format format in which the generated images are returned		
+		@param response_format format in which the generated images are returned
 		@param size size of the generated image
 		@param user identifier representing your end-user
 		@param token API token
 		@return image variation
 		~#
 		function : Variation(image_name : String, image_content : Byte[], model : String, n : Int, response_format : String, size : Image->Size, user : String, token : String) ~ API.OpenAI.Image {
-			
+
 			encoder := Web.HTTP.Server.MultipartEncoder->New();
 
 			# image
@@ -3722,7 +3797,7 @@ bundle API.OpenAI {
 				response_format_headers->Insert("Content-Disposition", "form-data; name=\"response_format\"");
 				encoder->Add(Web.HTTP.Server.MultipartContent->New(response_format_headers, response_format->ToByteArray()));
 			};
-			
+
 			# size
 			select(size) {
 				label Image->Size->DALLE2_256_256 {
@@ -3769,10 +3844,10 @@ bundle API.OpenAI {
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/variations"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/variations"), data,
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				return ParseImage(ResponseText(response));					
+				return ParseImage(ResponseText(response));
 			};
 
 			return Nil;
@@ -3788,7 +3863,7 @@ file := API.OpenAI.File->Load(file_id, token);
 if(store <> Nil & file <> Nil) {
   VectorStoreFile->Create(file, store, token)->ToString()->PrintLine();
 };
-```	
+```
 	~#
 	class VectorStoreFile from EndPoint {
 		@id : String;
@@ -3797,7 +3872,12 @@ if(store <> Nil & file <> Nil) {
 		@usage_bytes : Int;
 		@store : VectorStore;
 		@status : String;
-		
+
+		#~
+		Constructor; reads a vector store file object and loads the vector store it belongs to
+		@param response_json vector store file JSON object
+		@param token API token used to load the vector store
+		~#
 		New(response_json : JsonElement, token : String) {
 			Parent();
 
@@ -3862,7 +3942,7 @@ if(store <> Nil & file <> Nil) {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, store='{$@store}', usage_bytes='{$@usage_bytes}'']"; 
+			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, store='{$@store}', usage_bytes='{$@usage_bytes}'']";
 		}
 
 		#~
@@ -3898,7 +3978,7 @@ if(store <> Nil & file <> Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3907,15 +3987,15 @@ if(store <> Nil & file <> Nil) {
 
 				return API.OpenAI.VectorStoreFile->New(response_json, token);
 			};
-			
-			return Nil;	
+
+			return Nil;
 		}
 
 		#~
 		Lists vector store files
 		@param store vector store that the files belong to
 		@param token API token
-		@return list of vector store files 
+		@return list of vector store files
 		~#
 		function : ListStoreFiles(store : VectorStore, token : String) ~ Vector<VectorStoreFile> {
 			file : API.OpenAI.File;
@@ -3926,7 +4006,7 @@ if(store <> Nil & file <> Nil) {
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}/files' ---"->PrintLine();
@@ -3945,7 +4025,7 @@ if(store <> Nil & file <> Nil) {
 				};
 
 				store_files := Vector->New()<VectorStoreFile>;
-				
+
 				stores_json := response_json->Get("data");
 				each(store_json in stores_json) {
 					store_files->AddBack(VectorStoreFile->New(store_json, token));
@@ -3971,7 +4051,7 @@ if(store <> Nil & file <> Nil) {
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
@@ -4009,7 +4089,7 @@ if(store <> Nil & file <> Nil) {
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}/files/{$store_file_id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}/files/{$store_file_id}' ---"->PrintLine();
@@ -4053,7 +4133,7 @@ store := VectorStore->Create("test_1", files, token);
 if(store <> Nil) {
   store->ToString()->PrintLine();
 };
-```	
+```
 	~#
 	class VectorStore from EndPoint {
 		@id : String;
@@ -4064,7 +4144,11 @@ if(store <> Nil) {
 		@completed_count : Int;
 		@name : String;
 		@status : String;
-		
+
+		#~
+		Constructor; reads a vector store object: id, object, name, creation and last active times, usage in bytes and status
+		@param response_json vector store JSON object
+		~#
 		New(response_json : JsonElement) {
 			Parent();
 
@@ -4151,7 +4235,7 @@ if(store <> Nil) {
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, name='{$@name}', usage_bytes='{$@usage_bytes}', completed_count='{$@completed_count}']"; 
+			return "[id='{$@id}', object='{$@object}', created_at={$@created_at}, name='{$@name}', usage_bytes='{$@usage_bytes}', completed_count='{$@completed_count}']";
 		}
 
 		#~
@@ -4183,9 +4267,9 @@ if(store <> Nil) {
 					file_ids_json->Add(file->GetId());
 				};
 
-				query_json->Insert("file_ids", file_ids_json);				
+				query_json->Insert("file_ids", file_ids_json);
 			};
-			
+
 			if(IsDebug()) {
 				query_json->ToString()->PrintLine();
 			};
@@ -4205,7 +4289,7 @@ if(store <> Nil) {
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4214,14 +4298,14 @@ if(store <> Nil) {
 
 				return API.OpenAI.VectorStore->New(response_json);
 			};
-			
-			return Nil;	
+
+			return Nil;
 		}
 
 		#~
 		Lists vector stores
 		@param token API token
-		@return list of vector stores 
+		@return list of vector stores
 		~#
 		function : ListStores(token : String) ~ Vector<VectorStore> {
 			return ListStores(false, token);
@@ -4231,7 +4315,7 @@ if(store <> Nil) {
 		Lists vector stores
 		@param non_empties if true, non empty stores are include, otherwise excluded
 		@param token API token
-		@return list of vector stores 
+		@return list of vector stores
 		~#
 		function : ListStores(non_empties : Bool, token : String) ~ Vector<VectorStore> {
 			file : API.OpenAI.File;
@@ -4240,7 +4324,7 @@ if(store <> Nil) {
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores' ---"->PrintLine();
@@ -4290,7 +4374,7 @@ if(store <> Nil) {
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/vector_stores/{$id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$id}' ---"->PrintLine();
@@ -4343,7 +4427,7 @@ if(store <> Nil) {
 			headers->Insert("Authorization", "Bearer {$token}");
 			headers->Insert("OpenAI-Beta", "assistants=v2");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/vector_stores/{$store_id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				if(IsDebug()) {
 					"--- Called: name='/vector_stores/{$store_id}' ---"->PrintLine();
@@ -4414,7 +4498,7 @@ done := false;
 do {
   query := Console->ReadLine();
   if(query->Equals("/quit")) {
-    session->Close();    
+    session->Close();
     done := true;
   }
   else {
@@ -4434,7 +4518,7 @@ do {
 while(<>done);
 
 session->Close();
-```	
+```
 	~#
 	class File from EndPoint {
 		@id : String;
@@ -4443,7 +4527,12 @@ session->Close();
 		@bytes : Int;
 		@filename : String;
 		@purpose : String;
-		
+
+		#~
+		Constructor; reads a file object: id, object, size in bytes, creation time, file name and purpose. Absent members are left unset.
+		@param file_json file JSON object
+		@param token API token, not used by the parser
+		~#
 		New(file_json : JsonElement, token : String) {
 			Parent();
 
@@ -4520,7 +4609,7 @@ session->Close();
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, filename='{$@filename}', purpose='{$@purpose}']"; 
+			return "[id='{$@id}', object='{$@object}', bytes={$@bytes}, created_at={$@created_at}, filename='{$@filename}', purpose='{$@purpose}']";
 		}
 
 		#~
@@ -4560,7 +4649,7 @@ session->Close();
 
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/files"), data, 
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/files"), data,
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(NoReply(response)) {
 				return false;
@@ -4579,7 +4668,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files/{$id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
@@ -4610,7 +4699,7 @@ session->Close();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickDelete(Url->New(GetBaseUrl() + "/files/{$id}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
 				file_json := JsonParser->TextToElement(ResponseText(response));
 				if(file_json = Nil) {
@@ -4628,7 +4717,7 @@ session->Close();
 
 			return false;
 		}
-		
+
 		#~
 		Loads or creates an OpenAI file from the local filesystem
 		@param filename local file path
@@ -4642,13 +4731,13 @@ session->Close();
 		#~
 		Loads or creates an OpenAI file from the local filesystem
 		@param filename local file path
-		@param purpose file purpose 'assistants', 'vision' or 'fine-tune'		
+		@param purpose file purpose 'assistants', 'vision' or 'fine-tune'
 		@param token API token
 		@return file reference
 		~#
 		function : LoadOrCreate(filename : String, purpose : String, token : String) ~ API.OpenAI.File {
 			file := LoadByName(filename, token);
-			
+
 			if(file = Nil) {
 				content := FileReader->ReadBinaryFile(filename);
 				if(content = Nil | content->Size() = 0) {
@@ -4672,7 +4761,7 @@ session->Close();
 		~#
 		function : LoadByName(filename : String, token : String) ~ API.OpenAI.File {
 			found : API.OpenAI.File;
-			
+
 			files := API.OpenAI.File->ListFiles(token);
 			each(file in files) {
 				if(file->GetFilename()->Equals(filename)) {
@@ -4779,9 +4868,7 @@ session->Close();
 				tool_desc := tool->Get("type")->GetString();
 				if(tool_desc->Equals("function")) {
 					func_json := tool->Get("function");
-					if(@funcs = Nil) {
-						@funcs := Vector->New()<FunctionType>;
-					};
+					@funcs := @funcs ?? Vector->New()<FunctionType>;
 
 					func := FunctionType->New(func_json);
 					@funcs->AddBack(func);
@@ -4888,7 +4975,7 @@ session->Close();
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
-				
+
 				if(file_json->Has("error")) {
 					error_str := ParseErrorMessage(file_json);
 					SetLastError(error_str);
@@ -4905,7 +4992,7 @@ session->Close();
 		String representation of the object
 		@return string representation
 		~#
-		method : public : ToString() ~ String {			
+		method : public : ToString() ~ String {
 			buffer := "[id='";
 			buffer += @id;
 
@@ -4933,7 +5020,7 @@ session->Close();
 				buffer += ": ";
 				buffer += @tools->Get(i);
 				buffer += '\'';
-				
+
 				if(i + 1 < @tools->Size()) {
 					buffer += ',';
 				};
@@ -4944,7 +5031,7 @@ session->Close();
 				buffer += i;
 				buffer += ": ";
 				buffer += @vector_stores->Get(i)->ToString();
-								
+
 				if(i + 1 < @vector_stores->Size()) {
 					buffer += "\n\t";
 				};
@@ -4977,7 +5064,7 @@ session->Close();
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(assistants_json->Has("error")) {
 					error_str := ParseErrorMessage(assistants_json);
 					SetLastError(error_str);
@@ -5046,11 +5133,11 @@ session->Close();
 		@param token API token
 		@return newly created assistant
 		~#
-		function : Create(model : String, name : String, description : String, instructions : String, 
+		function : Create(model : String, name : String, description : String, instructions : String,
 				tools : Vector<String>, files : Vector<API.OpenAI.File>, token : String) ~ API.OpenAI.Assistant {
 			return Create(model, name, description, instructions, tools, files, Nil, token);
 		}
-		
+
 		#~
 		Creates an assistant with a model and instructions
 		@param model ID of the model to use
@@ -5063,7 +5150,7 @@ session->Close();
 		@param token API token
 		@return newly created assistant
 		~#
-		function : Create(model : String, name : String, description : String, instructions : String, 
+		function : Create(model : String, name : String, description : String, instructions : String,
 				tools : Vector<String>, files : Vector<API.OpenAI.File>, funcs : Vector<FunctionType>, token : String) ~ API.OpenAI.Assistant {
 
 			if(model = Nil) {
@@ -5090,7 +5177,7 @@ session->Close();
 			if((tools <> Nil & <>tools->IsEmpty()) | (funcs <> Nil & <>funcs->IsEmpty())) {
 				tools_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
-				# tools to enable, functions are enabled separately below 
+				# tools to enable, functions are enabled separately below
 				each(tool in tools) {
 					if(<>tool->Equals("function")) {
 						tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -5099,12 +5186,12 @@ session->Close();
 					};
 				};
 
-				# function definitions 
+				# function definitions
 				each(func in funcs) {
 					tool_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 					tool_json->Insert("type", "function");
 
-					func_json := JsonParser->TextToElement(func->ToString());					
+					func_json := JsonParser->TextToElement(func->ToString());
 					tool_json->Insert("function", func_json);
 
 					tools_json->Add(tool_json);
@@ -5132,14 +5219,14 @@ session->Close();
 				vector_stores_array_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				vector_stores_array_obj_json->Insert("file_search", file_search_json);
 
-				create_json->Insert("tool_resources", vector_stores_array_obj_json);				
+				create_json->Insert("tool_resources", vector_stores_array_obj_json);
 			};
-			
+
 			data := builder->PopAll()->ToString()->ToByteArray();
 
 			if(IsDebug()) {
 				"--- Prepared ---"->PrintLine();
-				data->ToString()->PrintLine();			
+				data->ToString()->PrintLine();
 			};
 
 			headers := Map->New()<String, String>;
@@ -5156,7 +5243,7 @@ session->Close();
 				if(assistant_json = Nil) {
 					return Nil;
 				};
-				
+
 				if(assistant_json->Has("error")) {
 					error_str := ParseErrorMessage(assistant_json);
 					SetLastError(error_str);
@@ -5193,7 +5280,7 @@ session->Close();
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(assistant_json->Has("error")) {
 					error_str := ParseErrorMessage(assistant_json);
 					SetLastError(error_str);
@@ -5341,7 +5428,7 @@ session->Close();
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(thread_json->Has("error")) {
 					error_str := ParseErrorMessage(thread_json);
 					SetLastError(error_str);
@@ -5350,8 +5437,8 @@ session->Close();
 
 				return API.OpenAI.Thread->New(thread_json);
 			};
-			
-			return Nil;	
+
+			return Nil;
 		}
 
 		#~
@@ -5376,7 +5463,7 @@ session->Close();
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(thread_json->Has("error")) {
 					error_str := ParseErrorMessage(thread_json);
 					SetLastError(error_str);
@@ -5433,6 +5520,10 @@ session->Close();
 	class Contents {
 		@contents : Vector<Pair<String, String>>;
 
+		#~
+		Constructor
+		@param contents message contents as pairs of the first and second message values
+		~#
 		New(contents : Vector<Pair<String, String>>) {
 			@contents := contents;
 		}
@@ -5462,7 +5553,7 @@ session->Close();
 		@id : String;
 		@object : String;
 		@created_at : Int;
-		
+
 		@thread_id : String;
 		@role : String;
 		@contents : Vector<Pair<String, String>>;
@@ -5478,7 +5569,7 @@ session->Close();
 			@thread_id := message_json->Get("thread_id")->GetString();
 			@role := message_json->Get("role")->GetString();
 
-			@contents := Vector->New()<Pair<String, String>>;	
+			@contents := Vector->New()<Pair<String, String>>;
 			contents_json := message_json->Get("content");
 			each(content_json in contents_json) {
 				type := content_json->Get("type")->GetString();
@@ -5574,7 +5665,7 @@ session->Close();
 				buffer += ", text=\"";
 				buffer += content->GetSecond();
 				buffer += "\"}";
-												
+
 				if(i + 1 < @contents->Size()) {
 					buffer += "\n\t";
 				};
@@ -5620,7 +5711,7 @@ session->Close();
 			};
 
 			data := message_json->ToString()->ToByteArray();
-			
+
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -5637,7 +5728,7 @@ session->Close();
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(message_json->Has("error")) {
 					error_str := ParseErrorMessage(message_json);
 					SetLastError(error_str);
@@ -5646,8 +5737,8 @@ session->Close();
 
 				return API.OpenAI.Message->New(message_json, token);
 			};
-			
-			return Nil;	
+
+			return Nil;
 		}
 
 		#~
@@ -5786,7 +5877,7 @@ session->Close();
 		}
 
 		#~
-		The status of the run, which can be either: 'queued', 'in_progress', 
+		The status of the run, which can be either: 'queued', 'in_progress',
 		'requires_action', 'cancelling', 'cancelled', 'failed', 'completed', or 'expired'.
 		~#
 		method : public : GetStatus() ~ String {
@@ -5807,7 +5898,11 @@ session->Close();
 		method : public : GetFunctionCall() ~ Collection.Tuple.Triplet<String, String, String> {
 			return Collection.Tuple.Triplet->New(@func_call_name, @func_call_params, @func_callback_id)<String, String, String>;
 		}
-		
+
+		#~
+		Updates the run from a run JSON object: id, creation time, object, thread, assistant and status. For a 'requires_action' status it records the tool call ID, function name and arguments; otherwise the function name and arguments are cleared.
+		@param run_json run JSON object
+		~#
 		method: Set(run_json : JsonElement) ~ Nil {
 
 
@@ -5817,7 +5912,7 @@ session->Close();
 			@object := run_json->Get("object")->GetString();
 			@thread_id := run_json->Get("thread_id")->GetString();
 			@assistant_id := run_json->Get("assistant_id")->GetString();
-			
+
 			@status := run_json->Get("status")->GetString();
 			if(@status->Equals("requires_action")) {
 				tool_calls_json := run_json->FindElements("required_action/submit_tool_outputs/tool_calls");
@@ -5843,7 +5938,7 @@ session->Close();
 			run_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			run_json->Insert("assistant_id", assistant->GetId());
 			data := run_json->ToString()->ToByteArray();
-			
+
 			thread_id := thread->GetId();
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
@@ -5855,7 +5950,7 @@ session->Close();
 					"### Error: Unable to parse thread response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(run_json->Has("error")) {
 					error_str := ParseErrorMessage(run_json);
 					SetLastError(error_str);
@@ -5864,8 +5959,8 @@ session->Close();
 
 				return API.OpenAI.Run->New(run_json);
 			};
-			
-			return Nil;	
+
+			return Nil;
 		}
 
 		#~
@@ -5908,7 +6003,7 @@ session->Close();
 					return false;
 				};
 
-				Set(run_json);				
+				Set(run_json);
 				return true;
 			}
 
@@ -6060,38 +6155,74 @@ session->Close();
 	OpenAI model name constants
 	~#
 	class Models {
+		#~
+		The model ID 'gpt-4o'
+		@return model ID
+		~#
 		function : native : GPT_4O() ~ String {
 			return "gpt-4o";
 		}
 
+		#~
+		The model ID 'gpt-4o-mini'
+		@return model ID
+		~#
 		function : native : GPT_4O_MINI() ~ String {
 			return "gpt-4o-mini";
 		}
 
+		#~
+		The model ID 'gpt-4.1'
+		@return model ID
+		~#
 		function : native : GPT_4_1() ~ String {
 			return "gpt-4.1";
 		}
 
+		#~
+		The model ID 'gpt-4.1-mini'
+		@return model ID
+		~#
 		function : native : GPT_4_1_MINI() ~ String {
 			return "gpt-4.1-mini";
 		}
 
+		#~
+		The model ID 'o3'
+		@return model ID
+		~#
 		function : native : O3() ~ String {
 			return "o3";
 		}
 
+		#~
+		The model ID 'o3-mini'
+		@return model ID
+		~#
 		function : native : O3_MINI() ~ String {
 			return "o3-mini";
 		}
 
+		#~
+		The model ID 'o4-mini'
+		@return model ID
+		~#
 		function : native : O4_MINI() ~ String {
 			return "o4-mini";
 		}
 
+		#~
+		The model ID 'text-embedding-3-small'
+		@return model ID
+		~#
 		function : native : TEXT_EMBEDDING_3_SMALL() ~ String {
 			return "text-embedding-3-small";
 		}
 
+		#~
+		The model ID 'text-embedding-3-large'
+		@return model ID
+		~#
 		function : native : TEXT_EMBEDDING_3_LARGE() ~ String {
 			return "text-embedding-3-large";
 		}
@@ -6188,6 +6319,12 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 		@flagged : Bool;
 		@result_json : JsonElement;
 
+		#~
+		Constructor; reads the flagged value of a moderation result
+		@param result_json moderation result JSON object
+		@param id moderation request ID
+		@param model model that produced the result
+		~#
 		New(result_json : JsonElement, id : String, model : String) {
 			@result_json := result_json;
 			@id := id;
@@ -6358,6 +6495,10 @@ if(result->IsFlagged()) {
 		@completed : Int;
 		@failed : Int;
 
+		#~
+		Constructor; reads a batch job: id, status, endpoint, input, output and error file IDs, creation and completion times and the request counts. Absent members are left unset.
+		@param job_json batch JSON object
+		~#
 		New(job_json : JsonElement) {
 			id_json := job_json->Get("id");
 			if(id_json <> Nil) { @id := id_json->GetString(); };
@@ -6413,6 +6554,10 @@ if(result->IsFlagged()) {
 			return @status <> Nil & @status->Equals("completed");
 		}
 
+		#~
+		String representation of the batch job
+		@return the id, status, endpoint and request counts
+		~#
 		method : public : ToString() ~ String {
 			return "BatchJob[id='{$@id}', status='{$@status}', endpoint='{$@endpoint}', total={$@total}, completed={$@completed}, failed={$@failed}]";
 		}
@@ -6580,13 +6725,19 @@ job = Batch->Get(job->GetId(), token);
 	}
 
 	#~
-	OpenAI endpoint
+	OpenAI endpoint. The Assistants API (assistants, threads, messages, runs, vector stores) is a beta
+	API whose requests must carry the 'OpenAI-Beta: assistants=v2' header, so those classes send it. The
+	chat-completions, responses and tool-call requests are not beta endpoints and send only Authorization.
 	~#
 	class EndPoint {
 		@base_url : static : String;
 		@last_message : static : String;
 		@api_key : static : String;
 
+		#~
+		Whether requests and responses are logged to the console. This base implementation is always off.
+		@return false
+		~#
 		function : IsDebug() ~ Bool {
 			return false;
 		}
@@ -6610,13 +6761,15 @@ job = Batch->Get(job->GetId(), token);
 		@return base
 		~#
 		function : GetBaseUrl() ~ String {
-			if(@base_url = Nil) {
-				@base_url := "https://api.openai.com/v1";
-			};
+			@base_url := @base_url ?? "https://api.openai.com/v1";
 
 			return @base_url;
 		}
 
+		#~
+		Records the message of the last failed request
+		@param last_message error message
+		~#
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
 		}
@@ -6797,7 +6950,7 @@ job = Batch->Get(job->GetId(), token);
 		~#
 		function : InsecureTlsBlocksKey() ~ Bool {
 			skip := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY");
-			if(skip = Nil | skip->Size() = 0) {
+			if(skip = Nil | skip->IsEmpty()) {
 				return false;
 			};
 
@@ -6833,7 +6986,7 @@ job = Batch->Get(job->GetId(), token);
 					dir_str := System.IO.Filesystem.Directory->GetWorking();
 					dir_str += System.IO.Filesystem.Directory->GetSlash();
 					dir_str += filename;
-					
+
 					">>> Unable to read API key from: '{$dir_str}', also consider calling SetApiKey(..)"->ErrorLine();
 				}
 				else {

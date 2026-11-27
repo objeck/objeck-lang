@@ -1,0 +1,65 @@
+#~
+Field accessor modifiers: `@x : get : T` writes the getter, `@x : get set : T` the
+getter and the setter. Names: Get + PascalCase of the field (input_tokens ->
+GetInputTokens); a Bool is Is + the name (a leading is_/has_ is the prefix itself:
+is_error -> IsError, has_uses -> HasUses); the setter is Set + the name without
+is_/has_. A method of the same name written by hand wins. Comma lists share the
+modifier.
+~#
+class FieldAccessors {
+	@input_tokens : get : Int;
+	@model : get set : String;
+	@is_error : get set : Bool;
+	@has_uses : get : Bool;
+	@done : get : Bool;
+	@ratio : get set : Float;
+	@items : get : Int[];
+	@a, @b : get : Int;
+	@custom : get set : Int;
+
+	New() {
+		@input_tokens := 7;
+		@model := "m";
+		@is_error := false;
+		@has_uses := true;
+		@done := true;
+		@ratio := 0.5;
+		@items := Int->New[2];
+		@items[1] := 9;
+		@a := 1;
+		@b := 2;
+		@custom := 5;
+	}
+
+	# a hand-written getter wins over the generated one
+	method : public : GetCustom() ~ Int { return @custom * 100; }
+
+	function : Main(args : String[]) ~ Nil {
+		pass := true;
+		f := FieldAccessors->New();
+		if(f->GetInputTokens() <> 7) { "FAIL snake getter"->PrintLine(); pass := false; };
+		if(f->GetModel()->Size() <> 1) { "FAIL string getter"->PrintLine(); pass := false; };
+		f->SetModel("gpt");
+		if(f->GetModel()->Size() <> 3) { "FAIL setter"->PrintLine(); pass := false; };
+		if(f->IsError()) { "FAIL bool default"->PrintLine(); pass := false; };
+		f->SetError(true);
+		if(<>f->IsError()) { "FAIL bool setter"->PrintLine(); pass := false; };
+		if(<>f->HasUses()) { "FAIL has_"->PrintLine(); pass := false; };
+		if(<>f->IsDone()) { "FAIL Is for Bool"->PrintLine(); pass := false; };
+		f->SetRatio(2.5);
+		if(f->GetRatio() <> 2.5) { "FAIL float"->PrintLine(); pass := false; };
+		if(f->GetItems()[1] <> 9) { "FAIL array"->PrintLine(); pass := false; };
+		if(f->GetA() <> 1 | f->GetB() <> 2) { "FAIL comma list"->PrintLine(); pass := false; };
+		if(f->GetCustom() <> 500) { "FAIL hand-written wins"->PrintLine(); pass := false; };
+		f->SetCustom(6);
+		if(f->GetCustom() <> 600) { "FAIL generated setter with hand-written getter"->PrintLine(); pass := false; };
+
+		if(pass) {
+			"PASS: field accessors"->PrintLine();
+		}
+		else {
+			"FAIL: field accessors"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

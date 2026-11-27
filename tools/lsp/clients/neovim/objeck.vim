@@ -37,8 +37,14 @@ syn keyword objeckDeclaration class method function interface enum alias consts 
 
 " Keywords
 syn keyword objeckKeyword use leaving if else do while select break continue
-syn keyword objeckKeyword in other for each reverse label return critical
+syn keyword objeckKeyword in other for each reverse label return critical spawn
 syn keyword objeckKeyword from implements virtual
+" contextual: 'if(value is Type name) { ... }'
+syn match objeckKeyword "\<is\>\ze\s\+[A-Za-z_][A-Za-z0-9_.]*\s\+[A-Za-z_][A-Za-z0-9_]*\s*)"
+" contextual: 'json{ ... }', a JSON literal
+syn match objeckKeyword "\<json\>\ze\s*{"
+" contextual: 'match subject { pattern => ... }'
+syn match objeckKeyword "\<match\>\ze\s\+[A-Za-z_@]"
 
 " Builtins
 syn keyword objeckBuiltin New Parent Try Otherwise
