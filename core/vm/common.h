@@ -1510,8 +1510,6 @@ class StackMethod {
 /********************************
  * StackClass class
  ********************************/
-using virtual_key_pair = std::pair<size_t, size_t>;
-
 class StackClass {
   std::unordered_map<std::wstring, StackMethod*> method_name_map;
   StackMethod** methods;
@@ -1532,35 +1530,97 @@ class StackClass {
   size_t* cls_mem;
   bool is_debug;
   
-  // Szudzik pairing function
-  struct virtual_key_pair_hash {
-    template <class T1, class T2>
-    size_t operator() (const std::pair<T1, T2>& virtual_key_pair) const {
-      const size_t x = virtual_key_pair.first;
-      const size_t y = virtual_key_pair.second;
-
-      return x >= y ? x * x + x + y : y * y + x;
-    }
-  };
   // The override each virtual declaration reaches for a receiver of this class, filled
   // in as calls resolve (ResolveVirtualTarget). Every thread making a virtual call reads
-  // it and the first call through each declaration adds to it, with no lock: an insert
-  // that rehashed the table while another thread walked a bucket sent that thread
-  // through freed nodes, and two inserts at once corrupted the table and the C heap.
-  // Eight threads making their first calls together crashed about one run in ten under
-  // OBJECK_JIT_THRESHOLD=1 (SIGSEGV in GetVirtualMethod or AddVirtualMethod, or glibc's
-  // "malloc(): unaligned tcache chunk detected").
+  // it and the first call through each declaration adds to it. It was a std::unordered_map
+  // read and written with no lock: an insert that rehashed the table while another thread
+  // walked a bucket sent that thread through freed nodes, and two inserts at once
+  // corrupted the table and the C heap. Eight threads making their first calls together
+  // crashed about one run in ten under OBJECK_JIT_THRESHOLD=1 (SIGSEGV in GetVirtualMethod
+  // or AddVirtualMethod, or glibc's "malloc(): unaligned tcache chunk detected").
   //
-  // Readers stay lock-free, as a virtual call is too hot for a lock: the table is
-  // published as an immutable snapshot through an atomic pointer, and an insert copies
-  // it, adds its entry and publishes the copy, one insert at a time. A snapshot that
-  // has been replaced may still be in a reader's hands, so it is kept until the class
-  // goes. Inserts are rare (one per declaration and receiver class) and the tables
-  // small, so the copies cost nothing that shows.
-  typedef std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> VirtualMethodMap;
-  std::atomic<const VirtualMethodMap*> virtual_methods{nullptr};
+  // Readers take no lock, as a virtual call is too hot for one. The table is an
+  // open-addressed array of slots reached through an atomic pointer:
+  //   - a slot is empty while its method word is null. A writer fills in the slot's two
+  //     ids and then stores the method word (release); a reader loads the method word
+  //     (acquire) before it looks at the ids, so it sees a slot empty or complete, never
+  //     half written;
+  //   - writers, one at a time under the lock, add to the published table in place while
+  //     it is at most half full. An entry is never changed or removed, so a probe that
+  //     runs beside an insert finds what it would have found before it, or the new entry;
+  //   - a table that would pass half full is replaced: a table of twice the size is
+  //     filled completely, the new entry included, and only then published. A reader
+  //     never sees a table being rehashed;
+  //   - a replaced table may still be in a reader's hands, so it is kept until the class
+  //     goes. Each is half the size of the next, so all of them together are smaller
+  //     than the live one: memory is linear in the entries.
+  // A reader that misses an entry added a moment ago resolves the call the slow way and
+  // offers the same answer, which AddVirtualMethod finds already there.
+  //
+  // Until v2026.11.4's second review the published table was an immutable
+  // std::unordered_map and every insert copied it, the replaced copies all kept: N
+  // declarations resolved on one class held N(N+1)/2 entries (5,000: 12.5 million).
+  struct VirtualMethodSlot {
+    std::atomic<StackMethod*> method;   // null: an empty slot; stored last
+    size_t cls_id;
+    size_t mthd_id;
+  };
+
+  struct VirtualMethodTable {
+    const size_t mask;                  // the slot count, a power of two, less one
+    int shift;                          // a word's bits less the slot count's
+    size_t used;                        // writers only
+    VirtualMethodSlot* const slots;
+
+    explicit VirtualMethodTable(size_t count) : mask(count - 1), shift((int)(sizeof(size_t) * 8)), used(0),
+                                                slots(new VirtualMethodSlot[count]()) {
+      for(size_t bit = count; bit > 1; bit >>= 1) {
+        --shift;
+      }
+    }
+
+    ~VirtualMethodTable() {
+      delete[] slots;
+    }
+
+    // Szudzik's pairing of the two ids (as the map this replaces hashed them), spread
+    // over the slots by the top bits of a golden-ratio product: the ids of one class's
+    // declarations run in sequence, and this gives each of a short run its own slot
+    inline size_t First(size_t x, size_t y) const {
+      const size_t pair = x >= y ? x * x + x + y : y * y + x;
+      const size_t ratio = sizeof(size_t) > 4 ? (size_t)0x9E3779B97F4A7C15ULL : (size_t)0x9E3779B1UL;
+      return (pair * ratio) >> shift;
+    }
+
+    inline StackMethod* Find(size_t virtual_cls_id, size_t virtual_mthd_id) const {
+      // ends at an empty slot: a table is never more than half full
+      for(size_t i = First(virtual_cls_id, virtual_mthd_id);; i = (i + 1) & mask) {
+        const VirtualMethodSlot& slot = slots[i];
+        StackMethod* const found = slot.method.load(std::memory_order_acquire);
+        if(!found) {
+          return nullptr;
+        }
+        if(slot.cls_id == virtual_cls_id && slot.mthd_id == virtual_mthd_id) {
+          return found;
+        }
+      }
+    }
+
+    // the caller holds the lock, and has checked that the key is absent and that there is room
+    inline void Add(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
+      size_t i = First(virtual_cls_id, virtual_mthd_id);
+      while(slots[i].method.load(std::memory_order_relaxed)) {
+        i = (i + 1) & mask;
+      }
+      slots[i].cls_id = virtual_cls_id;
+      slots[i].mthd_id = virtual_mthd_id;
+      slots[i].method.store(mthd, std::memory_order_release);
+      ++used;
+    }
+  };
+  std::atomic<VirtualMethodTable*> virtual_methods{nullptr};
   std::mutex virtual_methods_lock;
-  std::vector<const VirtualMethodMap*> retired_virtual_methods;
+  std::vector<VirtualMethodTable*> retired_virtual_methods;
   
   long InitializeClassMemory(long size) {
     if(size > 0) {
@@ -1871,33 +1931,43 @@ class StackClass {
 
   // lock-free: see virtual_methods
   StackMethod* GetVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id) {
-    const VirtualMethodMap* snapshot = virtual_methods.load(std::memory_order_acquire);
-    if(snapshot) {
-      const auto result = snapshot->find(std::make_pair(virtual_cls_id, virtual_mthd_id));
-      if(result != snapshot->end()) {
-        return result->second;
-      }
-    }
-
-    return nullptr;
+    const VirtualMethodTable* table = virtual_methods.load(std::memory_order_acquire);
+    return table ? table->Find(virtual_cls_id, virtual_mthd_id) : nullptr;
   }
 
   // Safe to call from several threads at once, for the same key or different ones: the
   // first entry for a key stays (two threads that resolved it found the same method).
   void AddVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
-    const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    std::lock_guard<std::mutex> guard(virtual_methods_lock);
-    const VirtualMethodMap* current = virtual_methods.load(std::memory_order_acquire);
-    if(current && current->find(virtual_key) != current->end()) {
+    if(!mthd) {
       return;
     }
 
-    VirtualMethodMap* next = current ? new VirtualMethodMap(*current) : new VirtualMethodMap;
-    next->insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+    std::lock_guard<std::mutex> guard(virtual_methods_lock);
+    VirtualMethodTable* current = virtual_methods.load(std::memory_order_acquire);
+    if(current && current->Find(virtual_cls_id, virtual_mthd_id)) {
+      return;
+    }
+
+    // room in the published table: the entry appears to readers when its slot is complete
+    if(current && (current->used + 1) * 2 <= current->mask + 1) {
+      current->Add(virtual_cls_id, virtual_mthd_id, mthd);
+      return;
+    }
+
+    // twice the size, built whole before any reader can reach it
+    VirtualMethodTable* next = new VirtualMethodTable(current ? (current->mask + 1) * 2 : 8);
     if(current) {
+      for(size_t i = 0; i <= current->mask; ++i) {
+        const VirtualMethodSlot& slot = current->slots[i];
+        StackMethod* const kept = slot.method.load(std::memory_order_relaxed);
+        if(kept) {
+          next->Add(slot.cls_id, slot.mthd_id, kept);
+        }
+      }
       // a reader may still hold it: freed with the class
       retired_virtual_methods.push_back(current);
     }
+    next->Add(virtual_cls_id, virtual_mthd_id, mthd);
     virtual_methods.store(next, std::memory_order_release);
   }
 };

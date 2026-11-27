@@ -402,6 +402,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     for the site whose argument words equal that class's id the two pairs
     coincide -- none of 48 functions called once each through sites of 1 to 48
     argument words is compiled, while the class's own methods are.
+ 37. A class's table of resolved virtual calls takes memory in proportion to
+    its entries. Every insert used to copy the whole table and keep the copy it
+    replaced, for readers that might still hold it, until the class was
+    destroyed: N declarations resolved for one receiver class held N(N+1)/2
+    entries. A generated program whose one concrete class overrides 6,000
+    virtual declarations and calls each of them twice through the base type
+    peaked at 1,073 MB (23 MB without the calls); its peak resident size
+    ([gc-stats] peak_rss_bytes) must now be within 32 MB of the same program
+    making no call, with the JIT at its default and off.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only] [--only name[,name]]
 
@@ -775,6 +784,7 @@ def main():
 
     check_jit_off_interprets_native(obc, obr, env, bin_dir)
     check_dynamic_call_threshold(obc, obr, env, bin_dir)
+    check_virtual_table_memory(obc, obr, env, bin_dir)
 
     check_compiler_fatal(obc, obr, env, bin_dir)
 
@@ -1856,6 +1866,59 @@ def check_dynamic_call_threshold(obc, obr, env, bin_dir):
               any(l.startswith("[jit] Big:M1003:") for l in compiled), f"compiled={len(compiled)}")
         once = [l for l in compiled if l.startswith("[jit] DynSites:T")]
         check("no function called once through a dynamic site is compiled", not once, f"report={once!r}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def check_virtual_table_memory(obc, obr, env, bin_dir):
+    # ---- 37. the virtual-call table of a class is linear in its entries ----------------
+    count = 6000
+    src_lines = ["class Wide {", "\tNew() {", "\t}"]
+    src_lines += [f"\tmethod : virtual : public : M{i}() ~ Int;" for i in range(count)]
+    src_lines += ["}", "class Impl from Wide {", "\tNew() {", "\t\tParent();", "\t}"]
+    src_lines += [f"\tmethod : public : M{i}() ~ Int {{ return {i}; }}" for i in range(count)]
+    src_lines += ["}", "class VirtualMany {", "\tfunction : Touch(b : Wide) ~ Int {", "\t\ttotal := 0;"]
+    src_lines += [f"\t\ttotal += b->M{i}();" for i in range(count)]
+    src_lines += ["\t\treturn total;", "\t}", "\tfunction : Main(args : String[]) ~ Nil {",
+                  "\t\tb : Wide := Impl->New();", "\t\ttotal := 0;",
+                  # twice: the second pass finds every entry the first one added
+                  "\t\tif(args->Size() > 0) {", "\t\t\ttotal += Touch(b);", "\t\t\ttotal += Touch(b);", "\t\t};",
+                  '\t\t"PASS: total={$total}"->PrintLine();', "\t}", "}"]
+
+    stats_env = dict(env)
+    stats_env["OBJECK_GC_STATS"] = "1"
+
+    def peak_of(err):
+        found = re.search(rb"^\[gc-stats\] .*\bpeak_rss_bytes=(\d+)", err, re.M)
+        return int(found.group(1)) if found else None
+
+    work = tempfile.mkdtemp(prefix="objk-virt-")
+    try:
+        src = os.path.join(work, "virtual_many.obs")
+        with open(src, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n".join(src_lines) + "\n")
+        dest = os.path.join(work, "virtual_many.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
+        check("the 6000-declaration program compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        expected = f"PASS: total={2 * sum(range(count))}".encode()
+        limit = 32 * 1024 * 1024
+        for label, flags in (("default", []), ("--jit=off", ["--jit=off"])):
+            rc, out, err = run([obr] + flags + [dest], env=stats_env, cwd=bin_dir)
+            idle = peak_of(err)
+            check(f"the 6000-declaration program runs with no virtual call ({label})",
+                  rc == 0 and b"PASS: total=0" in out and idle is not None,
+                  f"rc={rc} out={out[-200:]!r} stderr={err[-300:]!r}")
+            rc, out, err = run([obr] + flags + [dest, "resolve"], env=stats_env, cwd=bin_dir)
+            busy = peak_of(err)
+            check(f"6000 virtual declarations resolve on one class, twice over ({label})",
+                  rc == 0 and expected in out and busy is not None,
+                  f"rc={rc} out={out[-200:]!r} stderr={err[-300:]!r}")
+            if idle is not None and busy is not None:
+                check(f"and the table they fill costs under 32 MB of peak resident memory ({label}: "
+                      f"{busy // 1024} KB against {idle // 1024} KB with no call)",
+                      busy - idle < limit, f"idle={idle} busy={busy}")
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
