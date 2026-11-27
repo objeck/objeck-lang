@@ -86,6 +86,22 @@
 @model : get set : <span class="t-type">String</span>;
 </code></pre>
     <p>Test: <code>field_accessors</code>. The generated methods are made by the compiler, so the source-text doc tools (code_doc, <code>doc_coverage.py</code>) do not list them yet.</p>
+    <h3 id="constructor-field-promotion">Constructor Field Promotion</h3>
+    <p>In a constructor, a parameter written <code>@name</code> where the class has <strong>already declared</strong> the field <code>@name</code> fills that field: the parameter is <code>name</code> (and the argument's name for a named call), and the body starts with <code>@name := name</code> (after a leading <code>Parent(..)</code>). Defaults and named arguments work as for any parameter. A <code>@name</code> parameter with no field of that name is unchanged (the older style in <code>programs/tests/prgm10.obs</code>). Before this, <code>New(@a : Int) {}</code> made a parameter that shadowed the field, and the field stayed 0.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+<span class="t-kw">class</span> <span class="t-cls">Point</span> {
+  @x : <span class="t-type">Int</span>;
+  @y : <span class="t-type">Int</span>;
+  <span class="t-kw">New</span>(x : <span class="t-type">Int</span>, y : <span class="t-type">Int</span>) { @x <span class="t-op">:=</span> x; @y <span class="t-op">:=</span> y; }
+}
+<span class="t-com"># after</span>
+<span class="t-kw">class</span> <span class="t-cls">Point</span> {
+  @x : <span class="t-type">Int</span>;
+  @y : <span class="t-type">Int</span>;
+  <span class="t-kw">New</span>(@x : <span class="t-type">Int</span>, @y : <span class="t-type">Int</span>) {}
+}
+</code></pre>
+    <p>Test: <code>ctor_field_promotion</code>.</p>
     <h3 id="default-and-named-arguments">Default and Named Arguments</h3>
     <p>Trailing parameters can have default values. An argument can be passed by name, <code>name: value</code>, after any positional ones. Named arguments may come in any order, and they may skip any parameter that has a default, not just the trailing ones:</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">function</span> : <span class="t-fn">Train</span>(data : <span class="t-type">Int</span>[], epochs : <span class="t-type">Int</span> <span class="t-op">:=</span> <span class="t-num">10</span>, rate : <span class="t-type">Float</span> <span class="t-op">:=</span> <span class="t-num">0.01</span>, verbose : <span class="t-type">Bool</span> <span class="t-op">:=</span> <span class="t-const">false</span>) <span class="t-op">~</span> <span class="t-const">Nil</span> { ... }

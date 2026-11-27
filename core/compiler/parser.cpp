@@ -2283,7 +2283,10 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // declarations
   symbol_table->NewParseScope();
+  promoted_fields.clear();
   method->SetDeclarations(ParseDecelerationList(depth + 1));
+  const std::vector<std::wstring> promoted = promoted_fields;
+  promoted_fields.clear();
 
   // return type
   Type* return_type;
@@ -2313,6 +2316,20 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   }
   else {
     method->SetStatements(ParseStatementList(depth + 1));
+    if(!promoted.empty() && method->GetStatements()) {
+      // after a leading Parent(...) call, ahead of the written statements
+      size_t at = 0;
+      std::vector<Statement*> written = method->GetStatements()->GetStatements();
+      if(!written.empty() && written[0]->GetStatementType() == METHOD_CALL_STMT &&
+         static_cast<MethodCall*>(written[0])->GetCallType() == PARENT_CALL) {
+        at = 1;
+      }
+      for(size_t i = 0; i < promoted.size(); ++i) {
+        Variable* left = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"@" + promoted[i]);
+        Variable* right = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, promoted[i]);
+        method->GetStatements()->InsertStatement(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, left, right), at + i);
+      }
+    }
   }
 
   method->SetEndLineNumber(GetLineNumber());
@@ -5558,6 +5575,33 @@ frontend::Declaration* Parser::AddDeclaration(IdentifierContext& context, Type* 
 }
 
 /****************************
+ * True when the class being parsed has already declared the field `name` ('@x')
+ ****************************/
+bool Parser::ClassDeclaresField(const std::wstring& name)
+{
+  if(!current_class) {
+    return false;
+  }
+
+  const std::wstring suffix = L":" + name;
+  std::vector<Statement*> statements = current_class->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(statements[i]->GetStatementType() == DECLARATION_STMT) {
+      for(Declaration* declaration = static_cast<Declaration*>(statements[i]); declaration; declaration = declaration->GetChild()) {
+        SymbolEntry* entry = declaration->GetEntry();
+        if(entry && !entry->IsStatic()) {
+          const std::wstring& full = entry->GetName();
+          if(full.size() >= suffix.size() && full.compare(full.size() - suffix.size(), suffix.size(), suffix) == 0) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/****************************
  * Parses a declaration std::list.
  ****************************/
 DeclarationList* Parser::ParseDecelerationList(int depth)
@@ -5586,9 +5630,20 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
     }
 
     // identifier
-    const std::wstring ident = scanner->GetToken()->GetIdentifier();
+    std::wstring ident = scanner->GetToken()->GetIdentifier();
     const int line_num = GetLineNumber();
     const int line_pos = GetLinePosition();
+
+    // Field promotion: in a constructor, a parameter written '@name' where the class
+    // already declares the field '@name' fills that field. The parameter is 'name'
+    // (so it is also the argument's name for a named call), and the body starts with
+    // '@name := name'. Before this the parameter shadowed the field, which stayed 0.
+    if(ident.size() > 1 && ident[0] == L'@' && current_method &&
+       (current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       ClassDeclaresField(ident)) {
+      promoted_fields.push_back(ident.substr(1));
+      ident = ident.substr(1);
+    }
 
     IdentifierContext ident_context(ident, line_num, line_pos);
     NextToken();
