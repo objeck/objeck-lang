@@ -1043,6 +1043,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_json_literal_lowering.py "%BIN%"
 
+    - name: a map literal compiles to the constructor and Insert calls it stands for (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_map_literal_lowering.py "%BIN%"
+
     - name: obc and obr find their libraries from another working directory (Windows)
       working-directory: ./programs/regression
       shell: cmd

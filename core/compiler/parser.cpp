@@ -5272,6 +5272,81 @@ Expression* Parser::ParseJsonValue(int depth)
 }
 
 /****************************
+ * Parses a map literal, from '{': '{ key: value, ... }'. It is a map
+ * constructed into a hidden local where the literal is evaluated, and an
+ * 'Insert(key, value)' on it for each entry, in the order written. Which map
+ * (Map, Hash, ...) and of what, the parser cannot know: the constructor is
+ * left as MAP_LITERAL_MARKER and the analyzer names it from the type the
+ * literal is assigned to or returned as (ContextAnalyzer::TypeMapLiteral).
+ ****************************/
+Expression* Parser::ParseMapLiteral(int depth)
+{
+  CheckDepth(depth);
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Map literal", depth);
+#endif
+
+  std::wstring ident;
+  SymbolEntry* entry = AddHiddenLocal(L"map", ident, line_num, line_pos);
+  SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
+                                                                              TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+  if(entry) {
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
+    MethodCall* constructor = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, NEW_INST_CALL,
+                                                                      MAP_LITERAL_MARKER, TreeFactory::Instance()->MakeExpressionList());
+    Assignment* assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, target, constructor);
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, assign));
+  }
+  NextToken();
+
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    const size_t consumed = tokens_consumed;
+    const int entry_line_num = GetLineNumber();
+    const int entry_line_pos = GetLinePosition();
+
+    Expression* key = ParseExpression(depth + 1);
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ':' after a key of a map literal: '{key: value, ...}'");
+    }
+    else {
+      NextToken();
+    }
+
+    Expression* value = ParseExpression(depth + 1);
+    if(key && value) {
+      ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+      args->AddExpression(key);
+      args->AddExpression(value);
+      sequence->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, entry_line_num, entry_line_pos, entry_line_num, entry_line_pos,
+                                                                     GetLineNumber(), GetLinePosition(), ident, L"Insert", args));
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or '}' after an entry of a map literal");
+    }
+
+    // an entry that read nothing would be read again from the same token
+    if(tokens_consumed == consumed) {
+      NextToken();
+    }
+  }
+
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return sequence;
+}
+
+/****************************
  * Parses a static array
  ****************************/
 StaticArray* Parser::ParseStaticArray(int depth) {
@@ -6881,6 +6956,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
       if(Match(TOKEN_OPEN_BRACKET)) {
         static_cast<StaticArray*>(expression)->SetIndices(ParseIndices(depth + 1));
       }
+      break;
+
+    case TOKEN_OPEN_BRACE:
+      expression = ParseMapLiteral(depth + 1);
       break;
 
     case TOKEN_NIL_ID:

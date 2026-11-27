@@ -368,6 +368,8 @@ class Parser {
   Expression* ParseJsonValue(int depth);
   Expression* MakeJsonElement(const std::wstring& json_type, int line_num, int line_pos);
   SequenceExpression* MakeJsonContainer(const std::wstring& json_type, std::wstring& ident, int line_num, int line_pos);
+  // '{key: value, ...}': a Map or Hash, typed by what it is assigned to
+  Expression* ParseMapLiteral(int depth);
   If* ParseIf(int depth);
   // 'if(value is Type name) { ... }': the test, and the declaration of 'name' its block starts with
   Expression* ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth);

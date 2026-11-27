@@ -249,6 +249,33 @@ Bool, Nil, JsonElement, or a nested { } or [ ]; this one is IntRef`. The literal
 object at the top; an array is written inside one or built with `JsonElement->New`. It
 compiles to the `New`, `Insert` and `Add` calls shown above. `json` is a keyword only
 before `{`. Tests: `json_literal`, `bad_json_literal_*`.
+### Map literals
+
+`{key: value, ...}` builds a map where it is written. Its type comes from its target: a
+declared variable or field, an assignment, or a `return`:
+```ruby
+# before
+status := Map->New()<IntRef, String>;
+status->Insert(200, "OK");
+status->Insert(404, "Not Found");
+status->Insert(500, "Server Error");
+
+# after
+status : Map<IntRef, String> := {200: "OK", 404: "Not Found", 500: "Server Error"};
+status->Find(404)->PrintLine();   # Not Found
+
+function : Limits() ~ Hash<String, FloatRef> {
+  return {"low": 0.25, "high": 4.0};
+}
+@cache := {};                      # the empty map, of the field's type
+```
+The targets are `Map`, `Hash`, `OrderedHash`, `MultiMap`, `MultiHash`, `BiMap` and
+`IntMap`. Each entry is an `Insert(key, value)` in the order written, so keys and values
+are checked and boxed as `Insert` does; an entry of the wrong type is an error at the
+entry (`An entry of this map literal is String: IntRef; this one is String: String`),
+and the same constant key twice is an error for a map that keeps one value per key. With
+no typed target (an inferred `m := {...}`, an argument, inside `?`) the literal has no
+type and the compiler says to declare one. Tests: `map_literal`, `bad_map_literal_*`.
 
 ### Type Inference
 ```ruby

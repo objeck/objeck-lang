@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: (14,35): Expected ':' after a key of a map literal: '{key: value, ...}'
+# EXPECT_ERROR_COUNT: 1
+#~
+An entry is a key, a colon and a value.
+~#
+use Collection;
+
+class BadMapLiteralNoColon {
+	function : Take(m : Map<String, IntRef>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		m : Map<String, IntRef> := {"a" 1};
+		m->Size()->PrintLine();
+	}
+}

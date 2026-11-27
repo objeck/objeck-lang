@@ -931,6 +931,48 @@ bool ContextAnalyzer::ReportJsonLiteralValue(MethodCall* method_call)
 }
 
 /****************************
+ * An entry of a map literal whose key or value the map does not take. The
+ * 'Insert' on the literal's hidden local is the compiler's; the error is
+ * about the entry the programmer wrote. False when the call is not a map
+ * literal's.
+ ****************************/
+bool ContextAnalyzer::ReportMapLiteralEntry(MethodCall* method_call)
+{
+  if(!StartsWith(method_call->GetVariableName(), L"#map_") || method_call->GetMethodName() != L"Insert" || !method_call->GetCallingParameters()) {
+    return false;
+  }
+
+  const std::vector<Expression*> args = method_call->GetCallingParameters()->GetExpressions();
+  if(args.size() != 2) {
+    return false;
+  }
+
+  // the type at the end of a call chain is the value's
+  auto value_type = [](Expression* expression) {
+    while(expression->GetMethodCall()) {
+      expression = expression->GetMethodCall();
+    }
+    return expression->GetCastType() ? expression->GetCastType() : expression->GetEvalType();
+  };
+
+  alt_error_method_names.clear();
+  std::wstring wanted;
+  SymbolEntry* entry = GetEntry(method_call->GetVariableName());
+  if(entry && entry->GetType()) {
+    const std::vector<Type*> generics = entry->GetType()->GetGenerics();
+    if(generics.size() == 2) {
+      wanted = L"An entry of this map literal is " + DescribeType(generics[0]) + L": " + DescribeType(generics[1]) + L"; ";
+    }
+    else {
+      wanted = L"An entry of this map literal is Int: Int; ";
+    }
+  }
+  ProcessError(static_cast<Expression*>(method_call), wanted + L"this one is " + DescribeType(value_type(args[0])) + L": " + DescribeType(value_type(args[1])));
+
+  return true;
+}
+
+/****************************
  * Emits an error
  ****************************/
 void ContextAnalyzer::ProcessWarning(ParseNode* node, const std::wstring& msg)
@@ -2470,6 +2512,139 @@ Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type*
 }
 
 /****************************
+ * The constructor call of a map literal ('{key: value, ...}', see
+ * Parser::ParseMapLiteral): the call its hidden local is declared with. Nil
+ * when the expression is not a map literal.
+ ****************************/
+MethodCall* ContextAnalyzer::MapLiteralConstructor(Expression* expression)
+{
+  if(!expression || expression->GetExpressionType() != STMT_SEQ_EXPR) {
+    return nullptr;
+  }
+
+  const std::vector<Statement*>& statements = static_cast<SequenceExpression*>(expression)->GetStatements();
+  if(statements.empty() || statements.front()->GetStatementType() != DECLARATION_STMT) {
+    return nullptr;
+  }
+
+  Assignment* assignment = static_cast<Declaration*>(statements.front())->GetAssignment();
+  if(!assignment || !assignment->GetExpression() || assignment->GetExpression()->GetExpressionType() != METHOD_CALL_EXPR) {
+    return nullptr;
+  }
+
+  MethodCall* constructor = static_cast<MethodCall*>(assignment->GetExpression());
+  if(constructor->GetCallType() != NEW_INST_CALL) {
+    return nullptr;
+  }
+
+  const std::wstring& name = constructor->GetVariableName();
+  return name == MAP_LITERAL_MARKER || name == MAP_LITERAL_REJECTED || constructor->IsMapLiteral() ? constructor : nullptr;
+}
+
+/****************************
+ * Gives a map literal its type: '{key: value, ...}' where a Map, Hash,
+ * OrderedHash, MultiMap, MultiHash, BiMap or IntMap is wanted (a declaration
+ * or assignment target, a 'return') constructs that class with the target's
+ * type arguments, as 'Map->New()<K, V>' written out would. The Insert calls
+ * are then resolved against it like any others, so a key or value of the
+ * wrong type is the error the long form gives. A map that keeps one value per
+ * key rejects a literal that writes the same constant key twice.
+ ****************************/
+void ContextAnalyzer::TypeMapLiteral(Expression* expression, Type* expected)
+{
+  MethodCall* constructor = MapLiteralConstructor(expression);
+  if(!constructor || constructor->GetVariableName() != MAP_LITERAL_MARKER || !expected || expected->GetType() == VAR_TYPE) {
+    return;
+  }
+
+  std::wstring bare;
+  bool generic = true;
+  if(expected->GetType() == CLASS_TYPE && expected->GetDimension() == 0) {
+    const std::wstring name = expected->GetName();
+    const size_t dot = name.rfind(L'.');
+    const std::wstring scope = dot == std::wstring::npos ? L"" : name.substr(0, dot);
+    if(scope.empty() || scope == L"Collection") {
+      bare = dot == std::wstring::npos ? name : name.substr(dot + 1);
+    }
+  }
+
+  bool unique_keys = true;
+  if(bare == L"MultiMap" || bare == L"MultiHash") {
+    unique_keys = false;
+  }
+  else if(bare == L"IntMap") {
+    generic = false;
+  }
+  else if(bare != L"Map" && bare != L"Hash" && bare != L"OrderedHash" && bare != L"BiMap") {
+    bare.clear();
+  }
+
+  const std::vector<Type*> generics = expected->GetGenerics();
+  if(bare.empty() || (generic ? generics.size() != 2 : !generics.empty())) {
+    constructor->SetVariableName(MAP_LITERAL_REJECTED);
+    ProcessError(expression, L"A map literal makes a Map, Hash, OrderedHash, MultiMap, MultiHash, BiMap or IntMap; here it is wanted as " +
+                 DescribeType(expected));
+    // typed as what was wanted, so the assignment has nothing to add
+    expression->SetEvalType(expected, false);
+    return;
+  }
+
+  constructor->SetVariableName(expected->GetName());
+  constructor->SetMapLiteral();
+  if(generic) {
+    std::vector<Type*> concrete;
+    concrete.push_back(TypeFactory::Instance()->MakeType(generics[0]));
+    concrete.push_back(TypeFactory::Instance()->MakeType(generics[1]));
+    constructor->SetConcreteTypes(concrete);
+  }
+
+  // the same constant key twice: the second would replace the first without a word
+  if(unique_keys) {
+    std::set<std::wstring> seen;
+    const std::vector<Statement*>& statements = static_cast<SequenceExpression*>(expression)->GetStatements();
+    for(size_t i = 1; i < statements.size(); ++i) {
+      if(statements[i]->GetStatementType() != METHOD_CALL_STMT) {
+        continue;
+      }
+      ExpressionList* args = static_cast<MethodCall*>(statements[i])->GetCallingParameters();
+      if(!args || args->GetExpressions().empty()) {
+        continue;
+      }
+
+      Expression* key = args->GetExpressions().front();
+      if(key->GetMethodCall() || key->GetCastType()) {
+        continue;
+      }
+
+      std::wstring text;
+      switch(key->GetExpressionType()) {
+      case CHAR_STR_EXPR:
+        // an interpolated string is not a constant
+        if(static_cast<CharacterString*>(key)->GetString().find(L"{$") == std::wstring::npos) {
+          text = L'"' + static_cast<CharacterString*>(key)->GetString() + L'"';
+        }
+        break;
+
+      case INT_LIT_EXPR:
+        text = std::to_wstring(static_cast<IntegerLiteral*>(key)->GetValue());
+        break;
+
+      case CHAR_LIT_EXPR:
+        text = std::wstring(L"'") + static_cast<CharacterLiteral*>(key)->GetValue() + L"'";
+        break;
+
+      default:
+        break;
+      }
+
+      if(!text.empty() && !seen.insert(text).second) {
+        ProcessError(key, L"This map literal has the key " + text + L" twice");
+      }
+    }
+  }
+}
+
+/****************************
  * Analyzes a lambda function
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
@@ -3784,6 +3959,21 @@ void ContextAnalyzer::AnalyzeSequence(SequenceExpression* sequence, const int de
     return;
   }
   sequence->SetAnalyzed();
+
+  // A map literal that nothing gave a type (or that an error has already been
+  // reported for) has no class to construct: say so once, and give the value a
+  // type so what uses it has nothing to add.
+  MethodCall* map_constructor = MapLiteralConstructor(sequence);
+  if(map_constructor && !map_constructor->IsMapLiteral()) {
+    if(map_constructor->GetVariableName() == MAP_LITERAL_MARKER) {
+      ProcessError(sequence, L"A map literal takes its type from the variable it is assigned to or the method it is returned from; "
+                   L"here it has neither, so declare one first, as in 'm : Map<String, IntRef> := {\"a\": 1};'");
+    }
+    if(!sequence->GetEvalType()) {
+      sequence->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base"), false);
+    }
+    return;
+  }
 
   // The statements are analyzed from inside the enclosing statement (an
   // assignment, a return, a call argument). Left set, its flags would make
@@ -6893,7 +7083,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
-    if(ReportJsonLiteralValue(method_call)) {
+    if(ReportJsonLiteralValue(method_call) || ReportMapLiteralEntry(method_call)) {
       // said in terms of the literal
     }
     else if(mthd_name.size() > 0) {
@@ -7866,7 +8056,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     const std::wstring &mthd_name = method_call->GetMethodName();
     const std::wstring &var_name = method_call->GetVariableName();
 
-    if(ReportJsonLiteralValue(method_call)) {
+    if(ReportJsonLiteralValue(method_call) || ReportMapLiteralEntry(method_call)) {
       // said in terms of the literal
     }
     else if(mthd_name.size() > 0) {
@@ -8848,6 +9038,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   Expression* expression = rtrn->GetExpression();
   if(expression) {
     // auto-wrap a bare lambda when the return type is FuncRef<R>
+    TypeMapLiteral(expression, mthd_type);
     Expression* wrapped = WrapBareLambdaInFuncRef(expression, mthd_type, depth);
     if(wrapped == expression) {
       wrapped = WrapMethodReferenceInFuncRef(expression, mthd_type, depth);
@@ -9065,6 +9256,7 @@ void ContextAnalyzer::AnalyzeAssignmentBody(Assignment* assignment, StatementTyp
   if(expression) {
     // auto-wrap a bare lambda when the assignment target is FuncRef<R>
     if(variable && variable->GetEvalType()) {
+      TypeMapLiteral(expression, variable->GetEvalType());
       Expression* wrapped = WrapBareLambdaInFuncRef(expression, variable->GetEvalType(), depth);
       if(wrapped == expression) {
         wrapped = WrapMethodReferenceInFuncRef(expression, variable->GetEvalType(), depth);

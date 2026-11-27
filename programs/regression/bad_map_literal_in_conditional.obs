@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: (15,38): A map literal takes its type from the variable it is assigned to or the method it is returned from
+# EXPECT_ERROR_COUNT: 1
+#~
+Inside another expression a map literal has no target of its own.
+~#
+use Collection;
+
+class BadMapLiteralInConditional {
+	function : Take(m : Map<String, IntRef>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		n := 3;
+		m : Map<String, IntRef> := n > 2 ? {"a": 1} : Nil;
+		m->Size()->PrintLine();
+	}
+}

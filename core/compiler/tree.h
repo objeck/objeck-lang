@@ -69,6 +69,10 @@
 // a function type written as a function-reference argument, `(Int) ~ Int`;
 // the parser hangs the type on a variable of this name (#1183)
 #define FUNC_TYPE_MARKER L"#func_type#"
+// the class a map literal constructs, until the analyzer knows what the literal
+// is assigned to or returned as; and the same once an error has said why it cannot
+#define MAP_LITERAL_MARKER L"#map_literal#"
+#define MAP_LITERAL_REJECTED L"#map_literal_rejected#"
 
 namespace frontend {
   class TreeFactory;
@@ -3284,6 +3288,7 @@ namespace frontend {
    ****************************/
   class MethodCall : public Statement, public Expression {
     friend class TreeFactory;
+    bool is_map_literal = false;
     EnumItem* enum_item;
     Class* original_klass;
     Class* anonymous_klass;
@@ -3526,6 +3531,15 @@ namespace frontend {
 
     const std::wstring GetVariableName() const {
       return variable_name;
+    }
+
+    // the constructor of a map literal, once the analyzer has named its class
+    void SetMapLiteral() {
+      is_map_literal = true;
+    }
+
+    bool IsMapLiteral() {
+      return is_map_literal;
     }
 
     void SetVariableName(const std::wstring v) {

@@ -645,6 +645,7 @@ std::vector<std::wstring> alt_error_method_names;
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
   bool ReportJsonLiteralValue(MethodCall* method_call);
+  bool ReportMapLiteralEntry(MethodCall* method_call);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);
   bool CheckErrorsWarnings();
 
@@ -689,6 +690,8 @@ std::vector<std::wstring> alt_error_method_names;
   Expression* WrapBareLambdaInFuncRef(Expression* expression, Type* expected, const int depth);
   Expression* WrapMethodReferenceInFuncRef(Expression* expression, Type* expected, const int depth);
   Expression* WrapCollectionLiteral(Expression* expression, Type* expected, const int depth);
+  MethodCall* MapLiteralConstructor(Expression* expression);
+  void TypeMapLiteral(Expression* expression, Type* expected);
   bool DerivedFuncRefLambdaArg(MethodCall* lambda_inferred_call, Type* resolved_param);
   Type* ResolveAlias(const std::wstring& name, const std::wstring& fn, int ln, int lp);
   Type* ResolveAlias(const std::wstring& name, ParseNode* node) {

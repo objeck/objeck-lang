@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: (14,29): A map literal makes a Map, Hash, OrderedHash, MultiMap, MultiHash, BiMap or IntMap; here it is wanted as Collection.Vector
+# EXPECT_ERROR_COUNT: 1
+#~
+The target is a map class.
+~#
+use Collection;
+
+class BadMapLiteralNotMap {
+	function : Take(m : Map<String, IntRef>) ~ Int {
+		return m->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		names : Vector<String> := {"a": "b"};
+		names->Size()->PrintLine();
+	}
+}
