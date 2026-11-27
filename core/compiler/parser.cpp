@@ -9450,6 +9450,12 @@ Select* Parser::ParseSelect(int depth)
  *     the literal starts the next statement and 'match' is the variable it
  *     was before 'match' meant anything. Read as a subject, that program was
  *     refused with "Expected '{'".
+ *   - a '-' that the '{' of the arms follows before the statement ends: the
+ *     subject is negative, 'match -1 {', 'match -offset {'. A '-' after a name
+ *     is otherwise a subtraction, and 'match - 1;', 'f(match - 1)' and
+ *     'while(i < match - 1) {' (whose ')' ends the look before its '{') stay
+ *     one. 'match -1 { -1 => ..' was read as the subtraction and refused with
+ *     "Expected ';'", though 'match (-1) {' and a '-1' pattern were accepted.
  *   - a '(' whose matching ')' is followed by '{': 'match (value) {'. A call is
  *     never followed by a '{' (as for 'using'), so 'match(x);', 'if(match(x)) {'
  *     and 'match(x)->Size()' are calls of a method named 'match', as before.
@@ -9470,6 +9476,7 @@ PARSER_NO_INLINE bool Parser::IsMatchStart()
   case TOKEN_FLOAT_LIT:
   case TOKEN_CHAR_LIT:
   case TOKEN_CHAR_STRING_LIT:
+  case TOKEN_SUB:
     return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekBlockAhead(THIRD_INDEX);
 
   case TOKEN_OPEN_PAREN:
