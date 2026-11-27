@@ -397,6 +397,17 @@
       return false;
     }
 
+    // Two families of rules are written, pass the valid-program corpus with no
+    // refusal, and are switched off: on the 30,000-change campaign neither refused
+    // a program that went on to crash (docs/design/OBE_TYPE_VERIFIER.md has the
+    // numbers), and a rule that buys nothing is only a chance to refuse a valid
+    // program. CLASS_RULES: a reference's class where an image spells one, the
+    // receiver, argument, return and trap-object checks on it, and the kind of an
+    // instance variable. ARRAY_KIND_RULES: Byte, Char, Float and word arrays told
+    // apart. They become worth their cost when declarations carry a class.
+    static const bool CLASS_RULES = false;
+    static const bool ARRAY_KIND_RULES = false;
+
     class Builder {
       StackProgram* prgm;
       StackMethod* method;
@@ -641,7 +652,7 @@
       }
 
       void Claim(int v, long cls) {
-        if(verify && cls >= 0) {
+        if(CLASS_RULES && verify && cls >= 0) {
           claims[ClassFind(v)].Add(cls);
         }
       }
@@ -803,13 +814,15 @@
       void MadeArrayKind(int v, uint8_t made) {
         if(verify && made) {
           Facts& f = facts[Find(v)];
-          f.ary_made |= made;
+          if(ARRAY_KIND_RULES) {
+            f.ary_made |= made;
+          }
           f.shape_made |= SHAPE_ARRAY;
         }
       }
 
       void UseArrayKind(int v, uint8_t allowed) {
-        if(verify && allowed && allowed != AK_ANY) {
+        if(ARRAY_KIND_RULES && verify && allowed && allowed != AK_ANY) {
           Facts& f = facts[Find(v)];
           f.ary_used &= allowed;
           if(f.ary_ip < 0) {
@@ -1051,7 +1064,7 @@
         }
         v = stack.back();
         stack.pop_back();
-        if(verify && consume) {
+        if(CLASS_RULES && verify && consume) {
           facts[Find(v)].consumed = true;
         }
         if(stack.size() < min_height) {
@@ -1213,7 +1226,7 @@
         const int value = NewValue(slot.kind, slot.elem);
         if(verify) {
           facts[value].shape_made = slot.shape;
-          facts[value].ary_made = slot.ary;
+          facts[value].ary_made = ARRAY_KIND_RULES ? slot.ary : 0;
           if(slot.part == 1) {
             facts[value].made = F_FUNC;
           }
@@ -1316,7 +1329,7 @@
           else if(!(words & arrays)) {
             UseObject(v);
             if(arg.classes) {
-              class_reqs.push_back({ v, -1, arg.classes, cur_ip, REQ_TRAP });
+              if(CLASS_RULES) class_reqs.push_back({ v, -1, arg.classes, cur_ip, REQ_TRAP });
             }
           }
         }
@@ -1624,7 +1637,9 @@
               facts[value].made = 0;
             }
             local_loads.push_back({ op1, value, ip });
-            Claim(value, ParamSlotClass(op1));
+            if(CLASS_RULES) {
+              Claim(value, ParamSlotClass(op1));
+            }
             // A word of the frame no declaration covers is not a root: the collector
             // never marks or moves what it holds, so it is not read through
             if(op1 >= (long)locals.size()) {
@@ -1655,9 +1670,9 @@
           UseArrayKind(v, slot.ary);
           if(verify) {
             local_stores.push_back({ op1, v, ip });
-            const long declared = ParamSlotClass(op1);
+            const long declared = CLASS_RULES ? ParamSlotClass(op1) : -1;
             if(declared >= 0) {
-              class_reqs.push_back({ v, declared, nullptr, ip, REQ_STORE });
+              if(CLASS_RULES) class_reqs.push_back({ v, declared, nullptr, ip, REQ_STORE });
             }
           }
         }
@@ -1920,7 +1935,7 @@
             MarkRef(v);
           }
           if(sig && i - 1 < sig->param_class.size() && sig->param_class[i - 1] >= 0) {
-            class_reqs.push_back({ v, sig->param_class[i - 1], nullptr, ip, REQ_ARGUMENT });
+            if(CLASS_RULES) class_reqs.push_back({ v, sig->param_class[i - 1], nullptr, ip, REQ_ARGUMENT });
           }
         }
         std::vector<SlotType>& rtrn = scratch_rtrn;
@@ -2004,7 +2019,7 @@
               MarkRef(stack.back());
             }
             if(own.return_class >= 0) {
-              class_reqs.push_back({ stack.back(), own.return_class, nullptr, ip, REQ_RETURN });
+              if(CLASS_RULES) class_reqs.push_back({ stack.back(), own.return_class, nullptr, ip, REQ_RETURN });
             }
           }
         }
@@ -2387,13 +2402,13 @@
             const bool as_func = access == LOAD_FUNC_VAR || access == STOR_FUNC_VAR;
             const long index = instrs[receivers[i].ip].GetOperand();
             const std::vector<SlotType>& layout = LayoutOf(cls);
-            if(index >= 0 && index < (long)layout.size()) {
+            if(CLASS_RULES && index >= 0 && index < (long)layout.size()) {
               if(as_float != (layout[index].kind == RK_FLOAT) || (as_func && layout[index].part != 1)) {
                 return Fail(receivers[i].ip, L"an instance variable read as another kind than its class declares", true);
               }
             }
           }
-          else if(context && cls != CLOSURE) {
+          else if(CLASS_RULES && context && cls != CLOSURE) {
             // any other reference whose static class is spelled: no field past the
             // largest object of that class's family
             ClassSet claimed;
@@ -2627,6 +2642,9 @@
     // its use needs. A receiver's is settled once every method has been walked
     // (Loader::Verify): whether the callee reads its instance is the callee's fact.
     inline bool Builder::CheckClasses() {
+      if(!CLASS_RULES) {
+        return true;
+      }
       for(size_t i = 0; i < class_reqs.size(); ++i) {
         const ClassReq& req = class_reqs[i];
         ClassSet known;

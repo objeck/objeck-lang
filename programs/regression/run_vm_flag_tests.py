@@ -2292,22 +2292,18 @@ def changed_program_cases(image):
     cases.append(("a closure smaller than its lambda's captures",
                   "a lambda paired with a closure that was not made for its captures", put(code[k][2], "<i", 0)))
 
-    # --- arrays, locals and fields are read as what they are declared ---
-    code, k = find("LoaderVerifyControl:Low", lambda c, k: is_op(c, k, "LOAD_BYTE_ARY_ELM"))
-    cases.append(("a Byte[] read as an Int[]", "an array of one element type used as an array of another",
-                  put(code[k][1], "<B", op["LOAD_INT_ARY_ELM"])))
+    # --- a Float local is read as a Float ---
     code, k = find("LoaderVerifyControl:Half", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, locl))
     cases.append(("a Float local read as an integer", "an integer or a reference read from or stored to a Float local",
                   put(code[k][1], "<B", op["LOAD_INT_VAR"])))
-    code, k = find("Square:Area", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, inst))
-    cases.append(("an Int field read as a Float", "an instance variable read as another kind than its class declares",
-                  put(code[k][2], "<i", 0)))
 
-    # --- a reference's class: a String's and an IntRef's parameter stores exchanged ---
-    code = code_of("LoaderVerifyControl:Pair")
-    first, second = operand(code[0][2]), operand(code[1][2])
-    cases.append(("two object parameters stored to each other's local", "an object stored to a parameter of another class",
-                  put(code[1][2], "<i", first, put(code[0][2], "<i", second))))
+    # --- a new array is an array: String's constructor from a String, given the Char[] ---
+    k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["char"])
+    string_new = next(j for j in range(k, len(main)) if is_op(main, j, "MTHD_CALL", class_ids["System.String"]))
+    from_string = next(struct.unpack_from("<i", image, m[1])[0] for c in classes if c["name"] == "System.String"
+                       for m in c["methods"] if m[0] == "System.String:New:o.System.String,")
+    cases.append(("a new Char[] passed as a String", "an array used as an object",
+                  put(main[string_new][2] + 4, "<i", from_string)))
 
     # --- class records ---
     shape = next(c for c in classes if c["name"] == "Shape")
