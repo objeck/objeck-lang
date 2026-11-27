@@ -76,16 +76,23 @@ StackProgram* JitCompiler::program;
 // bookkeeping -- a site missed, duplicated or out of order -- and not which
 // opcodes count as call sites; that is the one decision below.)
 //
-// Threads: the table is built under call_site_mutex by whichever compiling
-// thread gets there first and published with a release store; it is never
-// changed afterwards, so readers need no lock. The build reads only an
-// instruction's type and first two operands. The operands never change; the
-// type can be rewritten under it by the one patch that runs without the table
-// (the first method's), from MTHD_CALL to MTHD_CALL_JIT, and the build takes
-// either as a call site, the same whole-word read the interpreter makes of a
-// site being patched (see StackInstr in common.h). Every other patch waits for
-// the build. Initialize (program start, and each debugger restart) drops the
-// table with the program it described; no method is being compiled then.
+// Threads: PatchCallSites holds call_site_mutex from its first read of the
+// program to its last store into it, so one thread at a time walks the
+// program, builds the table or rewrites a call site. The walk and the build
+// read each instruction's type, which a patch rewrites (MTHD_CALL ->
+// MTHD_CALL_JIT); before the lock covered the whole function, the first
+// method's patch -- the one that runs without the table -- and a second
+// thread's walk or build could run together, one storing the field the other
+// was reading. The build took either value as a call site, so nothing could go
+// wrong on the machines this runs on, but it was a data race the lock removes
+// for the price of one uncontended lock per compiled method. The table itself
+// is never changed once published. Initialize (program start, and each
+// debugger restart) drops the table with the program it described; no method
+// is being compiled then.
+//
+// What the lock does not cover, and need not: the interpreter executing a
+// call site while it is patched. See PatchCallSites and
+// docs/design/JIT_CALL_SITE_PATCHING.md.
 namespace {
   // the two operands exactly as the walk compared them
   typedef std::pair<long, long> CallSiteKey;
@@ -147,19 +154,16 @@ namespace {
     }
   }
 
+  // the caller holds call_site_mutex
   inline const CallSiteTable* GetCallSiteTable(StackProgram* prgm) {
     const CallSiteTable* table = call_site_table.load(std::memory_order_acquire);
     if(!table) {
-      std::lock_guard<std::mutex> lock(call_site_mutex);
-      table = call_site_table.load(std::memory_order_relaxed);
-      if(!table) {
-        CallSiteTable* built = new CallSiteTable;
-        WalkCallSites(prgm, [built](StackInstr* instr) {
-          (*built)[CallSiteKey(instr->GetOperand(), instr->GetOperand2())].push_back(instr);
-        });
-        call_site_table.store(built, std::memory_order_release);
-        table = built;
-      }
+      CallSiteTable* built = new CallSiteTable;
+      WalkCallSites(prgm, [built](StackInstr* instr) {
+        (*built)[CallSiteKey(instr->GetOperand(), instr->GetOperand2())].push_back(instr);
+      });
+      call_site_table.store(built, std::memory_order_release);
+      table = built;
     }
 
     return table;
@@ -305,6 +309,9 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
   const long target_cls_id = callee->GetClass()->GetId();
   const long target_mthd_id = callee->GetId();
 
+  // one walk, table build or patch at a time (see the table's comment)
+  std::unique_lock<std::mutex> lock(call_site_mutex);
+
   // the first method compiled: its sites straight from a walk (see the table's comment)
   std::vector<StackInstr*> first_sites;
   const bool first = call_site_patches.fetch_add(1, std::memory_order_acq_rel) == 0 &&
@@ -338,12 +345,35 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
       }
     });
     if(walked != sites) {
+      // not held through the exit, which destroys the mutex
+      lock.unlock();
       std::wcerr << L">>> Internal error: call-site table and program walk differ for '" << callee->GetName()
                  << L"': " << sites.size() << L" indexed, " << walked.size() << L" walked <<<" << std::endl;
       VmExit(1);
     }
   }
 
+  // The stores below race, formally, with interpreters executing these call
+  // sites on other threads: `type` and `operand3` are plain words (StackInstr
+  // in common.h says why they are not atomics: +1.5% on the interpreted
+  // benchmarks, measured). What makes that safe, on x64's ordering and on
+  // ARM64's weaker one alike:
+  //   - a site's class and method operands are written by the loader before
+  //     any thread runs and never again, so there is no "new opcode, old
+  //     operands" to observe: MTHD_CALL_JIT reads the operands MTHD_CALL read;
+  //   - each store is one aligned word (a 4-byte opcode, a `long`) holding a
+  //     value that is valid by itself, and no reader needs the two to agree:
+  //     MTHD_CALL with operand3 0 or 1, and MTHD_CALL_JIT with either, all
+  //     end in ProcessJitMethodCall or the interpreter for the same callee;
+  //   - the one thing a reader needs before it runs native code is the code
+  //     pointer, and that is not taken from the site: ProcessJitMethodCall
+  //     loads the callee's native_code (acquire; published with release by
+  //     Compile before this function is called). ARM64 may show another core
+  //     the opcode store before the pointer store. That reader finds no code,
+  //     asks TryAutoJitCompile, which waits out this compile (the method is
+  //     JIT_COMPILING until the patch is done) and then reads the pointer
+  //     again, or interprets the call. A stale read costs a slower call, never
+  //     a wrong one.
   for(size_t i = 0; i < sites.size(); ++i) {
     StackInstr* instr = sites[i];
     if(patch_value > 0) {

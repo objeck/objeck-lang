@@ -964,10 +964,12 @@ class StackInstr
 {
   // type and operand3 are rewritten at run time while other threads may be
   // executing the same instruction: JitCompiler::PatchCallSites turns a
-  // MTHD_CALL / DYN_MTHD_CALL into its *_JIT form and sets operand3 to 1 once
-  // the callee's native code is published, and StackInterpreter::CheckAutoJit
-  // sets operand3 to -1 when a compile definitively failed. They are plain
-  // fields on purpose. The protocol that makes that safe in practice:
+  // MTHD_CALL into MTHD_CALL_JIT and sets operand3 to 1 once the callee's
+  // native code is published, and StackInterpreter::CheckAutoJit sets operand3
+  // to -1 when a compile definitively failed. (A DYN_MTHD_CALL is never
+  // rewritten: its operands name no method.) They are plain fields on purpose.
+  // The protocol that makes that safe in practice, with the ordering argument
+  // for ARM64 at PatchCallSites and in docs/design/JIT_CALL_SITE_PATCHING.md:
   //   - each is one naturally aligned word, written whole by a single store;
   //   - every value a writer stores is valid on its own, whichever a reader
   //     sees, and a site never needs the two fields to agree with each other;
