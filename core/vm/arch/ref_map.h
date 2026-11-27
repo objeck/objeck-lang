@@ -2923,8 +2923,11 @@
       // arguments, checked once at entry (call_stack.h), and nothing inside the
       // method checks again. Joins at one height keep a loop from growing the stack,
       // so the deepest entry height bounds the method; a body that pushes past the
-      // room writes beyond the reserved stack. The compiler cannot get near it (it
-      // refuses nesting far below the limit), so this only refuses a crafted image.
+      // room writes beyond the reserved stack. The compiler cannot get near it: it
+      // refuses nesting far below the limit, and a String literal, the one construct
+      // that put a word on the stack for each of its elements, is built an element at
+      // a time past 512 of them (STRING_LITERAL_STACK_MAX; one of 999 strings used to
+      // compile and be refused here). So this only refuses a crafted image.
       if(verify) {
         size_t deepest = 0;
         for(long ip = 0; ip < count; ++ip) {

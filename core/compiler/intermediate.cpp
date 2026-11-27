@@ -5906,6 +5906,38 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
       break;
     }
   }
+  else if(array->GetDynamicEntry()) {
+    // A long String literal (ContextAnalyzer::AnalyzeStaticArray): the array is made
+    // first and kept in a hidden local, and each string is stored as 'a[i, j] := "s"'
+    // stores it, so the operand stack holds one element at a time, not all of them.
+    const long tmp_id = array->GetDynamicEntry()->GetId();
+    const long dim = (long)array->GetDimension();
+    std::vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+    std::vector<int> sizes = array->GetSizes();
+    for(int i = (int)sizes.size() - 1; i > -1; i--) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, sizes[i]));
+    }
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, NEW_OBJ_ARY, dim));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, STOR_INT_VAR, tmp_id, LOCL));
+
+    // element k of the flattened literal is at the subscripts that are k's digits,
+    // the outermost dimension first and fastest (StaticArray::GetAllElements);
+    // 'sizes' holds the extents innermost first
+    is_str_array = true;
+    for(size_t k = 0; k < all_elements.size(); ++k) {
+      EmitCharacterString(static_cast<CharacterString*>(all_elements[k]));
+      size_t rest = k;
+      for(int d = (int)sizes.size() - 1; d > -1; d--) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)(rest % sizes[d])));
+        rest /= sizes[d];
+      }
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_VAR, tmp_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, STOR_INT_ARY_ELM, dim, LOCL));
+    }
+    is_str_array = false;
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_VAR, tmp_id, LOCL));
+  }
   else {
     // create string literals
     is_str_array = true;
