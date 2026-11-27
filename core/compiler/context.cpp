@@ -9204,6 +9204,19 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   }
 }
 
+// True for a variable the program wrote. The compiler's own start with '#' (the hidden local
+// a guarded element assignment keeps its index in): an error about one is about the index
+// that was written, and a note that names '#guard_0' and talks of 'each' loops explains nothing.
+static bool IsWrittenVariable(Expression* expression)
+{
+  if(expression->GetExpressionType() != VAR_EXPR) {
+    return false;
+  }
+
+  const std::wstring name = static_cast<Variable*>(expression)->GetName();
+  return name.empty() || name[0] != L'#';
+}
+
 /****************************
  * Analyzes array indices
  ****************************/
@@ -9278,7 +9291,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
           }
           else {
             // Check if this is a bound variable from each loop
-            if(expression->GetExpressionType() == VAR_EXPR) {
+            if(IsWrittenVariable(expression)) {
               Variable* var = static_cast<Variable*>(expression);
               ProcessError(expression, L"Expected Byte, Char, Int or Enum class type\n\tNote: Variable '" + var->GetName() +
                           L"' is bound to array elements using ':='\n\tUse ':' instead of ':=' to iterate over indices in 'each' loops");
@@ -9292,7 +9305,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 
       default:
         // Check if this is a bound variable from each loop
-        if(expression->GetExpressionType() == VAR_EXPR) {
+        if(IsWrittenVariable(expression)) {
           Variable* var = static_cast<Variable*>(expression);
           ProcessError(expression, L"Expected Byte, Char, Int or Enum class type\n\tNote: Variable '" + var->GetName() +
                       L"' is bound to array elements using ':='\n\tUse ':' instead of ':=' to iterate over indices in 'each' loops");

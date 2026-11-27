@@ -8228,13 +8228,18 @@ PARSER_NO_INLINE Variable* Parser::MakeNilGuardElement(Variable* target)
     if(!entry) {
       return nullptr;
     }
-    Variable* kept = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident);
-    Assignment* keep = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, kept, index);
-    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, line_num, line_pos,
-                                                                                TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
-    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, entry, keep));
+    // What stands for the index is placed where the index is written, so that an error in
+    // it ('cells[rate] := E ?? return;' with a Float) points at the index as it does in a
+    // plain assignment. Placed at the target, the error pointed at the start of the statement.
+    const int index_line = index->GetLineNumber();
+    const int index_pos = index->GetLinePosition();
+    Variable* kept = TreeFactory::Instance()->MakeVariable(file_name, index_line, index_pos, ident);
+    Assignment* keep = TreeFactory::Instance()->MakeAssignment(file_name, index_line, index_pos, index_line, index_pos, kept, index);
+    SequenceExpression* sequence = TreeFactory::Instance()->MakeSequenceExpression(file_name, index_line, index_pos,
+                                                                                TreeFactory::Instance()->MakeVariable(file_name, index_line, index_pos, ident));
+    sequence->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, index_line, index_pos, index_line, index_pos, entry, keep));
     written->AddExpression(sequence);
-    read->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, ident));
+    read->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, index_line, index_pos, ident));
   }
   target->SetIndices(written);
 
