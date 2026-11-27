@@ -10230,15 +10230,18 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
     bool failed = false;
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    for(long i = 0; !done && i < num; ++i) {
-      temp[i] = IPSecureSocket::ReadByte(sctx, status);
-      if(!status) {
+    // A byte is stored and counted only when one arrived (status > 0). The end of the stream (status 0:
+    // the peer closed without a close_notify) was counted as a byte: ReadByte answers '\0' for it, so a
+    // read at the end of the stream returned 1 and wrote that zero over the caller's element at 'offset'.
+    while(!done && read < num) {
+      const char value = IPSecureSocket::ReadByte(sctx, status);
+      if(status > 0) {
+        temp[read++] = value;
+      }
+      else {
         done = true;
+        failed = status < 0;
       }
-      else if(status < 0) {
-        done = failed = true;
-      }
-      ++read;
     }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
@@ -10247,7 +10250,9 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
       PushInt(-1, op_stack, stack_pos);
     }
     else {
-      memcpy((char*)(array + 3) + offset, temp, read);
+      if(read > 0) {
+        memcpy((char*)(array + 3) + offset, temp, read);
+      }
       PushInt(read, op_stack, stack_pos);
     }
     delete[] temp;

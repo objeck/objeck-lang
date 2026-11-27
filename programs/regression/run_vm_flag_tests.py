@@ -767,6 +767,7 @@ def main():
 
     check_signal_dispatch(obc, obr, env, bin_dir)
     check_file_fifo_gc_park(obc, obr, env, bin_dir)
+    check_tls_byte_read_eof(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
     check_stw_watchdog(obc, obr, env, bin_dir)
     check_thread_fault_isolation(obc, obr, env, bin_dir)
@@ -3188,6 +3189,87 @@ def check_file_fifo_gc_park(obc, obr, env, bin_dir):
             check(f"FIFO {mode} through the file API {label}: the read returns its text after them",
                   proc.returncode == 0 and b"PASS: file_fifo_gc_park read" in out,
                   f"rc={proc.returncode} out={out[-200:]!r} err={err[-300:]!r}")
+
+
+def make_loopback_tls_cert(scratch):
+    """A self-signed certificate and key for 127.0.0.1 in 'scratch', made with the openssl
+    command the TLS regression tests use; (cert, key), or None when openssl is not there.
+    Valid from 2025, not from the second it is made: a clock that steps back (WSL2 does)
+    otherwise makes a new certificate "not yet valid" now and then."""
+    openssl = shutil.which("openssl")
+    if not openssl:
+        return None
+    cnf = os.path.join(scratch, "openssl.cnf")
+    forward = scratch.replace("\\", "/")
+    with open(cnf, "w") as out:
+        out.write("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n"
+                  f"[fixture]\ndatabase = {forward}/index.txt\nserial = {forward}/serial\nnew_certs_dir = {forward}\n"
+                  "policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n"
+                  "[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\n"
+                  "subjectAltName = DNS:localhost,IP:127.0.0.1\n")
+    open(os.path.join(scratch, "index.txt"), "w").close()
+    with open(os.path.join(scratch, "serial"), "w") as out:
+        out.write("01\n")
+    cert, key, request = (os.path.join(scratch, n) for n in ("cert.pem", "key.pem", "request.csr"))
+    rc, _, _ = run([openssl, "req", "-new", "-newkey", "rsa:2048", "-nodes", "-config", cnf, "-subj", "/CN=localhost",
+                    "-keyout", key, "-out", request])
+    if rc == 0:
+        rc, _, _ = run([openssl, "ca", "-batch", "-selfsign", "-notext", "-config", cnf, "-extensions", "server",
+                        "-keyfile", key, "-in", request, "-startdate", "250101000000Z", "-enddate", "491231235959Z",
+                        "-out", cert])
+    return (cert, key) if rc == 0 and os.path.exists(cert) else None
+
+
+def check_tls_byte_read_eof(obc, obr, env, bin_dir):
+    # ---- a TLS Byte[] read at the end of the stream returns 0 ------------------------
+    # tls_byte_read_eof.obs connects to a TLS server run here, which sends "abc" and then
+    # closes the TCP connection without a close_notify alert: the one way a TLS read ends
+    # with "no more bytes" (status 0) rather than an alert. ReadBuffer(offset, num, Byte[])
+    # read a byte at a time and counted every attempt, that one included, so the read at
+    # the end of the stream returned 1 and stored a zero byte at 'offset'. It must return
+    # 0 and leave the array as it was, as a plain TCP socket does.
+    import socket
+    import ssl
+    import threading
+    dest = compile_fixture(obc, "tls_byte_read_eof", env, bin_dir)
+    if not dest:
+        return
+    for jit in ("--jit=off", "--jit=1"):
+        with tempfile.TemporaryDirectory() as scratch:
+            made = make_loopback_tls_cert(scratch)
+            if not made:
+                print("  [SKIP] TLS Byte[] read at the end of the stream: no openssl command to make a certificate")
+                return
+            cert, key = made
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert, key)
+            listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            listener.settimeout(30)
+            served = []
+
+            def serve():
+                try:
+                    raw, _ = listener.accept()
+                    raw.settimeout(30)
+                    tls = context.wrap_socket(raw, server_side=True)
+                    tls.sendall(b"abc")
+                    # the TCP connection ends here, with no close_notify: the descriptor is
+                    # closed as a plain socket (detach), not unwrap()
+                    socket.socket(fileno=tls.detach()).close()
+                    served.append("ok")
+                except Exception as error:   # the client's result reports the failure
+                    served.append(repr(error))
+
+            thread = threading.Thread(target=serve, daemon=True)
+            thread.start()
+            rc, out, err = run([obr, jit, dest, str(listener.getsockname()[1]), cert], env=env, cwd=SCRIPT_DIR)
+            thread.join(30)
+            listener.close()
+            check(f"TLS Byte[] read at the end of the stream {jit}: returns 0 and stores nothing",
+                  rc == 0 and b"PASS: tls_byte_read_eof read" in out,
+                  f"rc={rc} server={served} out={out[-300:]!r} err={err[-300:]!r}")
 
 
 def check_vm_exit_flush(obc, obr, env, bin_dir):
