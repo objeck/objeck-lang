@@ -943,8 +943,7 @@ void JitAmd64::ProcessInstructions() {
             << L": regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
       // note: object id passed in instruction param
-      // Inline young-gen bump-alloc fast path; callback is the slow path. Both
-      // leave the new pointer on the op stack for ProcessReturnParameters.
+      // Inline young-gen bump-alloc fast path; callback is the slow path.
       StackClass* new_klass = program->GetClass(instr->GetOperand());
       // The result's register is chosen before either path is emitted, so the
       // inline path can end with the new pointer in it and skip the operand
@@ -957,7 +956,7 @@ void JitAmd64::ProcessInstructions() {
       // spare: the callback takes a scratch register of its own, and a pool
       // tighter than that (an eight-string array literal) keeps the old
       // sequence, so nothing that compiled before stops compiling.
-      // docs/JIT_ALLOC_RESULT_DESIGN.md has the invariants.
+      // docs/JIT_OPERAND_STACK_DESIGN.md, section 4, has the invariants.
       FlushLocalCache();
       RegisterHolder* result = nullptr;
       if(JitAllocResultInRegister() && aval_regs.size() >= 2) {

@@ -1,6 +1,6 @@
 #~
 # NEW_OBJ_INST in compiled code, in every shape the AMD64 inline allocator
-# takes since v2026.11.4 (docs/JIT_ALLOC_RESULT_DESIGN.md): the new pointer
+# takes since v2026.11.4 (docs/JIT_OPERAND_STACK_DESIGN.md): the new pointer
 # ends in a register picked before either path is emitted, the inline path no
 # longer goes through the operand stack, and RAX-RDX are saved around it only
 # when they hold a pending value. What can go wrong is a pending value lost or
