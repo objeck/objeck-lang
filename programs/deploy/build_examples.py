@@ -187,26 +187,24 @@ def trim(lines):
 
 
 def matches(expected, actual):
-    """True when actual (a list of lines) fits expected; see the module comment for '...'."""
+    """True when actual (a list of lines) fits expected.
+
+    A line that is just '...' stands for any number of lines, none included. Where it
+    stands the match is not decided by the first line that fits: 'item ...' may fit
+    several lines, and only the lines expected after it say which one was meant. So every
+    way of matching is kept (a set of positions in the actual output) until the expected
+    lines run out."""
     expected, actual = trim(expected), trim(actual)
-    skipping = False
-    at = 0
+    positions = {0}
     for want in expected:
         if want == "...":
-            skipping = True
+            positions = set(range(min(positions), len(actual) + 1))
             continue
         pattern = line_pattern(want)
-        while True:
-            if at >= len(actual):
-                return False
-            got = actual[at]
-            at += 1
-            if fits(want, pattern, got):
-                skipping = False
-                break
-            if not skipping:
-                return False
-    return skipping or at == len(actual)
+        positions = {at + 1 for at in positions if at < len(actual) and fits(want, pattern, actual[at])}
+        if not positions:
+            return False
+    return len(actual) in positions
 
 
 def run_example(obr, obe, env):
