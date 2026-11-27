@@ -1857,6 +1857,15 @@ jobs:
       - name: Regression tests can report failure
         run: python3 tools/cicd/check_test_exit_codes.py
 
+      # Unit tests for the build-free tools themselves (stdlib unittest, well under a second each): they
+      # were committed beside the tools but no job ran them, so a tool could rot unnoticed.
+      - name: Tool unit tests (exit-code checker, fuzz library, reducer, GC roots generator)
+        run: |
+          python3 tools/cicd/test_check_test_exit_codes.py
+          python3 tools/fuzz/test_fuzzlib.py
+          python3 tools/fuzz/test_reduce.py
+          python3 tools/gc_roots/test_gen_roots.py
+
       # Same class of guard. '# JIT_DISABLE' on its own line runs a test with the
       # JIT off. The runners used to match it as a substring, which turned off the
       # JIT for five tests whose comments merely mentioned it, and twenty real
