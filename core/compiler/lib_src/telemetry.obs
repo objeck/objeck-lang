@@ -1258,15 +1258,15 @@ bundle System.Telemetry {
 		}
 
 		#~
-		Replaces the series key separator in a name
+		Escapes the series key separator in a name so two different names never share a key
 		@param s name
-		@return the name with | replaced by /
+		@return the name with % written as %25 and | as %7C, which reads back to the name
 		~#
 		function : KeyPart(s : String) ~ String {
 			if(s = Nil) {
 				return "";
 			};
-			return s->ReplaceAll("|", "/");
+			return s->ReplaceAll("%", "%25")->ReplaceAll("|", "%7C");
 		}
 	}
 
@@ -2829,6 +2829,7 @@ bundle System.Telemetry {
 		@peak : Float;
 		@last_t : Float;
 		@last_w : Float;
+		@lock : ThreadMutex;
 
 		New() {
 			Init(4096);
@@ -2859,6 +2860,7 @@ bundle System.Telemetry {
 			@peak := 0.0;
 			@last_t := 0.0;
 			@last_w := 0.0;
+			@lock := ThreadMutex->New("telemetry-energy-estimator");
 		}
 
 		#~
@@ -2866,7 +2868,9 @@ bundle System.Telemetry {
 		@param seconds longest gap in seconds; a longer one adds nothing to the energy and is counted as skipped
 		~#
 		method : public : SetMaxGap(seconds : Float) ~ Nil {
-			@max_gap := seconds;
+			critical(@lock) {
+				@max_gap := seconds;
+			};
 		}
 
 		#~
@@ -2876,6 +2880,14 @@ bundle System.Telemetry {
 		@return false if the sample was refused
 		~#
 		method : public : AddSample(seconds : Float, watts : Float) ~ Bool {
+			ok := false;
+			critical(@lock) {
+				ok := AddSampleLocked(seconds, watts);
+			};
+			return ok;
+		}
+
+		method : AddSampleLocked(seconds : Float, watts : Float) ~ Bool {
 			if(seconds <> seconds | watts <> watts | watts < 0.0 | watts > 1.0e300) {
 				return false;
 			};
@@ -2947,10 +2959,13 @@ bundle System.Telemetry {
 		@return watts, NaN if nothing was integrated
 		~#
 		method : public : GetMeanWatts() ~ Float {
-			if(@span <= 0.0) {
-				return Float->NaN();
+			mean := Float->NaN();
+			critical(@lock) {
+				if(@span > 0.0) {
+					mean := @total / @span;
+				};
 			};
-			return @total / @span;
+			return mean;
 		}
 
 		#~
@@ -2986,6 +3001,14 @@ bundle System.Telemetry {
 		@return watts, NaN before the first retained sample
 		~#
 		method : public : PowerAt(seconds : Float) ~ Float {
+			watts := Float->NaN();
+			critical(@lock) {
+				watts := PowerAtLocked(seconds);
+			};
+			return watts;
+		}
+
+		method : PowerAtLocked(seconds : Float) ~ Float {
 			if(@size < 1 | seconds <> seconds | seconds < At(0)) {
 				return Float->NaN();
 			};
@@ -3010,6 +3033,15 @@ bundle System.Telemetry {
 		@return joules, or NaN if the start is before the first retained sample, there is no sample, or the interval crosses a gap (or a held tail) longer than the maximum gap
 		~#
 		method : public : JoulesBetween(t_from : Float, t_to : Float) ~ Float {
+			joules := Float->NaN();
+			critical(@lock) {
+				joules := JoulesBetweenLocked(t_from, t_to);
+			};
+			return joules;
+		}
+
+		# the sampler thread adds samples while a call asks for its energy: the ring is read under the lock AddSample writes it under
+		method : JoulesBetweenLocked(t_from : Float, t_to : Float) ~ Float {
 			if(@size < 1 | t_from <> t_from | t_to <> t_to | t_to < t_from) {
 				return Float->NaN();
 			};
@@ -3021,7 +3053,7 @@ bundle System.Telemetry {
 			};
 			joules := 0.0;
 			cur_t := t_from;
-			cur_w := PowerAt(t_from);
+			cur_w := PowerAtLocked(t_from);
 			for(i := 1; i < @size; i += 1;) {
 				t1 := At(i);
 				if(t1 <= t_from) {
@@ -3037,18 +3069,18 @@ bundle System.Telemetry {
 				seg_w := WattsAt(i);
 				if(seg_end > t_to) {
 					seg_end := t_to;
-					seg_w := PowerAt(t_to);
+					seg_w := PowerAtLocked(t_to);
 				};
 				joules += (cur_w + seg_w) * 0.5 * (seg_end - cur_t);
 				cur_t := seg_end;
 				cur_w := seg_w;
 			};
 			if(cur_t < t_to) {
-				tail := t_to - cur_t;
-				if(tail > @max_gap) {
+				# the last reading is held from the moment it was taken, not from where the query starts
+				if(t_to - At(@size - 1) > @max_gap) {
 					return Float->NaN();
 				};
-				joules += cur_w * tail;
+				joules += cur_w * (t_to - cur_t);
 			};
 			return joules;
 		}

@@ -1681,6 +1681,30 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 			return text;
 		}
 
+		# the text of a number written as a plain integer ("-0" is "0"), Nil if it has a fraction or an exponent
+		function : WholeText(text : String) ~ String {
+			if(text = Nil | text->IsEmpty()) {
+				return Nil;
+			};
+			start := 0;
+			if(text->Get(0) = '-') {
+				start := 1;
+			};
+			if(start >= text->Size()) {
+				return Nil;
+			};
+			for(i := start; i < text->Size(); i += 1;) {
+				c := text->Get(i);
+				if(c < '0' | c > '9') {
+					return Nil;
+				};
+			};
+			if(start = 1 & text->Size() = 2 & text->Get(1) = '0') {
+				return "0";
+			};
+			return text;
+		}
+
 		#~
 		Compares two JSON values by content: numbers by value, objects regardless of member order
 		@param a one value
@@ -1698,6 +1722,13 @@ each(i : errors) { errors->Get(i)->ToString()->PrintLine(); };   # /id: expected
 			};
 
 			if(ta = JsonElement->JsonType->NUMBER) {
+				# two whole numbers are compared digit for digit: a Float has 53 bits, so past 2^53
+				# 9007199254740993 and 9007199254740992 would be the same number
+				ia := WholeText(a->GetValue());
+				ib := WholeText(b->GetValue());
+				if(ia <> Nil & ib <> Nil) {
+					return ia->Equals(ib);
+				};
 				return a->GetFloat() = b->GetFloat();
 			}
 			else if(ta = JsonElement->JsonType->STRING) {
@@ -3180,6 +3211,8 @@ if(outcome->IsOk()) {
 				};
 
 				if(outcome->IsOk()) {
+					# an earlier attempt's failure must not outlive the one that worked
+					outcome->SetError(Nil);
 					outcome->SetErrors(Vector->New()<SchemaError>);
 					return outcome;
 				};

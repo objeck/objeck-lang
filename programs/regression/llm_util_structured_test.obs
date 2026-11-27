@@ -139,6 +139,7 @@ class LlmUtilStructuredTest {
     outcome := StructuredCall->New(chat, Schema())->Ask("Who?");
     Check("ok after one retry", outcome->IsOk() & outcome->GetAttempts() = 2 & chat->CallCount() = 2);
     Check("the value is the corrected one", outcome->GetValue()->Get("age")->GetInt() = 36);
+    Check("a success carries no error from the failed attempt", outcome->GetError() = Nil & outcome->GetErrors()->Size() = 0);
     Check("both replies are kept", outcome->GetReplies()->Size() = 2 & outcome->GetReplies()->Get(0)->Equals(wrong));
 
     second := chat->Call(1);

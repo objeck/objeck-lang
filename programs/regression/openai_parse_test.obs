@@ -17,7 +17,7 @@ Embedding and moderation fixtures avoid exponent notation (real bodies often
 carry values such as -4.0583e-05); add such cases once the JSON lexer reads them.
 ~#
 
-use Collection, API.OpenAI.Responses, API.OpenAI.Chat, API.OpenAI;
+use Collection, Data.JSON, API.OpenAI.Responses, API.OpenAI.Chat, API.OpenAI;
 
 class OpenAIParseTest {
   @failures : static : Int;
@@ -54,6 +54,7 @@ class OpenAIParseTest {
 
     TestResponses();
     TestChat();
+    TestToolArguments();
     TestEmbedding();
     TestImages();
     TestFiles();
@@ -186,6 +187,39 @@ class OpenAIParseTest {
     Check("a non-JSON body yields Nil", Completion->ParseCompletion("upstream connect error") = Nil);
     comp := Completion->ParseCompletion("{\"id\":\"chatcmpl-x\",\"object\":\"chat.completion\"}");
     Check("no choices yields no first choice", comp <> Nil & comp->GetFirstChoice() = Nil);
+  }
+
+  # the model writes a function's arguments as text: one JSON object is accepted, anything else is Nil
+  function : ToolArguments(arguments : String) ~ JsonElement {
+    call_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+    call_json->Insert("id", "call_1");
+    function_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+    function_json->Insert("name", "f");
+    function_json->Insert("arguments", arguments);
+    call_json->Insert("function", function_json);
+    return ToolCall->New(call_json)->GetArgumentsJson();
+  }
+
+  function : TestToolArguments() ~ Nil {
+    "Tool call arguments"->PrintLine();
+
+    args := ToolArguments("{\"city\":\"Paris\",\"n\":[1,{\"x\":\"}\"}],\"q\":\"a\\\"}\\\\\"}");
+    Check("an object parses", args <> Nil & Same(args->Get("city")->GetString(), "Paris"));
+    Check("braces and escaped quotes inside strings do not end it", args <> Nil & args->Get("n")->Size() = 2);
+    args := ToolArguments("  {\"a\":1}
+ ");
+    Check("white space around an object is fine", args <> Nil & args->Get("a")->GetInt() = 1);
+    args := ToolArguments("{}");
+    Check("an empty object parses", args <> Nil & args->Size() = 0);
+    Check("empty text is Nil", ToolArguments("") = Nil);
+    Check("an array root is Nil", ToolArguments("[1]") = Nil);
+    Check("a bare number is Nil", ToolArguments("7") = Nil);
+    Check("a bare string is Nil", ToolArguments("\"x\"") = Nil);
+    Check("not JSON is Nil", ToolArguments("{\"a\":") = Nil);
+    Check("a second object after the first is Nil", ToolArguments("{\"a\":1}{\"b\":2}") = Nil);
+    Check("a second value after white space is Nil", ToolArguments("{\"a\":1} [2]") = Nil);
+    Check("trailing text is Nil", ToolArguments("{\"a\":1} done") = Nil);
+    Check("a stray closing brace is Nil", ToolArguments("{\"a\":1}}") = Nil);
   }
 
   function : TestEmbedding() ~ Nil {
