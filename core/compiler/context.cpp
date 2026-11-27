@@ -5682,7 +5682,12 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, std::w
   Type* type;
   // process cast
   if(expression->GetCastType()) {
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable()) {
+    // 'x->As(T)->M()' is a call that carries its variable, and the calls after
+    // it are resolved here. An Otherwise() written on a variable carries one
+    // too, but `(x ?? y)->As(T)->M()` is not that form: its cast is of the
+    // value '??' yields, and M() is looked up in T like any call after a cast.
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable() &&
+       !static_cast<MethodCall*>(expression)->IsOtherwiseIntrinsic()) {
       while(expression->GetMethodCall()) {
         AnalyzeExpressionMethodCall(expression->GetMethodCall(), 0);
         expression = expression->GetMethodCall();

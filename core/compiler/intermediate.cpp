@@ -6470,13 +6470,18 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       PostUpdateQueue outer_post_statements;
       BeginConditionalOperand(outer_post_statements);
       EmitExpression(defaults[0]);
-      EmitCast(method_call);
       DeferConditionalOperand(outer_post_statements, region_mark);
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, stor_type, result_id, LOCL));
       new_char_str_count = 0;
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, load_type, result_id, LOCL));
+      // A conversion of the '??' result -- `(p?->Ratio() ?? -1.5)->As(Int)`,
+      // `f : Float := p?->Count() ?? -1` -- is of whichever value was taken,
+      // so it is made here, once the two paths have met. It was made on the
+      // default alone: the call's own value went on unconverted, a Float where
+      // an Int was declared, and the loader refused the program.
+      EmitCast(method_call);
       // the rest of the chain, after the Otherwise(), with no Nil test
       EmitOtherwiseIntrinsic(method_call, expression, true);
       return;
@@ -6699,7 +6704,6 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   PostUpdateQueue outer_post_statements;
   BeginConditionalOperand(outer_post_statements);
   EmitExpression(args[0]);
-  EmitCast(method_call);
   DeferConditionalOperand(outer_post_statements, split_mark);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
@@ -6709,6 +6713,9 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  // a conversion of the result is of whichever value was taken (see the
+  // value default in EmitTryIntrinsic)
+  EmitCast(method_call);
   }
 
   // Emit the rest of the chain, the way EmitTryIntrinsic does. Both callers

@@ -1,0 +1,184 @@
+#~
+A cast written after a parenthesised call chain converts the chain's value.
+
+`(source?->Bytes()[1] ?? nine)->As(Int)` was refused: "$Int has no method named
+'Bytes'". The cast after the ')' was set on the head of the chain, as it is for
+a plain variable, so 'source' itself became an Int. It is now set on the last
+call of the chain, whose value the parentheses yield.
+
+That put a conversion on '??' itself, which the emitter made on the default
+alone: the call's own value went on unconverted. So did the one an assignment
+adds -- `f : Float := p?->Count(3) ?? -1` compiled to a program the loader
+refused ("an integer or a reference used as a float"). The conversion is now
+made once, after the value and the default have met.
+
+Checked for a '?->' call and its subscript, with and without '??', in both
+directions between Int and Float, from Byte, for the value and for the default,
+as an explicit cast and as the conversion an assignment makes, for a class
+cast, and for the forms that already worked (a variable and a plain call in
+parentheses). Exits 1 on a mismatch.
+~#
+class Shape {
+	New() {
+	}
+
+	method : public : Sides() ~ Int {
+		return 0;
+	}
+}
+
+class Square from Shape {
+	New() {
+		Parent();
+	}
+
+	method : public : Sides() ~ Int {
+		return 4;
+	}
+
+	method : public : Corner() ~ Int {
+		return 90;
+	}
+}
+
+class Source {
+	@bytes : Byte[];
+	@ints : Int[];
+	@floats : Float[];
+
+	New() {
+		@bytes := Byte->New[2];
+		@bytes[1] := 7;
+		@ints := Int->New[2];
+		@ints[1] := 9;
+		@floats := Float->New[2];
+		@floats[1] := 2.75;
+	}
+
+	method : public : Bytes() ~ Byte[] {
+		return @bytes;
+	}
+
+	method : public : Ints() ~ Int[] {
+		return @ints;
+	}
+
+	method : public : Floats() ~ Float[] {
+		return @floats;
+	}
+
+	method : public : Ratio(n : Float) ~ Float {
+		return n;
+	}
+
+	method : public : Count(n : Int) ~ Int {
+		return n;
+	}
+
+	method : public : Make() ~ Shape {
+		return Square->New();
+	}
+}
+
+class ParenthesizedChainCast {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := ParenthesizedChainCast->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	method : CheckFloat(name : String, got : Float, want : Float) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# compiled by the JIT at its default threshold
+	function : Hot(source : Source, n : Float) ~ Int {
+		return (source?->Ratio(n) ?? -1.5)->As(Int);
+	}
+
+	method : Run() ~ Nil {
+		source := Source->New();
+		none : Source;
+		nine := 9->As(Byte);
+
+		# the finding
+		Check("Byte element ?? Byte, as Int", (source?->Bytes()[1] ?? nine)->As(Int), 7);
+		Check("Byte element ?? Byte, as Int: default", (none?->Bytes()[1] ?? nine)->As(Int), 9);
+
+		# Float to Int and Int to Float, the value and the default
+		Check("Float call ?? Float, as Int", (source?->Ratio(3.75) ?? -1.5)->As(Int), 3);
+		Check("Float call ?? Float, as Int: default", (none?->Ratio(3.75) ?? -1.5)->As(Int), -1);
+		CheckFloat("Int call ?? Int, as Float", (source?->Count(3) ?? -1)->As(Float), 3.0);
+		CheckFloat("Int call ?? Int, as Float: default", (none?->Count(3) ?? -1)->As(Float), -1.0);
+		Check("Float element ?? Float, as Int", (source?->Floats()[1] ?? -1.5)->As(Int), 2);
+		Check("Float element ?? Float, as Int: default", (none?->Floats()[1] ?? -1.5)->As(Int), -1);
+		CheckFloat("Int element ?? Int, as Float", (source?->Ints()[1] ?? -1)->As(Float), 9.0);
+		CheckFloat("Int element ?? Int, as Float: default", (none?->Ints()[1] ?? -1)->As(Float), -1.0);
+
+		# without '??'
+		CheckFloat("Int call, as Float", (source?->Count(3))->As(Float), 3.0);
+		CheckFloat("Int call, as Float: Nil receiver", (none?->Count(3))->As(Float), 0.0);
+		CheckFloat("Int element, as Float", (source?->Ints()[1])->As(Float), 9.0);
+		Check("Float element, as Int", (source?->Floats()[1])->As(Int), 2);
+		Check("Float call, as Int: Nil receiver", (none?->Ratio(3.75))->As(Int), 0);
+
+		# in a calculation, and with a call after the cast
+		Check("in a sum", 1 + (source?->Ratio(3.75) ?? -1.5)->As(Int) * 2, 7);
+		Check("a call on the cast value", (source?->Ratio(3.75) ?? -1.5)->As(Int)->Abs(), 3);
+		Check("a call on the cast default", (none?->Ratio(3.75) ?? -1.5)->As(Int)->Abs(), 1);
+
+		# the conversion an assignment makes
+		f : Float := source?->Count(3) ?? -1;
+		CheckFloat("Float := Int call ?? Int", f, 3.0);
+		f := none?->Count(3) ?? -1;
+		CheckFloat("Float := Int call ?? Int: default", f, -1.0);
+		i : Int := source?->Ratio(3.75) ?? -1.5;
+		Check("Int := Float call ?? Float", i, 3);
+		i := none?->Ratio(3.75) ?? -1.5;
+		Check("Int := Float call ?? Float: default", i, -1);
+
+		# a class cast
+		square := (source?->Make())->As(Square);
+		Check("object call, as its subclass", square->Corner(), 90);
+		fallback : Shape := Square->New();
+		square := (none?->Make() ?? fallback)->As(Square);
+		Check("object call ?? object, as its subclass: default", square->Corner(), 90);
+		Check("object call ?? object, as its subclass, then a call", (source?->Make() ?? fallback)->As(Square)->Corner(), 90);
+		shape : Shape;
+		Check("variable ?? object, as its subclass", (shape ?? fallback)->As(Square)->Corner(), 90);
+
+		# what already worked
+		x := 2.9;
+		Check("a variable in parentheses", (x)->As(Int), 2);
+		Check("a call in parentheses", (source->Ratio(4.5))->As(Int), 4);
+		Check("a cast in the chain", source?->Ratio(3.75)->As(Int), 3);
+
+		total := 0;
+		for(pass := 0; pass < 20000; pass += 1;) {
+			total += Hot((pass % 2 = 0) ? source : none, 2.5);
+		};
+		Check("hot", total, 10000 * 2 + 10000 * -1);
+
+		if(@fails = 0) {
+			"PASS: a cast after a parenthesised chain converts its value"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}
