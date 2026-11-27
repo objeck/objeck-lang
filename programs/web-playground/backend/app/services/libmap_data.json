@@ -221,7 +221,7 @@
   "net": {
    "deps": ["gen_collect", "cipher"],
    "bundles": {
-    "Web.HTTP": ["Cookie", "Downloader", "HeaderCheck", "HttpClient", "HttpsClient", "RequestLimits", "Response", "SSEEvent", "SSEStream", "SecureWebSocket", "Url", "WebCommon", "WebDownloader", "WebSocket"]
+    "Web.HTTP": ["Cookie", "Downloader", "HeaderCheck", "HttpClient", "HttpsClient", "RequestLimits", "Response", "SSEEvent", "SSEStream", "SecureWebSocket", "Url", "WebCommon", "WebDownloader", "WebSocket", "WebSocketHandshake"]
    }
   },
   "net_h2": {
