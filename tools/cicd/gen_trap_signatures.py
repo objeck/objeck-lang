@@ -18,6 +18,14 @@ per trap id, and it is read from the two places that already agree on it:
     python3 gen_trap_signatures.py --check                        # header against the compiler
     python3 gen_trap_signatures.py --observed <file>              # header against a run
 
+The header is written only from a corpus that can describe every trap: the run
+stops, non-zero and with the committed header untouched, when no image was read
+(a misspelled or empty directory) or when a trap whose handler reads its caller's
+frame or instance was seen in no library method (its row would list no method it
+may stand in, and a VM built from it refuses every valid program that uses it:
+System.Base:GetClass is LOAD_CLS_BY_INST). --check holds the committed header to
+the same rule.
+
 The images are the whole-library programs tools/fuzz/adhoc/obe_corpus_gate.py
 compiles (<out>/cover) and the compiled tree (<out>/img). --check needs no build:
 it fails when a row's instruction or count is not what the compiler writes, or
@@ -62,6 +70,8 @@ MAX_ARGS = 8
 #                     method's result (TrapProcessor::FileTempName)
 #   LOAD_CLS_BY_INST  written TRAP_RTRN, but the handler stores the Class object in
 #                     the method's first local and pushes nothing (LoadClsByInst)
+# A "contexts" entry (a list of method names) names where a frame-reading trap may
+# stand when no library method in the corpus holds it; none is needed today.
 OVERRIDES = {
     "FILE_TEMP_NAME": {"pushes": 1, "result": (W_OBJ, {"System.String"}, False)},
     "LOAD_CLS_BY_INST": {"pushes": 0},
@@ -176,6 +186,7 @@ def census(dirs, shapes, ids):
     names = {v: k for k, v in ids.items()}
     seen = collections.defaultdict(Seen)
     files = []
+    parsed = 0
     for d in dirs:
         files += sorted(glob.glob(os.path.join(d, "*.obe")))
     for path in files:
@@ -184,6 +195,7 @@ def census(dirs, shapes, ids):
             classes = oi.parse(img)[1]
         except Exception:
             continue
+        parsed += 1
         for c in classes:
             if c["debug"]:
                 continue
@@ -275,7 +287,7 @@ def census(dirs, shapes, ids):
                                 rec.result[2] = True
                     elif opname == "TRAP_RTRN":
                         rec.result[0] |= W_ANY
-    return seen, len(files)
+    return seen, len(files), parsed
 
 
 def mask_text(mask):
@@ -292,8 +304,9 @@ def arg_text(mask, classes, unnamed):
 
 
 def build_rows(seen, shapes, ids):
+    """The rows, the notes, and the errors: with an error the header is not written."""
     frames = frame_traps()
-    rows, problems = [], []
+    rows, problems, errors = [], [], []
     for trap in sorted(set(shapes) | set(LITERAL_COPIES) | {"CPY_CHAR_STR_ARYS"}, key=lambda t: ids.get(t, 0)):
         if trap not in ids:
             problems.append("%s: no id" % trap)
@@ -331,9 +344,14 @@ def build_rows(seen, shapes, ids):
             result = OVERRIDES[trap].get("result", result)
         contexts = None
         if trap in frames:
-            contexts = sorted(rec.contexts) if rec else []
+            contexts = OVERRIDES.get(trap, {}).get("contexts")
+            if contexts is None:
+                contexts = sorted(rec.contexts) if rec else []
+            if not contexts:
+                errors.append("%s: its handler reads the caller's frame or instance, and no image holds it: the row would "
+                              "name no method it may stand in, and every program that uses it would be refused" % trap)
         rows.append((trap, shape["op"] == "TRAP_RTRN", count, pushes, result, args, contexts, frames.get(trap, False)))
-    return rows, problems
+    return rows, problems, errors
 
 
 def write_header(rows, images):
@@ -386,6 +404,25 @@ def check():
                             (trap, "TRAP_RTRN" if rows[trap][0] else "TRAP", rows[trap][1], shape["op"], shape["count"]))
     for trap in sorted(set(rows) - set(shapes) - set(LITERAL_COPIES) - {"CPY_CHAR_STR_ARYS"}):
         problems.append("%s: a row for a trap the compiler no longer writes" % trap)
+    # Where a trap may stand: the last two cells of its row. A trap whose handler
+    # reads the frame or the instance names at least one method, and no other does.
+    frames = frame_traps()
+    tails = {m.group(1): (m.group(2), m.group(3) == "true")
+             for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", [^\n]*, (nullptr|L"[^"\n]*"), (true|false) \},\n', text)}
+    for trap in sorted(rows):
+        if trap not in tails:
+            problems.append("%s: the row's contexts cannot be read" % trap)
+            continue
+        ctx, instance = tails[trap]
+        if trap in frames:
+            if ctx == "nullptr" or not [c for c in ctx[2:-1].split("|") if c]:
+                problems.append("%s: its handler reads the caller's frame or instance and trap_signatures.h names no method "
+                                "it may stand in (generated from an empty or partial corpus?)" % trap)
+            if instance != frames[trap]:
+                problems.append("%s: trap_signatures.h says instance=%s, the handler %s the instance" %
+                                (trap, "true" if instance else "false", "reads" if frames[trap] else "does not read"))
+        elif ctx != "nullptr" or instance:
+            problems.append("%s: trap_signatures.h limits where it may stand, and its handler reads neither the frame nor the instance" % trap)
     return problems
 
 
@@ -427,8 +464,20 @@ def main():
         return 2
     ids = trap_ids()
     shapes, problems = trap_shapes.shapes()
-    seen, images = census(sys.argv[1:], shapes, ids)
-    rows, more = build_rows(seen, shapes, ids)
+    errors = ["%s: not a directory" % d for d in sys.argv[1:] if not os.path.isdir(d)]
+    seen, images, parsed = census(sys.argv[1:], shapes, ids)
+    fatal = []
+    if not parsed:
+        errors.append("no image could be read from %s (%d .obe file(s) found): nothing to describe the traps from" %
+                      (", ".join(sys.argv[1:]), images))
+    else:
+        rows, more, fatal = build_rows(seen, shapes, ids)
+    errors += fatal
+    if errors:
+        for e in errors:
+            print("ERROR", e)
+        print("trap_signatures.h: not written (%d error(s))" % len(errors))
+        return 1
     for p in problems + more:
         print("NOTE", p)
     write_header(rows, images)
