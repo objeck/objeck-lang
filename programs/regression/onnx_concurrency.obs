@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # One ONNX Runtime session used by several Objeck threads, beside a thread that makes garbage.
 #

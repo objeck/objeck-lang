@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # The tiny BERT-shaped test models under data/bert run on this platform's ONNX
 # Runtime and compute exactly the formula their generator documents.

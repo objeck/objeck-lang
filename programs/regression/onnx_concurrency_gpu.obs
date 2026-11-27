@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # The same on the GPU: several Objeck threads share one CUDA or TensorRT session. Skips without a GPU provider.
 #

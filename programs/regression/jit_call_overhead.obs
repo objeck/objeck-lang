@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: call timing below timer resolution
 #~
 # F7 guard: a call from compiled code into compiled code must stay cheap.
 #

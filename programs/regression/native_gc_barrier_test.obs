@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_crypto is not deployed
 #~
 # A value returned by a native library must survive a collection.
 #

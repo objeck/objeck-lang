@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_opencv is not deployed
 # EXTRA_LIBS: ml_clip,ml_verify,opencv,onnx,models
 #~
 System.ML.Clip ClipPreprocessor against Hugging Face's CLIPImageProcessor (Pillow).

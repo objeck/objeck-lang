@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no objeck_sqlite_test data source
 # EXTRA_LIBS: gen_collect,odbc,net,regex,csv,misc,query,query_odbc
 #~
 Query.Structured's ODBC source, OdbcSource (docs/QUERY_DESIGN.md section 6, tier 2,

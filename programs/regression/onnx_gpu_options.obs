@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # GPU provider options: the CUDA and TensorRT option sets, CUDA graphs and the engine cache.
 #

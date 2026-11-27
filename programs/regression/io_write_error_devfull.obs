@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: needs Linux /dev/full
 use System.IO.Filesystem;
 
 # A device that fails every write (Linux /dev/full, ENOSPC) loses output that the

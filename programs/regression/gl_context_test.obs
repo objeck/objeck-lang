@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: no OpenGL 3.3 core context available on this platform
 # EXTRA_LIBS: sdl2,sdl_gl
 #~
 Regression test for OpenGL 3.3 core support: proves a real context can be

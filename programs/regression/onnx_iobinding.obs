@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: libobjk_onnx is not deployed
 #~
 # IO binding: DeviceTensor and BoundSession.
 #

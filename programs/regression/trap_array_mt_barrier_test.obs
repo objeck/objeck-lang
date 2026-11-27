@@ -1,3 +1,4 @@
+# SKIP_ALLOWED: could not list the working directory
 #~
 # A trap-returned array must survive ANOTHER THREAD's allocation.
 #
