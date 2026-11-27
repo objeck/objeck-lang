@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: bad_select_subject_bool_chain.obs:(11,11): Expected integer or string expression
+# EXPECT_ERROR_COUNT: 1
+#~
+The subject of a 'select' is typed by its value, the end of its call chain: a chain that starts
+with a String and ends in a Bool is neither an integer nor a string. It was typed by its head, so
+this was taken for a select on a string and refused twice, by errors about something else
+("Undefined function/method call: 'HashID(..)'", "Integer label in a select on a string").
+~#
+class BadSelectSubjectBoolChain {
+	function : Main(args : String[]) ~ Nil {
+		select("ab"->Equals(args[0])) {
+			label 1 {
+				"equal"->PrintLine();
+			}
+			other {
+				"other"->PrintLine();
+			}
+		};
+	}
+}

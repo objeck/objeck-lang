@@ -9395,6 +9395,15 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
+    // 'select(first + last)', 'match (first + last)->Size() { .. }': a concatenation is
+    // analyzed into a node of its own, which has its value and the calls written after
+    // it; the '+' it was written as has neither. That node is the subject, as it is the
+    // value of a 'return' and of an argument. Left as the '+', such a subject was refused
+    // with "Expected integer or string expression".
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR) {
+      expression = expression->GetPreviousExpression();
+      select_stmt->GetAssignment()->SetExpression(expression);
+    }
     // 'select(counts->Get(i))': an IntRef, CharRef or ByteRef is its value
     if(!IsIntegerExpression(expression)) {
       Expression* last = expression;
@@ -9415,12 +9424,21 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
     }
 
 #ifndef _SYSTEM
-    const bool is_str_expr = IsStringExpression(expression);
+    // A string subject is one whose VALUE is a String: what the whole expression pushes,
+    // the end of its call chain. It was typed by the head of the chain, so in
+    // 'select("ab"->Size())', 'match Name()->Size() { .. }' and '"ab"->Get(0)' the subject
+    // was taken for a String as well as for the integer it is, and the HashID() meant for
+    // a string was added after 'Size()': "Undefined function/method call: 'HashID(..)'".
+    // (Before the hash was taken at run time such a subject was replaced, call and all, by
+    // the hash of the literal it starts with, and the select silently took 'other'.)
+    Type* subject_type = expression->GetEvalType() ? EffectiveStackType(expression) : nullptr;
+    const bool is_str_expr = !is_int_expr && subject_type && subject_type->GetType() == CLASS_TYPE &&
+                             (subject_type->GetName() == L"System.String" || subject_type->GetName() == L"String");
     if(!is_int_expr && !is_str_expr) {
       ProcessError(expression, L"Expected integer or string expression");
     }
 
-    is_str_select = is_str_expr && !is_int_expr;
+    is_str_select = is_str_expr;
     if(is_str_expr) {
       if(expression->GetExpressionType() == VAR_EXPR && !expression->GetMethodCall()) {
         Variable* var_expr = static_cast<Variable*>(expression);
@@ -13393,16 +13411,6 @@ bool ContextAnalyzer::IsEnumExpression(Expression* expression)
         return true;
       }
     }
-  }
-
-  return false;
-}
-
-bool ContextAnalyzer::IsStringExpression(Expression* expression) 
-{
-  Type* eval_type = expression->GetEvalType();
-  if(eval_type && eval_type->GetType() == CLASS_TYPE && eval_type->GetName() == L"System.String") {
-    return true;
   }
 
   return false;

@@ -461,7 +461,6 @@ std::vector<std::wstring> alt_error_method_names;
   bool IsIntegerExpression(Expression* expression);
 
   // returns true if expression is a character string
-  bool IsStringExpression(Expression* expression);
 
   // returns true if expression is a string literal with nothing interpolated or called on it
   bool IsStringConstant(Expression* expression);
