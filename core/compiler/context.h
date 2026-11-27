@@ -446,6 +446,7 @@ std::vector<std::wstring> alt_error_method_names;
 
   // returns true if expression is not an array
   bool IsScalar(Expression* expression, bool check_last = true);
+  bool IsWholeArray(Expression* expression);
 
   // returns true if expression is of boolean type
   bool IsBooleanExpression(Expression* expression);

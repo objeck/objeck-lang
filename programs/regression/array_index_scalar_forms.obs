@@ -1,0 +1,147 @@
+#~
+Every way one value is written as an index still is one, now that a whole
+array is refused as an index (bad_index_whole_array.obs).
+
+An element's type carries its array's dimension, so the check that refuses
+`values[Indices()]` has to tell an array from a value that came out of one:
+an element of a variable, of a field and of a call's result, a calculation on
+elements, a call on an array ('Size()'), an element of a jagged row, an enum
+item and an element of an enum array, a Char, a Byte, a holder and a holder
+element, a conditional, a function value's result, a cast. `a[k]` is `k * 10`
+here, so each check names the element it should have read. Exits 1 on a
+mismatch.
+~#
+enum Slot {
+	First,
+	Second,
+	Third
+}
+
+class Box {
+	@idx : Int[];
+	@one : Int;
+
+	New() {
+		@idx := Int->New[3];
+		@idx[0] := 1;
+		@idx[1] := 2;
+		@one := 1;
+	}
+
+	method : public : Idx() ~ Int[] {
+		return @idx;
+	}
+
+	method : public : One() ~ Int {
+		return @one;
+	}
+
+	method : public : Slots() ~ Slot[] {
+		slots := Slot->New[2];
+		slots[0] := Slot->Second;
+		return slots;
+	}
+
+	# fields as indices: 1, 1 and 2
+	method : public : Use(a : Int[]) ~ Int {
+		return a[@one] + a[@idx[0]] + a[@idx[@one]];
+	}
+}
+
+class ArrayIndexScalarForms {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := ArrayIndexScalarForms->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	function : Twice(n : Int) ~ Int {
+		return n * 2;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	method : Run() ~ Nil {
+		a := Int->New[10];
+		each(k : a) {
+			a[k] := k * 10;
+		};
+
+		b := Int->New[3];
+		b[0] := 1;
+		b[1] := 2;
+		b[2] := 3;
+		box := Box->New();
+		i := 2;
+		c := 'c';
+		y : Byte := 3;
+		r := IntRef->New(4);
+		refs := IntRef->New[2];
+		refs[0] := IntRef->New(5);
+		rows := Int[]->New[2];
+		rows[0] := [6, 7];
+		rows[1] := [8];
+		m := Int->New[3, 3];
+		m[1, 2] := 12;
+		f := Twice(Int) ~ Int;
+		t := true;
+		s := "abc";
+		slots := Slot->New[2];
+		slots[1] := Slot->Third;
+
+		Check("a[i]", a[i], 20);
+		Check("a[b[i]]", a[b[i]], 30);
+		Check("a[b[i] + 1]", a[b[i] + 1], 40);
+		Check("a[b[b[0]]]", a[b[b[0]]], 20);
+		Check("a[box->Idx()[0]]", a[box->Idx()[0]], 10);
+		Check("a[box->Idx()[box->One()]]", a[box->Idx()[box->One()]], 20);
+		Check("a[box->One()]", a[box->One()], 10);
+		Check("a[s->Size()]", a[s->Size()], 30);
+		Check("a[b->Size() - 1]", a[b->Size() - 1], 20);
+		Check("a[Slot->Third]", a[Slot->Third], 20);
+		Check("a[box->Slots()[0]]", a[box->Slots()[0]], 10);
+		Check("a[slots[1]]", a[slots[1]], 20);
+		Check("a[c - 'a']", a[c - 'a'], 20);
+		Check("a[y]", a[y], 30);
+		Check("a[r]", a[r], 40);
+		Check("a[refs[0]]", a[refs[0]], 50);
+		Check("a[r->Get()]", a[r->Get()], 40);
+		Check("a[t ? 1 : 2]", a[t ? 1 : 2], 10);
+		Check("a[rows[0][1]]", a[rows[0][1]], 70);
+		Check("a[rows[1][0]]", a[rows[1][0]], 80);
+		Check("a[f(2)]", a[f(2)], 40);
+		Check("m[b[0], b[1]]", m[b[0], b[1]], 12);
+		Check("a[Twice(b[0])]", a[Twice(b[0])], 20);
+		Check("a[i->Max(3)]", a[i->Max(3)], 30);
+		Check("a[(i + 1)->Min(9)]", a[(i + 1)->Min(9)], 30);
+		Check("fields", box->Use(a), 40);
+		Check("box->Idx()[b[0]]", box->Idx()[b[0]], 2);
+		Check("box->Idx()[box->Idx()[0] - 1]", box->Idx()[box->Idx()[0] - 1], 1);
+		Check("a[b[0]->As(Int)]", a[b[0]->As(Int)], 10);
+		Check("a[1.6->As(Int)]", a[1.6->As(Int)], 10);
+
+		# stores go through the same check
+		a[b[0]] := 111;
+		a[box->Idx()[1]] += 1;
+		a[rows[1][0]] := 888;
+		Check("store a[b[0]]", a[1], 111);
+		Check("store a[box->Idx()[1]]", a[2], 21);
+		Check("store a[rows[1][0]]", a[8], 888);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: every single-value form is accepted as an index"->PrintLine();
+	}
+}

@@ -5133,6 +5133,10 @@ void ContextAnalyzer::AnalyzeCallIndices(MethodCall* method_call, const int dept
        index_type->GetType() != CHAR_TYPE) {
       ProcessError(static_cast<Expression*>(method_call), L"Expected an integer index");
     }
+    // one value, not an array of them (see AnalyzeIndices)
+    else if(index_type && IsWholeArray(index_exprs[i])) {
+      ProcessError(index_exprs[i], L"An array is not an index: expected a Byte, Char, Int or Enum value");
+    }
   }
 }
 
@@ -9021,11 +9025,22 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:
+        // one value, not an array of them: an array's type is its element's
+        // with a dimension, so 'values[Indices()]' with 'Indices() ~ Int[]'
+        // passed as an Int index and the array's address was used as one
+        // (the index is kept, so the subscript is not reported a second time
+        // for having too few)
+        if(IsWholeArray(expression)) {
+          ProcessError(expression, L"An array is not an index: expected a Byte, Char, Int or Enum value");
+        }
         unboxed_expressions.push_back(expression);
         break;
 
       case CLASS_TYPE:
         if(IsEnumExpression(expression)) {
+          if(IsWholeArray(expression)) {
+            ProcessError(expression, L"An array is not an index: expected a Byte, Char, Int or Enum value");
+          }
           unboxed_expressions.push_back(expression);
         }
         else {
@@ -13067,6 +13082,35 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
   }
 
   return true;
+}
+
+/****************************
+ * True for an expression whose value is a whole array: a variable or a call's
+ * result that has a dimension and no subscript, a jagged array's row, or an
+ * array literal. An element ('a[i]', 'Items()[i]') and anything computed from
+ * one are a single value, although their type still carries the dimension.
+ ****************************/
+bool ContextAnalyzer::IsWholeArray(Expression* expression)
+{
+  if(!expression) {
+    return false;
+  }
+
+  while(expression->GetMethodCall()) {
+    expression = expression->GetMethodCall();
+  }
+
+  switch(expression->GetExpressionType()) {
+  case VAR_EXPR:
+  case METHOD_CALL_EXPR:
+    return !IsScalar(expression, false);
+
+  case STAT_ARY_EXPR:
+    return true;
+
+  default:
+    return false;
+  }
 }
 
 bool ContextAnalyzer::IsBooleanExpression(Expression* expression)
