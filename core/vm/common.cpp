@@ -4180,19 +4180,76 @@ static size_t ReadUtf8Tail(char* buf, size_t len, ReadMore read_more)
   return len + added;
 }
 
-// The characters in the 'len' bytes read for a request of 'num' (buf has room for a terminator). A
-// character the stream ended inside is U+FFFD, and the rest still decodes. At most 'num' characters:
-// only where a Char is 16 bits can there be one more (a character outside the BMP is two, and its four
-// bytes may be the last byte asked for plus three completed), and then that character is U+FFFD too
-// rather than half a pair, or a write past the slots the caller named.
-static std::wstring DecodeCharRead(char* buf, size_t len, size_t num)
+// One UTF-8 character from the bytes at [at, end), which hold at least one: its code point, or U+FFFD
+// for bytes that are not one, and how many bytes it took. A lead byte and the continuation bytes that
+// follow it, up to the number it announces, are ONE unit: a character when they form one, else one
+// U+FFFD (a sequence cut short, an overlong form, a surrogate, a value past U+10FFFF). A byte that
+// starts nothing (a lone continuation byte, 0xC0, 0xC1, 0xF5 and up) is a unit of its own. So a byte
+// that is a character in its own right is never taken into a broken sequence before it.
+static size_t DecodeUtf8Unit(const unsigned char* at, const unsigned char* end, char32_t& value)
 {
-  size_t tail = 0;
-  const bool torn = Utf8TailMissing(buf, len, &tail) > 0;
-  buf[torn ? len - tail : len] = '\0';
-  std::wstring in = BytesToUnicode(buf);
-  if(torn) {
-    in.push_back((wchar_t)0xFFFD);
+  const unsigned char lead = at[0];
+  if(lead < 0x80) {
+    value = lead;
+    return 1;
+  }
+
+  const size_t whole = (lead >= 0xC2 && lead <= 0xDF) ? 2 : (lead >= 0xE0 && lead <= 0xEF) ? 3 : (lead >= 0xF0 && lead <= 0xF4) ? 4 : 1;
+  size_t have = 1;
+  while(have < whole && at + have < end && (at[have] & 0xC0) == 0x80) {
+    ++have;
+  }
+
+  value = 0xFFFD;
+  if(whole > 1 && have == whole) {
+    char32_t cp;
+    if(whole == 2) {
+      cp = ((char32_t)(lead & 0x1F) << 6) | (at[1] & 0x3F);
+    }
+    else if(whole == 3) {
+      cp = ((char32_t)(lead & 0x0F) << 12) | ((char32_t)(at[1] & 0x3F) << 6) | (at[2] & 0x3F);
+      if(cp < 0x800 || (cp >= 0xD800 && cp <= 0xDFFF)) {
+        cp = 0xFFFD;   // overlong, or a surrogate
+      }
+    }
+    else {
+      cp = ((char32_t)(lead & 0x07) << 18) | ((char32_t)(at[1] & 0x3F) << 12) | ((char32_t)(at[2] & 0x3F) << 6) | (at[3] & 0x3F);
+      if(cp < 0x10000 || cp > 0x10FFFF) {
+        cp = 0xFFFD;   // overlong, or out of range
+      }
+    }
+    value = cp;
+  }
+
+  return have;
+}
+
+// The characters in the 'len' bytes read for a request of 'num'. The bytes are decoded by their length,
+// not as a C string, and every one of them is accounted for: a zero byte is the character U+0000 (read
+// as a terminator it ended the text, so a read of 00 41 stored nothing, returned 0 -- the answer for the
+// end of the stream -- and 'A' was gone), and bytes that are not UTF-8 are U+FFFD with what follows
+// them still decoded (on POSIX one bad byte made the whole chunk decode to nothing). A character the
+// stream ended inside is U+FFFD too. At most 'num' characters: only where a Char is 16 bits can there be
+// one more (a character outside the BMP is two, and its four bytes may be the last byte asked for plus
+// three completed), and then that character is U+FFFD too rather than half a pair, or a write past the
+// slots the caller named.
+static std::wstring DecodeCharRead(const char* buf, size_t len, size_t num)
+{
+  std::wstring in;
+  in.reserve(len);
+  const unsigned char* at = (const unsigned char*)buf;
+  const unsigned char* const end = at + len;
+  while(at < end) {
+    char32_t value;
+    at += DecodeUtf8Unit(at, end, value);
+    if(sizeof(wchar_t) == 2 && value > 0xFFFF) {
+      value -= 0x10000;
+      in.push_back((wchar_t)(0xD800 + (value >> 10)));
+      in.push_back((wchar_t)(0xDC00 + (value & 0x3FF)));
+    }
+    else {
+      in.push_back((wchar_t)value);
+    }
   }
   if(in.size() > num) {
     in.resize(num);
