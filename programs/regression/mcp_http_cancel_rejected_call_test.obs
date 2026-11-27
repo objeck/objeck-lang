@@ -1,0 +1,249 @@
+# EXTRA_LIBS: mcp,net,net_server,cipher,misc
+#~
+A tools/call that was cancelled while its arguments were being checked is not answered, also when the
+check then rejects the arguments (API.MCP). The streamable HTTP transport with sessions, loopback only,
+port 0.
+
+The request id is reserved before the arguments are looked at, so a notifications/cancelled that arrives
+during the check finds the call. When the check passed, the cancellation was carried over and the call
+was neither run nor answered. When the check FAILED, the "invalid arguments" result was returned without
+a look at the reservation: the client got a reply to a request it had cancelled, where a cancelled
+request gets none (over HTTP: 202 and no body). The reservation is now ended, and the reply held back or
+sent, in one move under the mutex the cancellation takes, on every way out.
+
+The interleaving is forced by the size of the call: its one argument is a list of 100,000 integers with a
+string as the last item, so the check runs for a good part of a second (0.3 s on the machine this was
+written on) and only then rejects. One thread POSTs the call; the main thread POSTs the cancellation, in
+the same session, again and again until the call is back. The call must come back 202 with no body, and
+its id must be free at once. The same is done below the transport, on a named connection, for the three
+other early ways out (no name, an unknown tool, arguments that are not an object), with a cancellation
+that is in place before each of them is reached.
+~#
+use API.MCP, Data.JSON, Collection, System.Concurrency;
+
+class Poster from Thread {
+	@url : String;
+	@session : String;
+
+	New(url : String, session : String) {
+		Parent();
+		@url := url;
+		@session := session;
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		client := Web.HTTP.HttpClient->New();
+		client->AddHeader("Accept", "application/json, text/event-stream");
+		client->AddHeader("Mcp-Session-Id", @session);
+		response := client->Post(Web.HTTP.Url->New(@url), arg->As(String)->ToByteArray(), "application/json");
+		code := 0;
+		text := "";
+		if(response <> Nil) {
+			code := response->GetCode();
+			if(response->GetContent() <> Nil) {
+				text := String->New(response->GetContent());
+			};
+		};
+		McpHttpCancelRejectedCallTest->Answered(code, text);
+	}
+}
+
+class McpHttpCancelRejectedCallTest {
+	@pass : static : Int;
+	@fail : static : Int;
+	@service : static : McpService;
+	@ran : static : Int;
+	@done : static : Bool;
+	@code : static : Int;
+	@text : static : String;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			@pass += 1;
+		}
+		else {
+			@fail += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Service() ~ McpService {
+		return @service;
+	}
+
+	function : Answered(code : Int, text : String) ~ Nil {
+		@code := code;
+		@text := text;
+		@done := true;
+	}
+
+	function : Bulk(call : McpCall) ~ McpToolResult {
+		@ran += 1;
+		return McpToolResult->Text("ran");
+	}
+
+	# a tools/call for bulk whose list of `count` integers ends in a string: rejected, but only at the end
+	function : Rejected(id : Int, count : Int) ~ String {
+		text := String->New();
+		text->Append("{\"jsonrpc\":\"2.0\",\"id\":{$id},\"method\":\"tools/call\",\"params\":{\"name\":\"bulk\",\"arguments\":{\"items\":[");
+		for(i := 0; i < count; i += 1;) {
+			text->Append("7,");
+		};
+		text->Append("\"last\"]}}}");
+		return text;
+	}
+
+	function : Post(url : String, session : String, body : String) ~ Web.HTTP.Response {
+		client := Web.HTTP.HttpClient->New();
+		client->AddHeader("Accept", "application/json, text/event-stream");
+		if(session <> Nil) {
+			client->AddHeader("Mcp-Session-Id", session);
+		};
+		return client->Post(Web.HTTP.Url->New(url), body->ToByteArray(), "application/json");
+	}
+
+	function : CancelText(id : Int) ~ String {
+		return "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":{$id}}}";
+	}
+
+	function : Http(count : Int) ~ Nil {
+		thread := Thread->New() {
+			New() { Parent() }
+			method : public : Run(arg : System.Base) ~ Nil {
+				McpHttpCancelRejectedCallTest->Service()->ServeHttp(0);
+			}
+		};
+		thread->Execute(Nil);
+
+		waited := 0;
+		while(@service->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := @service->GetBoundPort();
+		Check("the HTTP transport listens", port > 0);
+		if(port <= 0) {
+			return;
+		};
+		url := "http://127.0.0.1:{$port}/mcp";
+
+		# a session
+		init := Web.HTTP.HttpClient->New();
+		response := init->Post(Web.HTTP.Url->New(url), "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"t\",\"version\":\"1\"}}}"->ToByteArray(), "application/json");
+		session : String;
+		headers := init->GetResponseHeaders();
+		if(response <> Nil & response->GetCode() = 200 & headers <> Nil) {
+			session := headers->Find("mcp-session-id");
+		};
+		Check("initialize opens a session", session <> Nil);
+		if(session = Nil) {
+			Web.HTTP.Server.WebServer->Stop();
+			return;
+		};
+
+		# nobody cancels: the rejected call is answered, as it always was
+		timer := System.Time.Timer->New(true);
+		response := Post(url, session, Rejected(1, count));
+		check_ms := (timer->GetElapsedTime() * 1000.0)->As(Int);
+		Check("a call with a bad argument that nobody cancels is answered with an isError result", response <> Nil & response->GetCode() = 200 & String->New(response->GetContent())->Has("Invalid arguments for bulk"));
+
+		# the same call, cancelled in the same session while its arguments are checked
+		@done := false;
+		@code := 0;
+		@text := "";
+		poster := Poster->New(url, session);
+		poster->Execute(Rejected(2, count));
+		sent := 0;
+		accepted := 0;
+		while(<>@done & sent < 20000) {
+			response := Post(url, session, CancelText(2));
+			if(response <> Nil & response->GetCode() = 202) {
+				accepted += 1;
+			};
+			sent += 1;
+			Thread->Sleep(1);
+		};
+		poster->Join();
+		if(@code <> 202 | <>@text->IsEmpty()) {
+			size := @text->Size();
+			"  the rejected call takes about {$check_ms} ms; {$sent} cancellations were sent while it was at work; it came back {$@code} with {$size} characters"->PrintLine();
+		};
+		Check("cancellations were sent and accepted while the call was at work", accepted > 0 & accepted = sent);
+		Check("the cancelled call is answered 202", @code = 202);
+		Check("with no body: no JSON-RPC reply for a request the client gave up", @text->IsEmpty());
+
+		# the id names nothing any more: it is free at once
+		@ran := 0;
+		response := Post(url, session, "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"bulk\",\"arguments\":{\"items\":[1]}}}");
+		Check("the id is free at once for the next call", response <> Nil & response->GetCode() = 200 & String->New(response->GetContent())->Has("ran") & @ran = 1);
+
+		# and a late cancellation for it reaches nothing
+		response := Post(url, session, CancelText(2));
+		@ran := 0;
+		response := Post(url, session, "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"bulk\",\"arguments\":{\"items\":[1]}}}");
+		Check("a cancellation after the call ended is not kept for the next one", response <> Nil & response->GetCode() = 200 & @ran = 1);
+
+		Web.HTTP.Server.WebServer->Stop();
+	}
+
+	# The other early ways out, below the transport. HandleReserved is what the stdio reader calls with
+	# the reservation it made: here the reservation is cancelled before the message is handed over, which
+	# is a cancellation that arrived on the next line
+	function : EarlyExits() ~ Nil {
+		bodies := Vector->New()<String>;
+		bodies->AddBack("{}");
+		bodies->AddBack("{\"name\":\"nope\"}");
+		bodies->AddBack("{\"name\":\"bulk\",\"arguments\":[1]}");
+		bodies->AddBack("{\"name\":\"bulk\",\"arguments\":{\"items\":[\"x\"]}}");
+		names := Vector->New()<String>;
+		names->AddBack("no name");
+		names->AddBack("an unknown tool");
+		names->AddBack("arguments that are not an object");
+		names->AddBack("arguments the schema rejects");
+
+		for(i := 0; i < bodies->Size(); i += 1;) {
+			id := 40 + i;
+			what := names->Get(i);
+			message := "{\"jsonrpc\":\"2.0\",\"id\":{$id},\"method\":\"tools/call\",\"params\":{$bodies->Get(i)}}";
+
+			plain := @service->Handle(message, Nil, "conn");
+			Check("{$what}: answered when nobody cancels", plain <> Nil);
+
+			# reserved by a reader, cancelled on the next line, then run
+			root := JsonParser->TextToElement(message);
+			slot := @service->ReserveForTest("conn", root->Get("id"));
+			@service->Handle(CancelText(id), Nil, "conn");
+			reply := @service->HandleReserved(root, Nil, "conn", slot);
+			Check("{$what}: not answered when the reservation was cancelled", slot <> Nil & reply = Nil);
+
+			@ran := 0;
+			again := @service->Handle("{\"jsonrpc\":\"2.0\",\"id\":{$id},\"method\":\"tools/call\",\"params\":{\"name\":\"bulk\",\"arguments\":{\"items\":[1]}}}", Nil, "conn");
+			Check("{$what}: the id is free afterwards", again <> Nil & again->Has("ran") & @ran = 1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		count := 100000;
+		if(args->Size() > 0) {
+			count := args[0]->ToInt();
+		};
+
+		@text := "";
+		@service := McpService->New("cancel-rejected-test", "1.0");
+		schema := "{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"type\":\"integer\"}}}}";
+		@service->AddTool("bulk", "Takes a long list", schema, Func2Ref->New(McpHttpCancelRejectedCallTest->Bulk(McpCall) ~ McpToolResult)<McpCall, McpToolResult>);
+
+		EarlyExits();
+		Http(count);
+
+		pass := @pass;
+		fail := @fail;
+		if(fail = 0) {
+			"PASS: MCP cancel of a rejected call, {$pass} checks"->PrintLine();
+		}
+		else {
+			"FAIL: MCP cancel of a rejected call, {$fail} of {$pass + fail} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

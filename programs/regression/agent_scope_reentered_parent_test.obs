@@ -1,0 +1,192 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+A child scope is limited by what its parent was inside when the child was entered, not by what the parent
+is inside later (API.Agent), against a scripted fake model (no key, no network).
+
+Scope B is entered inside A, and a worker thread enters B->Child() and waits. B is left. The same B is
+then entered again inside an unrelated scope C whose one step has been used. When the old child now
+makes a run, its limits were worked out by following B's CURRENT link, which leads to C: the run was
+refused for C's step limit and counted against C, although the child was entered before C had anything
+to do with B. The limits of a scope are now its own two links and the scopes it recorded when it was
+entered; the links of the scopes above it are not followed again later. B itself, the child's parent,
+is charged as it always is.
+
+The worker is held at a gate until B is inside C, so the order is forced. The old child's run must
+complete (two model calls) and leave C's counters alone; a child of B that is entered while B is inside
+C must still be stopped by C.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+class NoteHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return "ok";
+  }
+}
+
+# enters a child scope, says so, waits to be told to go on, then makes a run
+class Lingerer from Thread {
+  New() {
+    Parent("lingerer");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    AgentScope->Run(param->As(AgentScope), AgentScopeReenteredParentTest->Linger() ~ Nil);
+    AgentScopeReenteredParentTest->Finished();
+  }
+}
+
+class AgentScopeReenteredParentTest {
+  @failures : static : Int;
+  @a : static : AgentScope;
+  @b : static : AgentScope;
+  @c : static : AgentScope;
+  @worker : static : Lingerer;
+  @backend : static : ScriptedBackend;
+  @agent : static : Agent;
+  @backend3 : static : ScriptedBackend;
+  @entered : static : Bool;
+  @go : static : Bool;
+  @finished : static : Bool;
+  @spent : static : AgentResult;
+  @late : static : AgentResult;
+  @third : static : AgentResult;
+  @c_steps : static : Int;
+  @c_runs : static : Int;
+  @b_steps : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Finished() ~ Nil {
+    @finished := true;
+  }
+
+  function : Await(what : Int) ~ Nil {
+    waited := 0;
+    done := false;
+    while(<>done & waited < 20000) {
+      if(what = 0) {
+        done := @entered;
+      }
+      else {
+        done := @finished;
+      };
+      if(<>done) {
+        Thread->Sleep(2);
+        waited += 2;
+      };
+    };
+  }
+
+  # one tool call, then an answer: two steps when nothing stops it
+  function : NewAgent() ~ Agent {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("note", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), NoteHandler->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "note", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    @backend := ScriptedBackend->New(script);
+    return Agent->New(@backend, registry);
+  }
+
+  # the worker's body, inside the child of B: held at the gate, then one run
+  function : Linger() ~ Nil {
+    @entered := true;
+    waited := 0;
+    while(<>@go & waited < 20000) {
+      Thread->Sleep(2);
+      waited += 2;
+    };
+    @late := @agent->Run("late");
+  }
+
+  # B's body the first time: the worker enters a child of B; the body returns while it waits
+  function : StartWorker() ~ Nil {
+    @worker := Lingerer->New();
+    @worker->Execute(@b->Child());
+    Await(0);
+  }
+
+  function : FirstEntry() ~ Nil {
+    AgentScope->Run(@b, StartWorker() ~ Nil);
+  }
+
+  # a child of B entered now, while B is inside C
+  function : Third() ~ Nil {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Say("never"));
+    @backend3 := ScriptedBackend->New(script);
+    @third := Agent->New(@backend3, ToolRegistry->New())->Run("third");
+  }
+
+  # B's body the second time, inside C: the old child is let go and makes its run
+  function : SecondEntry() ~ Nil {
+    @go := true;
+    Await(1);
+    @worker->Join();
+    @c_steps := @c->GetStepsUsed();
+    @c_runs := @c->GetRuns();
+    @b_steps := @b->GetStepsUsed();
+    AgentScope->Run(@b->Child(), Third() ~ Nil);
+  }
+
+  # C's body: its one step is used, then B is entered inside it
+  function : InsideC() ~ Nil {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Say("C's step"));
+    @spent := Agent->New(ScriptedBackend->New(script), ToolRegistry->New())->Run("use C");
+    AgentScope->Run(@b, SecondEntry() ~ Nil);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    AgentScope->Init();
+    @agent := NewAgent();
+    @a := AgentScope->New();
+    @b := AgentScope->New();
+    @c := AgentScope->New()->SetMaxSteps(1);
+    @c_steps := -1;
+    @c_runs := -1;
+    @b_steps := -1;
+
+    "B is left and entered again inside C while its old child is still at work:"->PrintLine();
+    AgentScope->Run(@a, FirstEntry() ~ Nil);
+    Check("the worker is inside its child of B, and B and A are left", @entered & <>@finished & AgentScope->Current() = Nil);
+    AgentScope->Run(@c, InsideC() ~ Nil);
+
+    Check("C's one step was used by its own run", @spent <> Nil & @spent->IsCompleted());
+    Check("the old child made its run", @finished & @late <> Nil);
+    if(@late <> Nil) {
+      if(<>@late->IsCompleted()) {
+        "  the old child's run ended with {$@late->GetStopReason()}: {$@late->GetError()}"->PrintLine();
+      };
+      Check("it is not stopped by C, which was never above it: the run completes", @late->IsCompleted() & @backend->GetAskedCount() = 2);
+      Check("and C is not charged for it: one step and one run, its own", @c_steps = 1 & @c_runs = 1);
+      Check("B, its parent, is charged as always", @b_steps = 2);
+    };
+    Check("a child of B entered while B is inside C is stopped by C", @third <> Nil & Same(@third->GetStopReason(), "budget_steps") & @backend3->GetAskedCount() = 0);
+    Check("the main thread is in no scope at the end", AgentScope->Current() = Nil);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

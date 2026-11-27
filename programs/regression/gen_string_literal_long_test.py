@@ -40,11 +40,13 @@ HEAD = """#~
 # literal of 999 strings in a function without parameters (1,000 in Main) compiled
 # and then would not load: ">>> Invalid bytecode: ... the operand stack grows to
 # 1001 words past the arguments, more than a call's room <<<". A literal of more
-# than 512 strings is now built in a hidden local, an element at a time, as
+# than 6 strings is now built in a hidden local, an element at a time, as
 # '["a", b]' is. Every element of every shape is compared with the text its
 # position spells, so a store to the wrong subscript fails here:
 #
-#   one dimension    512 (the old lowering's longest), 513 (the new one's shortest),
+#   one dimension    6 (the longest still built on the stack), 7 (the shortest
+#                    built an element at a time), 512 and 513 (the boundary until
+#                    nested calls showed it was too high),
 #                    999 in a function without parameters (the case refused), 1,100
 #                    in Main, 2,000
 #   two dimensions   600 x 2
@@ -127,8 +129,10 @@ MAIN = """
       Fail("control: {$control} of 1,100 differ from the wrong text");
     };
 
-    Flat("512, on the stack", Old512(), "p", 512);
-    Flat("513, an element at a time", New513(), "q", 513);
+    Flat("6, on the stack", Stack6(), "v", 6);
+    Flat("7, an element at a time", Element7(), "w", 7);
+    Flat("512", Old512(), "p", 512);
+    Flat("513", New513(), "q", 513);
     Flat("999 in a function without parameters", Refused999(), "h", 999);
     Flat("2,000", Long2000(), "t", 2000);
 
@@ -216,6 +220,8 @@ def function(name, typ, literal):
 
 
 text = HEAD
+text += function("Stack6", "String[]", flat("v", 6))
+text += function("Element7", "String[]", flat("w", 7))
 text += function("Old512", "String[]", flat("p", 512))
 text += function("New513", "String[]", flat("q", 513))
 text += function("Refused999", "String[]", flat("h", 999))

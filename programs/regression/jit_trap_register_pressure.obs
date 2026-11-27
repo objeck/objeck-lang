@@ -11,10 +11,12 @@ interpreter, and it was the most common reason a method stayed interpreted in th
 regression suite. One register does the job in each place now (ProcessReturn,
 ProcessIntCallParameter, ProcessFloatCallParameter).
 
-Literals of five and six strings must compile on AMD64; seven and eight still
-run out of the pool at the object creations that precede the trap and stay
-interpreted, which is correct and slower. Every result below is checked, so the
-test holds whichever engine runs each method.
+Literals of five and six strings must compile on AMD64. Seven and eight ran out
+of the pool at the object creations that precede the trap and stayed interpreted;
+since obc builds a String literal of more than six elements an element at a time
+(STRING_LITERAL_STACK_MAX, core/compiler/context.h) they no longer hold their
+elements in registers at all, and are here as that form's check. Every result
+below is checked, so the test holds whichever engine runs each method.
 
 run_vm_flag_tests.py section 32 requires, under --jit=1 with OBJECK_JIT_REPORT=1,
 that L5 and L6 report "compiled" (AMD64) and that stdout is byte for byte what

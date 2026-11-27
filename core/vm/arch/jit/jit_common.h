@@ -307,15 +307,10 @@ public:
   // holding a hot loop never crossed the threshold, so the loop ran interpreted
   // for the life of the program. A back-edge is a JMP whose target index is not
   // beyond its own (the compiler resolves labels to instruction indices).
-  static bool HasLoop(StackMethod* mthd) {
-    for(long i = 0; i < mthd->GetInstructionCount(); ++i) {
-      StackInstr* instr = mthd->GetInstruction(i);
-      if(instr->GetType() == JMP && instr->GetOperand() <= i) {
-        return true;
-      }
-    }
-    return false;
-  }
+  // Called by the interpreter before a compile is asked for, never by a
+  // backend during one: it reads every opcode of the method under the
+  // call-site lock, shared (jit_common.cpp), which a compile already holds.
+  static bool HasLoop(StackMethod* mthd);
 
   static bool HasFrameDependentTrap(StackMethod* mthd) {
     for(long i = 0; i < mthd->GetInstructionCount(); ++i) {

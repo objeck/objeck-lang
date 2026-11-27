@@ -2217,6 +2217,19 @@ bundle API.MCP {
 		}
 
 		#~
+		For tests only. Reserves a request id the way the reader of standard input does before it hands a
+		tools/call to a worker, so that a test can have a cancellation reach the reservation before the
+		call is looked at (HandleReserved takes the reservation)
+		@hidden
+		@param scope a name for the connection
+		@param id the request id
+		@return the reservation, Nil when the id is at work
+		~#
+		method : public : ReserveForTest(scope : String, id : JsonElement) ~ McpCall {
+			return Reserve(scope, id);
+		}
+
+		#~
 		@hidden
 		~#
 		method : public : Release(scope : String, id : JsonElement, call : McpCall) ~ Nil {
@@ -2614,7 +2627,7 @@ bundle API.MCP {
 		~#
 		method : CallTool(id : JsonElement, params : JsonElement, sink : McpSink, scope : String, slot : McpCall) ~ JsonElement {
 			if(slot <> Nil) {
-				return RunTool(id, params, sink, scope, slot);
+				return Settle(scope, id, slot, RunTool(id, params, sink, scope, slot));
 			};
 
 			# Nobody reserved the request id (HTTP, an in-process client, Handle): it is reserved here, before
@@ -2632,11 +2645,36 @@ bundle API.MCP {
 
 			reply : JsonElement;
 			try {
-				reply := RunTool(id, params, sink, scope, held);
+				reply := Settle(scope, id, held, RunTool(id, params, sink, scope, held));
 			}
 			finally {
-				# whichever way the call ended; a no-op once the call itself took the reservation's place
+				# for a call that ended by raising; a no-op in every other case
 				Release(scope, id, held);
+			};
+			return reply;
+		}
+
+		# Ends a reservation and decides whether the reply is sent, in one move under the mutex a
+		# cancellation takes. RunTool has ways out before the call takes the reservation's place: no name,
+		# no such tool, arguments that are not an object, arguments the schema rejects. On those the
+		# reservation is still the entry a notifications/cancelled finds, and the check of the arguments
+		# can take long enough for one to arrive. Such a request was answered all the same (a reply to a
+		# request the client had given up, where a cancelled request gets none). After this move the id
+		# names nothing, so a cancellation is either seen here or comes too late to matter
+		method : Settle(scope : String, id : JsonElement, slot : McpCall, reply : JsonElement) ~ JsonElement {
+			cancelled := false;
+			key := Key(scope, id);
+			critical(@mutex) {
+				if(@inflight->Find(key) = slot) {
+					@inflight->Remove(key);
+				};
+				cancelled := slot->IsCancelled();
+			};
+
+			# a reply with a cancelled reservation is one of the early ways out: the call itself answers
+			# a cancellation with no reply, and takes the reservation's cancellation over when it starts
+			if(cancelled) {
+				return Nil;
 			};
 			return reply;
 		}

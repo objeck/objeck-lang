@@ -1,0 +1,197 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+A bounded worker that outlives a one-shot agent is still joined (API.Agent), against a scripted fake
+model (no key, no network).
+
+A worker that the loop stops waiting for, a BOUNDED_THREAD tool or a bounded model call, was kept on a
+list of the agent that started it and joined at that agent's next call on a worker or the end of one of
+its runs. When the wait ends in an error (a trace sink that raises on the halt event of a cancel) the
+end of the run is skipped, and an agent that is used once never makes another call: the worker finished a
+moment later and nobody joined it. A program that makes a new agent for every request kept one thread's
+stack (POSIX) or handle (Windows) for each such run. The list now belongs to the library, not to an
+agent: whichever agent next starts a worker, or ends a run, joins what has finished.
+
+agent_worker_release_test makes every run on one agent, which hides this. Here every run is made by an
+agent of its own that is then dropped: 60 for a tool and 60 for a model call. Each run must end with the
+sink's error and the memory mappings of the process must not grow with the runs (each unjoined thread
+keeps at least one; read from /proc/self/maps, so that check is Linux only and skipped elsewhere).
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency, System.IO.Filesystem;
+
+# takes a little while, as a tool on a worker does
+class SlowHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(60);
+    return "ok";
+  }
+}
+
+# cancels the token when a worker is about to start, and raises on the halt event that follows
+class RaisingSink implements AgentTraceSink {
+  @token : AgentCancel;
+  @trigger : String;
+  @halts : Int;
+
+  New(trigger : String) {
+    @trigger := trigger;
+  }
+
+  method : public : Arm(token : AgentCancel) ~ Nil {
+    @token := token;
+  }
+
+  method : public : GetHalts() ~ Int {
+    return @halts;
+  }
+
+  method : public : OnEvent(event : AgentEvent) ~ Nil {
+    if(@token <> Nil) {
+      if(event->GetKind()->Equals(@trigger)) {
+        @token->Cancel("stopped by the sink");
+      }
+      else if(event->GetKind()->Equals("halt")) {
+        @halts += 1;
+        Runtime->Raise(Error->New("the sink raised on halt"));
+      };
+    };
+  }
+}
+
+class AgentWorkerReaperTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # memory mappings of this process, or 0 where there is no /proc/self/maps
+  function : Mappings() ~ Int {
+    lines := 0;
+    reader := FileReader->New("/proc/self/maps");
+    if(reader->IsOpen()) {
+      line := reader->ReadLine();
+      while(line <> Nil) {
+        lines += 1;
+        line := reader->ReadLine();
+      };
+      reader->Close();
+    };
+    return lines;
+  }
+
+  function : Registry() ~ ToolRegistry {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("slow", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), SlowHandler->New()));
+    return registry;
+  }
+
+  function : ToolAgent() ~ Agent {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "slow", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    agent := Agent->New(ScriptedBackend->New(script), Registry());
+    agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    return agent;
+  }
+
+  function : ModelAgent() ~ Agent {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Say("reply"));
+    script->AddBack(AgentReply->Say("spare"));
+    backend := ScriptedBackend->New(script);
+    backend->SetDelayMs(60);
+    agent := Agent->New(backend, Registry());
+    agent->SetBoundedModelCalls(true);
+    return agent;
+  }
+
+  # makes `runs` runs, each by an agent of its own that is cancelled by its sink as its worker starts
+  # and never used again; returns how many ended with the sink's error
+  function : Raise(tool : Bool, runs : Int) ~ Int {
+    raised := 0;
+    for(i := 0; i < runs; i += 1;) {
+      agent : Agent;
+      sink : RaisingSink;
+      if(tool) {
+        agent := ToolAgent();
+        sink := RaisingSink->New("tool_start");
+      }
+      else {
+        agent := ModelAgent();
+        sink := RaisingSink->New("model_start");
+      };
+      token := AgentCancel->New();
+      agent->SetCancel(token);
+      agent->SetTrace(sink);
+      sink->Arm(token);
+      try {
+        agent->Run("go {$i}");
+      }
+      on(e : Error) {
+        if(e->GetMessage() <> Nil & e->GetMessage()->Has("the sink raised on halt")) {
+          raised += 1;
+        };
+      };
+      # the worker that was left behind finishes; nothing of this agent runs again
+      Thread->Sleep(90);
+    };
+    return raised;
+  }
+
+  function : OneShot(tool : Bool, what : String, runs : Int) ~ Nil {
+    "{$what}, {$runs} one-shot agents, each cancelled with a sink that raises:"->PrintLine();
+    # a warm-up, so that what the first runs map (code, the heap) is not counted
+    warm := Raise(tool, 10);
+    before := Mappings();
+    raised := Raise(tool, runs);
+    after := Mappings();
+    if(warm <> 10 | raised <> runs) {
+      "  {$warm} of 10 and {$raised} of {$runs} runs ended with the sink's error"->PrintLine();
+    };
+    Check("every run ended with the sink's error", warm = 10 & raised = runs);
+
+    if(before = 0) {
+      "  SKIP: no /proc/self/maps on this platform, the threads are not counted"->PrintLine();
+    }
+    else {
+      grown := after - before;
+      if(grown >= runs / 2) {
+        "  the process has {$grown} more memory mappings after {$runs} runs"->PrintLine();
+      };
+      Check("the workers were joined: the mappings did not grow with the runs", grown < runs / 2);
+    };
+
+    # an agent that is used in the ordinary way still works, and joins what is left
+    agent := ToolAgent();
+    result := agent->Run("to the end");
+    Check("an agent made afterwards runs to its answer", result->IsCompleted());
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    runs := 60;
+    if(args->Size() > 0) {
+      runs := args[0]->ToInt();
+    };
+
+    OneShot(true, "a tool on a worker", runs);
+    OneShot(false, "a model call on a worker", runs);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
