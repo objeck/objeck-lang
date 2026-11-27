@@ -24,19 +24,43 @@
 # change to the layers, the thread pool or the Eigen configuration.
 #
 # Needs Linux (taskset, sysfs), and obc and obr on PATH with OBJECK_LIB_PATH set. Run it from
-# anywhere inside the repository. Exit status 0 when every run agreed, 1 otherwise, 2 for a setup
-# problem.
+# anywhere inside the repository. --copies and --rounds are whole numbers of 1 or more. Exit status
+# 0 when every run agreed (and at least one was compared), 1 otherwise, 2 for a bad option or a
+# setup problem.
 set -uo pipefail
+
+usage() {
+  [ "$#" -eq 0 ] || echo "cnn_repeat.sh: $*"
+  echo "usage: cnn_repeat.sh [--copies N] [--rounds N] [--cpus LIST]"
+  exit 2
+}
+
+# count OPTION VALUE: VALUE must be a whole number of at least 1. Zero is refused, not treated as
+# "skip the step": with no rounds or no copies the load step compares nothing, and on a machine
+# with one kind of core the script would then pass without having compared a single run.
+count() {
+  case "$2" in
+    ''|*[!0-9]*) usage "$1 needs a whole number of 1 or more, got '$2'" ;;
+  esac
+  [ "${#2}" -le 4 ] || usage "$1 is at most 9999, got '$2'"
+  [ "$((10#$2))" -ge 1 ] || usage "$1 needs a whole number of 1 or more, got '$2'"
+}
 
 COPIES=8
 ROUNDS=4
 CPUS=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --copies) COPIES="${2:?--copies needs a number}"; shift 2 ;;
-    --rounds) ROUNDS="${2:?--rounds needs a number}"; shift 2 ;;
-    --cpus)   CPUS="${2:?--cpus needs a list, e.g. 0-2}"; shift 2 ;;
-    *) echo "usage: cnn_repeat.sh [--copies N] [--rounds N] [--cpus LIST]"; exit 2 ;;
+    --copies|--rounds|--cpus) [ "$#" -ge 2 ] || usage "$1 needs a value" ;;
+  esac
+  case "$1" in
+    --copies) count "$1" "$2"; COPIES="$((10#$2))"; shift 2 ;;
+    --rounds) count "$1" "$2"; ROUNDS="$((10#$2))"; shift 2 ;;
+    --cpus)
+      # a taskset list: numbers and ranges, e.g. 0-2 or 0,4,16-17
+      [[ "$2" =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]] || usage "--cpus needs a CPU list such as 0-2 or 0,16, got '$2'"
+      CPUS="$2"; shift 2 ;;
+    *) usage "unknown option '$1'" ;;
   esac
 done
 
@@ -88,7 +112,8 @@ kinds="$(for cpu in $allowed; do
 done | sort -k1,1 -u)"
 [ -n "$CPUS" ] || CPUS="$( (echo "$kinds" | cut -d' ' -f2; echo "$allowed") | awk '!seen[$0]++' | head -n3 | paste -sd,)"
 if [ "$(echo "$kinds" | wc -l)" -lt 2 ]; then
-  echo "  one kind of core here (caches $(echo "$kinds" | cut -d' ' -f1)): nothing to pin"
+  echo "  not applicable: one kind of core here (caches $(echo "$kinds" | cut -d' ' -f1)), so no run is"
+  echo "  pinned and this machine cannot show the defect; only the runs under load are compared"
 else
   while read -r caches cpu; do
     echo "  cpu $cpu (caches $caches)"
@@ -109,6 +134,11 @@ for round in $(seq 1 "$ROUNDS"); do
   echo "  round $round done"
 done
 
+# a pass must rest on comparisons that were made
+if [ "$runs" -lt 1 ]; then
+  echo "FAIL: no run was compared with the reference, so nothing was checked"
+  exit 1
+fi
 if [ "$fail" -gt 0 ]; then
   echo "FAIL: $fail of $runs runs differ from the reference"
   exit 1
