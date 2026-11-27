@@ -1,0 +1,620 @@
+# EXTRA_LIBS: net,cipher
+#~
+The WebSocket client checks the reply to its opening handshake (RFC 6455
+section 4.1) and the frames a server sends it.
+
+Before this the client accepted any reply that began "101 Switching" and
+carried a Sec-WebSocket-Accept header, whatever its value, and never looked
+at Upgrade or Connection. A scripted loopback server answers each request by
+its path, one reply per case: a correct handshake connects, one that is wrong
+in any single respect is refused and says why in GetStatusMessage().
+
+The frame cases cover what the same audit found in the read and write paths:
+a masked or oversized frame from the server, the close frame's status code,
+Nil data handed to WriteSocket, and a fragmented message arriving whole.
+~#
+use Collection, System.IO.Net, Web.HTTP, Cipher;
+
+class ScriptedServer {
+	@server : TCPSocketServer;
+	@port : Int;
+	@listening : Bool;
+
+	New() {
+		@server := TCPSocketServer->New(0);
+		@port := @server->GetPort();
+		# listening before the client thread runs, so no connect is ever early
+		@listening := @server->Listen(16);
+	}
+
+	method : public : GetPort() ~ Int {
+		return @port;
+	}
+
+	method : public : IsListening() ~ Bool {
+		return @listening;
+	}
+
+	# the value a correct server sends, computed here and not by the library under test
+	function : Accept(key : String) ~ String {
+		combined := "";
+		combined->Append(key);
+		combined->Append("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		return Cipher.Encrypt->Base64(Cipher.Hash->SHA1(combined->ToByteArray()));
+	}
+
+	function : FlipCase(text : String) ~ String {
+		flipped := "";
+		each(i : text) {
+			c := text->Get(i);
+			if(c >= 'a' & c <= 'z') {
+				flipped->Append(c->ToUpper());
+			}
+			else if(c >= 'A' & c <= 'Z') {
+				flipped->Append(c->ToLower());
+			}
+			else {
+				flipped->Append(c);
+			};
+		};
+		return flipped;
+	}
+
+	method : ReadN(client : TCPSocket, buf : Byte[], n : Int) ~ Nil {
+		each(i : n) {
+			buf[i] := client->ReadByte();
+		};
+	}
+
+	# reads one client frame and returns its unmasked payload; opcode and fin come back in 'head'
+	method : ReadFrame(client : TCPSocket, head : Int[]) ~ Byte[] {
+		hdr := Byte->New[2];
+		ReadN(client, hdr, 2);
+		head[0] := (hdr[0] and 0x0f)->As(Int);
+		head[1] := (hdr[0] and 0x80)->As(Int);
+		masked := (hdr[1] and 0x80) <> 0;
+		length := (hdr[1] and 0x7f)->As(Int);
+
+		if(length = 126) {
+			ext := Byte->New[2];
+			ReadN(client, ext, 2);
+			length := ((ext[0] and 0xff) << 8) or (ext[1] and 0xff);
+		}
+		else if(length = 127) {
+			ext := Byte->New[8];
+			ReadN(client, ext, 8);
+			length := 0;
+			each(i : 8) {
+				length := (length << 8) or (ext[i] and 0xff);
+			};
+		};
+
+		mask := Byte->New[4];
+		if(masked) {
+			ReadN(client, mask, 4);
+		};
+
+		payload := Byte->New[length];
+		ReadN(client, payload, length);
+		if(masked) {
+			each(i : length) {
+				payload[i] := (payload[i] xor mask[i % 4])->As(Byte);
+			};
+		};
+
+		return payload;
+	}
+
+	# one unmasked server frame with FIN set
+	method : WriteFrame(client : TCPSocket, opcode : Int, payload : Byte[]) ~ Nil {
+		length := payload->Size();
+		frame : Byte[];
+		start : Int;
+		if(length < 126) {
+			frame := Byte->New[2 + length];
+			frame[1] := length;
+			start := 2;
+		}
+		else {
+			frame := Byte->New[4 + length];
+			frame[1] := 126;
+			frame[2] := ((length >> 8) and 0xff)->As(Byte);
+			frame[3] := (length and 0xff)->As(Byte);
+			start := 4;
+		};
+		frame[0] := (0x80 + opcode)->As(Byte);
+		each(i : length) {
+			frame[start + i] := payload[i];
+		};
+		client->WriteBuffer(frame);
+	}
+
+	# echoes whole messages (fragments are put back together) until the client closes
+	method : Echo(client : TCPSocket) ~ Nil {
+		head := Int->New[2];
+		message := ByteBuffer->New();
+		message_opcode := 0;
+		running := true;
+		while(running) {
+			payload := ReadFrame(client, head);
+			opcode := head[0];
+			if(opcode = 8) {
+				running := false;
+			}
+			else {
+				if(opcode <> 0) {
+					message_opcode := opcode;
+				};
+				each(i : payload) {
+					message->Append(payload[i]);
+				};
+
+				if(head[1] <> 0) {
+					WriteFrame(client, message_opcode, message->ToByteArray());
+					message := ByteBuffer->New();
+				};
+			};
+		};
+	}
+
+	method : Send(client : TCPSocket, raw : Int[]) ~ Nil {
+		bytes := Byte->New[raw->Size()];
+		each(i : raw) {
+			bytes[i] := raw[i]->As(Byte);
+		};
+		client->WriteBuffer(bytes);
+		# hold the connection until the client has acted on what it was sent
+		client->ReadByte();
+	}
+
+	# serves connections one at a time until one asks for /quit
+	method : public : Serve() ~ Nil {
+		running := true;
+		while(running) {
+			client := @server->Accept();
+			if(client = Nil) {
+				return;
+			};
+
+			request_line := client->ReadLine();
+			path := "";
+			if(request_line <> Nil) {
+				first := request_line->Find(' ');
+				last := request_line->FindLast(' ');
+				if(first > 0 & last > first) {
+					path := request_line->SubString(first + 1, last - first - 1);
+				};
+			};
+
+			key := "";
+			line := client->ReadLine();
+			while(line <> Nil & line->Size() > 0) {
+				colon := line->Find(':');
+				if(colon > 0) {
+					if(line->SubString(colon)->ToLower()->Trim()->Equals("sec-websocket-key")) {
+						key := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+					};
+				};
+				line := client->ReadLine();
+			};
+
+			accept := Accept(key);
+			ok := "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n";
+
+			if(path->Equals("/quit")) {
+				client->WriteString("{$ok}\r\n");
+				running := false;
+			}
+			else if(path->Equals("/good")) {
+				client->WriteString("{$ok}\r\n");
+			}
+			else if(path->Equals("/echo")) {
+				client->WriteString("{$ok}\r\n");
+				Echo(client);
+			}
+			# a correct reply a strict string match would refuse: another reason phrase, header
+			# names in any case, a token list in Connection, padding and extra headers
+			else if(path->Equals("/case")) {
+				client->WriteString("HTTP/1.1 101 Web Socket Protocol Handshake\r\nX-Extra: 1\r\nUPGRADE: WebSocket\r\nconnection: keep-alive, UPGRADE\r\nsEc-wEbSoCkEt-aCcEpT:    {$accept}   \r\nServer: scripted\r\n\r\n");
+			}
+			# the same with lines that are not header fields among them: they are skipped. (A
+			# filtering proxy on the loopback path answers 502 for this reply itself, which
+			# is why the case is kept apart: see Accepted.)
+			else if(path->Equals("/junk-lines")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nno colon on this line\r\nUpgrade: websocket\r\n: no name\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/protocol-ok")) {
+				client->WriteString("{$ok}Sec-WebSocket-Protocol: superchat\r\n\r\n");
+			}
+			else if(path->Equals("/wrong-accept")) {
+				stale := Accept("AAAAAAAAAAAAAAAAAAAAAA==");
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$stale}\r\n\r\n");
+			}
+			else if(path->Equals("/flipped-accept")) {
+				flipped := FlipCase(accept);
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$flipped}\r\n\r\n");
+			}
+			else if(path->Equals("/key-as-accept")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$key}\r\n\r\n");
+			}
+			else if(path->Equals("/empty-accept")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: \r\n\r\n");
+			}
+			else if(path->Equals("/no-accept")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n");
+			}
+			else if(path->Equals("/no-upgrade")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/bad-upgrade")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: h2c\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/no-connection")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/bad-connection")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: keep-alive, not-upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/status-200")) {
+				client->WriteString("HTTP/1.1 200 OK\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/status-1010")) {
+				client->WriteString("HTTP/1.1 1010 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/not-http")) {
+				client->WriteString("101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/extension")) {
+				client->WriteString("{$ok}Sec-WebSocket-Extensions: permessage-deflate\r\n\r\n");
+			}
+			else if(path->Equals("/protocol")) {
+				client->WriteString("{$ok}Sec-WebSocket-Protocol: chat\r\n\r\n");
+			}
+			else if(path->Equals("/truncated")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n");
+			}
+			else if(path->Equals("/flood")) {
+				flood := "HTTP/1.1 101 Switching Protocols\r\n";
+				each(i : 400) {
+					flood->Append("X-Filler-{$i}: {$i}\r\n");
+				};
+				flood->Append("Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+				client->WriteString(flood);
+			}
+			# frames a server must not send, after a correct handshake
+			else if(path->Equals("/masked")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x81, 0x85, 1, 2, 3, 4, 0x69, 0x67, 0x6f, 0x68, 0x6e]);
+			}
+			else if(path->Equals("/masked-ping")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x89, 0x81, 1, 2, 3, 4, 0x41]);
+			}
+			else if(path->Equals("/negative-length")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x82, 0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+			}
+			else if(path->Equals("/two-gib-length")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x82, 0x7f, 0, 0, 0, 0, 0x80, 0, 0, 0]);
+			}
+			else if(path->Equals("/close-reason")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x88, 0x05, 0x03, 0xe9, 0x62, 0x79, 0x65]);
+			}
+			else if(path->Equals("/close-code-only")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x88, 0x02, 0x03, 0xe8]);
+			}
+			else if(path->Equals("/close-empty")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x88, 0x00]);
+			};
+
+			client->Close();
+		};
+
+		@server->Close();
+	}
+}
+
+class ServerThread from System.Concurrency.Thread {
+	New() {
+		Parent();
+	}
+
+	method : public : Run(arg : System.Base) ~ Nil {
+		arg->As(ScriptedServer)->Serve();
+	}
+}
+
+class WebSocketHandshakeTest {
+	@port : static : Int;
+	@failed : static : Int;
+
+	function : Fail(what : String) ~ Nil {
+		"  FAIL: {$what}"->PrintLine();
+		@failed += 1;
+	}
+
+	function : Open(path : String) ~ WebSocket {
+		return WebSocket->New(Url->New("ws://localhost:{$@port}{$path}"));
+	}
+
+	# a handshake that must connect
+	function : Accepted(path : String) ~ Nil {
+		ws := Open(path);
+		if(path->Equals("/protocol-ok")) {
+			ws->AddHeader("Sec-WebSocket-Protocol", "chat, superchat");
+		};
+
+		if(ws->Connect()) {
+			if(ws->GetStatusCode() <> 101) {
+				code := ws->GetStatusCode();
+				Fail("{$path}: connected, but the status code is {$code}");
+			};
+			ws->CloseSocket();
+		}
+		else {
+			why := ws->GetStatusMessage();
+			if(why = Nil) {
+				why := "(no reason)";
+			};
+
+			# The scripted server never answers 502. A reply that says so was written by
+			# something between the two ends of the loopback connection -- a filtering
+			# proxy does that to a reply it cannot parse -- so the client was never shown
+			# the reply this case is about.
+			if(why->Find("received 'HTTP/1.1 502") > -1) {
+				"  note: {$path} was answered 502 by something between this client and the loopback server; that check was not run"->PrintLine();
+				return;
+			};
+			Fail("{$path}: a correct handshake was refused: {$why}");
+		};
+	}
+
+	# a handshake that must be refused, with a reason holding 'expect'
+	function : Refused(path : String, expect : String) ~ Nil {
+		ws := Open(path);
+		if(ws->Connect()) {
+			Fail("{$path}: connected to a server whose handshake is wrong");
+			ws->CloseSocket();
+			return;
+		};
+
+		why := ws->GetStatusMessage();
+		if(why = Nil) {
+			Fail("{$path}: refused without a reason");
+		}
+		else if(why->Find(expect) < 0) {
+			Fail("{$path}: refused with '{$why}', expected a reason holding '{$expect}'");
+		};
+
+		# nothing may be sent to, or read from, the peer that failed the handshake
+		if(ws->WriteSocket("after a refused handshake")) {
+			Fail("{$path}: WriteSocket succeeded after a refused handshake");
+		};
+
+		if(ws->ReadSocketText() <> Nil) {
+			Fail("{$path}: ReadSocketText returned data after a refused handshake");
+		};
+
+		if(ws->PingSocket()) {
+			Fail("{$path}: PingSocket succeeded after a refused handshake");
+		};
+	}
+
+	# after a correct handshake the server sends one frame the client must refuse
+	function : RefusedFrame(path : String, expect_code : Int, expect_msg : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		if(ws->ReadSocketBinary() <> Nil) {
+			Fail("{$path}: the frame was delivered");
+		};
+
+		if(expect_code > 0 & ws->GetStatusCode() <> expect_code) {
+			code := ws->GetStatusCode();
+			Fail("{$path}: status code {$code}, expected {$expect_code}");
+		};
+
+		if(expect_msg <> Nil) {
+			msg := ws->GetStatusMessage();
+			if(msg = Nil) {
+				Fail("{$path}: no status message, expected '{$expect_msg}'");
+			}
+			else if(expect_msg->Size() = 0 & msg->Size() <> 0) {
+				Fail("{$path}: status message '{$msg}', expected none");
+			}
+			else if(msg->Find(expect_msg) < 0 & expect_msg->Size() > 0) {
+				Fail("{$path}: status message '{$msg}', expected '{$expect_msg}'");
+			};
+		};
+
+		ws->CloseSocket();
+	}
+
+	function : Frames() ~ Nil {
+		ws := Open("/echo");
+		if(<>ws->Connect()) {
+			Fail("/echo: the handshake was refused");
+			return;
+		};
+
+		# Nil data is refused, not dereferenced
+		no_bytes : Byte[];
+		if(ws->WriteSocket(no_bytes)) {
+			Fail("/echo: WriteSocket(Nil bytes) reported success");
+		};
+
+		if(ws->WriteSocket(no_bytes, true)) {
+			Fail("/echo: WriteSocket(Nil bytes, fragmented) reported success");
+		};
+
+		no_text : String;
+		if(ws->WriteSocket(no_text)) {
+			Fail("/echo: WriteSocket(Nil text) reported success");
+		};
+
+		# the connection is still good after the refused writes
+		if(<>ws->WriteSocket("still here")) {
+			Fail("/echo: a text write failed");
+		};
+		text := ws->ReadSocketText();
+		if(text = Nil) {
+			Fail("/echo: no text echo");
+		}
+		else if(<>text->Equals("still here")) {
+			Fail("/echo: text echo was '{$text}'");
+		};
+
+		# an empty payload is in bounds
+		empty := Byte->New[0];
+		if(<>ws->WriteSocket(empty)) {
+			Fail("/echo: an empty binary write failed");
+		};
+		echo_empty := ws->ReadSocketBinary();
+		if(echo_empty = Nil) {
+			Fail("/echo: no echo of the empty message");
+		}
+		else if(echo_empty->Size() <> 0) {
+			Fail("/echo: the empty message came back with data");
+		};
+
+		# fragmented writes cover the whole array, to the byte, at the chunk boundaries
+		sizes := [4095, 4096, 4097, 8192, 8193, 10000];
+		each(s : sizes) {
+			size := sizes[s];
+			data := Byte->New[size];
+			each(i : size) {
+				data[i] := ((i * 7 + size) and 0x7f)->As(Byte);
+			};
+
+			if(<>ws->WriteSocket(data, true)) {
+				Fail("/echo: a fragmented write of {$size} bytes failed");
+			};
+
+			back := ws->ReadSocketBinary();
+			if(back = Nil) {
+				Fail("/echo: no echo of the {$size}-byte fragmented message");
+			}
+			else if(back->Size() <> size) {
+				got := back->Size();
+				Fail("/echo: {$size} bytes written in fragments, {$got} echoed");
+			}
+			else {
+				same := true;
+				each(i : size) {
+					if(back[i] <> data[i]) {
+						same := false;
+					};
+				};
+
+				if(<>same) {
+					Fail("/echo: the {$size}-byte fragmented message came back changed");
+				};
+			};
+		};
+
+		ws->CloseSocket();
+
+		# a write on the closed socket fails, in one frame or in fragments
+		if(ws->WriteSocket("after close")) {
+			Fail("/echo: a write succeeded after CloseSocket");
+		};
+
+		big := Byte->New[10000];
+		if(ws->WriteSocket(big, true)) {
+			Fail("/echo: a fragmented write succeeded after CloseSocket");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# RFC 6455 section 1.3 gives this key and the accept value it must produce
+		accept := WebSocketHandshake->ComputeAccept("dGhlIHNhbXBsZSBub25jZQ==");
+		if(<>accept->Equals("s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")) {
+			Fail("ComputeAccept gave '{$accept}' for the RFC 6455 sample key");
+		};
+
+		if(WebSocketHandshake->ComputeAccept(Nil) <> Nil) {
+			Fail("ComputeAccept(Nil) is not Nil");
+		};
+
+		if(WebSocketHandshake->StatusCode("HTTP/1.1 101 Switching Protocols") <> 101 |
+				WebSocketHandshake->StatusCode("HTTP/1.1 101") <> 101 |
+				WebSocketHandshake->StatusCode("HTTP/1.1 1010 x") <> -1 |
+				WebSocketHandshake->StatusCode("HTTP/1.1 10") <> -1 |
+				WebSocketHandshake->StatusCode("HTTP/1.1  101") <> -1 |
+				WebSocketHandshake->StatusCode("HTTP/1.1 1x1 y") <> -1 |
+				WebSocketHandshake->StatusCode("") <> -1 |
+				WebSocketHandshake->StatusCode(Nil) <> -1) {
+			Fail("StatusCode misread a status line");
+		};
+
+		if(<>WebSocketHandshake->HasToken("keep-alive, Upgrade", "upgrade", true) |
+				WebSocketHandshake->HasToken("keep-alive, Upgrade", "upgrade", false) |
+				WebSocketHandshake->HasToken("upgraded", "upgrade", true) |
+				WebSocketHandshake->HasToken(",, ,", "upgrade", true) |
+				WebSocketHandshake->HasToken("", "", true) |
+				WebSocketHandshake->HasToken(Nil, "upgrade", true)) {
+			Fail("HasToken misread a token list");
+		};
+
+		server := ScriptedServer->New();
+		if(<>server->IsListening()) {
+			"FAIL: the scripted server could not listen"->PrintLine();
+			Runtime->Exit(1);
+		};
+		@port := server->GetPort();
+
+		thread := ServerThread->New();
+		thread->Execute(server);
+
+		Accepted("/good");
+		Accepted("/case");
+		Accepted("/junk-lines");
+		Accepted("/protocol-ok");
+
+		Refused("/wrong-accept", "Sec-WebSocket-Accept does not match");
+		Refused("/flipped-accept", "Sec-WebSocket-Accept does not match");
+		Refused("/key-as-accept", "Sec-WebSocket-Accept does not match");
+		Refused("/empty-accept", "Sec-WebSocket-Accept does not match");
+		Refused("/no-accept", "no Sec-WebSocket-Accept header");
+		Refused("/no-upgrade", "no Upgrade header");
+		Refused("/bad-upgrade", "Upgrade header is not 'websocket'");
+		Refused("/no-connection", "no Connection header");
+		Refused("/bad-connection", "Connection header does not hold 'Upgrade'");
+		Refused("/status-200", "expected HTTP status 101, received 'HTTP/1.1 200 OK'");
+		Refused("/status-1010", "expected HTTP status 101");
+		Refused("/not-http", "expected HTTP status 101");
+		Refused("/extension", "an extension that was not offered");
+		Refused("/protocol", "a subprotocol that was not requested");
+		Refused("/truncated", "no Connection header");
+		Refused("/flood", "too many headers");
+
+		Frames();
+
+		RefusedFrame("/masked", 0, "masked by the server");
+		RefusedFrame("/masked-ping", 0, "masked by the server");
+		RefusedFrame("/negative-length", 0, Nil);
+		RefusedFrame("/two-gib-length", 0, Nil);
+		RefusedFrame("/close-reason", 1001, "bye");
+		RefusedFrame("/close-code-only", 1000, "");
+		RefusedFrame("/close-empty", 1005, "");
+
+		# a correct server still connects after all of the above, and the server stops
+		Accepted("/quit");
+		thread->Join();
+
+		if(@failed = 0) {
+			"PASS: WebSocket handshake and frame checks"->PrintLine();
+		}
+		else {
+			"FAIL: {$@failed} WebSocket check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
