@@ -13,11 +13,13 @@ class SiteHandler from HttpRequestHandler {
 	New() { Parent(); }
 
 	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		StaticFilesTest->Handled();
 		StaticFilesTest->Files()->Serve(request, response);
 		return false;
 	}
 
 	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		StaticFilesTest->Handled();
 		StaticFilesTest->Files()->Serve(request, response);
 		return false;
 	}
@@ -37,6 +39,20 @@ class RawResponse {
 	method : public : GetStatus() ~ String { return @status; }
 	method : public : GetHeader(name : String) ~ String { return @headers->Find(name); }
 	method : public : GetBytes() ~ Byte[] { return @bytes; }
+	method : public : HeaderCount() ~ Int { return @headers->Size(); }
+
+	# the names of the headers that arrived, for a failure's description
+	method : public : HeaderNames() ~ String {
+		names := "";
+		keys := @headers->GetKeys()<String>;
+		each(i : keys) {
+			if(i > 0) {
+				names += ", ";
+			};
+			names += keys->Get(i);
+		};
+		return names;
+	}
 
 	method : public : GetBody() ~ String {
 		if(@bytes = Nil) {
@@ -53,6 +69,53 @@ class StaticFilesTest {
 	@files : static : StaticFiles;
 
 	function : Files() ~ StaticFiles { return @files; }
+
+	# requests that reached the handler, and whether an empty response has been described
+	@handled : static : Int;
+	@described : static : Bool;
+
+	function : Handled() ~ Nil { @handled += 1; }
+
+	# What both ends know about the first request that came back with nothing, or as a 200
+	# with no Content-Length. One run in about a thousand on macOS had every request
+	# of this test come back empty, each at once, with the connect succeeding, and the
+	# output said nothing more; on a Windows machine whose web filter also filters
+	# loopback, the response arrives rewritten, without its Content-Length. These lines tell a server
+	# that never saw the request (the handler count stays put, so something else took or
+	# dropped the connection) from one that read it and answered or closed, and say how
+	# the client's read ended. Printed once, and only on that failure.
+	function : Describe(verb : String, path : String, elapsed_ms : Int, error : String, response : RawResponse) ~ Nil {
+		if(@described) {
+			return;
+		};
+		@described := true;
+
+		reason := error <> Nil ? error : "none (the peer closed)";
+		got := response->GetStatus() <> Nil ? response->GetStatus() : "";
+		"    first broken response: {$verb} {$path}, {$elapsed_ms} ms after the connect: status '{$got}', headers: {$(response->HeaderNames())}"->PrintLine();
+		"    the client's read ended with: {$reason}"->PrintLine();
+		"    port asked: {$@port}; server's port now: {$(WebServer->GetBoundPort())}; server stopped: {$(WebServer->IsStopped())}; Serve returned: {$@serve_returned}"->PrintLine();
+		"    connections the server is serving: {$(WebServer->GetActiveConnections())}; requests its handler has seen: {$@handled}"->PrintLine();
+
+		# once more, a quarter of a second later, to tell a moment from a state
+		System.Concurrency.Thread->Sleep(250);
+		before := @handled;
+		socket := TCPSocket->New("127.0.0.1", @port);
+		if(socket->IsOpen() = false) {
+			again := TCPSocket->GetLastError();
+			"    a second try 250 ms later could not connect: {$again}"->PrintLine();
+			return;
+		};
+		socket->SetRecvTimeout(5000);
+		socket->WriteString("GET /index.html HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+		line := socket->ReadLine();
+		again := TCPSocket->GetLastError();
+		socket->Close();
+		System.Concurrency.Thread->Sleep(50);
+		shown := line <> Nil ? line : "";
+		again_reason := again <> Nil ? again : "none";
+		"    a second try 250 ms later: status '{$shown}', read error {$again_reason}, handler saw it: {$(@handled > before)}"->PrintLine();
+	}
 
 	function : ServeReturned() ~ Nil { @serve_returned := true; }
 
@@ -142,9 +205,18 @@ class StaticFilesTest {
 			return RawResponse->New("", Map->New()<String, String>, Nil);
 		};
 		socket->SetRecvTimeout(5000);
+		timer := System.Time.Timer->New(true);
 		socket->WriteString("{$verb} {$path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n{$extra}\r\n");
 		response := ReadResponse(socket, verb->Equals("HEAD") = false);
+		# this thread's last socket failure, before anything else replaces it
+		error := TCPSocket->GetLastError();
+		timer->End();
 		socket->Close();
+		# nothing at all, or a 200 that does not say how long it is: this server always does
+		if(response->GetStatus() = Nil | response->GetStatus()->IsEmpty() |
+				(response->GetStatus()->Has(" 200") & response->GetHeader("content-length") = Nil)) {
+			Describe(verb, path, (timer->GetElapsedTime() * 1000.0)->As(Int), error, response);
+		};
 		return response;
 	}
 
