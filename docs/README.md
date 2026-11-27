@@ -129,7 +129,6 @@ Written before the work, and kept afterwards as the record of why it looks the w
 | [AI_FOUNDATION_DESIGN.md](AI_FOUNDATION_DESIGN.md): tensors, autograd, `nn`, a Hugging Face hub cache, task pipelines | **proposed**; only the hub client (`ai_hub.obs`, its section 7.3) exists |
 | [INFERENCE_ENGINES_PLAN.md](INFERENCE_ENGINES_PLAN.md): one `Engine` over ONNX and inference servers | **partly built**: P1 built, P3 (TF Lite) dropped, the rest proposed |
 | [ONNX_CUDA_PLAN.md](ONNX_CUDA_PLAN.md): a CUDA execution provider for ONNX | **partly built**; no release ships CUDA |
-| [FASTSAM_DESIGN.md](FASTSAM_DESIGN.md): FastSAM-s segmentation | **deferred**; the shape described is superseded by "a decoder above the generic ONNX entry point" |
 
 ## What is not documentation
 

@@ -25,7 +25,7 @@ written but **not registered as a library**, so nothing can `use` it yet.
 > | P2 `API.Models`, `Engine`, `OnnxEngine`, `HttpEngine` | done, v2026.10.0 | `f9d6df9ce8`, 2026-10-09 (#1062) |
 > | Engine and provider parity tests | done as local checks | `95f1d996fb`, 2026-10-09 (#1070) |
 > | P3 TF Lite | dropped 2026-10-07 | `794c0bde02` (#1049) |
-> | P5 per-family decoders over `Engine` | not started; no FastSAM code exists, only `FASTSAM_DESIGN.md` | |
+> | P5 per-family decoders over `Engine` | not started; no FastSAM code exists | |
 >
 > The `ONNX_CUDA_PLAN` items listed under "Overlap" are still open except the
 > `ep` validation that already existed; see that file's own update.
@@ -373,7 +373,7 @@ of which has gone stale before.
 
 **P5 — per-family decoders over `Engine`**, if the payoff above is wanted.
 
-FastSAM is the intended first consumer. `FASTSAM_DESIGN.md` originally specified a
+FastSAM is the intended first consumer. The original FastSAM design specified a
 ninth per-family native entry point; the 2026-10-07 decision defers it behind P1
 and P2 and rebuilds it as a decoder, which makes it the test of whether this phase
 actually pays. Its model knowledge -- one forward pass yields every mask, a prompt
