@@ -2191,6 +2191,11 @@ agent->SetBudget(budget);
 	  from zero only when the parent is entered). The child is tied to the parent's cancellation only when
 	  the parent is entered at the moment the child is; a token left over from an earlier entry of the parent
 	  is never used.
+	* A child that outlives the scopes above it (it is still at work on another thread when they are
+	  left) stays limited by them: the scopes that limit a scope are fixed when it is entered and kept until
+	  it is left, and they go on being checked and charged. A scope further up that is entered again in the
+	  meantime is a new block with counters of its own; the child neither charges it nor is limited by it
+	  (its own parent it is always charged to, as above).
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
 	  its counters from zero. A scope may not be entered inside its own child either (it would be limited by
 	  itself): that raises, like entering it twice.
@@ -2222,6 +2227,8 @@ scope->GetStepsUsed()->PrintLine();
 		@wall_used : Int;
 		@runs : Int;
 		@halt : String;
+		@held : Vector<AgentScopeLink>;
+		@entries : Int;
 		@slots : static : Vector<AgentScopeSlot>;
 		@registry_lock : static : ThreadMutex;
 
@@ -2486,6 +2493,10 @@ scope->GetStepsUsed()->PrintLine();
 					side := outer;
 				};
 
+				# this is a new entry: a scope that was entered under an earlier one (and is still at work on
+				# another thread) holds that entry, not this one
+				@entries += 1;
+
 				# nothing is published when the scope would come to limit itself, through either of the two
 				seen := Vector->New()<AgentScope>;
 				AddOnce(seen, above);
@@ -2509,6 +2520,20 @@ scope->GetStepsUsed()->PrintLine();
 					@previous := outer;
 					@parent := above;
 					@also := side;
+
+					# Every scope that limits this one now is kept for as long as this one is entered. A scope
+					# above forgets its own parents when it is left; one that is left while this scope is still
+					# at work on another thread must not take the limits above it away with it
+					held := Vector->New()<AgentScopeLink>;
+					k := 0;
+					while(k < seen->Size()) {
+						held->AddBack(AgentScopeLink->New(seen->Get(k), seen->Get(k)->GetEntries()));
+						k += 1;
+					};
+					@held := held;
+				}
+				else {
+					@entries -= 1;
 				};
 			};
 
@@ -2566,6 +2591,7 @@ scope->GetStepsUsed()->PrintLine();
 				@previous := Nil;
 				@parent := Nil;
 				@also := Nil;
+				@held := Nil;
 			};
 
 			if(@print) {
@@ -2640,8 +2666,30 @@ scope->GetStepsUsed()->PrintLine();
 				scope := all->Get(i);
 				AddOnce(all, scope->GetOuter());
 				AddOnce(all, scope->GetAlso());
+				scope->AddHeld(all);
 				i += 1;
 			};
+		}
+
+		# Adds the scopes that limited this one when it was entered, those that have been left since as well:
+		# they still limit it and are still charged. One that has been entered again since is another block
+		# with counters of its own, and is left alone. The caller holds the registry lock
+		method : AddHeld(all : Vector<AgentScope>) ~ Nil {
+			if(@held <> Nil) {
+				h := 0;
+				while(h < @held->Size()) {
+					link := @held->Get(h);
+					if(link->GetScope()->GetEntries() = link->GetEntry()) {
+						AddOnce(all, link->GetScope());
+					};
+					h += 1;
+				};
+			};
+		}
+
+		# how many times the scope has been entered; read and written under the registry lock
+		method : GetEntries() ~ Int {
+			return @entries;
 		}
 
 		# this scope and every scope that limits it, each once: the parent's chain and, for a Child() entered
@@ -2947,6 +2995,25 @@ scope->GetStepsUsed()->PrintLine();
 
 		method : public : SetScope(scope : AgentScope) ~ Nil {
 			@scope := scope;
+		}
+	}
+
+	# a scope that limited another when that one was entered, and which of its entries it was
+	class : private : AgentScopeLink {
+		@scope : AgentScope;
+		@entry : Int;
+
+		New(scope : AgentScope, entry : Int) {
+			@scope := scope;
+			@entry := entry;
+		}
+
+		method : public : GetScope() ~ AgentScope {
+			return @scope;
+		}
+
+		method : public : GetEntry() ~ Int {
+			return @entry;
 		}
 	}
 
