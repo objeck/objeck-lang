@@ -1,0 +1,111 @@
+#~
+The numbers of a collection literal for a Vector or CompareVector of a holder are boxed
+as that holder, by the rule that boxes an argument:
+  v : Vector<IntRef> := [1, n, 3];        # IntRef->New(1), IntRef->New(n), IntRef->New(3)
+Literals, variables, calculations and calls; holders and numbers together; a Float or a
+Char for an IntRef and an Int for a FloatRef, converted as an assignment converts them;
+BoolRef and CharRef; a field, a return and an assignment as the target; a literal built
+many times in a loop and on several threads while the collector runs (the array is made
+where the literal is evaluated, in a hidden local). IntVector and FloatVector are as
+before: they hold the numbers themselves.
+~#
+use Collection;
+use System.Concurrency;
+
+class Ids {
+	@ids : Vector<IntRef>;
+
+	New(first : Int) {
+		@ids := [first, first + 1, first + 2];
+	}
+
+	method : public : Sum() ~ Int {
+		sum := 0;
+		each(id in @ids) {
+			sum += id;
+		};
+		return sum;
+	}
+}
+
+class CollectionLiteralBoxed {
+	function : Halves(n : Int) ~ Vector<FloatRef> {
+		half := 0.5;
+		return [half, n, 2.5, n * half];
+	}
+
+	function : Total(values : Vector<IntRef>) ~ Int {
+		total := 0;
+		each(value in values) {
+			total += value;
+		};
+		return total;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		v : Vector<IntRef> := [1, 2, 3];
+		assert v->Size() = 3 & Total(v) = 6 : "number literals";
+
+		n := 5;
+		w : Vector<IntRef> := [n, n + 1, IntRef->New(40), v->Get(0), "ab"->Size(), 2.75, 'A'];
+		assert w->Size() = 7 : "variables, calculations, a holder, a call, a Float and a Char";
+		assert Total(w) = 121 : "5 + 6 + 40 + 1 + 2 + 2 + 65";
+		assert w->Get(5) = 2 : "a Float for an IntRef is truncated, as 'r : IntRef := 2.75;' is";
+
+		assert Ids->New(7)->Sum() = 24 : "a field as the target";
+
+		halves := Halves(4);
+		assert halves->Get(0) + halves->Get(1) + halves->Get(2) + halves->Get(3) = 9.0 : "a return as the target; an Int for a FloatRef";
+
+		flags : Vector<BoolRef> := [true, n > 3, false];
+		assert flags->Get(1) & flags->Get(0) : "BoolRef";
+		assert flags->Get(2) = false;
+
+		sorted : CompareVector<IntRef> := [3, 1, 2];
+		sorted->Sort();
+		assert sorted->Get(0) = 1 & sorted->Get(2) = 3 : "CompareVector";
+
+		chars : Vector<CharRef> := ['a', 'b'];
+		assert chars->Get(1) = 'b' : "CharRef";
+
+		one : Vector<IntRef>;
+		one := [n];
+		assert one->Get(0) = 5 : "an assignment as the target";
+
+		nums : IntVector := [4, 5, 6];
+		assert nums->Get(2) = 6 : "an IntVector holds the Ints themselves";
+
+		# the literal evaluated many times, with garbage in between
+		grand := 0;
+		for(i := 0; i < 20000; i += 1;) {
+			each_time : Vector<IntRef> := [i, i * 2, 1];
+			text := "pass {$i}";
+			grand += each_time->Get(0) + each_time->Get(1) + each_time->Get(2) + text->Size() * 0;
+		};
+		assert grand = 599990000 : "20,000 literals";
+
+		# and on four threads at once
+		sums := Int->New[4];
+		mutex := ThreadMutex->New("sums");
+		workers : Vector<Thread> := Vector->New();
+		for(t := 0; t < 4; t += 1;) {
+			workers->AddBack(spawn {
+				mine := 0;
+				for(i := 0; i < 5000; i += 1;) {
+					part : Vector<IntRef> := [t, i, 1.5];
+					mine += part->Get(0) + part->Get(1) + part->Get(2);
+				};
+				critical(mutex) {
+					sums[t] := mine;
+				};
+			});
+		};
+		each(worker in workers) {
+			worker->Join();
+		};
+		# per thread: 5000 * t + (0 + .. + 4999) + 5000 * 1
+		assert sums[0] = 12502500 & sums[1] = 12507500 & sums[2] = 12512500 & sums[3] = 12517500 : "four threads";
+
+		"PASS: numbers in a collection literal are boxed as the Vector's holder"->PrintLine();
+	}
+}

@@ -2535,100 +2535,17 @@ Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type*
     return expression;
   }
 
-  // Two things the elements of a literal are not, said here: left to the constructor
-  // call the literal stands for, each is that call's error about an array and says
-  // nothing of the element that was written. The literal is replaced by Nil so that
-  // the one error is all there is.
-  if(generic) {
+  // The elements take their type from the target too.
+  if(generic && static_cast<StaticArray*>(expression)->GetDimension() == 1) {
     Type* element_type = TypeFactory::Instance()->MakeType(generics[0]);
     EntryType held = NIL_TYPE;
-    const bool holds_primitive = HolderPrimitive(element_type, held);
     const std::wstring& element_name = element_type->GetName();
-    const bool holds_function = element_name == L"System.FuncRef" || element_name == L"FuncRef" ||
-      element_name == L"System.Func2Ref" || element_name == L"Func2Ref" ||
-      element_name == L"System.Func3Ref" || element_name == L"Func3Ref" ||
-      element_name == L"System.Func4Ref" || element_name == L"Func4Ref";
-    ExpressionList* element_list = static_cast<StaticArray*>(expression)->GetElements();
-    const std::vector<Expression*> elements = element_list ? element_list->GetExpressions() : std::vector<Expression*>();
-    for(size_t i = 0; (holds_primitive || holds_function) && i < elements.size(); ++i) {
-      Expression* element = elements[i];
-      if(!element || element->GetMethodCall() || element->GetCastType()) {
-        continue;
-      }
-
-      if(holds_primitive) {
-        // a number, character or boolean: a literal, or a variable declared as one
-        Type* primitive = nullptr;
-        switch(element->GetExpressionType()) {
-        case INT_LIT_EXPR:
-          primitive = TypeFactory::Instance()->MakeType(INT_TYPE);
-          break;
-
-        case FLOAT_LIT_EXPR:
-          primitive = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
-          break;
-
-        case CHAR_LIT_EXPR:
-          primitive = TypeFactory::Instance()->MakeType(CHAR_TYPE);
-          break;
-
-        case BOOLEAN_LIT_EXPR:
-          primitive = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
-          break;
-
-        case VAR_EXPR:
-          if(!static_cast<Variable*>(element)->GetIndices()) {
-            SymbolEntry* entry = GetEntry(static_cast<Variable*>(element)->GetName());
-            if(entry && entry->GetType() && entry->GetType()->GetDimension() == 0) {
-              switch(entry->GetType()->GetType()) {
-              case BOOLEAN_TYPE:
-              case BYTE_TYPE:
-              case CHAR_TYPE:
-              case INT_TYPE:
-              case FLOAT_TYPE:
-                primitive = entry->GetType();
-                break;
-
-              default:
-                break;
-              }
-            }
-          }
-          break;
-
-        default:
-          break;
-        }
-
-        if(primitive) {
-          const std::wstring holder = DescribeType(element_type);
-          std::wstring plain;
-          if(held == INT_TYPE) {
-            plain = L", declare the variable as an IntVector, which holds plain Ints";
-          }
-          else if(held == FLOAT_TYPE) {
-            plain = L", declare the variable as a FloatVector, which holds plain Floats";
-          }
-          ProcessError(element, L"The elements of a collection literal are not boxed: this one is " + DescribeType(primitive) +
-                       L", and a " + bare + L"<" + holder + L"> holds " + holder +
-                       L"\n\tWrite the holder ('" + holder + L"->New(..)')" + plain +
-                       L", or add the values with AddBack(..), which boxes each one");
-          return TreeFactory::Instance()->MakeNilLiteral(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition());
-        }
-      }
-      else if(element->GetExpressionType() == METHOD_CALL_EXPR) {
-        // 'Class->Function' with no argument list: a method reference (WrapMethodReferenceInFuncRef)
-        MethodCall* ref = static_cast<MethodCall*>(element);
-        if(ref->GetCallType() == ENUM_CALL && !ref->GetCallingParameters() && !ref->IsFunctionDefinition() &&
-           !ref->GetVariable() && !ref->GetTypeOf() && !ref->GetMethodName().empty() && !ref->GetVariableName().empty()) {
-          const std::wstring written = ref->GetVariableName() + L"->" + ref->GetMethodName();
-          ProcessError(element, L"A method reference is not typed inside a collection literal: '" + written +
-                       L"' takes its type from a parameter, a declared variable or a return, not from its place in '[ ]'"
-                       L"\n\tAdd it with AddBack(" + written + L"), or write the full reference: " + DescribeType(element_type) +
-                       L"->New(" + written + L"(<types>) ~ <type>)<<types>>");
-          return TreeFactory::Instance()->MakeNilLiteral(expression->GetFileName(), expression->GetLineNumber(), expression->GetLinePosition());
-        }
-      }
+    if(HolderPrimitive(element_type, held)) {
+      // A Vector of a holder ('v : Vector<IntRef> := [1, n, 3];'): each number is boxed as
+      // that holder where the array is built (AnalyzeDynamicArray), by the rule that boxes
+      // an argument: 'IntRef->New(1)'. Left as written, the array was an Int[] and the
+      // constructor's error said nothing of the elements.
+      static_cast<StaticArray*>(expression)->SetBoxAs(element_type);
     }
   }
 
@@ -4443,6 +4360,52 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
     types.push_back(type);
   }
 
+  // The literal of a Vector or CompareVector of a holder (WrapCollectionLiteral): every
+  // number is boxed as that holder, by the rule for an argument (an Int or a Float for an
+  // IntRef or a FloatRef, converted as an assignment converts it; a Bool only for a
+  // BoolRef). The array is then an array of the holder, as if each 'IntRef->New(..)' had
+  // been written, and the numbers need not be of one type.
+  if(array->GetBoxAs() && !row_type && primitive_type) {
+    Type* holder_type = TypeFactory::Instance()->MakeType(array->GetBoxAs());
+    EntryType held = NIL_TYPE;
+    if(HolderPrimitive(holder_type, held)) {
+      const std::wstring holder = PlainTypeName(FormatTypeString(holder_type->GetName()));
+      for(size_t i = 0; i < elements.size(); ++i) {
+        switch(types[i]->GetType()) {
+        case BOOLEAN_TYPE:
+        case BYTE_TYPE:
+        case CHAR_TYPE:
+        case INT_TYPE:
+        case FLOAT_TYPE: {
+          Expression* boxed = PrimitiveConverts(held, types[i]->GetType()) ?
+            BoxExpression(TypeFactory::Instance()->MakeType(holder_type), elements[i], depth + 1) : nullptr;
+          if(boxed) {
+            array->GetElements()->SetExpression(boxed, (int)i);
+          }
+          else {
+            // said once, at the element; the array is still typed as the holder's so that
+            // nothing follows from it
+            ProcessError(elements[i], L"This element of the collection literal is " + DescribeType(types[i]) + L", which " + holder +
+                         L" does not hold: the elements are boxed as " + holder +
+                         (held == BOOLEAN_TYPE ? L", which is made from a Bool only" : L", which is made from a number, not from a Bool"));
+          }
+        }
+          break;
+
+        default:
+          break;
+        }
+      }
+
+      if(class_type && class_type->GetName() != holder_type->GetName()) {
+        mixed_classes = true;
+      }
+      class_type = holder_type;
+      primitive_type = nullptr;
+      mismatched_primitive = nullptr;
+    }
+  }
+
   // an enum value is an Int at run time: it neither boxes into a Base[] nor
   // has a Nil
   const bool is_enum = class_type && HasProgramOrLibraryEnum(class_type->GetName());
@@ -4575,7 +4538,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 
   // an element that is not a literal, or literals of an object and a primitive
   // ('["a", 1]'): built at run time (#1245)
-  if(array->IsDynamic() || (!array->IsMatchingTypes() && array->GetDimension() == 1)) {
+  if(array->IsDynamic() || array->GetBoxAs() || (!array->IsMatchingTypes() && array->GetDimension() == 1)) {
     AnalyzeDynamicArray(array, depth);
     return;
   }

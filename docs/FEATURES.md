@@ -166,11 +166,12 @@ nums : IntVector := [4, 5, 6];
 ```
 
 It is exactly `Vector->New([..])<IntRef>`; elements of the wrong type give that
-call's error. Two things an element is not: numbers are not boxed one by one
-(`v : Vector<IntRef> := [1, 2];` is refused at the first number: write the holders,
-declare an `IntVector`, or add the values with `AddBack`, which boxes each), and a
-method reference is not typed inside `[ ]` (`[Text->Upper]` is refused by name: add it
-with `AddBack(Text->Upper)`). The literal is not typed by a call argument (overloads are chosen
+call's error. For a `Vector` or `CompareVector` of a holder, the numbers of the literal
+are boxed as that holder, by the rule that boxes an argument:
+`v : Vector<IntRef> := [1, n, n + 1];` is `[IntRef->New(1), IntRef->New(n), ...]`, a
+`Float` for an `IntRef` is truncated as `r : IntRef := 2.75;` is, and a `Bool` is boxed
+only as a `BoolRef` (`[1, true]` for a `Vector<IntRef>` is an error at the literal).
+A method reference is not typed inside `[ ]`: add it with `AddBack(Text->Upper)`. The literal is not typed by a call argument (overloads are chosen
 before a target is known): assign it to a typed variable first. A map has its own
 literal, `{key: value, ...}` (see Map literals). Test: `collection_literals`.
 
@@ -755,7 +756,8 @@ The rules:
    `FloatRef` for an `Int` is truncated, and a `BoolRef` is never a number. It applies to
    an assignment, a `return`, an argument (of a method, a function or a function value),
    an operand of a calculation, an array index, a `select` and a condition
-   (`if(flags->Get(i))`).
+   (`if(flags->Get(i))`). Boxing also applies to the numbers of a collection literal for a
+   `Vector` of a holder (`v : Vector<IntRef> := [1, 2, 3];`).
 3. **The value unboxed is the one the expression ends in**: for
    `order->Lines()->Get(0)` it is what `Get(0)` returned.
 4. **Overloads.** A parameter is matched best by an argument of its type, then by one

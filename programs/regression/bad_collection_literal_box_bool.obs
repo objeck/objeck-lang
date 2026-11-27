@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: This element of the collection literal is Bool, which IntRef does not hold: the elements are boxed as IntRef, which is made from a number, not from a Bool
+# EXPECT_ERROR_COUNT: 2
+#~
+The numbers of a collection literal for a Vector of a holder are boxed by the rule for an
+argument: a Bool is only a Bool. A Bool for an IntRef, and a number for a BoolRef, are
+each refused once, at the literal, and nothing follows from either.
+~#
+use Collection;
+
+class BadCollectionLiteralBoxBool {
+	function : Main(args : String[]) ~ Nil {
+		v : Vector<IntRef> := [1, true, 3];
+		b : Vector<BoolRef> := [true, 1];
+		v->Size()->PrintLine();
+		b->Size()->PrintLine();
+	}
+}

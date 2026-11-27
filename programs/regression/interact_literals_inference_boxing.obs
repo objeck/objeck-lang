@@ -9,6 +9,7 @@ statements, each checked with 'assert' (whose operands are unboxed too):
   - a generic class of the program inferred from its argument
   - a map literal whose values are collections: a declared local, a constructor with
     its type arguments written, and one that takes them from the map's value type
+  - a collection literal of numbers for a Vector of a holder, boxed element by element
 ~#
 use Collection;
 
@@ -113,6 +114,9 @@ class InteractLiteralsInferenceBoxing {
 		nested->Find("evens")->AddBack(2);
 		nested->Find("all")->AddBack(3);
 		assert odds->Size() = 1 & nested->Find("evens")->Get(0) = 2 & nested->Find("all")->Get(0) = 3 : "a map literal of Vectors";
+
+		primes : Vector<IntRef> := [2, 3, counts->Get(0), p->GetSecond()];
+		assert primes->Size() = 4 & primes->Get(2) = 5 & primes->Get(0) + primes->Get(3) = 9 : "numbers and holders in a Vector<IntRef> literal";
 
 		words : Vector<String> := ["b", "a"];
 		lookup : Map<String, Vector<String>> := {"w": words};

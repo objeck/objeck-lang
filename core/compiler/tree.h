@@ -764,6 +764,8 @@ namespace frontend {
     // hidden local, rather than copied from the literal pool (#1245)
     bool is_dynamic = false;
     SymbolEntry* dynamic_entry = nullptr;
+    // the holder the numbers of the literal are boxed as (see SetBoxAs)
+    Type* box_as = nullptr;
 
     // the literal's extent in each dimension, outermost first: '[[1, 2, 3], [4, 5, 6]]'
     // is {2, 3}
@@ -811,6 +813,16 @@ namespace frontend {
     // literals of an object and a primitive are built at run time too
     void SetDynamic() {
       is_dynamic = true;
+    }
+
+    // the holder (IntRef, FloatRef, ...) the numbers of this literal are boxed as: set for the
+    // literal of a Vector or CompareVector of that holder (ContextAnalyzer::WrapCollectionLiteral)
+    void SetBoxAs(Type* t) {
+      box_as = t;
+    }
+
+    Type* GetBoxAs() {
+      return box_as;
     }
 
     // a ragged literal, '[[1], [1, 1]]', is one-dimensional: an array of rows (#1246)

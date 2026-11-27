@@ -145,7 +145,7 @@ tiny: 3 tokens, error=true
 
 An array literal takes the type of the variable it is assigned to when that is a `Vector`,
 `CompareVector`, `IntVector` or `FloatVector`: `v : Vector<IntRef> := [a, b]` is
-`Vector->New([a, b])<IntRef>`. It does not type a call argument; a map has its own literal, `{key: value, ...}`.
+`Vector->New([a, b])<IntRef>`. Numbers for a `Vector<IntRef>` are boxed (`[1, 2, 3]`). It does not type a call argument; a map has its own literal, `{key: value, ...}`.
 
 `x := E ?? return V;` (also `?? break;` and `?? continue;`) leaves when `E` is `Nil` and otherwise
 binds `x`. It is `x := E;` followed by `if(x = Nil) { return V; }`. A block form,
