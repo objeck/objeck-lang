@@ -327,7 +327,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     wrong stack height, a literal copied from outside its constant table or
     into too small an array, a method that does not begin by storing its
     parameters or whose parameter count is not its signature's, a call on a new
-    object of another class, an instance variable beyond the object's class.
+    object of another class, an instance variable beyond the object's class, and
+    the class rules (CLASS_RULES, arch/ref_map.h: on since 2026-11-27): a method
+    called on its caller's own instance where the method belongs to an unrelated
+    class, two object parameters of unrelated classes stored to each other's
+    local, an Int field read as a Float.
     vm_flag_fixtures/loader_verify_control.obs is compiled at -opt s0 and s3;
     each case changes one thing in it (found by pattern, not by position) and
     must be refused with its rule's message and status 1 with the default JIT,
@@ -2763,6 +2767,23 @@ def changed_program_cases(image):
     code, k = find("LoaderVerifyControl:Half", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, locl))
     cases.append(("a Float local read as an integer", "an integer or a reference read from or stored to a Float local",
                   put(code[k][1], "<B", op["LOAD_INT_VAR"])))
+
+    # --- a reference's class, where the image spells one (CLASS_RULES in arch/ref_map.h) ---
+    # a String's and an IntRef's parameter stores exchanged
+    code = code_of("LoaderVerifyControl:Pair")
+    first, second = operand(code[0][2]), operand(code[1][2])
+    cases.append(("two object parameters stored to each other's local", "an object stored to a parameter of another class",
+                  put(code[1][2], "<i", first, put(code[0][2], "<i", second))))
+    # Shape:TwiceFilled calls Fill on its own instance; Tally:Bump has Fill's shape, reads
+    # a Tally's field, and Tally is no relative of Shape
+    code, k = find("Shape:TwiceFilled", lambda c, k: is_op(c, k, "MTHD_CALL", class_ids["Shape"]))
+    bump_class, bump_start = record("Tally:Bump")
+    cases.append(("a method of an unrelated class called on the caller's own instance", "a method called on an object of another class",
+                  put(code[k][2] + 4, "<i", struct.unpack_from("<i", image, bump_start)[0],
+                      put(code[k][2], "<i", class_ids["Tally"]))))
+    code, k = find("Square:Area", lambda c, k: is_op(c, k, "LOAD_FLOAT_VAR", None, inst))
+    cases.append(("an Int field read as a Float", "an instance variable read as another kind than its class declares",
+                  put(code[k][2], "<i", 0)))
 
     # --- a new array is an array: String's constructor from a String, given the Char[] ---
     k = next(k for k in range(len(main)) if is_op(main, k, "TRAP_RTRN") and literal(main[k - 1][2]) == literal_ids["char"])

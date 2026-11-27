@@ -1,6 +1,6 @@
 {
  "format": 1,
- "comment": "Crash signatures the loader campaign accepts, derived with obe_campaign.py --replay from the crashing images of the 30,000-mutant run below (19 at ed24d1edb2). Each entry: the faulting function (interpreter frame under --jit=off; '(jit code)' for generated code), the assessment's class numbers, a reason, and the witness mutants. Removed since: TrapProcessor::SerializeObject (class 1, witness gc_bool_array_declaration_2_3755), because the trap handlers check a Nil receiver and that mutant now ends with the Nil runtime error. Update when the verifier class-rule change (CLASS_RULES) lands: remove the entries and witnesses that no longer appear (a run reports a signature as 'not seen').",
+ "comment": "Crash signatures the loader campaign accepts, derived with obe_campaign.py --replay from the crashing images of the 30,000-mutant run below (19 at ed24d1edb2, 15 now). Each entry: the faulting function (interpreter frame under --jit=off; '(jit code)' for generated code), the assessment's class numbers, a reason, and the witness mutants. Removed since: TrapProcessor::SerializeObject (class 1, witness gc_bool_array_declaration_2_3755), because the trap handlers check a Nil receiver and that mutant now ends with the Nil runtime error; and the three class-2 witnesses (core_ternary_call_chain_type_2_13096 and json_nil_string_null_2_17281 under LoadClsInstIntVar, fix_chained_calls_2_3297 under CpyCharAry), because the loader's class rules (CLASS_RULES, on) refuse those images at load: 'a method called on an object of another class' twice, 'an object returned where the method returns another class'. Their signatures stay for the other classes that fault there. If CLASS_RULES is switched off again, put the three witnesses and class 2 back.",
  "inputs": {
   "seed": 2,
   "count": 30000,
@@ -13,19 +13,16 @@
   {
    "signature": "Runtime::StackInterpreter::LoadClsInstIntVar",
    "classes": [
-    2,
     3
    ],
-   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 2 (a method's own instance used as an unrelated class; CLASS_RULES refuses these, P2) and class 3a/3b/3e/3f (field read through a reference whose class the image does not record; needs the declared-class format change).",
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 3a/3b/3e/3f: a field read through a reference whose class the image does not record; needs the declared-class format change. (Its two class-2 witnesses are refused at load by CLASS_RULES and were removed.)",
    "witnesses": [
     "closure_body_call_result_2_26891",
     "closure_lambda_params_2_23917",
     "core_boxing_rules_2_9469",
     "core_collections_perf_2_19752",
     "core_generic_inference_2_27763",
-    "core_ternary_call_chain_type_2_13096",
-    "func_closure_field_2_27805",
-    "json_nil_string_null_2_17281"
+    "func_closure_field_2_27805"
    ]
   },
   {
@@ -52,13 +49,11 @@
   {
    "signature": "Runtime::StackInterpreter::CpyCharAry",
    "classes": [
-    2,
     4
    ],
-   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 2 (String:Append on the StrBuilder itself, refused by CLASS_RULES) and class 4 (a new array left as the receiver of an instance method).",
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 4: a new array left as the receiver of an instance method. (Its class-2 witness, String:Append on the StrBuilder itself, is refused at load by CLASS_RULES and was removed.)",
    "witnesses": [
-    "fix534_substring_crash_2_28560",
-    "fix_chained_calls_2_3297"
+    "fix534_substring_crash_2_28560"
    ]
   },
   {

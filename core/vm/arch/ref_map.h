@@ -451,15 +451,42 @@
       return false;
     }
 
-    // Two families of rules are written, pass the valid-program corpus with no
-    // refusal, and are switched off: on the 30,000-change campaign neither refused
-    // a program that went on to crash (docs/design/OBE_TYPE_VERIFIER.md has the
-    // numbers), and a rule that buys nothing is only a chance to refuse a valid
-    // program. CLASS_RULES: a reference's class where an image spells one, the
-    // receiver, argument, return and trap-object checks on it, and the kind of an
-    // instance variable. ARRAY_KIND_RULES: Byte, Char, Float and word arrays told
-    // apart. They become worth their cost when declarations carry a class.
-    static const bool CLASS_RULES = false;
+    // Two families of rules that can be switched off on their own, because a rule
+    // that buys nothing is only a chance to refuse a valid program, and a valid
+    // program that is refused has no way round it.
+    //
+    // CLASS_RULES: a reference's class where an image spells one, the receiver,
+    // argument, return and trap-object checks on it, and the kind of an instance
+    // variable. ON since the campaign of 2026-11-27 (30,000 changes of 344
+    // programs): it refuses 3 of the 19 changed programs that crashed the VM (a
+    // method's own instance used as an unrelated class), and none of the valid
+    // images of the corpus gate (tools/fuzz/adhoc/obe_corpus_gate.py). On the
+    // campaign before it, with other seeds, it refused none of the crashes, which
+    // is why it was written and left off.
+    //
+    // What it protects: a program file changed so that an object is used as a
+    // class it is not is refused at load, where the VM read or wrote the wrong
+    // object's memory. What it costs: load time only, nothing once a program
+    // runs. Measured on Linux x64 against the same tree with the constant false
+    // and the code as it was before the rules were made cheaper: loading takes
+    // under 1% more instructions (callgrind: 'hello' start to finish 24.34
+    // against 24.56 million, the largest image of the corpus, load only, 192.6
+    // against 194.1 million) and about 2.6% more time ('hello' 4.18 against 4.29
+    // ms, the largest image 30.2 against 31.0 ms). The rules' own work is 2.3 to
+    // 2.9% of a load's instructions; the rest was won back from the parsing of
+    // signatures the verifier does with or without them. As first written the
+    // rules cost 7 to 8% (CheckClasses made three vectors and a map entry for
+    // every method and walked each method's values twice).
+    //
+    // To turn it off again set this to false: nothing else depends on it
+    // (run_vm_flag_tests.py section 34 then fails its three class cases, which
+    // is the reminder to take them out).
+    //
+    // ARRAY_KIND_RULES: Byte, Char, Float and word arrays told apart. OFF: it
+    // refuses none of those 19 and no valid image, so it would only be a risk. It
+    // becomes worth having when declarations carry a class
+    // (docs/design/OBE_TYPE_VERIFIER.md).
+    static const bool CLASS_RULES = true;
     static const bool ARRAY_KIND_RULES = false;
 
     class Builder {

@@ -1,11 +1,11 @@
 # Completing the `.obe` verifier: what is still trusted, and how to stop trusting it
 
 **Status (2026-11): sections 2, 3 and 5 are built as far as an image allows.
-Section 1 was built for the classes an image spells, measured, and switched
-off: it refused no valid program and none of the changed programs that crashed
-in the campaign of that time (in a later one, on more programs, it refuses 3 of
-19: "What still crashes"). What would close most of the rest is a format change
-that is designed here and not made.** This page says which
+Section 1 is built for the classes an image spells and, since 2026-11-27, on:
+it refuses no valid program and 3 of the 19 changed programs that crashed in
+the campaign of that day (it had been switched off, having refused none of the
+crashes of the campaign before, on other seeds). What would close most of the
+rest is a format change that is designed here and not made.** This page says which
 changes to a compiled program the loader still accepts and the VM cannot
 survive, why each one cannot be refused with what an `.obe` holds today, and
 what would close it. What the loader does check is in
@@ -43,7 +43,10 @@ compiled by the earlier compiler, holds the valueless return after a `try`
 that the later rows refuse, so its changes are all refused there.) The class
 rule and the array kinds bought nothing measurable here, and a rule that buys
 nothing is only a chance to refuse a valid program: both are in the builder
-behind `CLASS_RULES` and `ARRAY_KIND_RULES` (`core/vm/arch/ref_map.h`), off. No valid program
+behind `CLASS_RULES` and `ARRAY_KIND_RULES` (`core/vm/arch/ref_map.h`), and
+both were off when this table was made. `CLASS_RULES` is on since the later
+campaign, where it does buy something ("What still crashes"); the last row of
+the table is therefore the VM of that time, not today's. No valid program
 is refused by any row: every `.obs` in the repository at `-opt s0` to `s3`, a
 quarter again with `-debug`, and one program per library that names every
 documented class, 5,067 images, load under `OBJECK_VERIFY_ONLY=1`
@@ -53,7 +56,8 @@ programs broke them, and each is recorded where it applies.
 
 ## 1. A reference's class
 
-**Built, measured, switched off (`CLASS_RULES`).** A reference is given the
+**Built and on (`CLASS_RULES`; one constant in `core/vm/arch/ref_map.h` turns
+it off again).** A reference is given the
 static class of the expression that made it, as far as an image says one: `NEW_OBJ_INST`, `OBJ_INST_CAST`, the method's
 own instance, a parameter or a call's result whose name spells a *qualified*
 class (`o.System.String`), a trap's result, and a load of a parameter's local.
@@ -246,7 +250,7 @@ the VM, at 9 faulting sites, in eight classes:
 | changed programs | what the change does | where the VM faults | what would refuse it |
 |---|---|---|---|
 | 1 | a store dropped, so a `Serializer` local stays Nil and `Write` is called on it | `SerializeObject` | **fixed, and not a loader rule:** a trap-bodied library method is not virtual, the call does not look at the receiver, and the handler read through Nil. Valid source did the same (`s : String; select(s) {...}`). The handlers check now; the changed program ends with the Nil runtime error |
-| 3 | the method's own instance used as an unrelated class: `String:Append` called on a `StrBuilder`, `Vector:Get` on another class, a parser returned as a `JsonElement` | `CpyCharAry`, `LoadClsInstIntVar`, compiled code | `CLASS_RULES` (section 1), which is written and off: it refuses all three ("a method called on an object of another class", twice; "an object returned where the method returns another class") |
+| 3 | the method's own instance used as an unrelated class: `String:Append` called on a `StrBuilder`, `Vector:Get` on another class, a parser returned as a `JsonElement` | `CpyCharAry`, `LoadClsInstIntVar`, compiled code | **refused now** by `CLASS_RULES` (section 1): "a method called on an object of another class", twice; "an object returned where the method returns another class" |
 | 10 | a field read through a reference whose class the image does not record: a closure capture (3), an object field of the instance (2), the result of a generic `Vector:Get` with its cast checked and not written (1), a parameter typed as an interface (1), another object local (1); and a field declared `Int` in a parameter's spelled class, then read through (2) | `LoadClsInstIntVar`, `StorClsInstIntVar`, `ValidObjectCast`, compiled code | declared classes (section 1) for six; "write every cast" as well for the generic and the interface; for the last two a rule that is not written yet: type the value by the declared kind of the field in the spelled class |
 | 1 | a constructor call replaced, so the new `Char[]` it took is left as the receiver of the next `String` method | `CpyCharAry` | the object-or-array rule exempts a call's receiver (a primitive array's helper functions take an array there); keep the exemption only for callees that do not read their instance. Not written |
 | 1 | an element of a local declared `Int[]` read through as an array | `Handle_LOAD_INT_ARY_ELM` | the element type of an array: a candidate rule (an element of an array every maker of which is declared `INT_ARY_PARM` is a number), not yet run over the corpus |
@@ -254,8 +258,8 @@ the VM, at 9 faulting sites, in eight classes:
 | 1 | one word of a function-typed local loaded as an `Int` and used as a reference | `ProcessStoreFunctionVar` | the kind of a local slot that belongs to a function value, read with an Int instruction: a candidate rule, not yet run over the corpus |
 | 1 | a `RTRN` put mid-method; the rest is unreachable and begins with a store on an empty stack (JIT only; interpreted it runs) | `JitAmd64::ProcessStore`, while compiling | the verifier walks reachable paths and the JIT compiles every instruction: skip what the reference map marks unreachable, or fail the compile and stay interpreted |
 
-So 18 crash with the receiver checks, and 15 would with `CLASS_RULES` on as
-well. Ten of those 15 are section 1 (a reference whose class no image records);
+So 18 crash with the receiver checks and 15 with `CLASS_RULES` on as well,
+which is the VM as shipped. Ten of those 15 are section 1 (a reference whose class no image records);
 the others are an array as a receiver, an array's element, an array's
 dimensions in compiled code, a function value's word, and unreachable code,
 which the sentence that stood here ("every one is section 1") did not foresee.

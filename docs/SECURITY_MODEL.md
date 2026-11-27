@@ -102,6 +102,7 @@ standard libraries; a quarter are compiled again with `-debug`) all pass.
 | a class variable is read from class memory (`LOAD_CLS_MEM`) and nothing else, and class memory is never used as an object or array | the loader bounds a variable's id by the context the instruction names; the interpreter reads it from whatever is on the stack |
 | an instance variable read through the method's own instance, or through an object `NEW_OBJ_INST` just made, fits that class's instance size; in a lambda, the captures declared for it | the bound above is the largest object of any class |
 | a method called on an object `NEW_OBJ_INST` just made belongs to that object's class, a class it inherits from or an interface it implements | a constructor run on an object of a smaller class wrote past it |
+| a reference whose class the image spells (the method's own instance, a new object, a cast, a parameter or a call's result with a qualified class name, a trap's result) is not used as an **unrelated** class: as the receiver of a method that is not virtual and reads its instance, as an argument, a returned value or a store to a parameter's local where a class is spelled, or by a trap that reads an object; and an instance variable read through it is of the kind its class declares (`CLASS_RULES`, `core/vm/arch/ref_map.h`) | `String:Append` called on the `StrBuilder` that holds the String copied a `Char[]` out of the wrong object; a parser returned as the element it parses was read as one |
 | a method returns with exactly the words its return type names on the operand stack (every method: a trap's effect on the stack is its row's) | the caller goes on with the stack it had plus those words: a return one word off shifts every argument the caller passes afterwards |
 | no call names a method whose body returns nothing where its type names a value (`System.Base:Try`, a compiler intrinsic's placeholder, is the only such body the compiler writes, and nothing calls it) | |
 | a literal array or string is copied from an entry of its constant table that exists, into an array no larger than the entry: the compiler's five-instruction shape (dimensions, allocation, index, trap id, trap) is checked whole | `CpyCharStrAry` and its kin index the table and copy the array's length with no bound |
@@ -127,7 +128,13 @@ largest image of the corpus (1.6 MB unpacked) under `OBJECK_VERIFY_ONLY=1`, the
 whole process, medians of 41: 51 ms before the trap and function-value rules and
 36 ms with them on Linux x64; 78 and 47 ms on Windows x64. Counted with callgrind
 on Linux, loading that image took 298 million instructions before and 189 million
-with them, and running `hello` 37.2 and 25.2 million. The
+with them, and running `hello` 37.2 and 25.2 million. The class rules,
+switched on later, cost load time only and nothing once a program runs: on the
+tree of 2026-11-27 (Linux x64) `hello` from start to finish takes 24.34 million
+instructions without them and 24.56 with (under 1% more; 4.18 and 4.29 ms, 2.6%
+more), and loading the largest image 192.6 and 194.1 million (30.2 and 31.0 ms).
+The rules' own work is 2.3 to 2.9% of a load's instructions; the same change
+won about 2% back from the parsing of signatures. The
 JIT builds its own map (other contents: the kinds of the stack words, no facts)
 only for a method it compiles, when it compiles it.
 
@@ -165,14 +172,18 @@ The trap table and the function-value rules were then measured on one set of 30,
 
 The current figure is from a later run on more programs, so its changed
 programs are other ones and it does not continue that series: of 30,000 changes
-of 344 programs, 19 crash the VM (9 faulting sites), and 18 once a trap-bodied
-method checks its receiver. What the remaining ones are, and why the loader
+of 344 programs, 19 crash the VM (9 faulting sites), 18 once a trap-bodied
+method checks its receiver, and 15 with the class rules on as well, which is
+the VM as shipped. What the remaining ones are, and why the loader
 cannot refuse them yet, is in [design/OBE_TYPE_VERIFIER.md](design/OBE_TYPE_VERIFIER.md).
 
 No valid program is refused: every `.obs` in the repository that compiles on its
 own, at `-opt s0` to `s3` and a quarter again with `-debug`, and one program per
 library that names every documented class (769 of 779 classes link whole), 5,067
 images, load under `OBJECK_VERIFY_ONLY=1` (`tools/fuzz/adhoc/obe_corpus_gate.py`).
+With the class rules on the same gate was run again on the tree of 2026-11-27:
+8,175 images on Linux x64 (773 of 783 documented classes link whole) and 8,175 on
+Windows x64, none refused, and the regression suite in every JIT mode.
 Programs that did not at first were each a compiler defect a rule exposed
 (CHANGELOG, v2026.11.4: a call with arguments on the result of `??`; a return
 with no value after a `try`), or a rule that was wrong and was dropped: the
@@ -187,13 +198,15 @@ compiler does in valid programs (the design page says what).
   unless the object is the method's own instance or one `NEW_OBJ_INST` just
   made. An instance variable is otherwise bounded by the largest object of any
   class, and an object-typed *field* may be given a number (an enum is one) and
-  read through by another method. Rules for the classes an image does spell
-  (a parameter's or a result's qualified name, a cast, a new object) are written
-  and switched off: they refuse no valid program and, measured, none of the
-  changed programs that crash.
+  read through by another method. The classes an image does spell (the method's
+  own instance, a parameter's or a result's qualified name, a cast, a new
+  object) are checked, and only against an *unrelated* class; what is open is
+  the class of a capture, a field, a local that is not a parameter, a generic's
+  result and a parameter typed as an interface.
 - **The kind of an array.** A `Byte[]` read with an `Int[]`'s instruction reads
   past its end. The rule that tells Byte, Char, Float and word arrays apart is
-  written and switched off for the same reason.
+  written and switched off (`ARRAY_KIND_RULES`): it refuses no valid program
+  and, measured, none of the changed programs that crash.
 - **Function values out of a field, a capture or an array element.** Those carry
   no function type in an image, so a call through one is not related to the
   method it names.
