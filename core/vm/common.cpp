@@ -4347,13 +4347,31 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     // input; park for it, with the array ref re-rooted on the op_stack.
     PushInt((size_t)array, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
-    size_t read = fread(byte_buffer, 1, num, stdin);
-    // never stop inside a character (see ReadUtf8Tail)
-    read = ReadUtf8Tail(byte_buffer, read, [](char& dest) { return FileNextContinuation(stdin, dest); });
+    size_t read;
+    std::wstring wide_in;
+#ifdef _WIN32
+    if(!Runtime::StackInterpreter::IsBinaryStdio()) {
+      // stdin is in a wide CRT mode (_O_U8TEXT or _O_U16TEXT): fread hands back its UTF-16 code
+      // units as bytes, so a byte count and a UTF-8 decode would read every other byte as a zero.
+      // Read code units, which is what the Windows wstring holds.
+      std::wstring units(num, L'\0');
+      read = units.empty() ? 0 : fread(&units[0], sizeof(wchar_t), (size_t)num, stdin);
+      wide_in.assign(units, 0, read);
+    }
+    else
+#endif
+    {
+      read = fread(byte_buffer, 1, num, stdin);
+      // never stop inside a character (see ReadUtf8Tail)
+      read = ReadUtf8Tail(byte_buffer, read, [](char& dest) { return FileNextContinuation(stdin, dest); });
+      if(read) {
+        wide_in = DecodeCharRead(byte_buffer, read, (size_t)num);
+      }
+    }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read) {
-      std::wstring in = DecodeCharRead(byte_buffer, read, (size_t)num);
+      const std::wstring& in = wide_in;
       StoreCharArraySlice(array, (size_t)offset, (size_t)num, in);
       PushInt(in.size(), op_stack, stack_pos);
     }
