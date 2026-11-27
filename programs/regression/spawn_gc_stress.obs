@@ -1,0 +1,157 @@
+#~
+'spawn' under collection: threads started by 'spawn { ... }' read what they
+captured while every thread, the creator included, forces collections.
+
+A 'spawn' block is a lambda held in a field of an anonymous Thread object, so
+its captured values live in closure memory that only that field refers to once
+the creating frame has returned. The collector has to reach them through the
+thread object for as long as the thread runs, and through the capturing frame
+before that. This fixture makes each of those the ONLY path to a live object:
+
+  - the creator builds a list, starts a thread that captured it and returns,
+    dropping its own reference (StartWalker);
+  - the thread keeps a long-lived list of its own and allocates short-lived
+    objects around every read of the captured one;
+  - threads work a staggered number of iterations, so some are exiting while
+    the rest still collect, and the rounds repeat;
+  - captured primitives (Int, Float, Bool, Char) sit beside the captured
+    object and are checked on every iteration, so a slot that is traced as
+    the wrong kind shows up as a wrong value, not only as a crash.
+
+Every value is checked on the way out; a lost or corrupted object exits 1.
+Sized for the default nursery and meant to be run with a small one as well
+(--nursery=256k, OBJECK_GC_VERIFY=1), where nearly every iteration collects.
+~#
+
+use System.Concurrency;
+
+class SpawnBox {
+  @v : Int;
+  @next : SpawnBox;
+
+  New(v : Int) { @v := v; @next := Nil; }
+  method : public : V() ~ Int { return @v; }
+  method : public : Next() ~ SpawnBox { return @next; }
+  method : public : SetNext(b : SpawnBox) ~ Nil { @next := b; }
+}
+
+class SpawnTally {
+  @errors : Int;
+  @finished : Int;
+  @mutex : ThreadMutex;
+
+  New() {
+    @errors := 0;
+    @finished := 0;
+    @mutex := ThreadMutex->New("spawn-tally");
+  }
+
+  method : public : Report(errors : Int) ~ Nil {
+    critical(@mutex) {
+      @errors += errors;
+      @finished += 1;
+    };
+  }
+
+  method : public : Errors() ~ Int { return @errors; }
+  method : public : Finished() ~ Int { return @finished; }
+}
+
+class SpawnGcStress {
+  function : Main(args : String[]) ~ Nil {
+    nthreads := 8;
+    rounds := 4;
+    tally := SpawnTally->New();
+
+    for(r := 0; r < rounds; r += 1;) {
+      workers := Thread->New[nthreads];
+      # staggered work: thread i finishes about i/nthreads of the way through
+      each(i : workers) {
+        workers[i] := StartWalker(i + 1, 1200 + i * 2800, tally);
+      };
+
+      # the creator collects too, while the threads read their captures
+      keep := SpawnBox->New(r);
+      for(k := 0; k < 80000; k += 1;) {
+        junk := SpawnBox->New(k);
+        junk->SetNext(keep);
+      };
+
+      each(i : workers) { workers[i]->Join(); };
+      if(keep->V() <> r) {
+        tally->Report(1);
+      };
+    };
+
+    if(tally->Errors() = 0 & tally->Finished() = nthreads * rounds) {
+      "PASS: spawn GC stress"->PrintLine();
+    }
+    else {
+      errors := tally->Errors();
+      finished := tally->Finished();
+      "FAIL: spawn GC stress - {$errors} corruption(s), {$finished} thread(s) reported"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  # Builds a list, hands it to a thread and returns: from here on the thread's
+  # closure is the only thing that refers to the list.
+  function : StartWalker(id : Int, iters : Int, tally : SpawnTally) ~ Thread {
+    captured := SpawnBox->New(id);
+    for(k := 0; k < 400; k += 1;) {
+      n := SpawnBox->New(id);
+      n->SetNext(captured);
+      captured := n;
+    };
+
+    scale := 1.5;
+    flag := true;
+    mark := 'k';
+    length := 401;
+
+    return spawn {
+      errors := 0;
+
+      # the thread's own long-lived list
+      head := SpawnBox->New(id);
+      for(k := 0; k < 600; k += 1;) {
+        n := SpawnBox->New(id);
+        n->SetNext(head);
+        head := n;
+      };
+
+      for(i := 0; i < iters; i += 1;) {
+        sum := 0;
+        for(j := 0; j < 8; j += 1;) {
+          sum += captured->V();
+          junk := SpawnBox->New(i + j);
+          junk->SetNext(SpawnBox->New(j));
+        };
+        if(sum <> id * 8) { errors += 1; };
+        if(scale <> 1.5 | <>flag | mark <> 'k' | length <> 401) { errors += 1; };
+      };
+
+      # the captured list, whole and unchanged
+      count := 0;
+      cur := captured;
+      while(cur <> Nil) {
+        if(cur->V() <> id) { errors += 1; };
+        count += 1;
+        cur := cur->Next();
+      };
+      if(count <> length) { errors += 1; };
+
+      # and the thread's own
+      count := 0;
+      cur := head;
+      while(cur <> Nil) {
+        if(cur->V() <> id) { errors += 1; };
+        count += 1;
+        cur := cur->Next();
+      };
+      if(count <> 601) { errors += 1; };
+
+      tally->Report(errors);
+    };
+  }
+}

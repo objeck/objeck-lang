@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (20,4): Cannot reference an instance method from this context
+#~
+The block of a 'spawn' follows a lambda's rules. It may call an instance method
+on an object it captured ('me->Step()'), but a method called with no receiver
+has no instance to run on, and is refused on the line it is written.
+~#
+class BadSpawnImplicitSelf {
+	@steps : Int;
+
+	New() {
+		@steps := 0;
+	}
+
+	method : public : Step() ~ Nil {
+		@steps += 1;
+	}
+
+	method : public : Run() ~ Nil {
+		worker := spawn {
+			Step();
+		};
+		worker->Join();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		BadSpawnImplicitSelf->New()->Run();
+	}
+}

@@ -1115,6 +1115,18 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_generic_inference.py "%BIN%"
 
+    # 'spawn { ... }' is written out as an anonymous Thread class and a lambda, named
+    # for the class, file and position it is written at. A library stores them in
+    # its .obl beside the ones a program makes for its own 'spawn' blocks; this
+    # builds both, with a 'spawn' at one position of two files of one name.
+    - name: a spawn block in a library and in the program that uses it (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_spawn.py "%BIN%"
+
     - name: a generic array parameter survives the .obl round trip (Windows)
       working-directory: ./programs/regression
       shell: cmd

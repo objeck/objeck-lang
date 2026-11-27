@@ -9718,6 +9718,13 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 
   Type* mthd_type = current_method->GetReturn();
   Expression* expression = rtrn->GetExpression();
+  // the block of a 'spawn' is a thread's body: there is nobody to return a value to
+  if(expression && current_method->IsSpawnBody()) {
+    AnalyzeExpression(expression, depth + 1);
+    ProcessError(rtrn, L"A 'spawn' block does not return a value\n\tUse 'return;' to end the thread, and hand a result back through an object the block shares");
+    in_return = false;
+    return;
+  }
   if(expression) {
     // auto-wrap a bare lambda when the return type is FuncRef<R>
     TypeMapLiteral(expression, mthd_type);
@@ -15326,6 +15333,7 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   found_completion.push_back(std::pair<int, std::wstring>(14, L"label"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"return"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"critical"));
+  found_completion.push_back(std::pair<int, std::wstring>(14, L"spawn"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"use"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"leaving"));
   found_completion.push_back(std::pair<int, std::wstring>(14, L"assert"));

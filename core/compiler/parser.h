@@ -134,6 +134,8 @@ class Parser {
   StatementList* ParseNilGuardBail(int depth);
   If* MakeNilGuard(Variable* target, StatementList* bail);
   Method* prev_method;
+  // true while the class of a 'spawn' is being parsed
+  bool spawn_class;
   Scanner* scanner;
   SymbolTableManager* symbol_table;
   std::map<ScannerTokenType, std::wstring> error_msgs;
@@ -334,7 +336,9 @@ class Parser {
   void RejectToolDoc(const wchar_t* what);
   Class* ParseInterface(const std::wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
-  Lambda* ParseLambda(int depth);
+  Lambda* ParseLambda(int depth, Type* block_type = nullptr);
+  bool IsSpawn();
+  MethodCall* ParseSpawn(int depth);
   Variable* ParseVariable(IdentifierContext &context, int depth);
   std::vector<Type*> ParseGenericTypes(int depth);
   std::vector<Class*> ParseGenericClasses(const std::wstring &bundle_name, int depth);
@@ -428,6 +432,7 @@ class Parser {
     LoadErrorCodes();
     current_class = nullptr;
     current_method = prev_method = nullptr;
+    spawn_class = false;
     pending_generic_closes = 0;
     is_semi_colon = false;
   }

@@ -1179,6 +1179,19 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_lib_generic_inference.py "$BIN"
 
+    # 'spawn { ... }' is written out as an anonymous Thread class and a lambda, named
+    # for the class, file and position it is written at. A library stores them in
+    # its .obl beside the ones a program makes for its own 'spawn' blocks; this
+    # builds both, with a 'spawn' at one position of two files of one name.
+    - name: a spawn block in a library and in the program that uses it (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_spawn.py "$BIN"
+
     # `Vector[]<T>` as a parameter built fine inside a library and resolved for
     # callers inside it, but a program that linked the library was told the method
     # did not exist: the signature came back out of the .obl with its array

@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: (10,18): Invalid cast with classes: System.Int and System.Concurrency.Thread
+# EXPECT_ERROR_COUNT: 1
+#~
+'spawn { ... }' is the started thread, a System.Concurrency.Thread, and is
+typed as one: it cannot be stored as an Int, and no 'use' is needed to name
+its class.
+~#
+class BadSpawnThreadType {
+	function : Main(args : String[]) ~ Nil {
+		count : Int := spawn {
+			"running"->PrintLine();
+		};
+		count->PrintLine();
+	}
+}

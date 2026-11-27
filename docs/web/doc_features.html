@@ -688,7 +688,7 @@ true       use        virtual    while      xor</pre>
       <tr><td data-label="word"><code>reverse</code></td><td data-label="reserved for"><code>each(... reverse ...)</code></td><td data-label="commonly wanted as">a sort direction</td></tr>
      </tbody>
     </table>
-    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>is</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>json</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>match</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
+    <p><code>self</code>, <code>parent</code> and <code>value</code> are <strong>not</strong> reserved as identifiers. The capitalized <code>Byte</code>, <code>Int</code>, <code>Float</code>, <code>Char</code>, <code>Bool</code>, <code>Nil</code>, <code>New</code>, <code>Parent</code>, <code>As</code> and <code>TypeOf</code> are keywords of the scanner too (<code>ident_map</code> in <code>scanner.cpp</code>), so they cannot name a variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>is</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>json</code> are <strong>contextual</strong>: a keyword variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>match</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names. variable either. <code>ref</code>, <code>try</code>, <code>on</code>, <code>finally</code>, <code>out</code> and <code>spawn</code> are <strong>contextual</strong>: a keyword only where the grammar expects it, so they remain usable as names.</p>
     <hr class="section-end">
     <div class="raw"><a name="integers"></a>
     ## Integer Arithmetic</div>
@@ -837,6 +837,65 @@ socket<span class="t-op">-&gt;</span>Close();
   }
 }
 </code></pre>
+    <h3 id="threads-from-a-block-spawn">Threads from a block: <code>spawn</code></h3>
+    <p><code>spawn { ... }</code> runs the block on a new thread. The expression is the thread, already started, so it can be kept and joined:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> Collection;
+<span class="t-kw">use</span> <span class="t-cls">System</span>.Concurrency;
+
+totals <span class="t-op">:=</span> <span class="t-cls">Map</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;;
+mutex <span class="t-op">:=</span> <span class="t-cls">ThreadMutex</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-str">"totals"</span>);
+
+workers <span class="t-op">:=</span> <span class="t-cls">Vector</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>()&lt;Thread&gt;;
+<span class="t-kw">each</span>(text <span class="t-kw">in</span> texts) {
+  workers<span class="t-op">-&gt;</span>AddBack(<span class="t-kw">spawn</span> {
+    words <span class="t-op">:=</span> text<span class="t-op">-&gt;</span>Split(<span class="t-str">' '</span>);
+    <span class="t-kw">critical</span>(mutex) {
+      totals<span class="t-op">-&gt;</span>Insert(text, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(words<span class="t-op">-&gt;</span>Size()));
+    };
+  });
+};
+
+<span class="t-kw">each</span>(worker <span class="t-kw">in</span> workers) {
+  worker<span class="t-op">-&gt;</span>Join();
+};
+</code></pre>
+    <p>The block uses the locals it names. Before <code>spawn</code>, the same work took a class per kind of thread, with its values packed into one object for <code>Execute(param : Base)</code> and cast back out in <code>Run</code>:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-kw">class</span> <span class="t-cls">CountWords</span> <span class="t-kw">from</span> <span class="t-cls">Thread</span> {
+  <span class="t-kw">New</span>() {
+    <span class="t-kw">Parent</span>(<span class="t-str">"count-words"</span>);
+  }
+
+  <span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Run</span>(param : Base) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+    args <span class="t-op">:=</span> param<span class="t-op">-&gt;</span><span class="t-kw">As</span>(Triplet&lt;<span class="t-type">String</span>, Map&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;, ThreadMutex&gt;);
+    text <span class="t-op">:=</span> args<span class="t-op">-&gt;</span>GetFirst();
+    totals <span class="t-op">:=</span> args<span class="t-op">-&gt;</span>GetSecond();
+    mutex <span class="t-op">:=</span> args<span class="t-op">-&gt;</span>GetThird();
+
+    words <span class="t-op">:=</span> text<span class="t-op">-&gt;</span>Split(<span class="t-str">' '</span>);
+    <span class="t-kw">critical</span>(mutex) {
+      totals<span class="t-op">-&gt;</span>Insert(text, <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(words<span class="t-op">-&gt;</span>Size()));
+    };
+  }
+}
+
+worker <span class="t-op">:=</span> <span class="t-cls">CountWords</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+worker<span class="t-op">-&gt;</span>Execute(<span class="t-cls">Triplet</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(text, totals, mutex)&lt;<span class="t-type">String</span>, Map&lt;<span class="t-type">String</span>, <span class="t-type">IntRef</span>&gt;, ThreadMutex&gt;);
+</code></pre>
+    <p>Both forms are in <code>programs/regression/spawn_before_after.obs</code>, which runs them side by side and prints:</p>
+<pre class="plain">3 words: one two three
+2 words: four five
+4 words: six seven eight nine
+PASS: spawn before and after</pre>
+    <p>What a block may do, and what it holds:</p>
+    <ul>
+     <li><strong>It holds values, not variables.</strong> Each local the block names is copied when the thread starts. An object is shared with the creator (guard it with a <code>ThreadMutex</code> when both sides write); an <code>Int</code>, <code>Float</code>, <code>Bool</code>, <code>Char</code> or <code>Byte</code> is the thread's own copy, so a write to it in the block is not seen outside, and a loop that spawns gives each thread the loop variable's value at that turn.</li>
+     <li><strong>It follows a lambda's rules</strong>, because that is what it is compiled to: it may call functions by name and methods on an object it captured (<code>me := @self; spawn { me-&gt;Step(); }</code>), but not a method with no receiver.</li>
+     <li><strong><code>return;</code> ends the thread.</strong> A value has nowhere to go: <code>return 5;</code> is a compile error (<code>A 'spawn' block does not return a value</code>). Hand a result back through an object the block shares.</li>
+     <li><strong>The thread is named for where it was started</strong>, <code>spawn:&lt;file&gt;:&lt;line&gt;</code> (<code>worker-&gt;GetName()</code>), which is the name the runtime's diagnostics print.</li>
+     <li><code>spawn</code> may be nested, and used in a function, a method or a lambda. It may not be used in a method of an anonymous class.</li>
+     <li><code>spawn</code> is a word of the language only in front of a <code>{</code>: a variable, parameter or method named <code>spawn</code> still compiles.</li>
+    </ul>
+    <p>Nothing in the VM or the JIT is new. The parser writes <code>spawn { body }</code> out as an anonymous <code>Thread</code> class whose <code>Run</code> calls a lambda holding <code>body</code>, so the captured values live in the lambda's closure, where the collector already traces them.</p>
     <h3 id="structured-concurrency">Structured Concurrency</h3>
     <p>A <code>TaskScope</code> (nursery) spawns closures as worker <code>Thread</code>s. Wrapped in a <code>leaving { scope-&gt;JoinAll(); }</code> block it can never exit until every child has joined — the structured-concurrency invariant (no task outlives its scope), on any exit path (normal, early return, or unwind). Library: <code>System.Concurrency</code> (link <code>-lib gen_collect,concurrent</code>).</p>
 <pre class="line-numbers"><code class="language-objeck"><span class="t-kw">use</span> <span class="t-cls">System</span>.Concurrency;

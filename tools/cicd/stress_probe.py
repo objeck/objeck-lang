@@ -65,6 +65,8 @@ MODE_REQUIRES = {
 #   closure_nested_capture          0.06  0.07  0.21  0.26
 #   jit_gc_stress                   0.05  0.05  0.10  0.19
 #   jit_closure_gc_fixup            0.02  0.02  0.02  0.05
+#   spawn_gc_stress                 0.9   0.9   25    32    (same machine,
+#                                                         v2026.11.4 tree)
 #
 # 200 runs of every cell would be ~33,000 s on that machine, so the slow cells
 # are cut to ~3,600 local seconds in total, sized to fit the workflow's
@@ -87,6 +89,10 @@ RUN_COUNTS = {
     "obj_size_layout": {"nursery256k": 15, "verify256k": 10},
     "closure_nested_capture": 200,
     "jit_closure_gc_fixup": 200,
+    # 'spawn { ... }' threads reading captures while every thread collects:
+    # ~180 s in all, 40 (7.5%) in default and jit1, 3 (a smoke check) under the
+    # small nursery and the verifier
+    "spawn_gc_stress": {"default": 40, "jit1": 40, "nursery256k": 3, "verify256k": 3},
 }
 FIXTURES = list(RUN_COUNTS)
 

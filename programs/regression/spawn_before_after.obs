@@ -1,0 +1,105 @@
+# EXTRA_LIBS: gen_collect
+#~
+The 'spawn' example of docs/FEATURES.md, kept compiling and running: the same
+work written the way it had to be before v2026.11.4 (a Thread subclass, its
+values packed into one object for 'Execute' and cast back out in 'Run') and
+with 'spawn'. Both count the words of three texts on three threads; the test
+exits 1 unless the two agree with the expected totals.
+~#
+use Collection;
+use Collection.Tuple;
+use System.Concurrency;
+
+#
+# Before: a class per kind of thread, and a Triplet to carry three values
+# through 'Execute(param : Base)'
+#
+class CountWords from Thread {
+	New() {
+		Parent("count-words");
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		args := param->As(Triplet<String, Map<String, IntRef>, ThreadMutex>);
+		text := args->GetFirst();
+		totals := args->GetSecond();
+		mutex := args->GetThird();
+
+		words := text->Split(' ');
+		critical(mutex) {
+			totals->Insert(text, IntRef->New(words->Size()));
+		};
+	}
+}
+
+class SpawnBeforeAfter {
+	function : Before(texts : String[]) ~ Map<String, IntRef> {
+		totals := Map->New()<String, IntRef>;
+		mutex := ThreadMutex->New("totals");
+
+		workers := Vector->New()<CountWords>;
+		each(text in texts) {
+			worker := CountWords->New();
+			worker->Execute(Triplet->New(text, totals, mutex)<String, Map<String, IntRef>, ThreadMutex>);
+			workers->AddBack(worker);
+		};
+
+		each(worker in workers) {
+			worker->Join();
+		};
+		return totals;
+	}
+
+	#
+	# After: the block is the thread, and it uses the locals it names
+	#
+	function : After(texts : String[]) ~ Map<String, IntRef> {
+		totals := Map->New()<String, IntRef>;
+		mutex := ThreadMutex->New("totals");
+
+		workers := Vector->New()<Thread>;
+		each(text in texts) {
+			workers->AddBack(spawn {
+				words := text->Split(' ');
+				critical(mutex) {
+					totals->Insert(text, IntRef->New(words->Size()));
+				};
+			});
+		};
+
+		each(worker in workers) {
+			worker->Join();
+		};
+		return totals;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		texts := ["one two three", "four five", "six seven eight nine"];
+
+		before := Before(texts);
+		after := After(texts);
+
+		bad := 0;
+		each(text in texts) {
+			b := before->Find(text)->Get();
+			a := after->Find(text)->Get();
+			"{$a} words: {$text}"->PrintLine();
+			if(a <> b) {
+				bad += 1;
+			};
+		};
+
+		if(after->Find("one two three")->Get() <> 3 | after->Find("four five")->Get() <> 2 |
+				after->Find("six seven eight nine")->Get() <> 4) {
+			bad += 1;
+		};
+
+		if(bad = 0) {
+			"PASS: spawn before and after"->PrintLine();
+		}
+		else {
+			"FAIL: spawn before and after ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,337 @@
+# EXTRA_LIBS: gen_collect
+#~
+'spawn { ... }': a block that runs on a new thread; the expression is the
+started System.Concurrency.Thread.
+
+The parser writes it out as an anonymous Thread class and a lambda (no new
+instruction, nothing new in the VM), so the block holds the VALUES of the
+locals it names as they were when the thread started, exactly as a lambda
+does. This test pins that down:
+
+  - the value forms: statement, assigned, passed as an argument, in a loop
+  - captures: Int, Float, Bool, Char, String, object, array, a parameter,
+    a loop variable (each thread gets its own copy)
+  - a write to a captured primitive stays in the thread; an object is shared
+  - 'return;' ends the thread; a local declared in the block
+  - instance methods called on a captured object, statics called by name
+  - 'spawn' in a static function, in an instance method, in a lambda, nested
+  - 'spawn' is still an ordinary name (variable, method)
+  - the thread is named for where it was started
+  - captures survive collections that run while the thread works
+
+Every check adds to 'bad'; the test exits 1 when one fails.
+~#
+use Collection;
+use System.Concurrency;
+
+class Counter {
+	@count : Int;
+	@mutex : ThreadMutex;
+
+	New() {
+		@count := 0;
+		@mutex := ThreadMutex->New("counter");
+	}
+
+	method : public : Add(n : Int) ~ Nil {
+		critical(@mutex) {
+			@count += n;
+		};
+	}
+
+	method : public : Get() ~ Int {
+		value : Int;
+		critical(@mutex) {
+			value := @count;
+		};
+		return value;
+	}
+
+	# an instance method that starts threads working on itself
+	method : public : AddFromThreads(threads : Int, each_adds : Int) ~ Nil {
+		me := @self;
+		workers := Vector->New()<Thread>;
+		for(i := 0; i < threads; i += 1;) {
+			workers->AddBack(spawn {
+				for(j := 0; j < each_adds; j += 1;) {
+					me->Add(1);
+				};
+			});
+		};
+		each(worker in workers) {
+			worker->Join();
+		};
+	}
+}
+
+class SpawnThreadBody {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		bad += Forms();
+		bad += Captures(7, "param");
+		bad += LoopCopies();
+		bad += WritesStayInThread();
+		bad += EarlyReturn();
+		bad += InstanceAndStatic();
+		bad += Nested();
+		bad += InLambda();
+		bad += OrdinaryName();
+		bad += Named();
+		bad += SurvivesCollection();
+
+		if(bad = 0) {
+			"PASS: spawn thread body"->PrintLine();
+		}
+		else {
+			"FAIL: spawn thread body ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  failed: {$what}"->ErrorLine();
+		return 1;
+	}
+
+	function : Forms() ~ Int {
+		bad := 0;
+		counter := Counter->New();
+
+		# assigned
+		t := spawn { counter->Add(1); };
+		t->Join();
+
+		# passed as an argument
+		JoinIt(spawn { counter->Add(10); });
+
+		# a statement; joined through a latch the block opens
+		done := BoolRef->New(false);
+		spawn {
+			counter->Add(100);
+			done->Set(true);
+		};
+		waited := 0;
+		while(<>done->Get() & waited < 5000) {
+			Thread->Sleep(1);
+			waited += 1;
+		};
+
+		bad += Check(counter->Get() = 111, "forms: assigned, argument and statement all ran");
+		return bad;
+	}
+
+	function : JoinIt(thread : Thread) ~ Nil {
+		thread->Join();
+	}
+
+	function : Captures(number : Int, text : String) ~ Int {
+		bad := 0;
+		i := 41;
+		f := 2.5;
+		b := true;
+		c := 'x';
+		s := "str";
+		values := Int->New[3];
+		values[0] := 5; values[1] := 6; values[2] := 7;
+		out := Vector->New()<String>;
+
+		t := spawn {
+			out->AddBack(i->ToString());
+			if(f = 2.5) {
+				out->AddBack("float");
+			}
+			else {
+				out->AddBack("not the float");
+			};
+			out->AddBack(b->ToString());
+			out->AddBack(c->ToString());
+			out->AddBack(s);
+			out->AddBack((values[0] + values[1] + values[2])->ToString());
+			out->AddBack(number->ToString());
+			out->AddBack(text);
+		};
+		t->Join();
+
+		bad += Check(out->Size() = 8, "captures: every value arrived");
+		if(out->Size() = 8) {
+			bad += Check(out->Get(0)->Equals("41"), "captures: Int");
+			bad += Check(out->Get(1)->Equals("float"), "captures: Float");
+			bad += Check(out->Get(2)->Equals("true"), "captures: Bool");
+			bad += Check(out->Get(3)->Equals("x"), "captures: Char");
+			bad += Check(out->Get(4)->Equals("str"), "captures: String");
+			bad += Check(out->Get(5)->Equals("18"), "captures: array");
+			bad += Check(out->Get(6)->Equals("7"), "captures: Int parameter");
+			bad += Check(out->Get(7)->Equals("param"), "captures: String parameter");
+		};
+		return bad;
+	}
+
+	# each thread holds the loop variable's value at the time it was started
+	function : LoopCopies() ~ Int {
+		slots := Int->New[16];
+		workers := Vector->New()<Thread>;
+		for(i := 0; i < 16; i += 1;) {
+			workers->AddBack(spawn {
+				slots[i] := i * i + 1;
+			});
+		};
+		each(worker in workers) {
+			worker->Join();
+		};
+
+		bad := 0;
+		for(i := 0; i < 16; i += 1;) {
+			bad += Check(slots[i] = i * i + 1, "loop copies: slot " + i->ToString());
+		};
+		return bad;
+	}
+
+	function : WritesStayInThread() ~ Int {
+		n := 5;
+		text := "before";
+		seen := IntRef->New(0);
+		t := spawn {
+			n += 100;
+			text := "inside";
+			seen->Set(n);
+		};
+		t->Join();
+
+		bad := 0;
+		bad += Check(seen->Get() = 105, "writes: the thread sees its own write");
+		bad += Check(n = 5, "writes: the creator's Int is unchanged");
+		bad += Check(text->Equals("before"), "writes: the creator's String variable is unchanged");
+		return bad;
+	}
+
+	function : EarlyReturn() ~ Int {
+		steps := Vector->New()<String>;
+		stop := true;
+		t := spawn {
+			steps->AddBack("one");
+			if(stop) {
+				return;
+			};
+			steps->AddBack("two");
+		};
+		t->Join();
+		return Check(steps->Size() = 1, "return: the thread ended at 'return;'");
+	}
+
+	function : Twice(n : Int) ~ Int {
+		return n * 2;
+	}
+
+	function : InstanceAndStatic() ~ Int {
+		counter := Counter->New();
+		counter->AddFromThreads(8, 500);
+		bad := Check(counter->Get() = 4000, "instance: 8 threads of 500 adds");
+
+		result := IntRef->New(0);
+		t := spawn {
+			result->Set(Twice(21));
+		};
+		t->Join();
+		bad += Check(result->Get() = 42, "static: a function called by name");
+		return bad;
+	}
+
+	function : Nested() ~ Int {
+		counter := Counter->New();
+		base := 3;
+		outer := spawn {
+			inner := spawn {
+				counter->Add(base);
+			};
+			inner->Join();
+			counter->Add(base * 10);
+		};
+		outer->Join();
+		return Check(counter->Get() = 33, "nested: a spawn in a spawn");
+	}
+
+	function : InLambda() ~ Int {
+		counter := Counter->New();
+		amount := 9;
+		start := \() ~ Thread : () => spawn { counter->Add(amount); };
+		start()->Join();
+		start()->Join();
+		return Check(counter->Get() = 18, "lambda: a spawn in a lambda");
+	}
+
+	function : spawn(n : Int) ~ Int {
+		return n + 1;
+	}
+
+	function : OrdinaryName() ~ Int {
+		spawn := 3;
+		spawn += 1;
+		bad := Check(spawn = 4, "name: 'spawn' as a variable");
+		bad += Check(SpawnThreadBody->spawn(4) = 5, "name: 'spawn' as a function");
+		return bad;
+	}
+
+	function : Named() ~ Int {
+		t := spawn { };
+		t->Join();
+		name := t->GetName();
+		bad := Check(name->StartsWith("spawn:spawn_thread_body.obs:"), "named: 'spawn:<file>:<line>', was '" + name + "'");
+		return bad;
+	}
+
+	# the creator drops its references and allocates until collections have
+	# run, while the threads still read what they captured
+	function : SurvivesCollection() ~ Int {
+		results := Vector->New()<IntRef>;
+		mutex := ThreadMutex->New("results");
+		workers := Vector->New()<Thread>;
+		for(i := 0; i < 8; i += 1;) {
+			workers->AddBack(StartSummer(i, results, mutex));
+		};
+
+		# garbage on the creating thread while the workers run
+		for(i := 0; i < 200000; i += 1;) {
+			junk := "junk-" + i->ToString();
+			if(junk->Size() = 0) {
+				return 1;
+			};
+		};
+
+		each(worker in workers) {
+			worker->Join();
+		};
+
+		bad := Check(results->Size() = 8, "collection: every thread finished");
+		total := 0;
+		each(result in results) {
+			total += result->Get();
+		};
+		# each thread sums 2000 strings of ten characters, plus its own number
+		bad += Check(total = 8 * 20000 + 28, "collection: the captured vectors were intact, total " + total->ToString());
+		return bad;
+	}
+
+	function : StartSummer(id : Int, results : Vector<IntRef>, mutex : ThreadMutex) ~ Thread {
+		# captured, then unreachable from the creator once this returns
+		words := Vector->New()<String>;
+		for(i := 0; i < 2000; i += 1;) {
+			words->AddBack("0123456789");
+		};
+
+		return spawn {
+			sum := id;
+			each(word in words) {
+				# allocate in the thread as well
+				copy := word + "";
+				sum += copy->Size();
+			};
+			critical(mutex) {
+				results->AddBack(IntRef->New(sum));
+			};
+		};
+	}
+}

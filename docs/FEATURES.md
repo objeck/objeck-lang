@@ -1042,6 +1042,8 @@ variable either. `ref`, `try`, `on`, `finally`, `out` and `is` are **contextual*
 variable either. `ref`, `try`, `on`, `finally`, `out` and `json` are **contextual**: a keyword
 variable either. `ref`, `try`, `on`, `finally`, `out` and `match` are **contextual**: a keyword
 only where the grammar expects it, so they remain usable as names.
+variable either. `ref`, `try`, `on`, `finally`, `out` and `spawn` are **contextual**: a
+keyword only where the grammar expects it, so they remain usable as names.
 
 ---
 
@@ -1232,6 +1234,94 @@ class CalculateThread from Thread {
   }
 }
 ```
+
+### Threads from a block: `spawn`
+
+`spawn { ... }` runs the block on a new thread. The expression is the thread, already
+started, so it can be kept and joined:
+
+```ruby
+use Collection;
+use System.Concurrency;
+
+totals := Map->New()<String, IntRef>;
+mutex := ThreadMutex->New("totals");
+
+workers := Vector->New()<Thread>;
+each(text in texts) {
+  workers->AddBack(spawn {
+    words := text->Split(' ');
+    critical(mutex) {
+      totals->Insert(text, IntRef->New(words->Size()));
+    };
+  });
+};
+
+each(worker in workers) {
+  worker->Join();
+};
+```
+
+The block uses the locals it names. Before `spawn`, the same work took a class per kind
+of thread, with its values packed into one object for `Execute(param : Base)` and cast
+back out in `Run`:
+
+```ruby
+class CountWords from Thread {
+  New() {
+    Parent("count-words");
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+    args := param->As(Triplet<String, Map<String, IntRef>, ThreadMutex>);
+    text := args->GetFirst();
+    totals := args->GetSecond();
+    mutex := args->GetThird();
+
+    words := text->Split(' ');
+    critical(mutex) {
+      totals->Insert(text, IntRef->New(words->Size()));
+    };
+  }
+}
+
+worker := CountWords->New();
+worker->Execute(Triplet->New(text, totals, mutex)<String, Map<String, IntRef>, ThreadMutex>);
+```
+
+Both forms are in `programs/regression/spawn_before_after.obs`, which runs them side by
+side and prints:
+
+```
+3 words: one two three
+2 words: four five
+4 words: six seven eight nine
+PASS: spawn before and after
+```
+
+What a block may do, and what it holds:
+
+- **It holds values, not variables.** Each local the block names is copied when the
+  thread starts. An object is shared with the creator (guard it with a `ThreadMutex`
+  when both sides write); an `Int`, `Float`, `Bool`, `Char` or `Byte` is the thread's own
+  copy, so a write to it in the block is not seen outside, and a loop that spawns gives
+  each thread the loop variable's value at that turn.
+- **It follows a lambda's rules**, because that is what it is compiled to: it may call
+  functions by name and methods on an object it captured (`me := @self; spawn {
+  me->Step(); }`), but not a method with no receiver.
+- **`return;` ends the thread.** A value has nowhere to go: `return 5;` is a compile
+  error (`A 'spawn' block does not return a value`). Hand a result back through an object
+  the block shares.
+- **The thread is named for where it was started**, `spawn:<file>:<line>`
+  (`worker->GetName()`), which is the name the runtime's diagnostics print.
+- `spawn` may be nested, and used in a function, a method or a lambda. It may not be used
+  in a method of an anonymous class.
+- `spawn` is a word of the language only in front of a `{`: a variable, parameter or
+  method named `spawn` still compiles.
+
+Nothing in the VM or the JIT is new. The parser writes `spawn { body }` out as an
+anonymous `Thread` class whose `Run` calls a lambda holding `body`, so the captured
+values live in the lambda's closure, where the collector already traces them.
 
 ### Structured Concurrency
 

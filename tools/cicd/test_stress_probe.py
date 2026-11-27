@@ -165,7 +165,7 @@ class Helpers(unittest.TestCase):
 
     def test_every_fixture_has_a_source_and_count(self):
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        self.assertEqual(len(sp.FIXTURES), 10)
+        self.assertEqual(len(sp.FIXTURES), 11)
         for name in sp.FIXTURES:
             self.assertTrue(os.path.exists(os.path.join(root, "programs", "regression",
                                                         name + ".obs")), name)
