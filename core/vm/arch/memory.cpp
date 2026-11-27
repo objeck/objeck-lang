@@ -954,18 +954,14 @@ void MemoryManager::FixupSelf(size_t* mem, StackMethod* method)
 
 // Fixup phase: relocate each pending self/param if its young object was promoted.
 // FixupSlot validates the forwarding target, so a non-pointer/aliasing value is left
-// untouched. Lock held to pair with RemovePendingThreadRoot (see CheckPendingThreadRoots).
+// untouched. pending_thread_root_lock pairs with RemovePendingThreadRoot (see
+// CheckPendingThreadRoots); the caller holds it -- CollectMemory's sweep takes it
+// before allocated_lock, in the one lock order (memory.h).
 void MemoryManager::FixupPendingThreadRoots()
 {
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&pending_thread_root_lock);
-#endif
   for(auto iter = pending_thread_roots.begin(); iter != pending_thread_roots.end(); ++iter) {
     FixupSlot((size_t*)*iter);
   }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&pending_thread_root_lock);
-#endif
 }
 
 size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect, bool force_old)
@@ -1597,24 +1593,35 @@ void* MemoryManager::CollectMemory(void* arg)
   std::wcout << L"## Sweeping memory ##" << std::endl;
 #endif
 
-  // Sweep phase: mark threads have already joined, so only allocated_lock
-  // is needed (protects old_generation set from concurrent allocations).
-  // marked_lock is no longer needed here since MarkMemory uses lock-free CAS.
+  // Sweep phase: mark threads have already joined. allocated_lock protects the
+  // old_generation set from concurrent allocations; marked_lock is no longer
+  // needed here since MarkMemory uses lock-free CAS.
   //
-  // LOCK ORDER: allocated_lock is taken BEFORE pda_monitor_lock here -- the
-  // FixupRoots call below acquires the latter while this is held.
-  // CheckPdaRoots takes the two in the opposite order, which is safe ONLY
-  // because it cannot run concurrently with this sweep:
-  //   - it is a mark thread, joined above before this lock is taken, as is
-  //     the JIT thread it spawns (joined inside it, before it returns);
-  //   - marked_sweep_lock (CollectAllMemory / CollectMinor) admits one
-  //     collector at a time, so no other collection's mark phase overlaps
-  //     this sweep either.
-  // Break either invariant -- overlap sweep with marking, or call
-  // CheckPdaRoots from outside CollectMemory -- and the two orders become a
-  // live ABBA deadlock that hangs the VM. Coverity reports it as CID 1677214;
-  // it is a false positive today only by virtue of the above.
+  // LOCK ORDER (see the declarations in memory.h): the root-set locks come
+  // BEFORE allocated_lock, as the mark threads take them (CheckPdaRoots and
+  // CheckPendingThreadRoots hold a root-set lock and take allocated_lock inside
+  // it for each IsAllocated). The fixup below walks the same root sets under
+  // allocated_lock, so the three locks it needs are taken here, first, and
+  // FixupRoots takes none itself.
+  //
+  // This used to take allocated_lock alone and let FixupRoots take the root-set
+  // locks inside it: the reverse of the mark threads' order. No deadlock was
+  // reachable -- the mark threads are joined above, and marked_sweep_lock admits
+  // one collector at a time, so the two orders never ran together -- but that
+  // was an invariant held by code far from the locks, one overlap of sweep and
+  // marking away from an ABBA hang, and ThreadSanitizer (lock-order-inversion)
+  // and Coverity (CID 1677214) both reported it. With one order there is
+  // nothing to keep true by hand.
+  //
+  // Holding the root-set locks for the whole sweep, rather than only around the
+  // fixup, blocks nothing that could otherwise run: every registered mutator is
+  // parked, and a thread that is starting or tearing down (Add/RemovePdaMethodRoot,
+  // Add/RemovePendingThreadRoot, each taking one of these locks and no other)
+  // only waits a little longer than it already did for the fixup.
 #ifndef _GC_SERIAL
+  MUTEX_LOCK(&pda_monitor_lock);
+  MUTEX_LOCK(&pda_frame_lock);
+  MUTEX_LOCK(&pending_thread_root_lock);
   MUTEX_LOCK(&allocated_lock);
 #endif
 
@@ -1871,6 +1878,9 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
+  MUTEX_UNLOCK(&pending_thread_root_lock);
+  MUTEX_UNLOCK(&pda_frame_lock);
+  MUTEX_UNLOCK(&pda_monitor_lock);
 #endif
 
 #ifdef _MEM_LOGGING
@@ -2314,10 +2324,8 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
   
   // ------
   // LOCK ORDER: this holds pda_monitor_lock and takes allocated_lock inside the
-  // IsAllocated loop below -- the REVERSE of the collector's sweep, which holds
-  // allocated_lock across its FixupRoots call. That is safe only because this
-  // runs in the mark phase, joined before the sweep begins; see the lock-order
-  // note at the sweep's allocated_lock in CollectMemory before changing either.
+  // IsAllocated loop below: root-set lock first, allocated_lock inside it, the
+  // order the sweep in CollectMemory follows too (see the declarations in memory.h).
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&pda_monitor_lock);
 #endif
@@ -2856,13 +2864,11 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
   }
 
   // Fix up other threads' operand stacks via monitors.
-  // Must hold pda_monitor_lock: the caller (CollectMemory) does NOT hold it (the
-  // second monitor loop below re-acquires it, which would self-deadlock otherwise),
-  // and a thread tearing down (UnregisterMutator + ~StackInterpreter) can erase from
-  // pda_monitors and free the op_stack concurrently -> iterator invalidation / UAF.
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&pda_monitor_lock);
-#endif
+  // Needs pda_monitor_lock: a thread tearing down (UnregisterMutator +
+  // ~StackInterpreter) can erase from pda_monitors and free the op_stack
+  // concurrently -> iterator invalidation / UAF. The caller (CollectMemory's sweep)
+  // holds it, with pda_frame_lock and pending_thread_root_lock, all taken before
+  // allocated_lock; this function takes no lock (they are not recursive on POSIX).
   for(auto pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
     size_t* other_op_stack = monitor->op_stack;
@@ -2877,9 +2883,6 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
     }
   }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&pda_monitor_lock);
-#endif
 
   // Relocate self/param of threads still mid-spawn, so a child reads the promoted
   // address instead of a stale nursery pointer (mirrors the mark side).
@@ -2896,9 +2899,6 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
   // Fix up PDA frames (skip JIT frames — they use jit_mem, not mem for locals)
   std::vector<StackFrame*> jit_fixup_frames;
 
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&pda_frame_lock);
-#endif
   for(auto iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame_ptr = *iter;
     if(*frame_ptr) {
@@ -2925,14 +2925,8 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
     }
   }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&pda_frame_lock);
-#endif
 
   // Fix up PDA monitor frames
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&pda_monitor_lock);
-#endif
   for(auto pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
     // acquire fence pairs with release fence in PushFrame/PopFrame
@@ -2988,9 +2982,6 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
       }
     }
   }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&pda_monitor_lock);
-#endif
 
   // Fix up JIT frames (collected from pda_frames and pda_monitors above)
   for(size_t i = 0; i < jit_fixup_frames.size(); ++i) {

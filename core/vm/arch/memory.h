@@ -241,6 +241,34 @@ class MemoryManager {
   static void WaitForMutatorsToPark();
   static void ReportUnparkedMutators(long waited_ms);
 
+  // LOCK ORDER. A thread that holds one of these and takes another takes them in
+  // this order, outermost first; no path takes them the other way round:
+  //
+  //   marked_sweep_lock            one collector at a time (CollectAllMemory, CollectMinor)
+  //   pda_monitor_lock             the root sets: every thread's monitor,
+  //   pda_frame_lock                 the registered frames,
+  //   pending_thread_root_lock       the mid-spawn and raised-error roots
+  //   jit_frame_lock               the compiled frames gathered by the mark phase
+  //   allocated_lock               old_generation and the allocation counters
+  //   instance_ids_lock,           leaves: nothing is taken inside them
+  //   free_memory_cache_lock
+  //
+  // stw_lock (the park handshake) is released before any lock below
+  // marked_sweep_lock is taken -- the stall watchdog only TRIES pda_monitor_lock
+  // inside it -- and gc_stats_lock is a leaf. Who nests what:
+  //   - the mark threads hold a root-set lock while they walk it and take
+  //     jit_frame_lock (CheckPdaRoots) or allocated_lock (IsAllocated, in
+  //     CheckPdaRoots, CheckPendingThreadRoots and CheckObject) inside it;
+  //     CheckJitRoots holds jit_frame_lock and takes allocated_lock inside it;
+  //   - the sweep in CollectMemory takes the three root-set locks, in the order
+  //     above, and then allocated_lock, and holds all four across the promotion,
+  //     the sweep and FixupRoots, which therefore takes none itself;
+  //   - a mutator takes one at a time (Add/RemovePdaMethodRoot,
+  //     Add/RemovePendingThreadRoot, an allocation's allocated_lock).
+  // The sweep once took allocated_lock first and the root-set locks inside it. That
+  // could not deadlock only because marking and sweeping never overlap, which
+  // ThreadSanitizer and Coverity (CID 1677214) cannot know and a later change could
+  // break; one order needs no such argument. A new nested acquisition must fit it.
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;

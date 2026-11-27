@@ -37,10 +37,10 @@
 // Where it runs: only on the collecting thread, inside stop-the-world
 // (marked_sweep_lock held, every other mutator parked), never from a mark
 // thread, and never while holding allocated_lock -- it takes pda_frame_lock and
-// pda_monitor_lock one at a time, as FixupRoots does, and allocated_lock above
-// either would be the ABBA order documented in CollectMemory. The one exception
-// is invariant C, which runs inside fixup under allocated_lock and so takes no
-// lock at all. old_generation is read without allocated_lock: every thread that
+// pda_monitor_lock one at a time, and allocated_lock outside either would break
+// the lock order declared in memory.h (root-set locks first). The one exception
+// is invariant C, which runs inside fixup, where the sweep already holds the
+// root-set locks and allocated_lock, and so takes no lock at all. old_generation is read without allocated_lock: every thread that
 // could insert into it is parked.
 //
 // What it trusts: only references the collector can TYPE -- class statics,
