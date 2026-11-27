@@ -766,6 +766,15 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
         error << L">>> Invalid bytecode: parameter count out of range <<<" << std::endl;
         LoadFailed();
       }
+      // The frame holds a word for each declared one: the collector walks a frame by
+      // the method's declarations, whatever the instructions use (found by the
+      // mutation campaign: a frame size changed from 40 to 8 and the collector read
+      // four words past the frame as locals).
+      if((INT64_VALUE)mem_size < (INT64_VALUE)declared_words * (INT64_VALUE)sizeof(size_t)) {
+        DeleteDeclarations(dclrs, num_dclrs);
+        error << L">>> Invalid bytecode: " << name << L": frame size below the method's declarations <<<" << std::endl;
+        LoadFailed();
+      }
       // The count is also the words the method's name spells: every caller pushes
       // them by it, and a virtual call's override is found by the name's ending
       // alone, so two methods that end alike must take the same words.
