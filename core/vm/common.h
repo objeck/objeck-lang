@@ -60,6 +60,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 #include <climits>
 #include <string.h>
@@ -1539,7 +1540,25 @@ class StackClass {
       return x >= y ? x * x + x + y : y * y + x;
     }
   };
-  std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> virtual_methods;
+  // The override each virtual declaration reaches for a receiver of this class, filled
+  // in as calls resolve (ResolveVirtualTarget). Every thread making a virtual call reads
+  // it and the first call through each declaration adds to it, with no lock: an insert
+  // that rehashed the table while another thread walked a bucket sent that thread
+  // through freed nodes, and two inserts at once corrupted the table and the C heap.
+  // Eight threads making their first calls together crashed about one run in ten under
+  // OBJECK_JIT_THRESHOLD=1 (SIGSEGV in GetVirtualMethod or AddVirutalMethod, or glibc's
+  // "malloc(): unaligned tcache chunk detected").
+  //
+  // Readers stay lock-free, as a virtual call is too hot for a lock: the table is
+  // published as an immutable snapshot through an atomic pointer, and an insert copies
+  // it, adds its entry and publishes the copy, one insert at a time. A snapshot that
+  // has been replaced may still be in a reader's hands, so it is kept until the class
+  // goes. Inserts are rare (one per declaration and receiver class) and the tables
+  // small, so the copies cost nothing that shows.
+  typedef std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> VirtualMethodMap;
+  std::atomic<const VirtualMethodMap*> virtual_methods{nullptr};
+  std::mutex virtual_methods_lock;
+  std::vector<const VirtualMethodMap*> retired_virtual_methods;
   
   long InitializeClassMemory(long size) {
     if(size > 0) {
@@ -1575,6 +1594,13 @@ class StackClass {
 
   ~StackClass() {
     // clean up
+    delete virtual_methods.load(std::memory_order_acquire);
+    virtual_methods.store(nullptr, std::memory_order_release);
+    for(size_t i = 0; i < retired_virtual_methods.size(); ++i) {
+      delete retired_virtual_methods[i];
+    }
+    retired_virtual_methods.clear();
+
     if(cls_dclrs) {
       for(int i = 0; i < cls_num_dclrs; ++i) {
         StackDclr* tmp = cls_dclrs[i];
@@ -1841,20 +1867,36 @@ class StackClass {
   }
 #endif
 
+  // lock-free: see virtual_methods
   StackMethod* GetVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id) {
-    const auto virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    const auto result = virtual_methods.find(virtual_key);
-    if(result != virtual_methods.end()) {
-      return result->second;
+    const VirtualMethodMap* snapshot = virtual_methods.load(std::memory_order_acquire);
+    if(snapshot) {
+      const auto result = snapshot->find(std::make_pair(virtual_cls_id, virtual_mthd_id));
+      if(result != snapshot->end()) {
+        return result->second;
+      }
     }
 
     return nullptr;
   }
 
+  // Safe to call from several threads at once, for the same key or different ones: the
+  // first entry for a key stays (two threads that resolved it found the same method).
   void AddVirutalMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
-    // TODO: thread safe?
     const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    virtual_methods.insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+    std::lock_guard<std::mutex> guard(virtual_methods_lock);
+    const VirtualMethodMap* current = virtual_methods.load(std::memory_order_acquire);
+    if(current && current->find(virtual_key) != current->end()) {
+      return;
+    }
+
+    VirtualMethodMap* next = current ? new VirtualMethodMap(*current) : new VirtualMethodMap;
+    next->insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+    if(current) {
+      // a reader may still hold it: freed with the class
+      retired_virtual_methods.push_back(current);
+    }
+    virtual_methods.store(next, std::memory_order_release);
   }
 };
 
