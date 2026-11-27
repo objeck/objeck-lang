@@ -117,7 +117,7 @@ collector: 9
       <div><p class="tag">v2026.11.4</p><p class="date">Released 25 November 2026</p></div>
       <ul>
        <li><b>Performance:</b> The Linux x64 JIT keeps Float loop locals in registers</li>
-       <li><b>Security:</b> The OpenAI, Gemini and Anthropic clients no longer hand out an API key while TLS certificate checking is off</li>
+       <li><b>Security:</b> The WebSocket clients check the server's handshake (RFC 6455 section 4.1)</li>
        <li><b>Changed:</b> MCP input checks cover enum and array items</li>
       </ul>
       <a class="btn btn-secondary" href="readme.html">Release notes</a>

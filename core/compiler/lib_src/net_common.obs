@@ -914,6 +914,206 @@ bundle Web.HTTP {
 	}
 
 	#~
+	The WebSocket opening handshake (RFC 6455 section 4), shared by WebSocket and
+	SecureWebSocket.
+
+	A client that does not check the reply to its upgrade request will talk WebSocket
+	frames to anything that answers "101": a cache or proxy replaying a stored reply, or a
+	server that never understood the request. The Sec-WebSocket-Accept value is the proof
+	that the peer read THIS request's Sec-WebSocket-Key, so section 4.1 has the client
+	fail the connection unless it matches.
+	~#
+	class WebSocketHandshake {
+		#~
+		Computes the Sec-WebSocket-Accept value for a Sec-WebSocket-Key: the base64 of the
+		SHA-1 of the key followed by the protocol's fixed GUID (RFC 6455 section 4.2.2).
+		A server sends this value; a client compares it with what the server sent.
+		@param key Sec-WebSocket-Key header value, as sent
+		@return Sec-WebSocket-Accept header value, Nil for a Nil key
+```
+accept := Web.HTTP.WebSocketHandshake->ComputeAccept("dGhlIHNhbXBsZSBub25jZQ==");
+accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+```
+		~#
+		function : ComputeAccept(key : String) ~ String {
+			if(key = Nil) {
+				return Nil;
+			};
+
+			combined := "";
+			combined->Append(key);
+			combined->Append("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+
+			return Cipher.Encrypt->Base64(Cipher.Hash->SHA1(combined->ToByteArray()));
+		}
+
+		#~
+		Reads the status code out of an HTTP/1.x status line.
+		@param status_line first line of a reply, for example "HTTP/1.1 101 Switching Protocols"
+		@return status code, -1 if the line is not an HTTP/1.x status line
+		~#
+		function : StatusCode(status_line : String) ~ Int {
+			if(status_line = Nil) {
+				return -1;
+			};
+
+			# "HTTP/1.x ddd" then the end of the line or a space; the reason phrase is free text
+			if(<>status_line->StartsWith("HTTP/1.") | status_line->Size() < 12) {
+				return -1;
+			};
+
+			if(status_line->Get(8) <> ' ') {
+				return -1;
+			};
+
+			if(status_line->Size() > 12) {
+				if(status_line->Get(12) <> ' ') {
+					return -1;
+				};
+			};
+
+			code := 0;
+			for(i := 9; i < 12; i += 1;) {
+				c := status_line->Get(i);
+				if(c < '0' | c > '9') {
+					return -1;
+				};
+				code := code * 10 + (c - '0');
+			};
+
+			return code;
+		}
+
+		#~
+		Whether a comma separated header value holds a token.
+		@param list header value, for example "keep-alive, Upgrade"
+		@param token token to look for
+		@param ignore_case true to compare without regard to case
+		@return true if the token is one of the list's elements
+		~#
+		function : HasToken(list : String, token : String, ignore_case : Bool) ~ Bool {
+			if(list = Nil | token = Nil) {
+				return false;
+			};
+
+			if(ignore_case) {
+				token := token->ToLower();
+			};
+
+			start := 0;
+			size := list->Size();
+			for(i := 0; i <= size; i += 1;) {
+				is_end := i = size;
+				if(<>is_end) {
+					is_end := list->Get(i) = ',';
+				};
+
+				if(is_end) {
+					if(i > start) {
+						element := list->SubString(start, i - start)->Trim();
+						if(ignore_case) {
+							element := element->ToLower();
+						};
+
+						if(element->Equals(token)) {
+							return true;
+						};
+					};
+					start := i + 1;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Checks a server's reply to the opening handshake against RFC 6455 section 4.1:
+		the status is 101, Upgrade is "websocket", Connection holds "Upgrade",
+		Sec-WebSocket-Accept is the value computed from the key that was sent, and the
+		server selected no extension or subprotocol the request did not offer.
+		@param status_line first line of the reply
+		@param response_headers reply headers, names in lower case
+		@param request_headers headers the request carried, names in lower case
+		@param key Sec-WebSocket-Key the request carried
+		@return Nil if the reply is a valid handshake, otherwise why it is refused
+		~#
+		function : Check(status_line : String, response_headers : Hash<String, String>, request_headers : Hash<String, String>, key : String) ~ String {
+			if(StatusCode(status_line) <> 101) {
+				reason := "WebSocket handshake refused: expected HTTP status 101, received '";
+				if(status_line <> Nil) {
+					if(status_line->Size() > 64) {
+						status_line := status_line->SubString(64);
+					};
+					reason->Append(status_line);
+				};
+				reason->Append("'");
+				return reason;
+			};
+
+			if(response_headers = Nil | key = Nil) {
+				return "WebSocket handshake refused: no reply headers";
+			};
+
+			upgrade := response_headers->Find("upgrade");
+			if(upgrade = Nil) {
+				return "WebSocket handshake refused: the reply has no Upgrade header";
+			};
+
+			if(<>upgrade->Trim()->ToLower()->Equals("websocket")) {
+				return "WebSocket handshake refused: the reply's Upgrade header is not 'websocket'";
+			};
+
+			connection := response_headers->Find("connection");
+			if(connection = Nil) {
+				return "WebSocket handshake refused: the reply has no Connection header";
+			};
+
+			if(<>HasToken(connection, "upgrade", true)) {
+				return "WebSocket handshake refused: the reply's Connection header does not hold 'Upgrade'";
+			};
+
+			accept := response_headers->Find("sec-websocket-accept");
+			if(accept = Nil) {
+				return "WebSocket handshake refused: the reply has no Sec-WebSocket-Accept header";
+			};
+
+			# base64 is case sensitive, so this is an exact comparison
+			if(<>accept->Trim()->Equals(ComputeAccept(key))) {
+				return "WebSocket handshake refused: Sec-WebSocket-Accept does not match the key that was sent";
+			};
+
+			# no extension is implemented here, so one the request did not offer cannot be honored
+			extensions := response_headers->Find("sec-websocket-extensions");
+			if(extensions <> Nil) {
+				if(extensions->Trim()->Size() > 0) {
+					offered : String := Nil;
+					if(request_headers <> Nil) {
+						offered := request_headers->Find("sec-websocket-extensions");
+					};
+
+					if(offered = Nil) {
+						return "WebSocket handshake refused: the reply selects an extension that was not offered";
+					};
+				};
+			};
+
+			protocol := response_headers->Find("sec-websocket-protocol");
+			if(protocol <> Nil) {
+				requested : String := Nil;
+				if(request_headers <> Nil) {
+					requested := request_headers->Find("sec-websocket-protocol");
+				};
+
+				if(<>HasToken(requested, protocol->Trim(), false)) {
+					return "WebSocket handshake refused: the reply selects a subprotocol that was not requested";
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
 	What a client may carry across a redirect. Credentials belong to the origin the caller
 	addressed: once a redirect leaves that origin (scheme, host or port), Authorization,
 	Proxy-Authorization and cookies are not sent again for the rest of the chain, as curl and
