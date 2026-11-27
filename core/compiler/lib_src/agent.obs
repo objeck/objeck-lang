@@ -1436,9 +1436,8 @@ agent->SetCancel(cancel);
 		@reason : String;
 		@parent : AgentCancel;
 		@also : AgentCancel;
-		@limit_ms : Int;
-		@timer : System.Time.Timer;
-		@waited : Float;
+		@deadline_at : Int;
+		@timed : Bool;
 		@expired : Bool;
 
 		#~
@@ -1558,12 +1557,14 @@ agent->SetCancel(cancel);
 		method : public : SetDeadlineMs(millis : Int) ~ Nil {
 			critical(@mutex) {
 				if(millis > 0) {
-					@limit_ms := millis;
-					@waited := 0.0;
-					@timer := System.Time.Timer->New(true);
+					# a point on the clock, not a count of time waited: see Expire
+					# one more than asked: the clock counts whole milliseconds, and a deadline must not be
+					# reported before it has passed
+					@deadline_at := AgentTicks->Now() + millis + 1;
+					@timed := true;
 				}
 				else {
-					@timer := Nil;
+					@timed := false;
 				};
 			};
 		}
@@ -1582,16 +1583,18 @@ agent->SetCancel(cancel);
 			return flag;
 		}
 
-		# cancels the token when its deadline has passed; the caller holds the mutex
+		# Cancels the token when its deadline has passed; the caller holds the mutex. The deadline is a
+		# point on the steady clock and every poll compares the clock with it. Adding up the time between
+		# polls (stop a timer, read it, start it again) loses whatever passes between the stop and the
+		# start: a thread that is descheduled there for 100 ms never counts them, and a token polled often
+		# runs late by the sum of those gaps, so it could answer "not cancelled" after the deadline
 		method : Expire() ~ Nil {
-			if(@timer <> Nil & <>@cancelled) {
-				@waited += @timer->GetElapsedTime();
-				@timer->Start();
-				if(@waited * 1000.0 >= @limit_ms->As(Float)) {
+			if(@timed & <>@cancelled) {
+				if(AgentTicks->Now() >= @deadline_at) {
 					@cancelled := true;
 					@expired := true;
 					@reason := "deadline";
-					@timer := Nil;
+					@timed := false;
 				};
 			};
 		}
@@ -2215,7 +2218,8 @@ agent->SetBudget(budget);
 	  left) stays limited by them: the scopes that limit a scope are fixed when it is entered and kept until
 	  it is left, and they go on being checked and charged. A scope further up that is entered again in the
 	  meantime is a new block with counters of its own; the child neither charges it nor is limited by it
-	  (its own parent it is always charged to, as above).
+	  (its own parent it is always charged to, as above). What that parent is entered inside later, a
+	  scope that was never above the child, does not limit the child and is not charged by it.
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
 	  its counters from zero. A scope may not be entered inside its own child either (it would be limited by
 	  itself): that raises, like entering it twice.
@@ -2249,6 +2253,8 @@ scope->GetStepsUsed()->PrintLine();
 		@halt : String;
 		@held : Vector<AgentScopeLink>;
 		@entries : Int;
+		@pinned : Vector<AgentScopeLink>;
+		@pinned_cancel : AgentCancel;
 		@slots : static : Vector<AgentScopeSlot>;
 		@registry_lock : static : ThreadMutex;
 
@@ -2345,6 +2351,40 @@ scope->GetStepsUsed()->PrintLine();
 		~#
 		method : public : SetParent(parent : AgentScope) ~ Nil {
 			@fixed_parent := parent;
+		}
+
+		#~
+		Makes the child a worker thread of an agent will enter, and records now, on the thread that starts
+		the worker, every scope that limits this one and this scope's cancellation token. A child works
+		out what limits it when it is entered, and a worker thread may get there late: the run has timed
+		out, the scope bodies have returned and this scope has forgotten what it was inside, so the child
+		would find itself under this scope alone and with no token to stop it. Called by Agent.
+		@hidden
+		@return the child
+		~#
+		method : public : WorkerChild() ~ AgentScope {
+			Init();
+			child := Child();
+			links := Vector->New()<AgentScopeLink>;
+			critical(@registry_lock) {
+				seen := Vector->New()<AgentScope>;
+				Limits(seen, @self);
+				k := 0;
+				while(k < seen->Size()) {
+					links->AddBack(AgentScopeLink->New(seen->Get(k), seen->Get(k)->GetEntries()));
+					k += 1;
+				};
+			};
+			child->Pin(links, @cancel);
+			return child;
+		}
+
+		#~
+		@hidden
+		~#
+		method : public : Pin(links : Vector<AgentScopeLink>, cancel : AgentCancel) ~ Nil {
+			@pinned := links;
+			@pinned_cancel := cancel;
 		}
 
 		#~
@@ -2519,9 +2559,24 @@ scope->GetStepsUsed()->PrintLine();
 
 				# nothing is published when the scope would come to limit itself, through either of the two
 				seen := Vector->New()<AgentScope>;
-				AddOnce(seen, above);
-				AddOnce(seen, side);
-				Expand(seen);
+				if(@pinned <> Nil) {
+					# a worker's child: what limited its parent when the worker was made, not what the
+					# parent is inside by the time the thread got here (see WorkerChild)
+					AddOnce(seen, above);
+					p := 0;
+					while(p < @pinned->Size()) {
+						link := @pinned->Get(p);
+						if(link->GetScope()->GetEntries() = link->GetEntry()) {
+							AddOnce(seen, link->GetScope());
+						};
+						p += 1;
+					};
+					Parents(seen);
+				}
+				else {
+					Limits(seen, above);
+				};
+				Limits(seen, side);
 				k := 0;
 				while(k < seen->Size() & <>cycle) {
 					if(seen->Get(k) = @self) {
@@ -2580,6 +2635,10 @@ scope->GetStepsUsed()->PrintLine();
 				if(@parent->IsActive()) {
 					parent_cancel := @parent->GetCancel();
 				};
+			};
+			# a worker's child follows the token its parent had when the worker was made (see WorkerChild)
+			if(@pinned_cancel <> Nil) {
+				parent_cancel := @pinned_cancel;
 			};
 			side_cancel : AgentCancel;
 			if(@also <> Nil) {
@@ -2679,14 +2738,35 @@ scope->GetStepsUsed()->PrintLine();
 			all->AddBack(scope);
 		}
 
-		# adds every scope the listed ones are limited by, each once; the caller holds the registry lock
-		function : Expand(all : Vector<AgentScope>) ~ Nil {
+		# Adds a scope and every scope that limits it, each once; the caller holds the registry lock. What
+		# limits a scope is what it was entered under: its own parent and the scope around it (its own two
+		# links, which it sets when it is entered) and the scopes it recorded then (AddHeld). The links of
+		# the scopes above are NOT followed from here. They say what those scopes are inside now, and a
+		# parent that has been left and entered again somewhere else has new ones: following them made a
+		# child that was entered long before stop for, and be charged to, a scope that was never above it.
+		# The parent itself is still charged, as it always is
+		function : Limits(all : Vector<AgentScope>, scope : AgentScope) ~ Nil {
+			if(scope = Nil) {
+				return;
+			};
+			AddOnce(all, scope);
+			AddOnce(all, scope->GetOuter());
+			AddOnce(all, scope->GetAlso());
+			scope->AddHeld(all);
+			Parents(all);
+		}
+
+		# Adds, for every scope listed, the parent it is a Child() of, and that one's, each once. That link
+		# is not a matter of where a scope happens to be entered: a child is charged to its parent for as
+		# long as it is entered, whatever has become of the parent meanwhile. It is also what shows that a
+		# scope would come to limit itself. The caller holds the registry lock
+		function : Parents(all : Vector<AgentScope>) ~ Nil {
 			i := 0;
 			while(i < all->Size()) {
 				scope := all->Get(i);
-				AddOnce(all, scope->GetOuter());
-				AddOnce(all, scope->GetAlso());
-				scope->AddHeld(all);
+				if(scope->GetOuter() <> Nil & scope->GetOuter() = scope->GetFixed()) {
+					AddOnce(all, scope->GetOuter());
+				};
 				i += 1;
 			};
 		}
@@ -2717,9 +2797,8 @@ scope->GetStepsUsed()->PrintLine();
 		method : Chain() ~ Vector<AgentScope> {
 			Init();
 			all := Vector->New()<AgentScope>;
-			all->AddBack(@self);
 			critical(@registry_lock) {
-				Expand(all);
+				Limits(all, @self);
 			};
 			return all;
 		}
@@ -2893,8 +2972,7 @@ scope->GetStepsUsed()->PrintLine();
 			taken := true;
 			critical(@registry_lock) {
 				all := Vector->New()<AgentScope>;
-				all->AddBack(@self);
-				Expand(all);
+				Limits(all, @self);
 				c := 0;
 				while(c < all->Size() & taken) {
 					left := 0;
@@ -2976,6 +3054,10 @@ scope->GetStepsUsed()->PrintLine();
 			return @also;
 		}
 
+		method : GetFixed() ~ AgentScope {
+			return @fixed_parent;
+		}
+
 		method : Add(steps : Int, tokens : Int, tool_calls : Int, wall_ms : Int) ~ Nil {
 			critical(@lock) {
 				@steps_used += steps;
@@ -3054,27 +3136,50 @@ scope->GetStepsUsed()->PrintLine();
 		}
 	}
 
+	# The steady clock as a number: milliseconds since the runtime started, from the runtime.uptime_ms
+	# property (the monotonic clock; docs/FEATURES.md, and Telemetry->NowMs() reads the same). A deadline has
+	# to be compared with the clock itself. System.Time.Timer only hands back the time between a start and
+	# a stop, and timing with it by stopping, reading and starting again loses what passes between each
+	# stop and the next start
+	class : private : AgentTicks {
+		#~
+		Reads the steady clock
+		@return whole milliseconds since the runtime started; 0 if the runtime does not report it
+		~#
+		function : Now() ~ Int {
+			text := Runtime->GetProperty("runtime.uptime_ms");
+			if(text = Nil | text->IsEmpty()) {
+				return 0;
+			};
+			return text->ToInt();
+		}
+	}
+
 	# milliseconds since a run began; read by the loop thread only
 	class : private : AgentClock {
-		@timer : System.Time.Timer;
-		@total : Float;
+		@began : Int;
 
 		#~
-		Constructor; starts the timer
+		Constructor; notes the time
 		~#
 		New() {
-			@timer := System.Time.Timer->New(true);
-			@total := 0.0;
+			@began := AgentTicks->Now();
 		}
 
 		#~
 		Reads the clock
-		@return milliseconds since the clock was created; the loop thread is the only reader
+		@return whole milliseconds that have certainly passed since the clock was created; the loop thread is the only reader
 		~#
 		method : public : Ms() ~ Int {
-			@total += @timer->GetElapsedTime();
-			@timer->Start();
-			return (@total * 1000.0)->As(Int);
+			# The clock now less the clock then: nothing is lost between two readings (see
+			# AgentCancel->Expire). The clock counts whole milliseconds, so the difference can be up to one
+			# more than what has really passed; one is taken off, because a deadline must not be reported
+			# before it has passed
+			passed := AgentTicks->Now() - @began - 1;
+			if(passed < 0) {
+				passed := 0;
+			};
+			return passed;
 		}
 	}
 
@@ -3141,6 +3246,18 @@ scope->GetStepsUsed()->PrintLine();
 			return flag;
 		}
 
+		# Says that the worker is about to run the call. False when the wait for it has already ended (the
+		# slot was abandoned): the worker then runs nothing. A thread can be slow to start, and by the time
+		# it does the run that asked for the call may have timed out, answered the model and returned; a
+		# tool that started then would act for a run that no longer exists
+		method : public : Claim() ~ Bool {
+			flag := false;
+			critical(@mutex) {
+				flag := <>@abandoned;
+			};
+			return flag;
+		}
+
 		#~
 		Cuts the worker loose so that its late result is dropped
 		@return true when the worker had not finished, false when it had
@@ -3193,6 +3310,8 @@ scope->GetStepsUsed()->PrintLine();
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
 		@scope : AgentScope;
+		@late_start_ms : static : Int;
+		@late_scope_ms : static : Int;
 
 		#~
 		Constructor
@@ -3201,6 +3320,12 @@ scope->GetStepsUsed()->PrintLine();
 		New(slot : AgentSlot) {
 			Parent("agent_worker");
 			@slot := slot;
+		}
+
+		# for tests: see Agent->SetWorkerTestDelays
+		function : SetTestDelays(start_ms : Int, scope_ms : Int) ~ Nil {
+			@late_start_ms := start_ms;
+			@late_scope_ms := scope_ms;
 		}
 
 		#~
@@ -3212,7 +3337,7 @@ scope->GetStepsUsed()->PrintLine();
 		~#
 		method : public : Under(scope : AgentScope) ~ AgentWorker {
 			if(scope <> Nil) {
-				@scope := scope->Child();
+				@scope := scope->WorkerChild();
 			};
 			return @self;
 		}
@@ -3260,6 +3385,19 @@ scope->GetStepsUsed()->PrintLine();
 			failure : String;
 			reply : AgentReply;
 			entered := false;
+			if(@late_start_ms > 0) {
+				Thread->Sleep(@late_start_ms);
+			};
+
+			# nothing of the caller's runs for a call nobody waits for any more
+			if(<>@slot->Claim()) {
+				@slot->Complete(Nil, Nil, Nil);
+				return;
+			};
+
+			if(@late_scope_ms > 0) {
+				Thread->Sleep(@late_scope_ms);
+			};
 			try {
 				if(@scope <> Nil) {
 					@scope->EnterWorker();
@@ -3292,6 +3430,67 @@ scope->GetStepsUsed()->PrintLine();
 				};
 			};
 			@slot->Complete(text, failure, reply);
+		}
+	}
+
+	# The workers that were not waited for to their end, of every agent. A thread that is never joined
+	# keeps its stack (POSIX) or its handle (Windows) for the life of the process, so each is joined once
+	# it has finished: when any agent next starts a worker or ends a run. The list used to be the agent's
+	# own, and an agent that is used once, or whose run ended in an error, never came back to it. One that
+	# never finishes stays on the list; nothing else is kept, so the list is as long as the number of
+	# workers still running.
+	class : private : AgentReaper {
+		@workers : static : Vector<AgentWorker>;
+		@lock : static : ThreadMutex;
+
+		# makes the list; called from Agent's constructor, so before any worker exists
+		function : Init() ~ Nil {
+			if(@lock = Nil) {
+				@workers := Vector->New()<AgentWorker>;
+				@lock := ThreadMutex->New("agent_reaper");
+			};
+		}
+
+		# takes a worker that is still running
+		function : Keep(worker : AgentWorker) ~ Nil {
+			Init();
+			critical(@lock) {
+				@workers->AddBack(worker);
+			};
+		}
+
+		# joins the workers that have finished; those still running stay
+		function : Reap() ~ Nil {
+			if(@lock = Nil) {
+				return;
+			};
+
+			done : Vector<AgentWorker>;
+			critical(@lock) {
+				i := 0;
+				while(i < @workers->Size()) {
+					worker := @workers->Get(i);
+					if(worker->IsFinished()) {
+						if(done = Nil) {
+							done := Vector->New()<AgentWorker>;
+						};
+						done->AddBack(worker);
+						@workers->Remove(i);
+					}
+					else {
+						i += 1;
+					};
+				};
+			};
+
+			# outside the lock: a finished worker is at its last statement, but a join is still a wait
+			if(done <> Nil) {
+				i := 0;
+				while(i < done->Size()) {
+					done->Get(i)->Join();
+					i += 1;
+				};
+			};
 		}
 	}
 
@@ -3346,7 +3545,6 @@ result->GetText()->PrintLine();
 		@scope : AgentScope;
 		@scope_spent : Bool;
 		@wall_charged : Int;
-		@orphans : Vector<AgentWorker>;
 
 		#~
 		Constructor
@@ -3363,6 +3561,7 @@ result->GetText()->PrintLine();
 			@max_result_chars := 20000;
 			@approve_all := false;
 			@tool_mode := AgentTool->Mode->IN_THREAD;
+			AgentReaper->Init();
 		}
 
 		#~
@@ -3373,6 +3572,18 @@ result->GetText()->PrintLine();
 		method : public : SetSystem(system : String) ~ Agent {
 			@conversation->SetSystem(system);
 			return @self;
+		}
+
+		#~
+		For tests only. Makes every worker thread (a BOUNDED_THREAD tool, a bounded model call) wait before
+		it does anything, and again before it enters its scope, so that a test can have the run that started
+		it time out and return first. A thread that is slow to start cannot be arranged any other way
+		@hidden
+		@param start_ms milliseconds a worker waits as its thread starts, 0 for none
+		@param scope_ms milliseconds it waits before it enters its scope, 0 for none
+		~#
+		function : SetWorkerTestDelays(start_ms : Int, scope_ms : Int) ~ Nil {
+			AgentWorker->SetTestDelays(start_ms, scope_ms);
 		}
 
 		#~
@@ -3997,34 +4208,18 @@ result->GetText()->PrintLine();
 			};
 		}
 
-		# Joins the abandoned workers that have finished since: a thread that is never joined keeps its stack
-		# and its handle for the life of the process. One that never finishes stays on the list.
+		# Joins the abandoned workers that have finished since, this agent's and any other's: see AgentReaper
 		method : Reap() ~ Nil {
-			if(@orphans <> Nil) {
-				i := 0;
-				while(i < @orphans->Size()) {
-					worker := @orphans->Get(i);
-					if(worker->IsFinished()) {
-						worker->Join();
-						@orphans->Remove(i);
-					}
-					else {
-						i += 1;
-					};
-				};
-			};
+			AgentReaper->Reap();
 		}
 
-		# ends the wait for a worker: joined now when it has finished, else kept for Reap
+		# ends the wait for a worker: joined now when it has finished, else kept for the reaper
 		method : Release(worker : AgentWorker) ~ Nil {
 			if(worker->IsFinished()) {
 				worker->Join();
 			}
 			else {
-				if(@orphans = Nil) {
-					@orphans := Vector->New()<AgentWorker>;
-				};
-				@orphans->AddBack(worker);
+				AgentReaper->Keep(worker);
 			};
 		}
 
