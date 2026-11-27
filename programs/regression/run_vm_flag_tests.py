@@ -2633,9 +2633,18 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
     # the first pipe and its thread were left behind. The process must end up with one
     # pipe (two descriptors) and one thread beyond main, every time. Linux only: the
     # count is read from /proc. Standard streams are files here, so no pipe is theirs.
+    #
+    # The thread count is taken once the task list has settled. Thread->Join returns
+    # when the kernel wakes the joiner, which is before the joined thread's task leaves
+    # /proc/<pid>/task: about one attempt in a hundred the list still held a registrar
+    # that had already been joined (measured: state R or already gone when looked at,
+    # and out of the list within 2 ms; never a second task in the pipe read). A
+    # dispatcher never exits, so a second one is still there however long the wait, and
+    # the count stays as strict about it. OBJECK_SIGNAL_RACE_ATTEMPTS sets the number of
+    # attempts (40), for a soak.
     if sys.platform.startswith("linux"):
         worst_pipes, worst_threads, failed_runs = 0, 0, ""
-        for attempt in range(40):
+        for attempt in range(int(os.environ.get("OBJECK_SIGNAL_RACE_ATTEMPTS", "40"))):
             with tempfile.TemporaryDirectory() as scratch:
                 ready = os.path.join(scratch, "ready")
                 with open(os.path.join(scratch, "out"), "wb") as out_file:
@@ -2655,6 +2664,10 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
                             except OSError:
                                 pass
                         threads = len(os.listdir(f"/proc/{proc.pid}/task"))
+                        settle = time.time() + 2.0
+                        while threads > 2 and time.time() < settle:
+                            time.sleep(0.005)
+                            threads = len(os.listdir(f"/proc/{proc.pid}/task"))
                         os.remove(ready)
                     try:
                         proc.wait(timeout=60)
@@ -2671,7 +2684,7 @@ def check_signal_dispatch(obc, obr, env, bin_dir):
         check("signal handlers registered by eight threads at once: every run finishes", not failed_runs, failed_runs)
         check(f"signal handlers registered by eight threads at once: one wake-up pipe (most descriptors seen: {worst_pipes})",
               not failed_runs and worst_pipes == 2)
-        check(f"signal handlers registered by eight threads at once: one dispatcher thread (most threads seen: {worst_threads})",
+        check(f"signal handlers registered by eight threads at once: one dispatcher thread (most threads left once settled: {worst_threads})",
               not failed_runs and worst_threads == 2)
 
     # ---- no dispatcher, no handler ---------------------------------------------------
