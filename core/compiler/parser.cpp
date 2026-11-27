@@ -9442,7 +9442,14 @@ Select* Parser::ParseSelect(int depth)
  * ordinary name everywhere else ('match := 1', 'match->Size()', 'match(x)',
  * 'match[0]', 'match + 1'):
  *   - a name: 'match color {'. Two names in a row start nothing else.
- *   - a number, character or string: 'match 1 {'. Nor does a name and a literal.
+ *   - a number, character or string that the '{' of the arms follows before the
+ *     statement ends: 'match 1 {', 'match "ab"->Size() {'. A literal alone did
+ *     not decide it: a statement may end at the end of its line, so in
+ *       copy := match
+ *       "done"->PrintLine();
+ *     the literal starts the next statement and 'match' is the variable it
+ *     was before 'match' meant anything. Read as a subject, that program was
+ *     refused with "Expected '{'".
  *   - a '(' whose matching ')' is followed by '{': 'match (value) {'. A call is
  *     never followed by a '{' (as for 'using'), so 'match(x);', 'if(match(x)) {'
  *     and 'match(x)->Size()' are calls of a method named 'match', as before.
@@ -9457,11 +9464,13 @@ PARSER_NO_INLINE bool Parser::IsMatchStart()
 
   switch(GetToken(SECOND_INDEX)) {
   case TOKEN_IDENT:
+    return scanner->GetToken()->GetIdentifier() == L"match";
+
   case TOKEN_INT_LIT:
   case TOKEN_FLOAT_LIT:
   case TOKEN_CHAR_LIT:
   case TOKEN_CHAR_STRING_LIT:
-    return scanner->GetToken()->GetIdentifier() == L"match";
+    return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekBlockAhead(THIRD_INDEX);
 
   case TOKEN_OPEN_PAREN:
     return scanner->GetToken()->GetIdentifier() == L"match" && scanner->PeekAfterParens(2) == TOKEN_OPEN_BRACE;

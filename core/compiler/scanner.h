@@ -822,6 +822,11 @@ class Scanner {
   // pass, however long the list
   ScannerTokenType PeekAfterParens(int index);
 
+  // whether, from tokens[index] on, a '{' is met before the statement ends (a ';', a ','
+  // or a closing ')', ']' or '}' of something opened earlier); what parentheses and
+  // brackets opened on the way hold is skipped
+  bool PeekBlockAhead(int index);
+
   // gets the file name
   std::wstring GetFileName() {
     return filename;

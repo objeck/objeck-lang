@@ -1325,6 +1325,92 @@ ScannerTokenType Scanner::PeekAfterParens(int index)
 }
 
 /****************************
+ * From tokens[index] on, tells
+ * whether a '{' is met before
+ * the statement the tokens are
+ * in ends: before a ';' or ','
+ * and before a ')', ']' or '}'
+ * that closes something opened
+ * earlier. What a '(' or '['
+ * opened on the way holds is
+ * skipped whole, braces and
+ * ';' included (a lambda's
+ * block in a call's arguments).
+ ****************************/
+bool Scanner::PeekBlockAhead(int index)
+{
+  const int last = LOOK_AHEAD - 1;
+  if(index < 0 || index > last) {
+    return false;
+  }
+
+  // 0 at the level of tokens[index]; a '{' counts only inside a '(' or '['
+  int nesting = 0;
+  bool decided = false;
+  bool found = false;
+  auto step = [&](ScannerTokenType type) {
+    switch(type) {
+    case TOKEN_OPEN_BRACE:
+      if(nesting == 0) {
+        decided = found = true;
+      }
+      else {
+        ++nesting;
+      }
+      break;
+
+    case TOKEN_OPEN_PAREN:
+    case TOKEN_OPEN_BRACKET:
+      ++nesting;
+      break;
+
+    case TOKEN_CLOSED_PAREN:
+    case TOKEN_CLOSED_BRACKET:
+    case TOKEN_CLOSED_BRACE:
+      if(nesting == 0) {
+        decided = true;
+      }
+      else {
+        --nesting;
+      }
+      break;
+
+    case TOKEN_SEMI_COLON:
+    case TOKEN_COMMA:
+      decided = nesting == 0;
+      break;
+
+    case TOKEN_END_OF_STREAM:
+    case TOKEN_NO_INPUT:
+      decided = true;
+      break;
+
+    default:
+      break;
+    }
+  };
+
+  // tokens already buffered
+  for(int i = index; i <= last && !decided; ++i) {
+    step(tokens[i]->GetType());
+  }
+  if(decided || !buffer || is_first_token) {
+    return found;
+  }
+
+  // tokens past the buffer, scanned into the last slot
+  PeekState state;
+  SavePeekState(state);
+  while(!decided) {
+    ParseToken(last);
+    step(tokens[last]->GetType());
+  }
+  RestorePeekState(state);
+
+  return found;
+}
+
+/****************************
  * Gets the next character.
  * Note, EOB is returned at
  * end of a stream
