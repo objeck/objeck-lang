@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: (11,37): Expected '->' after the alias group
+#~
+A type that starts with a backslash is an alias, '\Group->Name'. With the '->Name' left
+out no type was made and nothing was reported, so a method declared '~ \String' reached
+the analyzer with no return type and obc ended with a segmentation fault (found by the
+syntax mutation run; release/2026.11.4-fixes has the same fault).
+~#
+class BadAliasTypeIncomplete {
+	# the return type is cut short
+	# (an alias is \Group->Name)
+	function : Make(n : Int) ~ \String {
+		return "x";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Make(1);
+	}
+}

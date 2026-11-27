@@ -1389,7 +1389,7 @@ void Parser::GenerateFieldAccessors(Class* klass, const std::wstring& file_name,
   Method* previous_method = current_method;
   std::vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
-    if(statements[i]->GetStatementType() != DECLARATION_STMT) {
+    if(!statements[i] || statements[i]->GetStatementType() != DECLARATION_STMT) {
       continue;
     }
 
@@ -1750,7 +1750,7 @@ void Parser::GenerateRecordMethods(Class* klass, const std::wstring& file_name, 
   std::vector<Declaration*> fields;
   std::vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
-    if(statements[i]->GetStatementType() == DECLARATION_STMT) {
+    if(statements[i] && statements[i]->GetStatementType() == DECLARATION_STMT) {
       // comma declaration lists chain names last-to-first; walk the chain and
       // reverse the group so generated constructor parameters follow source
       // order. Static fields are class-level state, not per-instance record
@@ -2455,7 +2455,8 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       // after a leading Parent(...) call, ahead of the written statements
       size_t at = 0;
       std::vector<Statement*> written = method->GetStatements()->GetStatements();
-      if(!written.empty() && written[0]->GetStatementType() == METHOD_CALL_STMT &&
+      // a first statement that did not parse is null: its syntax error has been reported
+      if(!written.empty() && written[0] && written[0]->GetStatementType() == METHOD_CALL_STMT &&
          static_cast<MethodCall*>(written[0])->GetCallType() == PARENT_CALL) {
         at = 1;
       }
@@ -6107,7 +6108,7 @@ bool Parser::ClassDeclaresField(const std::wstring& name)
   const std::wstring suffix = L":" + name;
   std::vector<Statement*> statements = current_class->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
-    if(statements[i]->GetStatementType() == DECLARATION_STMT) {
+    if(statements[i] && statements[i]->GetStatementType() == DECLARATION_STMT) {
       for(Declaration* declaration = static_cast<Declaration*>(statements[i]); declaration; declaration = declaration->GetChild()) {
         SymbolEntry* entry = declaration->GetEntry();
         if(entry && !entry->IsStatic()) {
@@ -9742,6 +9743,11 @@ Type* Parser::ParseType(int depth)
       alias_name += ParseBundleName();
       type = TypeFactory::Instance()->MakeType(ALIAS_TYPE, alias_name, file_name, line_num, line_pos);
     }
+    else {
+      // '\Name' alone names nothing: no type was made and none was reported, so a method
+      // declared '~ \String' reached the analyzer with no return type, which it reads
+      ProcessError(L"Expected '->' after the alias group: an alias type is written '\\Group->Name'", TOKEN_ASSESSOR);
+    }
   }
     break;
 
@@ -10538,7 +10544,7 @@ bool Parser::McpAnalyzeFields(Class* record, McpTy& element, std::wstring& why, 
   const std::wstring name = record->GetName();
   std::vector<Statement*> statements = record->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
-    if(statements[i]->GetStatementType() != DECLARATION_STMT) {
+    if(!statements[i] || statements[i]->GetStatementType() != DECLARATION_STMT) {
       continue;
     }
     std::vector<Declaration*> group;
