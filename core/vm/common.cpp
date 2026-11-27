@@ -6564,13 +6564,21 @@ static void DtlsPeerPump(DtlsServerCtx* srv, std::unique_lock<std::mutex>& held,
       // close_notify of a client whose connection has just been closed -- is nobody's.
       const unsigned char* head = (const unsigned char*)datagram.data();
       const bool hello = datagram.size() >= 14 && head[0] == 22 && head[3] == 0 && head[4] == 0 && head[13] == 1;
-      if(hello && !srv->closed && waiting < DTLS_PEER_WAITING_MAX) {
-        owner = new DtlsPeer();
-        owner->addr = from;
-        owner->addr_len = from_len;
-        owner->accepted = false;
-        owner->aborted = false;
-        table->peers.push_back(owner);
+      if(hello && waiting < DTLS_PEER_WAITING_MAX) {
+        // 'closed' is written by Close() under the context lock and was read here under the peer
+        // table's alone: two locks, so no order between the write and the read, and a client could
+        // be filed for a server already closed. It is read under the lock that writes it, taken
+        // inside the table's as DtlsPeerAccept takes it, and the client is filed before that lock is
+        // let go: a hello is filed before the server is closed or not at all.
+        std::lock_guard<std::mutex> context(tls_context_lock);
+        if(!srv->closed) {
+          owner = new DtlsPeer();
+          owner->addr = from;
+          owner->addr_len = from_len;
+          owner->accepted = false;
+          owner->aborted = false;
+          table->peers.push_back(owner);
+        }
       }
     }
     if(owner && owner->datagrams.size() < DTLS_PEER_QUEUE_MAX) {
