@@ -195,6 +195,19 @@ inline bool JitEagerLoops() {
   return JIT_AUTO_THRESHOLD <= JIT_AUTO_THRESHOLD_DEFAULT;
 }
 
+// AMD64: the inline allocator leaves a new object's pointer in a register
+// instead of taking it through the operand stack (EmitNewObjectInline;
+// docs/JIT_ALLOC_RESULT_DESIGN.md). On unless OBJECK_JIT_ALLOC_REG=0, which
+// restores the sequence emitted before v2026.11.4 byte for byte -- the way to
+// tell a problem in it from anything else. Read once.
+inline bool JitAllocResultInRegister() {
+  static const bool enabled = [] {
+    std::string value;
+    return !(JitEnvFlag("OBJECK_JIT_ALLOC_REG", &value) && value == "0");
+  }();
+  return enabled;
+}
+
 class JitCompiler {
 protected:
   static StackProgram* program;

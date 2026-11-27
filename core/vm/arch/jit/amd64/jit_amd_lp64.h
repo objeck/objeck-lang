@@ -486,7 +486,7 @@ namespace Runtime {
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void ProcessFunctionCallParameter();
-    void ProcessIntCallParameter();
+    void ProcessIntCallParameter(RegisterHolder* into = nullptr);
     void ProcessFloatCallParameter();
     void ProcessReturnParameters(MemoryType type);
     void ProcessLoadByteElement(StackInstr* instr);
@@ -501,7 +501,7 @@ namespace Runtime {
     void ProcessJumpTable(StackInstr* instr);
     void EmitJitSafePoint();
     void EmitWriteBarrier(Register holder);
-    long EmitNewObjectInline(StackClass* cls);
+    long EmitNewObjectInline(StackClass* cls, RegisterHolder* result = nullptr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
 
