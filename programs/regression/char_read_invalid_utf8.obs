@@ -1,0 +1,445 @@
+#~
+# ReadBuffer(offset, num, Char[]) and bytes that are not UTF-8: nothing that is a character is lost
+#
+# A Char[] read never ends inside a character: when the 'num' bytes end part way through one, the bytes
+# it still lacks are read as well. They were read whatever they were. After the lead byte F0 the next
+# three bytes were taken, so a one-byte read of F0 41 42 43 swallowed "ABC" into a character that was
+# never one, and the next read began after them (Codex review round 2, slice 5, finding 3). And on POSIX
+# one byte that was not UTF-8 anywhere in a chunk made the whole chunk decode to nothing, which with a
+# character count is 0, the answer for the end of the stream.
+#
+# Only continuation bytes (10xxxxxx) complete a character now, one at a time, and the first byte that is
+# not one is left for the next read: a file gives it back (ungetc), a pipe and a TCP socket look before
+# they read, a TLS session keeps it for its next read. Bytes that are not a character decode to U+FFFD
+# and what follows them decodes as itself.
+#
+# The stream below is, in order:
+#   F0 41 42 43    a four-byte lead and then "ABC"
+#   E2 82 41       a three-byte character cut after two bytes, then 'A'
+#   C3 28          a two-byte lead and then '('
+#   80             a continuation byte on its own
+#   F0 9F 98 80    U+1F600, a valid four-byte character
+#   7A             'z'
+# which is U+FFFD A B C U+FFFD A U+FFFD ( U+FFFD U+1F600 z: eleven characters where a Char is 32 bits.
+# Where a Char is 16 bits (Windows) U+1F600 is a surrogate pair, two elements, or U+FFFD when the read
+# asked for one element only; the checks allow both and are exact about everything else.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# writes bytes to the one connection it accepts, then waits to be told to close
+class BadByteSender from Thread {
+	@server : TCPSocketServer;
+	@bytes : Byte[];
+	@release : Bool;
+
+	New(server : TCPSocketServer, bytes : Byte[]) {
+		Parent("bad-byte-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil & client->IsOpen()) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+# the same over TLS
+class TlsBadByteSender from Thread {
+	@server : TCPSecureSocketServer;
+	@bytes : Byte[];
+	@release : Bool;
+
+	New(server : TCPSecureSocketServer, bytes : Byte[]) {
+		Parent("tls-bad-byte-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+class BadPipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("bad-pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe { return @pipe; }
+}
+
+class CharReadInvalidUtf8 {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("file")) {
+			"stage: file"->ErrorLine();
+			CheckFile();
+		};
+		if(only->Size() = 0 | only->Equals("pipe")) {
+			"stage: pipe"->ErrorLine();
+			CheckPipe();
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp"->ErrorLine();
+			CheckTcp();
+		};
+		if(only->Size() = 0 | only->Equals("tls")) {
+			"stage: tls"->ErrorLine();
+			CheckTls();
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} invalid-UTF-8 Char[] read check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Char[] reads of bytes that are not UTF-8 lose no character"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# every element: ASCII as itself, a zero as '.', anything else as its code point
+	function : Show(chars : Char[]) ~ String {
+		out := "";
+		each(i : chars) {
+			c := chars[i];
+			if(c = '\0') {
+				out += '.';
+			}
+			else if(c->As(Int) < 128) {
+				out += c;
+			}
+			else {
+				out += "<{$(c->As(Int)->ToHexString())}>";
+			};
+		};
+		return out;
+	}
+
+	function : Marks(size : Int) ~ Char[] {
+		marks := Char->New[size];
+		each(i : marks) {
+			marks[i] := 'X';
+		};
+		return marks;
+	}
+
+	function : Stream() ~ Byte[] {
+		bytes := Byte->New[15];
+		bytes[0] := 0xF0; bytes[1] := 0x41; bytes[2] := 0x42; bytes[3] := 0x43;
+		bytes[4] := 0xE2; bytes[5] := 0x82; bytes[6] := 0x41;
+		bytes[7] := 0xC3; bytes[8] := 0x28;
+		bytes[9] := 0x80;
+		bytes[10] := 0xF0; bytes[11] := 0x9F; bytes[12] := 0x98; bytes[13] := 0x80;
+		bytes[14] := 0x7A;
+		return bytes;
+	}
+
+	# the nine characters before U+1F600
+	function : HeadOk(chars : Char[], at : Int) ~ Bool {
+		return chars[at]->As(Int) = 0xFFFD & chars[at + 1] = 'A' & chars[at + 2] = 'B' & chars[at + 3] = 'C' &
+			chars[at + 4]->As(Int) = 0xFFFD & chars[at + 5] = 'A' &
+			chars[at + 6]->As(Int) = 0xFFFD & chars[at + 7] = '(' &
+			chars[at + 8]->As(Int) = 0xFFFD;
+	}
+
+	# 'stored' characters from 'at': the nine, U+1F600 (one element, a pair, or U+FFFD for a pair that
+	# did not fit a one-element read) and 'z'
+	function : StreamOk(chars : Char[], at : Int, stored : Int) ~ Bool {
+		if(<>HeadOk(chars, at)) {
+			return false;
+		};
+		if(stored = 11) {
+			face := chars[at + 9]->As(Int);
+			return (face = 0x1F600 | face = 0xFFFD) & chars[at + 10] = 'z';
+		};
+		if(stored = 12) {
+			return chars[at + 9]->As(Int) = 0xD83D & chars[at + 10]->As(Int) = 0xDE00 & chars[at + 11] = 'z';
+		};
+		return false;
+	}
+
+	function : Put(name : String, bytes : Byte[]) ~ Nil {
+		writer := FileWriter->New(name);
+		writer->WriteBuffer(0, bytes->Size(), bytes);
+		writer->Close();
+	}
+
+	# reads 'step' at a time until a read returns 0 or less; the characters stored, or -1 if a count was wrong
+	function : ReadAll(reader : FileReader, step : Int, chars : Char[]) ~ Int {
+		pos := 0;
+		got := 1;
+		while(got > 0 & pos + step <= chars->Size()) {
+			got := reader->ReadBuffer(pos, step, chars);
+			if(got > step) {
+				return -1;
+			};
+			if(got > 0) {
+				pos += got;
+			};
+		};
+		return pos;
+	}
+
+	function : CheckFile() ~ Nil {
+		name := "char_read_invalid_utf8_{$Runtime->GetProcessId()}.tmp";
+
+		# the finding: one character asked for from F0 41 42 43
+		lead := Byte->New[4];
+		lead[0] := 0xF0; lead[1] := 0x41; lead[2] := 0x42; lead[3] := 0x43;
+		Put(name, lead);
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(0, 1, chars);
+		next := reader->ReadByte();
+		reader->Close();
+		Check("a file read of 1 from F0 41 42 43 is U+FFFD and the next byte is 'A' (got {$got}, next {$next}, '{$Show(chars)}')",
+			got = 1 & chars[0]->As(Int) = 0xFFFD & chars[1] = 'X' & next = 0x41);
+
+		# the whole stream, for each read size: a broken sequence on every kind of boundary
+		Put(name, Stream());
+		for(step := 1; step <= 8; step += 1;) {
+			reader := FileReader->New(name);
+			chars := Marks(32);
+			stored := ReadAll(reader, step, chars);
+			reader->Close();
+			Check("a file read {$step} at a time keeps every character (stored {$stored}, '{$Show(chars)}')",
+				StreamOk(chars, 0, stored));
+		};
+		reader := FileReader->New(name);
+		chars := Marks(32);
+		got := reader->ReadBuffer(0, 15, chars);
+		reader->Close();
+		Check("a file read of all fifteen bytes at once keeps every character (got {$got}, '{$Show(chars)}')",
+			StreamOk(chars, 0, got));
+
+		# a slice in the middle of the array: the elements either side are the caller's
+		Put(name, lead);
+		reader := FileReader->New(name);
+		chars := Marks(8);
+		got := reader->ReadBuffer(3, 1, chars);
+		again := reader->ReadBuffer(4, 3, chars);
+		reader->Close();
+		Check("a file read of 1 at offset 3 stores one element there and the next read gets ABC (got {$got} then {$again}, '{$Show(chars)}')",
+			got = 1 & again = 3 & chars[2] = 'X' & chars[3]->As(Int) = 0xFFFD & chars[4] = 'A' & chars[5] = 'B' & chars[6] = 'C' & chars[7] = 'X');
+
+		# a valid four-byte character split across the count is still whole, and the byte after it is not taken
+		face := Byte->New[5];
+		face[0] := 0xF0; face[1] := 0x9F; face[2] := 0x98; face[3] := 0x80; face[4] := 0x7A;
+		Put(name, face);
+		for(step := 1; step <= 3; step += 1;) {
+			reader := FileReader->New(name);
+			chars := Marks(8);
+			got := reader->ReadBuffer(0, step, chars);
+			next := reader->ReadByte();
+			reader->Close();
+			first := chars[0]->As(Int);
+			Check("a file read of {$step} from U+1F600 z completes the character and leaves 'z' (got {$got}, next {$next}, '{$Show(chars)}')",
+				got >= 1 & got <= 2 & (first = 0x1F600 | first = 0xD83D | first = 0xFFFD) & next = 0x7A);
+		};
+
+		File->Delete(name);
+	}
+
+	function : CheckPipe() ~ Nil {
+		name := "objeck-pipe-bad-{$Int->Random(100000, 999999)}";
+		owner := BadPipeOwner->New(name);
+		owner->Execute(Nil);
+
+		client : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			client := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := client->IsOpen();
+		};
+		owner->Join();
+		server := owner->GetPipe();
+		if(<>opened | <>server->IsOpen()) {
+			Check("the pipe connects", false);
+			return;
+		};
+
+		bytes := Stream();
+		client->WriteBuffer(0, bytes->Size(), bytes);
+
+		chars := Marks(16);
+		counts := "";
+		for(i := 0; i < 11; i += 1;) {
+			counts += server->ReadBuffer(i, 1, chars);
+		};
+		Check("pipe reads of 1 each return one character and lose none (counts {$counts}, '{$Show(chars)}')",
+			counts->Equals("11111111111") & StreamOk(chars, 0, 11));
+
+		client->Close();
+		server->Close();
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		sender := BadByteSender->New(server, Stream());
+		sender->Execute(Nil);
+
+		client := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(<>client->IsOpen()) {
+			Check("the TCP client connects", false);
+			sender->Release();
+			return;
+		};
+		client->SetRecvTimeout(10000);
+
+		chars := Marks(16);
+		counts := "";
+		for(i := 0; i < 11; i += 1;) {
+			counts += client->ReadBuffer(i, 1, chars);
+		};
+		Check("TCP reads of 1 each return one character and lose none (counts {$counts}, '{$Show(chars)}')",
+			counts->Equals("11111111111") & StreamOk(chars, 0, 11));
+
+		sender->Release();
+		client->Close();
+		sender->Join();
+		server->Close();
+	}
+
+	function : CheckTls() ~ Nil {
+		cert := "char-bad-cert-{$(Runtime->GetProcessId())}.pem";
+		key := "char-bad-key-{$(Runtime->GetProcessId())}.pem";
+		if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+			Check("openssl creates the certificate (is openssl on PATH?)", false);
+			return;
+		};
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		port := 0;
+		if(server->Listen()) {
+			port := server->GetPort();
+		};
+		Check("the TLS server listens", port > 0);
+		if(port > 0) {
+			sender := TlsBadByteSender->New(server, Stream());
+			sender->Execute(Nil);
+			client := TCPSecureSocket->New("127.0.0.1", port, cert);
+			if(client->IsOpen()) {
+				# the first four one at a time: the byte after F0 is kept by the session and is the next read's
+				chars := Marks(16);
+				counts := "";
+				for(i := 0; i < 4; i += 1;) {
+					counts += client->ReadBuffer(i, 1, chars);
+				};
+				Check("TLS reads of 1 each from F0 41 42 43 are U+FFFD A B C (counts {$counts}, '{$Show(chars)}')",
+					counts->Equals("1111") & chars[0]->As(Int) = 0xFFFD & chars[1] = 'A' & chars[2] = 'B' & chars[3] = 'C');
+
+				# E2 82 and then a byte that is kept: the Byte[] read after it gets that byte first
+				got := client->ReadBuffer(4, 1, chars);
+				kept := Byte->New[1];
+				bytes_read := client->ReadBuffer(0, 1, kept);
+				Check("a TLS Char[] read of E2 82 is U+FFFD and the Byte[] read after it gets the 'A' (got {$got} then {$bytes_read}, byte {$(kept[0])})",
+					got = 1 & chars[4]->As(Int) = 0xFFFD & bytes_read = 1 & kept[0] = 0x41);
+				chars[5] := 'A';
+
+				# C3 and then a byte that is kept: ReadByte after it gets that byte
+				got := client->ReadBuffer(6, 1, chars);
+				paren := client->ReadByte();
+				Check("a TLS Char[] read of C3 is U+FFFD and ReadByte after it gets '(' (got {$got}, byte {$paren})",
+					got = 1 & chars[6]->As(Int) = 0xFFFD & paren = 0x28);
+				chars[7] := '(';
+
+				counts := "";
+				for(i := 8; i < 11; i += 1;) {
+					counts += client->ReadBuffer(i, 1, chars);
+				};
+				Check("and the rest read 1 each lose none (counts {$counts}, '{$Show(chars)}')",
+					counts->Equals("111") & StreamOk(chars, 0, 11));
+				client->Close();
+			}
+			else {
+				Check("the TLS client connects ('{$(TCPSecureSocket->GetLastError())}')", false);
+			};
+			sender->Release();
+			sender->Join();
+			server->Close();
+		};
+		File->Delete(cert);
+		File->Delete(key);
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}

@@ -545,6 +545,10 @@ struct SecureSocketCtx {
   // close_notify has gone out and the socket takes no more writes, so Close
   // does not send a second one into a socket that would refuse it
   bool send_closed;
+  // a byte read from the session and given back, or -1: the next byte a read returns (ReadByte and
+  // ReadBytes take it first). A Char[] read that completes its last character reads one byte at a time
+  // and can find one that belongs to the next character; TLS cannot look at a byte without reading it.
+  int pushback;
 
   void SetError(int error) {
     SetError(error, SocketError{ 0, false });
@@ -558,7 +562,7 @@ struct SecureSocketCtx {
     tls_socket_error = reason;
   }
 
-  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false) {
+  SecureSocketCtx() : last_error(0), deadline_ms(0), read_ms(0), send_closed(false), pushback(-1) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
     mbedtls_net_init(&net);
@@ -2834,7 +2838,7 @@ class TrapProcessor {
       // For reads, check if mbedTLS has buffered decrypted data.
       if(!is_write) {
          size_t pending = mbedtls_ssl_get_bytes_avail(&ctx->ssl);
-         if(pending > 0) {
+         if(pending > 0 || ctx->pushback >= 0) {   // or a read gave a byte back
             return 1;
          }
       }

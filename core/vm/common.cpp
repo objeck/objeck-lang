@@ -4162,22 +4162,43 @@ static size_t Utf8TailMissing(const char* buf, size_t len, size_t* tail = nullpt
   return 0;
 }
 
-// Completes the character that ends the 'len' bytes just read into 'buf' (room for UTF8_TAIL_MAX more):
-// read_more(dest, count) reads up to 'count' further bytes and returns how many, 0 or less when the
-// stream has no more. Returns the new length. No VM heap is touched: callable while parked.
-template<typename ReadMore>
-static size_t ReadUtf8Tail(char* buf, size_t len, ReadMore read_more)
+static inline bool IsUtf8Continuation(int byte)
+{
+  return (byte & 0xC0) == 0x80;
+}
+
+// Completes the character that ends the 'len' bytes just read into 'buf' (room for UTF8_TAIL_MAX more).
+// Only continuation bytes are taken, one at a time: next_continuation(dest) answers true when the
+// stream's next byte is one, which it has then read into 'dest', and false when the stream has no more
+// or its next byte is anything else, which it must leave unread (a FILE gives the byte back with ungetc,
+// a socket looks before it reads, a TLS session keeps it for its next read). The bytes a lead byte
+// announces used to be read whatever they were: after F0 the next three were taken, so a one-byte read
+// of F0 41 42 43 swallowed "ABC" into a character that was never one, and the next read began after
+// them. Returns the new length. No VM heap is touched: callable while parked.
+template<typename NextContinuation>
+static size_t ReadUtf8Tail(char* buf, size_t len, NextContinuation next_continuation)
 {
   const size_t missing = Utf8TailMissing(buf, len);
   size_t added = 0;
-  while(added < missing) {
-    const long long got = (long long)read_more(buf + len + added, missing - added);
-    if(got <= 0) {
-      break;
-    }
-    added += (size_t)got;
+  while(added < missing && next_continuation(buf[len + added])) {
+    ++added;
   }
   return len + added;
+}
+
+// The next byte of a FILE (the console, a file, a FIFO) when it continues a character: see ReadUtf8Tail
+static bool FileNextContinuation(FILE* file, char& dest)
+{
+  const int next = fgetc(file);
+  if(next == EOF) {
+    return false;
+  }
+  if(!IsUtf8Continuation(next)) {
+    ungetc(next, file);
+    return false;
+  }
+  dest = (char)next;
+  return true;
 }
 
 // One UTF-8 character from the bytes at [at, end), which hold at least one: its code point, or U+FFFD
@@ -4325,7 +4346,7 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
     MemoryManager::BeginBlocking();
     size_t read = fread(byte_buffer, 1, num, stdin);
     // never stop inside a character (see ReadUtf8Tail)
-    read = ReadUtf8Tail(byte_buffer, read, [](char* at, size_t count) { return fread(at, 1, count, stdin); });
+    read = ReadUtf8Tail(byte_buffer, read, [](char& dest) { return FileNextContinuation(stdin, dest); });
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read) {
@@ -9825,10 +9846,7 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
         read = 0;
       }
       // never stop inside a character (see ReadUtf8Tail); a failed read is no more bytes
-      read = ReadUtf8Tail(byte_buffer, read, [pipe](char* at, size_t count) {
-        const size_t more = Pipe::ReadByteArray(at, 0, count, pipe);
-        return more > count ? (size_t)0 : more;
-      });
+      read = ReadUtf8Tail(byte_buffer, read, [pipe](char& dest) { return Pipe::ReadContinuationByte(dest, pipe); });
       in = DecodeCharRead(byte_buffer, read, (size_t)num);
 
       // copy and remove file BOM UTF (8, 16, 32)
@@ -10065,8 +10083,8 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     // Never stop inside a character (see ReadUtf8Tail). Only after a whole read: a short one means the
     // peer closed, or the read failed or timed out, and its reason is in 'error' already.
     if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char* at, size_t count) {
-        return IPSocket::ReadBytes(at, (int)count, sock, error, limits.deadline_ms, limits.read_ms);
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [&](char& dest) {
+        return IPSocket::ReadContinuationByte(dest, sock, error, limits.deadline_ms, limits.read_ms);
       });
     }
     MemoryManager::EndBlocking();
@@ -10261,8 +10279,20 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
     // never stop inside a character, after a whole read (see SockTcpInCharAry)
     if(read > 0 && read == num) {
-      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char* at, size_t count) {
-        return IPSecureSocket::ReadBytes(at, (int)count, sctx);
+      read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest) {
+        // TLS has no way to look at a byte without reading it: one that does not continue the
+        // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
+        int status;
+        const char next = IPSecureSocket::ReadByte(sctx, status);
+        if(status <= 0) {
+          return false;
+        }
+        if(!IsUtf8Continuation(next)) {
+          sctx->pushback = (unsigned char)next;
+          return false;
+        }
+        dest = next;
+        return true;
       });
     }
     MemoryManager::EndBlocking();
@@ -12384,7 +12414,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     do {
       read = fread(byte_buffer, 1, num, file);
       // never stop inside a character (see ReadUtf8Tail)
-      read = ReadUtf8Tail(byte_buffer, read, [file](char* at, size_t count) { return fread(at, 1, count, file); });
+      read = ReadUtf8Tail(byte_buffer, read, [file](char& dest) { return FileNextContinuation(file, dest); });
       in = DecodeCharRead(byte_buffer, read, (size_t)num);
 
       // remove file BOM UTF (8, 16, 32)

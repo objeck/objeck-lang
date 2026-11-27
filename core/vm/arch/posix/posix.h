@@ -307,6 +307,23 @@ public:
     return recv(pipe, buffer + offset, num, 0);
   }
 
+  // The pipe's next byte when it continues a UTF-8 character (10xxxxxx), read into 'value': true then.
+  // Any other byte is looked at and left where it is (the pipe is a stream socket, so MSG_PEEK), for
+  // the read that follows; false for it, and when the pipe has ended or failed.
+  static bool ReadContinuationByte(char &value, int pipe) {
+    char next;
+    ssize_t status;
+    do {
+      status = recv(pipe, &next, 1, MSG_PEEK);
+    }
+    while(status < 0 && errno == EINTR);
+    if(status != 1 || ((unsigned char)next & 0xC0) != 0x80) {
+      return false;
+    }
+
+    return recv(pipe, &value, 1, 0) == 1;
+  }
+
   static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, int pipe) {
     return send(pipe, buffer + offset, num, 0);
   }
@@ -856,6 +873,28 @@ public:
 
     error = 0;
     return value;
+  }
+
+  // The socket's next byte when it continues a UTF-8 character (10xxxxxx), read into 'value': true
+  // then. Any other byte is looked at and left where it is (MSG_PEEK), for the read that follows;
+  // false for it, and when the peer has closed or the wait failed or timed out, with the reason in
+  // error as a read leaves it.
+  static bool ReadContinuationByte(char& value, SOCKET sock, int& error, long long deadline_ms = 0, int read_ms = 0) {
+    error = 0;
+    if(!WaitReadable(sock, deadline_ms, read_ms, error)) {
+      return false;
+    }
+    char next;
+    const int status = static_cast<int>(recv(sock, &next, 1, MSG_PEEK));
+    if(status < 0) {
+      error = ReadError(errno);
+      return false;
+    }
+    if(status != 1 || ((unsigned char)next & 0xC0) != 0x80) {
+      return false;
+    }
+
+    return recv(sock, &value, 1, 0) == 1;
   }
 
   // a failure part way still returns what was read, with the reason in error
@@ -1431,6 +1470,13 @@ class IPSecureSocket {
   static char ReadByte(SecureSocketCtx* sctx, int &status) {
     TlsLibraryLock library_lock;
     unsigned char value;
+    // a byte a read gave back comes first (SecureSocketCtx::pushback)
+    if(sctx->pushback >= 0) {
+      value = (unsigned char)sctx->pushback;
+      sctx->pushback = -1;
+      status = 1;
+      return (char)value;
+    }
     status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
     // These sockets are blocking.  When SO_RCVTIMEO expires, mbedtls_net_recv
     // maps EAGAIN/EWOULDBLOCK to WANT_READ; retrying here would turn a bounded
@@ -1451,6 +1497,11 @@ class IPSecureSocket {
   static int ReadBytes(char* values, int len, SecureSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     int total = 0;
+    // a byte a read gave back comes first (SecureSocketCtx::pushback)
+    if(len > 0 && sctx->pushback >= 0) {
+      values[total++] = (char)sctx->pushback;
+      sctx->pushback = -1;
+    }
     while(total < len) {
       int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
       if(status < 0) {
