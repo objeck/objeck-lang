@@ -76,6 +76,10 @@ class Loader {
     std::vector<long> char_lengths;
   } verify;
 
+  // The --mcp / --mcp-http request this load was started with, empty when there
+  // was none; Load takes it from the process's (loader.cpp, TakeMcpLaunch).
+  std::wstring mcp_launch;
+
   // What a failed load says, exactly as obr prints it (Load, GetError). The
   // loader used to write it to stderr and call exit(1) on the spot, 16 places
   // in loader.cpp and 7 in this file, so a host that embeds the VM (the

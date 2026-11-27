@@ -38,6 +38,8 @@ StackProgram* Loader::program;
 
 // the trap ids a program may use (with the verification code below)
 static bool IsTrapId(const INT64_VALUE id);
+// the process's --mcp / --mcp-http request, which is then none (below)
+static std::wstring TakeMcpLaunch();
 
 StackProgram* Loader::GetProgram() {
   return program;
@@ -47,6 +49,12 @@ bool Loader::Load()
 {
   error.str(L"");
   error.clear();
+  // The launch request belongs to the load obr was started for, and is taken here
+  // whether or not that load succeeds: left set, it was still there for the next
+  // Loader in the process (a host that loads a second program after the first was
+  // refused), which then got "stdio" in front of its arguments and was started at
+  // a McpMain.
+  mcp_launch = TakeMcpLaunch();
   try {
     if(!from_mem && !alloc_buffer) {
       ReadFile();
@@ -584,7 +592,8 @@ StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
 }
 
 // What 'obr --mcp' / '--mcp-http' asked of THIS process: "stdio" or "http <host> <port>", empty when
-// neither flag was given. ApplyVmOptions sets it (vm_options.h) and the loader reads it once.
+// neither flag was given. ApplyVmOptions sets it (vm_options.h) and the first Load after that takes
+// it (TakeMcpLaunch): one request starts one program.
 //
 // It used to travel in the environment variable OBJECK_MCP, which every process the program starts
 // inherits: an 'obr helper.obe' run by a served program (Runtime->Command, CommandOutput) read the
@@ -604,10 +613,18 @@ namespace Runtime {
   }
 }
 
-// The launch request (above): adds its words to the program's arguments, first. True when there was one.
+static std::wstring TakeMcpLaunch()
+{
+  std::wstring request;
+  request.swap(McpLaunchRequest());
+  return request;
+}
+
+// The launch request this load took (Load): adds its words to the program's arguments, first. True
+// when there was one.
 bool Loader::ReadMcpLaunch()
 {
-  const std::wstring& request = McpLaunchRequest();
+  const std::wstring& request = mcp_launch;
   if(request.empty()) {
     return false;
   }
