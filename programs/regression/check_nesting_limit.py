@@ -36,7 +36,9 @@ says "Nesting is too deep" once, on the string's line, 100 levels of parentheses
 every shape are refused. (An array is not a value an interpolation can print, so a shallow array literal is
 refused for that, by another message.) With a second source file in the same compilation the error is
 reported and the later file is still diagnosed. An interpolation written inside an interpolation does not
-nest: each "{$" starts the expression again, so nothing recurses, and 100, 250 and 1000 of them compile.
+nest: an interpolation ends at its first "}", so a "{$" inside one is the error "A '{$' inside '{$...}'",
+once, on the string's line, for 100, 250 and 5000 of them (they used to compile, each "{$" starting the
+expression again and keeping the text before it a second time: 5000 made a 25 million character literal).
 
 bad_nesting_too_deep.obs holds the same error in the regression suite for one shape; it also names no column.
 """
@@ -94,9 +96,9 @@ INTERPOLATED = [("parentheses", lambda n: "(" * n + "1" + ")" * n, True),
                 ("unary operators", lambda n: "-(" * n + "1" + ")" * n, False),
                 ("array literals", lambda n: "[" * n + "1" + "]" * n, False)]
 INTERPOLATION_LEVELS = [100, 250, 5000]
-# "{$" does not nest (see above): the text before each one is kept as a piece of the string, so the string
-# these make grows with the square of the count and 5000 of them would be a 25 million character literal
-NESTED_INTERPOLATIONS = [100, 250, 1000]
+# "{$" does not nest (see above): one inside another is refused, however many there are
+NESTED_INTERPOLATIONS = [100, 250, 5000]
+NESTED_MESSAGE = "A '{$' inside '{$...}'"
 
 
 def interpolation(expression, spec=""):
@@ -232,7 +234,8 @@ def main():
                             "\t\tv := \"core\";\n\t\ts := \"" + text + "\";\n\t\ts->Size()->PrintLine();\n\t}\n}\n")
                 try:
                     code, out, errors, wrote, elapsed = compile_sources(["interp.obs"])
-                    check("%s, %d times: compiled, nothing nests (%.1f s)" % (label, levels, elapsed), code == 0 and wrote, "status %d\n" % code + ends(out))
+                    check("%s, %d times: refused with \"%s\" on line 8, once (%.1f s)" % (label, levels, NESTED_MESSAGE, elapsed),
+                          1 <= code <= 9 and not wrote and len(errors) == 1 and NESTED_MESSAGE in errors[0] and ":(8," in errors[0], "status %d\n" % code + ends(out))
                 except subprocess.TimeoutExpired:
                     check("%s, %d times: answered within %d s" % (label, levels, TIME_LIMIT), False)
 

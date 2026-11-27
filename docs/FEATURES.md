@@ -1139,6 +1139,10 @@ i := 41;
 "upper = {$name->ToUpper()}"->PrintLine();  # upper = WORLD
 ```
 
+An interpolation ends at its first `}`, so it cannot hold another `{$...}` (or an unescaped
+quote, which ends the string): `"outer {$Id(\"inner {$n}\")}"` is a compile error that says so.
+Compute the inner value into a local first and interpolate the local.
+
 A String or object that is `Nil` interpolates as `Nil`, so a message can show a value
 that is missing: `s : String; "s={$s}"->PrintLine();` prints `s=Nil`. Only interpolation
 does this; `String->Append(Nil)` and `+` with a `Nil` operand still raise a Nil error.

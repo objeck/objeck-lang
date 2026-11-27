@@ -2009,14 +2009,28 @@ static bool HasLambdaInInterpolation(const std::wstring& str)
 }
 
 /****************************
- * True when a string literal ends inside a `{$ ... }` interpolation that is
- * never closed. The scanner ends a string at the first unescaped quote, so a
+ * How a string literal leaves a `{$ ... }` interpolation open, if it does.
+ *
+ * At its end: the scanner ends a string at the first unescaped quote, so a
  * quoted argument inside an interpolation -- "x: {$(Join(items, ", "))}" --
  * cuts the string at its first quote and leaves the '{$' open. Reporting that
  * names the real mistake; the parse otherwise fails tokens later on whatever
  * the rest of the line reads as.
+ *
+ * At another '{$': "cost: {$ then {$price}". An interpolation ends at the
+ * first '}', so it cannot hold another, and the first of the two is never
+ * closed. This used to compile: the analyzer started the expression again at
+ * the second '{$' and kept the text before it a second time, so the program
+ * printed "cost: cost: {$ then 5" (and a string of N such openers was N
+ * copies of its own beginning: 5,000 made a 25 million character literal).
  ****************************/
-static bool HasUnclosedInterpolation(const std::wstring& str)
+enum class OpenInterpolation {
+  NONE,
+  AT_END,
+  AT_ANOTHER
+};
+
+static OpenInterpolation FindOpenInterpolation(const std::wstring& str)
 {
   bool in_interpolation = false;
   for(size_t i = 0; i < str.size(); ++i) {
@@ -2025,6 +2039,9 @@ static bool HasUnclosedInterpolation(const std::wstring& str)
       ++i;
     }
     else if(i + 1 < str.size() && str[i] == L'{' && str[i + 1] == L'$') {
+      if(in_interpolation) {
+        return OpenInterpolation::AT_ANOTHER;
+      }
       in_interpolation = true;
       ++i;
     }
@@ -2033,7 +2050,16 @@ static bool HasUnclosedInterpolation(const std::wstring& str)
     }
   }
 
-  return in_interpolation;
+  return in_interpolation ? OpenInterpolation::AT_END : OpenInterpolation::NONE;
+}
+
+// the error for a string literal that leaves an interpolation open
+static const wchar_t* OpenInterpolationError(OpenInterpolation open)
+{
+  return open == OpenInterpolation::AT_ANOTHER
+    ? L"A '{$' inside '{$...}': the interpolation before it is not closed. An interpolation ends at its first '}' and cannot hold another; "
+      L"close the first one, or compute the inner string into a local first and interpolate the local"
+    : L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local";
 }
 
 /****************************
@@ -5714,8 +5740,9 @@ StaticArray* Parser::ParseStaticArray(int depth) {
         case TOKEN_CHAR_STRING_LIT: {
           const std::wstring ident = scanner->GetToken()->GetIdentifier();
           const bool is_lit = scanner->GetToken()->GetByteLit();
-          if(!is_lit && HasUnclosedInterpolation(ident)) {
-            ProcessError(L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local", TOKEN_SEMI_COLON);
+          const OpenInterpolation open = is_lit ? OpenInterpolation::NONE : FindOpenInterpolation(ident);
+          if(open != OpenInterpolation::NONE) {
+            ProcessError(OpenInterpolationError(open), TOKEN_SEMI_COLON);
             break;
           }
           expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
@@ -7208,8 +7235,9 @@ Expression* Parser::ParseSimpleExpression(int depth)
     case TOKEN_CHAR_STRING_LIT: {
       const std::wstring ident = scanner->GetToken()->GetIdentifier();
       const bool is_lit = scanner->GetToken()->GetByteLit();
-      if(!is_lit && HasUnclosedInterpolation(ident)) {
-        ProcessError(L"A quote inside '{$...}' ends the string early, leaving the interpolation open; compute the value into a local first and interpolate the local", TOKEN_SEMI_COLON);
+      const OpenInterpolation open = is_lit ? OpenInterpolation::NONE : FindOpenInterpolation(ident);
+      if(open != OpenInterpolation::NONE) {
+        ProcessError(OpenInterpolationError(open), TOKEN_SEMI_COLON);
         break;
       }
       expression = TreeFactory::Instance()->MakeCharacterString(file_name, line_num, line_pos, ident, is_lit);
@@ -11740,7 +11768,7 @@ PARSER_NO_INLINE Expression* Parser::ParsePromptLiteral(int depth)
     if(piece.empty()) {
       return;
     }
-    if(HasUnclosedInterpolation(piece)) {
+    if(FindOpenInterpolation(piece) != OpenInterpolation::NONE) {
       diagnostics.Error(file_name, piece_line, piece_pos, L"A '{$' interpolation in a prompt literal is not closed: expected '}'");
     }
     ExpressionList* arguments = TreeFactory::Instance()->MakeExpressionList();
