@@ -35,6 +35,7 @@ class FormatterRegressionTest {
 		TestArrowAndCompare();
 		TestNestedBlocks();
 		TestLineDepths();
+		TestDeclarationAfterBrace();
 
 		p := @passed;
 		f := @failed;
@@ -242,6 +243,32 @@ class FormatterRegressionTest {
 		Check("Arrow: '=>' kept", result->Find("1 => \"one\"") > -1 & result->Find("other => \"many\"") > -1);
 		Check("Arrow: '=>' not split", result->Find("<> >") = -1 & result->Find("= >") = -1);
 		Check("Arrow: patterns kept", result->Find("2 | 3 =>") > -1);
+	}
+
+	function : TestDeclarationAfterBrace() ~ Nil {
+		"\n>> Declarations after a closing brace..."->PrintLine();
+
+		# The second class of a file came back as 'classB' (it no longer compiled),
+		# a second function as 'function: G', and an enum, consts, alias, interface
+		# or bundle stayed on the line of the '}' before it.
+		src := "class A{function:F()~Nil{}function:G()~Nil{}method:public:M()~Nil{}}class B{New(){}}interface I{}enum E{X,Y}consts K{Z:=1}alias Fn{F:(Int)~Int}bundle Bb{class C{}}";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+
+		Check("After brace: result not nil", result <> Nil);
+		Check("After brace: 'class B' keeps its space", result->Find("class B {") > -1 & result->Find("classB") = -1);
+		Check("After brace: 'function : G' keeps its space", result->Find("function : G()") > -1 & result->Find("function:") = -1);
+		Check("After brace: 'method : public' keeps its space", result->Find("method : public : M()") > -1 & result->Find("method:") = -1);
+		Check("After brace: interface on its own line", result->Find("}interface") = -1 & result->Find("\ninterface I {") > -1);
+		Check("After brace: enum on its own line", result->Find("}enum") = -1 & result->Find("\nenum E {") > -1);
+		Check("After brace: consts on its own line", result->Find("}consts") = -1 & result->Find("\nconsts K {") > -1);
+		Check("After brace: alias on its own line", result->Find("}alias") = -1 & result->Find("\nalias Fn {") > -1);
+		Check("After brace: bundle on its own line", result->Find("}bundle") = -1 & result->Find("\nbundle Bb {") > -1);
+		Check("After brace: first class unchanged", result->Find("class A {") = 0);
 	}
 
 	function : TestNestedBlocks() ~ Nil {
