@@ -307,6 +307,46 @@ static bool SignalDispatchFault(const char* stage)
 #endif
 }
 
+// Test hook: OBJECK_NATIVE_TEST_PAUSE=<point>=<ms>[,<point>=<ms>...] makes a native stop for that long
+// at a named point, so that a test can put another thread's call into a window that is otherwise a few
+// instructions wide (a Close() between a listener's publication and the next thing Listen() does, a
+// read between another read's look ahead and its push back). The points are named where they are used.
+// Unset, it is one read of a cached empty string, and it is called only from paths that are about to
+// wait on the network anyway. As OBJECK_SIGNAL_TEST_FAULT above: for the tests, not an interface.
+static void NativeTestPause(const char* point)
+{
+  static const std::string spec = []() {
+#ifdef _WIN32
+    char value[256] = {0};
+    size_t len = 0;
+    return std::string(!getenv_s(&len, value, sizeof(value), "OBJECK_NATIVE_TEST_PAUSE") ? value : "");
+#else
+    const char* value = std::getenv("OBJECK_NATIVE_TEST_PAUSE");
+    return std::string(value ? value : "");
+#endif
+  }();
+  if(spec.empty()) {
+    return;
+  }
+
+  const std::string key = std::string(point) + "=";
+  size_t at = 0;
+  while(at < spec.size()) {
+    size_t end = spec.find(',', at);
+    if(end == std::string::npos) {
+      end = spec.size();
+    }
+    if(spec.compare(at, key.size(), key) == 0) {
+      const int ms = atoi(spec.substr(at + key.size(), end - at - key.size()).c_str());
+      if(ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+      }
+      return;
+    }
+    at = end + 1;
+  }
+}
+
 // The dispatcher's wake-up (a pipe, or on Windows an event) while StartSignalDispatch owns it: closed
 // when the start is given up, however it is left, and kept only once the dispatcher has it (Release).
 // The thread's start can fail with more than std::system_error -- std::thread allocates its state, so
@@ -7025,6 +7065,8 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
     // DTLS record header: content type 22 (handshake), version, epoch 0, ...;
     // then the handshake message type, 1 (ClientHello), at offset 13
     if(ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1) {
+      // test point: a ClientHello has been seen and nothing has been done about it yet
+      NativeTestPause("dtls-accept-hello-seen");
       break;
     }
 
@@ -7068,6 +7110,9 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
     char discard[1];
     (void)recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
   }
+
+  // test point: the listener is connected to the client and has not been handed over yet
+  NativeTestPause("dtls-accept-before-handoff");
 
   // the connected socket is the client's now; listen again on a fresh one, unless the server was
   // closed meanwhile: then nobody is left to accept on it, and the socket handed over was shut down
@@ -7248,9 +7293,12 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       mbedtls_ssl_conf_own_cert(&srv->conf, &srv->srvcert, &srv->pkey);
 
+      // test points: just before, and just after, the object is given its context
+      NativeTestPause("tls-listen-publishing");
       instance[0] = (size_t)srv;
       instance[1] = 0;
       instance[2] = 0;
+      NativeTestPause("tls-listen-published");
       // @port: the port bound, which for a port of 0 the system chose
       const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
       if(bound_port > 0) {
@@ -11081,6 +11129,8 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
           return false;
         }
         if(!IsUtf8Continuation(next)) {
+          // test point: a byte that belongs to the next read has been taken and not yet given back
+          NativeTestPause("tls-char-before-pushback");
           sctx->pushback = (unsigned char)next;
           return false;
         }
@@ -12806,9 +12856,12 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
       srv->peers = new DtlsPeerTable();
 #endif
 
+      // test points: just before, and just after, the object is given its context
+      NativeTestPause("dtls-listen-publishing");
       instance[0] = (size_t)srv;
       instance[1] = 0;
       instance[2] = 0;
+      NativeTestPause("dtls-listen-published");
       // @port: the port bound, which for a port of 0 the system chose. srv->port
       // follows it too: the wildcard listener each accept binds afresh
       // (DtlsAccept, IPSocket::BindAny(srv->port)) must take this port again,
