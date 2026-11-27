@@ -575,6 +575,12 @@ void JitArm64::ProcessFloatCallParameter() {
 
 void JitArm64::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
+    // past the reach of a conditional branch (MAX_CODE_WORDS): stop here rather
+    // than translate the rest of a method that cannot be kept
+    if(code_index > MAX_CODE_WORDS) {
+      CompileFailed(CodeTooLargeReason());
+      break;
+    }
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
     // the reference map's index for every spill this instruction emits
@@ -7119,7 +7125,37 @@ bool JitArm64::Compile(StackMethod* cm)
 
     // tranlsate program
     ProcessInstructions();
-    
+
+    if(compile_success) {
+      // RTRN emits the epilogue, and with it the error handlers and the teardown
+      // they branch to. A method with no RTRN -- a tail call the optimizer turned
+      // into a loop ends in its backward branch -- had none, so epilog_index
+      // stayed 0 and every error exit branched into the method's own prologue
+      // (#1269). Emit one after the body; nothing falls through to it.
+      if(epilog_index == 0) {
+        Epilog();
+      }
+
+      // F3: a jump that leaves a pinned loop goes through a stub that stores the
+      // pinned locals first; the stubs sit after the method body
+      EmitPinExitStubs();
+
+      // the bounds guards' cold stubs (after the epilogue, so epilog_index is set)
+      EmitBoundsStubs();
+
+      // Everything is emitted, and nothing below adds a word. Every branch that
+      // is patched from here on, and every one patched so far, has both ends
+      // inside the method, so its displacement is at most code_index words
+      // either way. B.cond, CBZ and CBNZ carry a signed 19-bit word
+      // displacement, and each patch masks it to 19 bits: one word further and
+      // a guard's forward branch to its handler or stub, or a conditional jump
+      // over a large body, wrapped to a backward branch into the middle of the
+      // method. Such a method is not compiled; the interpreter runs it.
+      if(code_index > MAX_CODE_WORDS) {
+        CompileFailed(CodeTooLargeReason());
+      }
+    }
+
     if(!compile_success) {
       if(JitReportEnabled()) {
         // the instruction that failed, its opcode (as `obc -asm` numbers it) and why
@@ -7147,22 +7183,6 @@ bool JitArm64::Compile(StackMethod* cm)
       ref_map = nullptr;
       return false;
     }
-
-    // RTRN emits the epilogue, and with it the error handlers and the teardown
-    // they branch to. A method with no RTRN -- a tail call the optimizer turned
-    // into a loop ends in its backward branch -- had none, so epilog_index
-    // stayed 0 and every error exit branched into the method's own prologue
-    // (#1269). Emit one after the body; nothing falls through to it.
-    if(epilog_index == 0) {
-      Epilog();
-    }
-
-    // F3: a jump that leaves a pinned loop goes through a stub that stores the
-    // pinned locals first; the stubs sit after the method body
-    EmitPinExitStubs();
-
-    // the bounds guards' cold stubs (after the epilogue, so epilog_index is set)
-    EmitBoundsStubs();
 
     // phase 2: a method that never took D8-D15 need not save and restore
     // them. The save block and every restore block (one per RTRN) become a

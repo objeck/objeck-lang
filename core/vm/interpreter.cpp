@@ -3504,7 +3504,10 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     ext_unload_def ext_unload = (ext_unload_def)GetProcAddress(dll_handle, "unload_lib");
     if(!ext_unload) {
       std::wcerr << L">>> Runtime error calling function: unload_lib <<<" << std::endl;
+      // released all the same; nothing may keep a pointer into it, or its handle
+      InvalidateSharedLibraryCache();
       FreeLibrary(dll_handle);
+      instance[1] = 0;
 #ifdef _NO_HALT
       return;
 #else
@@ -3517,6 +3520,11 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     InvalidateSharedLibraryCache();
     // free handle
     FreeLibrary(dll_handle);
+    // The handle is dead: a second Unload, or a call through this proxy, finds
+    // none instead of using it. Read again from the frame, as unload_lib is
+    // the library's code and may have called back into the program.
+    instance = (size_t*)(*stack_frame)->mem[0];
+    instance[1] = 0;
   }
 #else
   void* dll_handle = (void*)instance[1];
@@ -3528,6 +3536,13 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     char* error;
     if((error = dlerror()) != nullptr)  {
       std::wcerr << L">>> Runtime error calling function: " << error << L" <<<" << std::endl;
+      // The library has no unload_lib to call, and it is released all the same,
+      // as on Windows: it has just been taken off the list the exit path
+      // unloads, so a return here (_NO_HALT: the REPL, the debugger) left it
+      // loaded with nothing to release it.
+      InvalidateSharedLibraryCache();
+      dlclose(dll_handle);
+      instance[1] = 0;
 #ifdef _NO_HALT
       return;
 #else
@@ -3541,6 +3556,11 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
     InvalidateSharedLibraryCache();
     // unload lib
     dlclose(dll_handle);
+    // The handle is dead: a second Unload, or a call through this proxy, finds
+    // none instead of using it. Read again from the frame, as unload_lib is
+    // the library's code and may have called back into the program.
+    instance = (size_t*)(*stack_frame)->mem[0];
+    instance[1] = 0;
   }
 #endif
 }
@@ -4213,10 +4233,15 @@ size_t StackInterpreter::ThreadKey(pthread_t handle)
 void StackInterpreter::RecordThreadFault(size_t key, const std::wstring& message)
 {
   std::lock_guard<std::mutex> guard(thread_fault_lock);
-  // bounded: a program that never joins its faulted threads keeps the newest
-  if(ThreadFaults().size() >= 4096) {
-    ThreadFaults().clear();
-  }
+  // Not capped. An entry is the fault of a thread that ended and has not been
+  // joined, and Join may still come for any of them: the cap that was here
+  // (clear all at 4096) made a program that started 4097 workers and then
+  // joined them read "no fault" for the first 4096. An entry goes when its
+  // thread is joined (TakeThreadFault) or when a new thread is given its id
+  // (ForgetThreadFault), and the id is not given out again while the thread can
+  // still be joined, so the map holds at most one entry per ended, unjoined
+  // thread. Each of those already holds more than its entry until it is joined:
+  // its handle on Windows, its stack elsewhere.
   ThreadFaults()[key] = message;
   last_thread_fault = message;
   thread_fault_count.fetch_add(1, std::memory_order_relaxed);
