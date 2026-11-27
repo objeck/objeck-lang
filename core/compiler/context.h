@@ -644,6 +644,7 @@ std::vector<std::wstring> alt_error_method_names;
   [[noreturn]] void ProcessFatalError(ParseNode* n, const std::wstring& msg);
   void ProcessWarning(ParseNode* n, const std::wstring& msg);
   void ProcessErrorAlternativeMethods(std::wstring &message);
+  bool ReportJsonLiteralValue(MethodCall* method_call);
   void ProcessError(const std::wstring &fn, const std::wstring &msg);
   bool CheckErrorsWarnings();
 

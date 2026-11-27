@@ -39,6 +39,10 @@ contexts:
     - match: '\bis(?=\s+[A-Za-z_][\w.]*\s+[A-Za-z_]\w*\s*\))'
       scope: keyword.control.objeck-obs
 
+    # contextual: 'json{ ... }', a JSON literal
+    - match: '\bjson(?=\s*\{)'
+      scope: keyword.control.objeck-obs
+
     - match: '\b(use|leaving|virtual|Parent|As|TypeOf|from|implements)\b'
       scope: keyword.other
 

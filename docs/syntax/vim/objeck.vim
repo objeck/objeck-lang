@@ -31,6 +31,8 @@ syn keyword objeckControl if else do while for each reverse select other
 syn keyword objeckControl break continue return label in critical
 " contextual: 'if(value is Type name) { ... }'
 syn match objeckControl "\<is\>\ze\s\+[A-Za-z_][A-Za-z0-9_.]*\s\+[A-Za-z_][A-Za-z0-9_]*\s*)"
+" contextual: 'json{ ... }', a JSON literal
+syn match objeckControl "\<json\>\ze\s*{"
 
 " Declaration keywords
 syn keyword objeckDecl class interface enum consts bundle alias

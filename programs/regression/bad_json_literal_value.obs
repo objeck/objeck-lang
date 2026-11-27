@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: (14,9): The value of a JSON member is a String, Int, Float, Bool, Nil, JsonElement, or a nested { } or [ ]; this one is IntRef
+# EXPECT_ERROR_COUNT: 1
+#~
+A value in a JSON literal is one JsonElement has an Insert for; the error names the value's type, at the value.
+~#
+use Collection;
+use Data.JSON;
+
+class BadJsonLiteralValue {
+	function : Main(args : String[]) ~ Nil {
+		boxed := IntRef->New(4);
+		request := json{
+			"model": "m",
+			"n": boxed
+		};
+		request->ToString()->PrintLine();
+	}
+}

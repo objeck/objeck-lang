@@ -15,7 +15,7 @@
         'for', 'each', 'in', 'reverse',
         'label', 'return', 'leaving',
         'from', 'critical', 'readonly',
-        'try', 'on', 'finally', 'ref', 'assert', 'using', 'is',
+        'try', 'on', 'finally', 'ref', 'assert', 'using', 'is', 'json',
     ];
 
     function register(monaco) {

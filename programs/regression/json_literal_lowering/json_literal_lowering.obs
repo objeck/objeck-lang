@@ -1,0 +1,76 @@
+#~
+Fixture for check_json_literal_lowering.py. Each function 'ValueN' returns a JSON
+literal; 'HandN' builds the same element by hand with JsonElement->New, Insert
+and Add. The check compiles this file with -asm and compares the listings of
+each pair: a flat literal instruction for instruction, a nested one as the same
+instructions in the order the literal evaluates them (a nested element is built
+while the call that takes it is being assembled, after the member's name).
+~#
+use Data.JSON;
+
+class JsonLiteralLowering {
+	# a flat object: every kind of value
+	function : Value1(model : String, n : Int, temperature : Float, stream : Bool, extra : JsonElement) ~ JsonElement {
+		return json{"model": model, "n": n, "temperature": temperature, "stream": stream, "extra": extra, "kind": "chat", "seed": 7};
+	}
+
+	function : Hand1(model : String, n : Int, temperature : Float, stream : Bool, extra : JsonElement) ~ JsonElement {
+		request := JsonElement->New(JsonElement->JsonType->OBJECT);
+		request->Insert("model", model);
+		request->Insert("n", n);
+		request->Insert("temperature", temperature);
+		request->Insert("stream", stream);
+		request->Insert("extra", extra);
+		request->Insert("kind", "chat");
+		request->Insert("seed", 7);
+		return request;
+	}
+
+	# nested objects and arrays, and null
+	function : Value2(prompt : String, a : String, b : Int) ~ JsonElement {
+		return json{
+			"messages": [{"role": "user", "content": prompt}],
+			"tags": [a, b, Nil],
+			"options": {"depth": {"level": b}}
+		};
+	}
+
+	function : Hand2(prompt : String, a : String, b : Int) ~ JsonElement {
+		request := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+		messages := JsonElement->New(JsonElement->JsonType->ARRAY);
+		message := JsonElement->New(JsonElement->JsonType->OBJECT);
+		message->Insert("role", "user");
+		message->Insert("content", prompt);
+		messages->Add(message);
+		request->Insert("messages", messages);
+
+		tags := JsonElement->New(JsonElement->JsonType->ARRAY);
+		tags->Add(a);
+		tags->Add(b);
+		tags->Add(JsonElement->New(JsonElement->JsonType->NULL));
+		request->Insert("tags", tags);
+
+		options := JsonElement->New(JsonElement->JsonType->OBJECT);
+		depth := JsonElement->New(JsonElement->JsonType->OBJECT);
+		depth->Insert("level", b);
+		options->Insert("depth", depth);
+		request->Insert("options", options);
+
+		return request;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		extra := JsonElement->New("x");
+		ok := Value1("m", 2, 0.5, true, extra)->ToString()->Equals(Hand1("m", 2, 0.5, true, extra)->ToString()) &
+			Value2("hi", "t", 3)->ToString()->Equals(Hand2("hi", "t", 3)->ToString()) &
+			Value2("hi", "t", 3)->ToString()->Equals("{\"messages\":[{\"content\":\"hi\",\"role\":\"user\"}],\"options\":{\"depth\":{\"level\":3}},\"tags\":[\"t\",3,null]}");
+		if(ok) {
+			"PASS: json literal lowering"->PrintLine();
+		}
+		else {
+			"FAIL: json literal lowering"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

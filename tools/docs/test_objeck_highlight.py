@@ -45,6 +45,11 @@ class Highlight(unittest.TestCase):
         got = classes("if(part is TextPart text) {\n  is := 3;\n  is += 1;\n};\n")
         self.assertEqual(got.count(("kw", "is")), 1)
 
+    def test_contextual_keyword_json(self):
+        # 'json' is a keyword before '{' and a name everywhere else
+        got = classes('request := json{"n": 1};\njson := 3;\njson += 1;\n')
+        self.assertEqual(got.count(("kw", "json")), 1)
+
     def test_grammar_words_loaded(self):
         self.assertIn("while", h.KEYWORDS)
         self.assertIn("static", h.MODIFIERS)
