@@ -1108,6 +1108,14 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_named_args.py "%BIN%"
 
+    - name: a dead store leaves nothing on the operand stack (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_dead_store_chain.py "%BIN%"
+
     - name: a library's generic methods infer their type arguments (Windows)
       working-directory: ./programs/regression
       shell: cmd

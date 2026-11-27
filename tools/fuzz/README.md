@@ -257,9 +257,10 @@ as one: compare runs made on a quiet machine. What still crashes, and why, is in
 [docs/design/OBE_TYPE_VERIFIER.md](../../docs/design/OBE_TYPE_VERIFIER.md).
 
 The other half is `adhoc/obe_corpus_gate.py <tree> <deploy dir> <out dir> [jobs]`:
-every `.obs` of the tree compiled at `-opt s0` and `s3` (a third at `s1` and `s2`
-too, a quarter with `-debug`), and one program per library that names every
+every `.obs` of the tree compiled at `-opt s0`, `s1`, `s2` and `s3` (a quarter with
+`-debug` too), and one program per library that names every
 documented class so the whole library links, each loaded with
 `OBJECK_VERIFY_ONLY=1`. Nothing it compiles is run. It exits 1 if the loader
 refuses any image: a rule that refuses what `obc` writes is wrong, or has found a
-compiler bug.
+compiler bug. It also exits 1 when no library class linked whole (an API index that
+names no library file leaves that half with nothing to load).
