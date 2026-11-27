@@ -2368,6 +2368,48 @@ Expression* ContextAnalyzer::WrapMethodReferenceInFuncRef(Expression* expression
 }
 
 /****************************
+ * Collection literal: an array literal `[a, b, c]` where a Vector, CompareVector,
+ * IntVector or FloatVector is wanted (a declaration or assignment target, a
+ * `return`) is `Vector->New([a, b, c])<T>`, the constructor those classes already
+ * have for an array. The literal is typed by the target, so `v : Vector<IntRef> := [x, y]`
+ * needs neither the `->New(..)<IntRef>` nor an AddBack per element. The result is
+ * the long form the programmer would have written; anything else is unchanged.
+ ****************************/
+Expression* ContextAnalyzer::WrapCollectionLiteral(Expression* expression, Type* expected, const int depth)
+{
+  if(!expression || expression->GetExpressionType() != STAT_ARY_EXPR || !expected ||
+     expected->GetType() != CLASS_TYPE || expected->GetDimension() != 0) {
+    return expression;
+  }
+
+  const std::wstring name = expected->GetName();
+  const size_t dot = name.rfind(L'.');
+  const std::wstring bare = dot == std::wstring::npos ? name : name.substr(dot + 1);
+  const std::wstring scope = dot == std::wstring::npos ? L"" : name.substr(0, dot);
+  if(!(scope.empty() || scope == L"Collection") ||
+     !(bare == L"Vector" || bare == L"CompareVector" || bare == L"IntVector" || bare == L"FloatVector")) {
+    return expression;
+  }
+
+  const bool generic = bare == L"Vector" || bare == L"CompareVector";
+  const std::vector<Type*> generics = expected->GetGenerics();
+  if(generic != (generics.size() == 1)) {
+    return expression;
+  }
+
+  ExpressionList* args = TreeFactory::Instance()->MakeExpressionList();
+  args->AddExpression(expression);
+  MethodCall* wrap = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+    expression->GetLinePosition(), expression->GetLineNumber(), expression->GetLinePosition(), NEW_INST_CALL, name, args);
+  if(generic) {
+    std::vector<Type*> concrete;
+    concrete.push_back(TypeFactory::Instance()->MakeType(generics[0]));
+    wrap->SetConcreteTypes(concrete);
+  }
+  return wrap;
+}
+
+/****************************
  * Analyzes a lambda function
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
@@ -8664,6 +8706,9 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     if(wrapped == expression) {
       wrapped = WrapMethodReferenceInFuncRef(expression, mthd_type, depth);
     }
+    if(wrapped == expression) {
+      wrapped = WrapCollectionLiteral(expression, mthd_type, depth);
+    }
     if(wrapped != expression) {
       rtrn->SetExpression(wrapped);
       expression = wrapped;
@@ -8877,6 +8922,9 @@ void ContextAnalyzer::AnalyzeAssignmentBody(Assignment* assignment, StatementTyp
       Expression* wrapped = WrapBareLambdaInFuncRef(expression, variable->GetEvalType(), depth);
       if(wrapped == expression) {
         wrapped = WrapMethodReferenceInFuncRef(expression, variable->GetEvalType(), depth);
+      }
+      if(wrapped == expression) {
+        wrapped = WrapCollectionLiteral(expression, variable->GetEvalType(), depth);
       }
       if(wrapped != expression) {
         assignment->SetExpression(wrapped);
