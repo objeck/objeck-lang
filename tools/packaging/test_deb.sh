@@ -30,9 +30,14 @@ elif dpkg-deb -f "$DEB" Depends | grep -q libmbedtls; then
   echo "test_deb.sh: $(basename "$DEB") depends on Ubuntu 24.04's mbedTLS (a tarball older than v2026.11.4): testing there only"
   IMAGES=(ubuntu:24.04)
 else
-  mapfile -t IMAGES < <(python3 -c 'import json,sys; print("\n".join(i for i in json.load(open(sys.argv[1]))["linux"]["release"]["tested_images"] if i.startswith(("ubuntu:", "debian:"))))' \
-    "$REPO/core/release/runtime_deps.json")
+  # Not `mapfile < <(python3 ...)`: a process substitution's exit status is lost, so a
+  # selector that crashed gave an empty list and a PASS on no distributions.
+  selected=$(python3 -c 'import json,sys; print("\n".join(i for i in json.load(open(sys.argv[1]))["linux"]["release"]["tested_images"] if i.startswith(("ubuntu:", "debian:"))))' \
+    "$REPO/core/release/runtime_deps.json") || { echo "test_deb.sh: could not read the image list from core/release/runtime_deps.json" >&2; exit 1; }
+  IMAGES=()
+  while IFS= read -r image; do [ -z "$image" ] || IMAGES+=("$image"); done <<< "$selected"
 fi
+[ ${#IMAGES[@]} -gt 0 ] || { echo "test_deb.sh: no distributions selected; refusing to report a pass on none" >&2; exit 1; }
 # pwd -W: from Git Bash, Docker Desktop needs C:/... rather than /c/...
 DIR="$(cd "$(dirname "$DEB")" && { pwd -W 2>/dev/null || pwd; })"; NAME="$(basename "$DEB")"
 export MSYS_NO_PATHCONV=1
