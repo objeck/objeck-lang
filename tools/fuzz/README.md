@@ -264,3 +264,14 @@ documented class so the whole library links, each loaded with
 refuses any image: a rule that refuses what `obc` writes is wrong, or has found a
 compiler bug. It also exits 1 when no library class linked whole (an API index that
 names no library file leaves that half with nothing to load).
+
+The same run holds the two counts of the operand stack equal. `obc` reports an
+expression whose method needs more operand stack than the loader allows
+(`core/compiler/stack_depth.h`), from its own count of the words; a count that ran
+high would refuse a program the loader accepts. Each image is compiled and loaded
+with `OBJECK_STACK_DEPTH_OUT=<file>`, under which `obc` and `obr` each write a line
+for every method (its name, a tab and the most words its stack stands above its
+arguments, `?` where the walk gave no verdict), and the gate exits 1 if the two
+lists of any image differ or `obc` left a method uncounted. A change to an
+instruction's stack effect, to a trap's row or to either walk is checked by
+running it.

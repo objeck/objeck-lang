@@ -3,6 +3,14 @@
 program per library with the tree's own toolchain, then load each image with
 OBJECK_VERIFY_ONLY=1. Nothing compiled here is run.
 
+It is also the measure that obc and obr count the operand stack alike. obc reports
+an expression whose method needs more operand stack than the loader allows
+(core/compiler/stack_depth.h), from its own count of the words; a count that ran
+high would refuse a program the loader accepts. So each image is compiled and
+loaded with OBJECK_STACK_DEPTH_OUT, under which each writes every method's depth,
+and the two lists must be equal: every method, the same number, no method obc
+could not count.
+
 usage: corpus_gate.py <tree> <deploy dir> <out dir> [jobs]
 """
 import collections
@@ -28,6 +36,12 @@ import obe_image  # noqa: E402
 
 os.makedirs(os.path.join(out, "img"), exist_ok=True)
 os.makedirs(os.path.join(out, "cover"), exist_ok=True)
+# An out dir that was used before holds images of another tree, numbered by its sources: they
+# would be loaded as this run's, and they have no depths to compare.
+for sub in ("img", "cover"):
+    for name in os.listdir(os.path.join(out, sub)):
+        if name.endswith((".obe", ".cdepth", ".rdepth")):
+            os.remove(os.path.join(out, sub, name))
 
 # ---- the control: the VM must honour OBJECK_VERIFY_ONLY, or programs would run ----
 ctl_src = os.path.join(out, "control.obs")
@@ -52,6 +66,14 @@ for sub in ("programs", "tools", "docs"):
 srcs.sort()
 
 
+def obc_env(dest):
+    """obc writes its count of each method's operand-stack depth beside the image"""
+    depth = dest + ".cdepth"
+    if os.path.exists(depth):
+        os.remove(depth)
+    return dict(env, OBJECK_STACK_DEPTH_OUT=depth)
+
+
 def compile_one(args):
     idx, src = args
     try:
@@ -73,12 +95,16 @@ def compile_one(args):
         for use in (libs, ALL):
             try:
                 p = subprocess.run([obc, "-src", src, "-lib", use] + flags + ["-dest", dest], capture_output=True,
-                                   timeout=300, env=env)
+                                   timeout=300, env=obc_env(dest))
             except subprocess.TimeoutExpired:
                 continue
             if p.returncode == 0 and os.path.exists(dest):
                 made += 1
                 break
+        else:
+            # no image: nothing to hold its depths against
+            if os.path.exists(dest + ".cdepth"):
+                os.remove(dest + ".cdepth")
     return made
 
 
@@ -105,7 +131,7 @@ for lib, names in sorted(by_file.items()):
         for opt in ("s0", "s1", "s2", "s3"):
             dest = src[:-4] + "__%s.obe" % opt
             p = subprocess.run([obc, "-src", src, "-lib", ALL, "-opt", opt, "-dest", dest], capture_output=True,
-                               env=env, timeout=900)
+                               env=obc_env(dest), timeout=900)
             ok = ok and p.returncode == 0
         if ok:
             break
@@ -141,18 +167,52 @@ for sub in ("img", "cover"):
     files += [os.path.join(out, sub, f) for f in sorted(os.listdir(os.path.join(out, sub))) if f.endswith(".obe")]
 
 
-def load(path):
+def depths(path):
     try:
-        p = subprocess.run([obr, path], capture_output=True, timeout=300, env=verify_env, stdin=subprocess.DEVNULL)
+        with open(path, "rb") as f:
+            return sorted(f.read().split(b"\n")[:-1])
+    except OSError:
+        return None
+
+
+def load(path):
+    loaded = path + ".rdepth"
+    if os.path.exists(loaded):
+        os.remove(loaded)
+    try:
+        p = subprocess.run([obr, path], capture_output=True, timeout=300, env=dict(verify_env, OBJECK_STACK_DEPTH_OUT=loaded),
+                           stdin=subprocess.DEVNULL)
     except subprocess.TimeoutExpired:
-        return path, -1, "TIMEOUT"
-    return path, p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace").strip()
+        return path, -1, "TIMEOUT", None
+    # the two counts of the image's methods: (methods, lines that differ, a few of them)
+    compiled, ran = depths(path + ".cdepth"), depths(loaded)
+    count = None
+    if p.returncode == 0:
+        if compiled is None or ran is None:
+            count = (0, 1, ["no depths written by %s" % ("obc" if compiled is None else "obr")])
+        else:
+            differ = sorted(set(compiled) ^ set(ran))
+            unknown = [line for line in compiled if line.endswith(b"\t?")]
+            shown = [line.decode("utf-8", "replace") for line in (differ + unknown)[:4]]
+            count = (len(ran), len(differ) + len(unknown) + abs(len(compiled) - len(ran)), shown)
+    for name in (path + ".cdepth", loaded):
+        if os.path.exists(name):
+            os.remove(name)
+    return path, p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace").strip(), count
 
 
 refused = 0
 rules = collections.Counter()
+depth_images = depth_methods = depth_differ = 0
 with ThreadPoolExecutor(jobs) as ex:
-    for path, rc, text in ex.map(load, files):
+    for path, rc, text, count in ex.map(load, files):
+        if count:
+            depth_images += 1
+            depth_methods += count[0]
+            if count[1]:
+                depth_differ += 1
+                if depth_differ <= 12:
+                    print("  DEPTH DIFFERS", os.path.basename(path), "|", " ; ".join(count[2]).encode("ascii", "replace").decode())
         if rc == 0 and not text:
             continue
         refused += 1
@@ -163,4 +223,6 @@ with ThreadPoolExecutor(jobs) as ex:
 print("images loaded %d, refused or failing %d" % (len(files), refused))
 for rule, n in rules.most_common():
     print("%6d  %s" % (n, rule))
-sys.exit(1 if refused or cover_failed else 0)
+print("operand-stack depth: %d images, %d methods counted by obc and by obr, %d images where the counts differ" %
+      (depth_images, depth_methods, depth_differ))
+sys.exit(1 if refused or cover_failed or depth_differ or not depth_images else 0)
