@@ -8804,6 +8804,12 @@ PARSER_NO_INLINE Statement* Parser::ParseAssert(int depth)
  * keyword only where the parenthesis that follows is closed by a '{', which a
  * call never is. The resource's name lives in a scope of its own around the
  * body, so two blocks in a method may both name theirs 'f'.
+ *
+ * What is closed is the value E gave, which the body's first (hidden)
+ * statement keeps in '#using_res_N': the name is an ordinary variable and the
+ * body may assign to it. The close used to read the name when the body was
+ * left, so 'w := Nil;' in the body left the resource open and 'w := other;'
+ * closed 'other' in its place.
  ****************************/
 PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
 {
@@ -8839,7 +8845,8 @@ PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
   // scope of the resource: its declaration, the body, the close
   symbol_table->CurrentParseScope()->NewParseScope();
   // the error the body raised, held while the resource closes and raised again
-  const std::wstring raise_ident = L"#using_raise_" + std::to_wstring(hidden_local_id++);
+  const std::wstring hidden_id = std::to_wstring(hidden_local_id++);
+  const std::wstring raise_ident = L"#using_raise_" + hidden_id;
   SymbolEntry* raise_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(raise_ident),
                                                                       TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Error", file_name, line_num, line_pos),
                                                                       false, current_method != nullptr);
@@ -8853,19 +8860,29 @@ PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
   Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), variable, initial);
   Statement* resource = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), entry, assignment);
 
+  // the value to close: '#using_res_N := w', the first statement of the body
+  const std::wstring held_ident = L"#using_res_" + hidden_id;
+  SymbolEntry* held_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(held_ident),
+                                                                     TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(held_entry);
+  Assignment* hold = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos,
+                                                             TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, held_ident),
+                                                             TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name));
+
   symbol_table->CurrentParseScope()->NewParseScope();
   StatementList* body = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
+  body->InsertStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, held_entry, hold), 0);
 
-  // if(w <> Nil) { w->Close(); } -- a Nil resource has nothing to close
+  // if(#using_res_N <> Nil) { #using_res_N->Close(); } -- a Nil resource has nothing to close
   symbol_table->CurrentParseScope()->NewParseScope();   // the close list
   symbol_table->CurrentParseScope()->NewParseScope();   // the 'if' body
   StatementList* close_call = TreeFactory::Instance()->MakeStatementList();
   close_call->AddStatement(TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos, line_num, line_pos,
-                                                                   name, L"Close", TreeFactory::Instance()->MakeExpressionList()));
+                                                                   held_ident, L"Close", TreeFactory::Instance()->MakeExpressionList()));
   symbol_table->CurrentParseScope()->PreviousParseScope();
   Expression* not_nil = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, NEQL_EXPR,
-                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name),
+                                                                         TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, held_ident),
                                                                          TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos));
   StatementList* close = TreeFactory::Instance()->MakeStatementList();
   close->AddStatement(TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, line_num, line_pos, not_nil, close_call));

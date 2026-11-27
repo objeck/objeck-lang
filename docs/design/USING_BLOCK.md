@@ -91,6 +91,9 @@ RAISE: raise the saved error again
 NORMAL: if(w <> Nil) { w->Close(); }
 ```
 
+(`w` in the closes above is the hidden copy made when the block is entered, `#using_res_N := w`, the
+first statement of the body; see Limits.)
+
 and `return`, `break` and `continue` inside the body leave the region (`TRY_END`) and run the same
 close, with a returned value kept on the operand stack, through `EmitCriticalUnlocks`.
 
@@ -125,7 +128,13 @@ error; the all-exits behaviour was chosen over that speed.)
 
 ## Limits
 
-* Assigning to the resource variable inside the block closes the new value, not the old one. Do not.
+* What is closed is the value the block acquired, `E`'s, which the compiler keeps in a hidden local
+  when the block is entered. The name is an ordinary variable: the body may assign to it, and the
+  block still closes the original, once. `w := Nil;` does not leave the resource open, and after
+  `w := other;` the block closes the first value and `other` is the body's own to close (a second
+  `using` is the way). A block entered with `Nil` closes nothing, whatever the body assigns. (Until
+  v2026.11.4 the close read the name when the block was left, so `w := Nil;` leaked the resource and
+  `w := other;` closed `other` in its place.)
 * The type of the resource must have a method `Close()` taking no arguments; otherwise the compiler
   says so at the `using` line (after the ordinary "undefined method" error, which names the call).
 * `using` does not call a destructor: nothing happens to a resource that is never closed other than
@@ -138,6 +147,10 @@ error; the all-exits behaviour was chosen over that speed.)
   `return` (Int, String, Float and literal values), `break` and `continue`, a loop inside the body,
   nested and sequential blocks with the same name, a `return` from a loop in the body, a `leaving`
   block, real `FileWriter`/`FileReader` files, and `using` still usable as a variable and method name.
+* `programs/regression/using_block_reassign.obs`: the name set to `Nil` and to another resource in the
+  body, then each way out (fall-through, `return`, `break`, `continue`, an error), nested blocks whose
+  names are assigned or swapped, a `Nil` resource assigned in the body, an assignment in a loop: the
+  value the block acquired is closed, once, and nothing else is.
 * `programs/regression/using_block_errors.obs`: an error in the body (closed, error goes on), `Close()` raising after a normal body, both raising (the body's error wins), nested blocks, a `return`, and a `Nil` resource.
 * `bad_using_no_close.obs`, `bad_using_equals.obs`, `bad_using_scope.obs`: the compile errors, with
   line numbers.

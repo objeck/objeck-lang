@@ -1,0 +1,176 @@
+#~
+using(w := E) { ... } closes the value E gave (docs/design/USING_BLOCK.md), whatever the
+body does to the name 'w', which is an ordinary variable. The close used to read 'w' when the
+body was left: 'w := Nil;' in the body left the resource open, and 'w := other;' closed
+'other' in its place and left the resource open.
+
+Each check records the closes in a log and compares it. A value the body assigns to the name
+is the body's own: the block does not close it.
+~#
+class Res {
+	@name : String;
+	@@log : static : String;
+
+	New(name : String) {
+		@name := name;
+	}
+
+	method : public : Close() ~ Nil {
+		@@log += @name;
+		@@log += ",";
+	}
+
+	method : public : Name() ~ String { return @name; }
+
+	function : Reset() ~ Nil { @@log := ""; }
+	function : Log() ~ String { return @@log; }
+	function : NilRes() ~ Res { return Nil; }
+}
+
+class UsingBlockReassign {
+	@@failed : static : Bool;
+
+	function : Check(name : String, got : String, expected : String) ~ Nil {
+		if(got->Equals(expected) = false) {
+			"  FAIL: {$name}: got '{$got}', expected '{$expected}'"->PrintLine();
+			@@failed := true;
+		};
+		Res->Reset();
+	}
+
+	function : Boom() ~ Nil {
+		a := Int->New[1];
+		a[5] := 1;
+	}
+
+	# the name set to Nil: the resource is closed
+	function : ToNil() ~ Nil {
+		using(r := Res->New("first")) {
+			r := Nil;
+		};
+	}
+
+	# the name set to another resource: the first is closed, the other is the body's
+	function : ToOther() ~ String {
+		seen := "";
+		using(r := Res->New("first")) {
+			r := Res->New("other");
+			seen := r->Name();
+		};
+		return seen;
+	}
+
+	# every way out of the body
+	function : ThenReturn(flag : Bool) ~ String {
+		using(r := Res->New("ret")) {
+			r := Nil;
+			if(flag) { return "early"; };
+			r := Res->New("other");
+			return r->Name();
+		};
+	}
+
+	function : InLoop() ~ Int {
+		seen := 0;
+		for(i := 0; i < 4; i += 1;) {
+			using(r := Res->New("i{$i}")) {
+				r := Nil;
+				if(i = 0) { continue; };
+				if(i = 2) { break; };
+				seen += 1;
+			};
+		};
+		return seen;
+	}
+
+	function : ThenRaises() ~ String {
+		try {
+			using(r := Res->New("raise")) {
+				r := Nil;
+				Boom();
+			};
+		}
+		on(e : System.IndexError) {
+			return "index";
+		};
+		return "none";
+	}
+
+	# nested blocks: each closes its own value, innermost first
+	function : Nested() ~ Nil {
+		using(a := Res->New("a")) {
+			using(b := Res->New("b")) {
+				b := a;
+				a := Nil;
+			};
+		};
+	}
+
+	# the names swapped: still each block's own value
+	function : Swapped() ~ Nil {
+		using(a := Res->New("a")) {
+			using(b := Res->New("b")) {
+				t := a;
+				a := b;
+				b := t;
+			};
+		};
+	}
+
+	# the resource was Nil: nothing to close, and what the body assigns is the body's
+	function : FromNil() ~ String {
+		using(r := Res->NilRes()) {
+			r := Res->New("late");
+			return r->Name();
+		};
+	}
+
+	# a body that does not assign: as before
+	function : Untouched() ~ String {
+		using(r := Res->New("same")) {
+			return r->Name();
+		};
+	}
+
+	# assigned many times, in a loop inside the body
+	function : ManyTimes() ~ Nil {
+		using(r := Res->New("many")) {
+			for(i := 0; i < 3; i += 1;) {
+				r := Res->New("m{$i}");
+			};
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Res->Reset();
+
+		ToNil();
+		Check("the name set to Nil", Res->Log(), "first,");
+		seen := ToOther();
+		Check("the name set to another resource", "{$seen}|{$Res->Log()}", "other|first,");
+		seen := ThenReturn(true);
+		Check("set to Nil, then a return", "{$seen}|{$Res->Log()}", "early|ret,");
+		seen := ThenReturn(false);
+		Check("set to another resource, then a return of its name", "{$seen}|{$Res->Log()}", "other|ret,");
+		count := InLoop();
+		Check("set to Nil, then continue and break", "{$count}|{$Res->Log()}", "1|i0,i1,i2,");
+		seen := ThenRaises();
+		Check("set to Nil, then an error", "{$seen}|{$Res->Log()}", "index|raise,");
+		Nested();
+		Check("nested blocks", Res->Log(), "b,a,");
+		Swapped();
+		Check("nested blocks, the names swapped", Res->Log(), "b,a,");
+		seen := FromNil();
+		Check("a Nil resource, assigned in the body", "{$seen}|{$Res->Log()}", "late|");
+		seen := Untouched();
+		Check("a body that does not assign", "{$seen}|{$Res->Log()}", "same|same,");
+		ManyTimes();
+		Check("assigned in a loop", Res->Log(), "many,");
+
+		if(@@failed) {
+			"FAIL: using block, the name assigned in the body"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: using block, the name assigned in the body"->PrintLine();
+	}
+}
