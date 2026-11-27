@@ -39,6 +39,12 @@ class FormatterRegressionTest {
 		TestDeclarationAfterBrace();
 		TestParentKeyword();
 		TestLambdasAndFunctionTypes();
+		TestNumbers();
+		TestOperatorsKept();
+		TestLiteralsVerbatim();
+		TestCommentsAndBlankLines();
+		TestLineBreaksKept();
+		TestEveryCharacterIsRead();
 
 		p := @passed;
 		f := @failed;
@@ -442,5 +448,177 @@ class FormatterRegressionTest {
 
 		again := CodeFormatter->New(options)->Format(result);
 		Check("Lambda: formatting the result again changes nothing", again <> Nil & again->Equals(result));
+	}
+
+	function : FormatBody(body : String) ~ String {
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		src := "class A {\nfunction : Main(args : String[]) ~ Nil {\n";
+		src += body;
+		src += "\n}\n}\n";
+
+		return CodeFormatter->New(options)->Format(src);
+	}
+
+	function : FormatsOnce(text : String) ~ Bool {
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		again := CodeFormatter->New(options)->Format(text);
+		return again <> Nil & again->Equals(text);
+	}
+
+	# A number is one token, read as the compiler reads one. The scanner took a
+	# sign as part of it and stopped at an exponent's sign, a '_' or an octal
+	# prefix, so "1.5e-3" came back as "1.5e -3" and "1_000" stopped the formatter.
+	function : TestNumbers() ~ Nil {
+		"\n>> Number literals and signs..."->PrintLine();
+
+		result := FormatBody("a := 1.5e-3; b := 0x1F; c := 1_000; d := 0b1010; e := 0o17; f := 255u; g := .5; h := 2.0E+10;\ni := -1; j := a - 1; k := a-1; l := -a; m := F(-1, +2); n := a * -b; o := (a) - 1; p := v[0] - 1; q := a+-1;");
+		Check("Numbers: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Numbers: an exponent with a sign", result->Find("a := 1.5e-3;") > -1 & result->Find("h := 2.0E+10;") > -1);
+		Check("Numbers: hexadecimal, binary and octal", result->Find("b := 0x1F;") > -1 & result->Find("d := 0b1010;") > -1 & result->Find("e := 0o17;") > -1);
+		Check("Numbers: a separator and an unsigned suffix", result->Find("c := 1_000;") > -1 & result->Find("f := 255u;") > -1);
+		Check("Numbers: a leading decimal point", result->Find("g := .5;") > -1);
+		Check("Numbers: a sign stays against its operand", result->Find("i := -1;") > -1 & result->Find("l := -a;") > -1 & result->Find("m := F(-1, +2);") > -1 & result->Find("n := a * -b;") > -1);
+		Check("Numbers: a subtraction is spaced, however it was written", result->Find("j := a - 1;") > -1 & result->Find("k := a - 1;") > -1);
+		Check("Numbers: a subtraction after ')' and ']'", result->Find("o := (a) - 1;") > -1 & result->Find("p := v[0] - 1;") > -1);
+		Check("Numbers: an operator and a sign stay two tokens", result->Find("q := a + -1;") > -1);
+		Check("Numbers: formatting the result again changes nothing", FormatsOnce(result));
+	}
+
+	# Every operator the compiler reads is read here, and none is made or broken
+	# by taking a space away: '<' then '>' is not "<>", ':' then '=' is not ":=".
+	function : TestOperatorsKept() ~ Nil {
+		"\n>> Operators stay what they were..."->PrintLine();
+
+		result := FormatBody("if(a << 2 >> 1 = 0 & b <> c & <>d) {\ne := f ?? g;\nh := i?->J();\nk := a < b;\nl := Map->New()<String, Vector<IntRef>>;\nm : Vector<String>;\nn := a < 2;\no := x ? 1 : 2;\np := a ^ b;\nq := i++;\nr := --i;\n};");
+		Check("Operators: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Operators: shifts", result->Find("a << 2 >> 1 = 0") > -1);
+		Check("Operators: 'not' against its operand, '<>' between two", result->Find("b <> c & <>d") > -1);
+		Check("Operators: '??'", result->Find("e := f ?? g;") > -1);
+		Check("Operators: the Nil-safe call", result->Find("h := i?->J();") > -1);
+		Check("Operators: a comparison is spaced on both sides", result->Find("k := a < b;") > -1 & result->Find("n := a < 2;") > -1);
+		Check("Operators: type arguments sit against their type", result->Find("l := Map->New()<String, Vector<IntRef>>;") > -1 & result->Find("m : Vector<String>;") > -1);
+		Check("Operators: a conditional", result->Find("o := x ? 1 : 2;") > -1);
+		Check("Operators: a character with no rule of its own is kept", result->Find("p := a ^ b;") > -1);
+		Check("Operators: increment and decrement", result->Find("q := i++;") > -1 & result->Find("r := --i;") > -1);
+		Check("Operators: formatting the result again changes nothing", FormatsOnce(result));
+
+		# written with no spaces at all, the same tokens come back
+		tight := FormatBody("a:=b<c;d:=e>f;g:=h<>i;j:=k<=l;m:=n>=o;p:=q-1;r:=s- -1;t:=u+ +1;v:=w->X()-1;");
+		Check("Operators: a tight line is spaced, not rejoined", tight <> Nil & tight->Find("a := b < c;") > -1 & tight->Find("d := e > f;") > -1 &
+			tight->Find("g := h <> i;") > -1 & tight->Find("j := k <= l;") > -1 & tight->Find("m := n >= o;") > -1 & tight->Find("p := q - 1;") > -1 &
+			tight->Find("r := s - -1;") > -1 & tight->Find("t := u + +1;") > -1 & tight->Find("v := w->X() - 1;") > -1);
+	}
+
+	# A literal is written back as it was read. A string that ended "; " or "} "
+	# lost its last space to the rule that tidies the space after a ';' or '}'.
+	function : TestLiteralsVerbatim() ~ Nil {
+		"\n>> Literals are written back whole..."->PrintLine();
+
+		# an interpolated string, put together here so that this file does not interpolate it
+		interpolated := "f := \"{";
+		interpolated += "$a} and {";
+		interpolated += "$b}\";";
+
+		body := "a := \"x; \"; b := \"y} \"; c := ';'; d := '}'; e := $\"C:\\\\temp\"; g := '\\''; h := \" \"; ";
+		body += interpolated;
+		result := FormatBody(body);
+		Check("Literals: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Literals: a string ending in \"; \"", result->Find("a := \"x; \";") > -1);
+		Check("Literals: a string ending in \"} \"", result->Find("b := \"y} \";") > -1);
+		Check("Literals: the characters ';' and '}'", result->Find("c := ';';") > -1 & result->Find("d := '}';") > -1);
+		Check("Literals: a '$' string keeps its '$' against the quote", result->Find("e := $\"C:\\\\temp\";") > -1);
+		Check("Literals: an interpolated string", result->Find(interpolated) > -1);
+		Check("Literals: an escaped quote character and a lone space", result->Find("g := '\\'';") > -1 & result->Find("h := \" \";") > -1);
+		Check("Literals: formatting the result again changes nothing", FormatsOnce(result));
+
+		# a map or JSON literal is an expression: it stays in its line
+		maps := FormatBody("m := {\"a\": 1, \"b\": {\"c\": [1, 2]}}; e := {}; o := {\"p\": {}}; n := F({\"k\": \"v\"});");
+		Check("Literals: a map literal stays in its line", maps <> Nil & maps->Find("m := {\"a\": 1, \"b\": {\"c\": [1, 2]}};") > -1);
+		Check("Literals: an empty literal, and one as an argument", maps <> Nil & maps->Find("e := {};") > -1 & maps->Find("o := {\"p\": {}};") > -1 & maps->Find("n := F({\"k\": \"v\"});") > -1);
+		Check("Literals: formatting a map literal again changes nothing", maps <> Nil & FormatsOnce(maps));
+	}
+
+	# Comments and blank lines stay where they were put.
+	function : TestCommentsAndBlankLines() ~ Nil {
+		"\n>> Comments and blank lines keep their place..."->PrintLine();
+
+		result := FormatBody("a := 1; # one\nb := 2;\n# own line\nc := 3;\n\n# after a blank line\nd := 4;\n\n\n\ne := 5;\nif(a = 1) { # why\nf := 6;\n}\n# before else\nelse {\ng := [ # first\n1,\n2];\n};");
+		Check("Comments: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Comments: one after a statement stays on its line", result->Find("    a := 1; # one\n    b := 2;\n") > -1);
+		Check("Comments: one on its own line keeps it", result->Find("    b := 2;\n    # own line\n    c := 3;\n") > -1);
+		Check("Comments: a blank line before a comment is kept", result->Find("    c := 3;\n\n    # after a blank line\n    d := 4;\n") > -1);
+		Check("Comments: several blank lines are one", result->Find("    d := 4;\n\n    e := 5;\n") > -1 & result->Find("\n\n\n") < 0);
+		Check("Comments: one after '{' stays on its line", result->Find("    if(a = 1) { # why\n      f := 6;\n    }\n") > -1);
+		Check("Comments: one before 'else' leaves no line of indentation", result->Find("    }\n    # before else\n    else {\n") > -1);
+		Check("Comments: one after '[' stays on its line", result->Find("g := [ # first\n") > -1);
+		Check("Comments: no line holds only indentation", result->Find(" \n") < 0 & result->Find("\t\n") < 0);
+		Check("Comments: formatting the result again changes nothing", FormatsOnce(result));
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+		header := CodeFormatter->New(options)->Format("#~\nWhat this file is.\n~#\nuse Collection;\n\n#~ about A ~#\nclass A {\n#~\nabout F\n~#\nfunction : F(a : Int #~ in ~#, b : Int) ~ Nil {\n}\n}\n");
+		Check("Comments: a block comment on its own lines ends its line", header <> Nil & header->Find("~#\nuse Collection;\n\n#~ about A ~#\nclass A {\n") > -1);
+		Check("Comments: a block comment before a member", header <> Nil & header->Find("  #~\nabout F\n~#\n  function : F(") > -1);
+		Check("Comments: a block comment inside a line stays inside it", header <> Nil & header->Find("F(a : Int #~ in ~#, b : Int) ~ Nil {") > -1);
+		Check("Comments: formatting block comments again changes nothing", header <> Nil & FormatsOnce(header));
+	}
+
+	# A line break inside a statement is kept; "for" keeps its parts apart.
+	function : TestLineBreaksKept() ~ Nil {
+		"\n>> Line breaks inside a statement are kept..."->PrintLine();
+
+		result := FormatBody("x := F(1,\n2,\n3);\ny := a +\nb;\nfor(i := 0; i < 10; i += 1;) {\nz := i;\n};\nw := G(1, 2, 3);");
+		Check("Breaks: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Breaks: arguments on their own lines stay there", result->Find("    x := F(1,\n      2,\n      3);\n") > -1);
+		Check("Breaks: an expression continued on the next line", result->Find("    y := a +\n      b;\n") > -1);
+		Check("Breaks: the parts of a for are set apart", result->Find("for(i := 0; i < 10; i += 1;) {") > -1);
+		Check("Breaks: a statement on one line stays on one", result->Find("    w := G(1, 2, 3);") > -1);
+		Check("Breaks: formatting the result again changes nothing", FormatsOnce(result));
+	}
+
+	# A character the scanner has no token for is written back; a name may be
+	# written in any script. Each used to end the process.
+	function : TestEveryCharacterIsRead() ~ Nil {
+		"\n>> Characters with no rule, and names in any script..."->PrintLine();
+
+		result := FormatBody("Δ := 1; größe := Δ + 1; s := a ` b; t := c . d;");
+		Check("Characters: result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("Characters: a name that is not ASCII", result->Find("Δ := 1;") > -1 & result->Find("größe := Δ + 1;") > -1);
+		Check("Characters: one with no token is kept", result->Find("`") > -1 & result->Find("c . d") > -1);
+		Check("Characters: formatting the result again changes nothing", FormatsOnce(result));
 	}
 }
