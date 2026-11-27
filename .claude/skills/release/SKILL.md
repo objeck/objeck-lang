@@ -104,7 +104,8 @@ or a critical problem.
      machine's is refused, and `--build-only` (cross-building arm64 on an x64 host)
      always ends `verdict=FAIL`. Read each file before accepting it: `platform=`
      names the target (`windows-arm64`, never a bare `arm64`), and `regression`,
-     `regression_jit1`, `vm_flags`, `debugger` and `dap` are all listed as `PASS`.
+     `regression_jit1`, `vm_flags`, `debugger`, `dap`, `nesting_limit` and
+     `dead_store_chain` are all listed as `PASS`.
 5. **Dry run the release build.** Since #808 a `release-build.yml` dispatch from
    any non-tag branch is safe: it cannot publish. (It no longer pushes anything: `api.zip` is not committed.)
    Dispatch it with the real version (never `-rc`: the smoke tests compare the

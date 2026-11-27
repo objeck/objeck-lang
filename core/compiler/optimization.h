@@ -104,9 +104,6 @@ class ItermediateOptimizer {
   std::pair<size_t, size_t> DeadStoreEdit(size_t start_pos, std::vector<IntermediateInstruction*>& input_instrs);
   bool IsEffectFreeRange(size_t start_pos, size_t end_pos, std::vector<IntermediateInstruction*>& input_instrs);
 
-  // copy propagation
-  IntermediateBlock* CopyProp(IntermediateBlock* input);
-
   // common subexpression elimination
   IntermediateBlock* CSE(IntermediateBlock* input);
 

@@ -11,7 +11,7 @@ REM Run from a CLEAN checkout of the commit to be released, in a native cmd:
 REM   0. prerequisites: git, openssl, Python, Visual Studio, 7-Zip (arm64 builds)
 REM   1. build the deploy tree with deploy_windows.cmd (under vcvarsall)
 REM   2. regression suite, default JIT, and with OBJECK_JIT_THRESHOLD=1
-REM   3. VM flag tests, debugger tests, DAP tests
+REM   3. VM flag tests, debugger tests, DAP tests, obc deep-nesting and dead-store checks
 REM
 REM Writes rc-results\<VERSION>\windows-<arch>.txt and .log, restores the tracked
 REM files deploy_windows.cmd rewrites (version stamps), and exits 0 only
@@ -234,6 +234,16 @@ echo ---- DAP tests >> "%LOG%"
 %PY% run_dap_tests.py "%BIN%" > "%STEP_OUT%" 2>&1
 set "RC=%ERRORLEVEL%"
 call :step_result dap
+
+echo ---- obc deep-nesting check >> "%LOG%"
+%PY% check_nesting_limit.py "%BIN%" > "%STEP_OUT%" 2>&1
+set "RC=%ERRORLEVEL%"
+call :step_result nesting_limit
+
+echo ---- dead-store operand-stack check >> "%LOG%"
+%PY% check_dead_store_chain.py "%BIN%" > "%STEP_OUT%" 2>&1
+set "RC=%ERRORLEVEL%"
+call :step_result dead_store_chain
 del "%STEP_OUT%" >nul 2>&1
 popd
 set "TESTS_RAN=1"

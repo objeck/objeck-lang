@@ -2074,28 +2074,41 @@ agent->SetBudget(budget);
 	~#
 	class AgentTraceBuffer implements AgentTraceSink {
 		@events : Vector<AgentEvent>;
+		# WHY a lock: a scope with SetTrace(true) hands one buffer to every run under it, and those runs
+		# can be on two threads at once (a bounded worker that runs an inner agent, parallel Child()
+		# scopes). Vector is not thread-safe, so two AddBack calls could lose or corrupt an entry.
+		@lock : ThreadMutex;
 
 		#~
 		Constructor
 		~#
 		New() {
 			@events := Vector->New()<AgentEvent>;
+			@lock := ThreadMutex->New("agent_trace_buffer");
 		}
 
 		#~
-		Receives an event as it happens
+		Receives an event as it happens (safe from any thread)
 		@param event the event
 		~#
 		method : public : OnEvent(event : AgentEvent) ~ Nil {
-			@events->AddBack(event);
+			critical(@lock) {
+				@events->AddBack(event);
+			};
 		}
 
 		#~
-		Gets the events
+		Gets the events: a copy taken under the lock, so a reader is not disturbed by a thread still adding
 		@return events, oldest first
 		~#
 		method : public : GetEvents() ~ Vector<AgentEvent> {
-			return @events;
+			copy := Vector->New()<AgentEvent>;
+			critical(@lock) {
+				each(i : @events) {
+					copy->AddBack(@events->Get(i));
+				};
+			};
+			return copy;
 		}
 
 		#~
@@ -2105,12 +2118,14 @@ agent->SetBudget(budget);
 		~#
 		method : public : Count(kind : String) ~ Int {
 			total := 0;
-			i := 0;
-			while(i < @events->Size()) {
-				if(@events->Get(i)->GetKind()->Equals(kind)) {
-					total += 1;
+			critical(@lock) {
+				i := 0;
+				while(i < @events->Size()) {
+					if(@events->Get(i)->GetKind()->Equals(kind)) {
+						total += 1;
+					};
+					i += 1;
 				};
-				i += 1;
 			};
 			return total;
 		}
@@ -2121,14 +2136,17 @@ agent->SetBudget(budget);
 		@return the event, or Nil
 		~#
 		method : public : First(kind : String) ~ AgentEvent {
-			i := 0;
-			while(i < @events->Size()) {
-				if(@events->Get(i)->GetKind()->Equals(kind)) {
-					return @events->Get(i);
+			found : AgentEvent;
+			critical(@lock) {
+				i := 0;
+				while(found = Nil & i < @events->Size()) {
+					if(@events->Get(i)->GetKind()->Equals(kind)) {
+						found := @events->Get(i);
+					};
+					i += 1;
 				};
-				i += 1;
 			};
-			return Nil;
+			return found;
 		}
 
 		#~
@@ -2137,13 +2155,15 @@ agent->SetBudget(budget);
 		~#
 		method : public : Kinds() ~ String {
 			text := String->New();
-			i := 0;
-			while(i < @events->Size()) {
-				if(i > 0) {
-					text->Append(',');
+			critical(@lock) {
+				i := 0;
+				while(i < @events->Size()) {
+					if(i > 0) {
+						text->Append(',');
+					};
+					text->Append(@events->Get(i)->GetKind());
+					i += 1;
 				};
-				text->Append(@events->Get(i)->GetKind());
-				i += 1;
 			};
 			return text;
 		}

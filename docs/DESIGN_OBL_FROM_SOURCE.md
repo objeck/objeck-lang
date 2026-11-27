@@ -118,6 +118,13 @@ Two ways to give Windows a `lang.obl` without git:
   plus a step that runs it. Removes the cross-platform dependency, adds a build configuration to maintain,
   and gives a second `lang.obl` producer whose output should be byte-identical to the Linux one.
 
+### When a rebuilt library differs between platforms
+
+`tools/cicd/obl_platform_diff.sh <lib>` is the diagnostic for that case (the arm64 rebuild that is not the x64
+`.obl`). Run it on two machines and diff the two output directories: for each of `-opt s0` to `s3` it writes the
+library, the compiler's assembly listing and a checksum, so the first level that differs names the pass to look
+at. It is a manual tool, not a CI step: nothing differs while the `libs` job passes.
+
 ### Local development
 
 A fresh clone has no `.obl`, so the first build needs them. The existing flows already cover most of it:

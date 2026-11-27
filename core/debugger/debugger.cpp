@@ -1008,7 +1008,7 @@ void Runtime::Debugger::ProcessArgs(const std::wstring& temp)
   arguments.push_back(program_file_param);
   // parse arguments
   const size_t buffer_max = temp.size() + 1;
-  wchar_t* buffer = (wchar_t*)calloc(sizeof(wchar_t), buffer_max);
+  wchar_t* buffer = (wchar_t*)calloc(buffer_max, sizeof(wchar_t));
 #ifdef _WIN32
   wcsncpy_s(buffer, buffer_max, temp.c_str(), temp.size());
 #else
@@ -2254,7 +2254,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
   }
 }
 
-void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
+void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, [[maybe_unused]] int index) {
   size_t* cls_mem = klass->GetClassMemory();
   reference->SetIntValue((size_t)cls_mem);
   ref_mem = cls_mem;
@@ -2453,7 +2453,7 @@ std::wstring Runtime::Debugger::PrintMethod(StackMethod* method)
   return MethodFormatter::Format(method->GetName());
 }
 
-bool Runtime::Debugger::FileExists(const std::wstring&file_name, bool is_exe /*= false*/)
+bool Runtime::Debugger::FileExists(const std::wstring&file_name, [[maybe_unused]] bool is_exe /*= false*/)
 {
   const std::string name = UnicodeToBytes(file_name);
   const std::string ending = ".obl";
@@ -3771,7 +3771,7 @@ void Runtime::Debugger::ProcessWatches() {
   }
 }
 
-bool Runtime::Debugger::CheckWatches(StackFrame* frame, StackFrame** call_stack, long call_stack_pos) {
+bool Runtime::Debugger::CheckWatches(StackFrame* frame, [[maybe_unused]] StackFrame** call_stack, [[maybe_unused]] long call_stack_pos) {
   if(watches.empty()) {
     return false;
   }

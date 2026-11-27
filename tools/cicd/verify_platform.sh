@@ -15,6 +15,7 @@
 #   2. regression suite, default JIT
 #   3. regression suite, every method compiled (OBJECK_JIT_THRESHOLD=1)
 #   4. VM flag tests, debugger tests, DAP tests
+#   5. obc deep-nesting check, dead-store operand-stack check
 #
 # Writes rc-results/<VERSION>/<platform>.txt (key=value, verdict=PASS|FAIL) and
 # rc-results/<VERSION>/<platform>.log, restores any tracked files the deploy
@@ -246,6 +247,11 @@ fi
 run_step vm_flags "VM flag tests" bash -c "cd programs/regression && python3 run_vm_flag_tests.py '$BIN_ABS'"
 run_step debugger "debugger tests" bash -c "cd programs/regression && ./run_debugger_tests.sh $ARCH"
 run_step dap "DAP tests" bash -c "cd programs/regression && python3 run_dap_tests.py '$BIN_ABS'"
+# Two compiler checks that need only obc/obr: deep nesting is compiled or refused (never a crash),
+# and a dead store leaves nothing on the operand stack. CI runs both per platform; a release gate that
+# did not would let a platform-specific stack-budget or optimizer regression through.
+run_step nesting_limit "obc deep-nesting check" bash -c "cd programs/regression && python3 check_nesting_limit.py '$BIN_ABS'"
+run_step dead_store_chain "dead-store operand-stack check" bash -c "cd programs/regression && python3 check_dead_store_chain.py '$BIN_ABS'"
 
 write_result
 echo "== verdict: $VERDICT  ($RES)"
