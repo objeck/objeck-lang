@@ -2216,7 +2216,8 @@ agent->SetBudget(budget);
 	  left) stays limited by them: the scopes that limit a scope are fixed when it is entered and kept until
 	  it is left, and they go on being checked and charged. A scope further up that is entered again in the
 	  meantime is a new block with counters of its own; the child neither charges it nor is limited by it
-	  (its own parent it is always charged to, as above).
+	  (its own parent it is always charged to, as above). What that parent is entered inside later, a
+	  scope that was never above the child, does not limit the child and is not charged by it.
 	* A scope may not be entered by two threads at once (use Child); running it again afterwards starts
 	  its counters from zero. A scope may not be entered inside its own child either (it would be limited by
 	  itself): that raises, like entering it twice.
@@ -2520,9 +2521,8 @@ scope->GetStepsUsed()->PrintLine();
 
 				# nothing is published when the scope would come to limit itself, through either of the two
 				seen := Vector->New()<AgentScope>;
-				AddOnce(seen, above);
-				AddOnce(seen, side);
-				Expand(seen);
+				Limits(seen, above);
+				Limits(seen, side);
 				k := 0;
 				while(k < seen->Size() & <>cycle) {
 					if(seen->Get(k) = @self) {
@@ -2680,14 +2680,35 @@ scope->GetStepsUsed()->PrintLine();
 			all->AddBack(scope);
 		}
 
-		# adds every scope the listed ones are limited by, each once; the caller holds the registry lock
-		function : Expand(all : Vector<AgentScope>) ~ Nil {
+		# Adds a scope and every scope that limits it, each once; the caller holds the registry lock. What
+		# limits a scope is what it was entered under: its own parent and the scope around it (its own two
+		# links, which it sets when it is entered) and the scopes it recorded then (AddHeld). The links of
+		# the scopes above are NOT followed from here. They say what those scopes are inside now, and a
+		# parent that has been left and entered again somewhere else has new ones: following them made a
+		# child that was entered long before stop for, and be charged to, a scope that was never above it.
+		# The parent itself is still charged, as it always is
+		function : Limits(all : Vector<AgentScope>, scope : AgentScope) ~ Nil {
+			if(scope = Nil) {
+				return;
+			};
+			AddOnce(all, scope);
+			AddOnce(all, scope->GetOuter());
+			AddOnce(all, scope->GetAlso());
+			scope->AddHeld(all);
+			Parents(all);
+		}
+
+		# Adds, for every scope listed, the parent it is a Child() of, and that one's, each once. That link
+		# is not a matter of where a scope happens to be entered: a child is charged to its parent for as
+		# long as it is entered, whatever has become of the parent meanwhile. It is also what shows that a
+		# scope would come to limit itself. The caller holds the registry lock
+		function : Parents(all : Vector<AgentScope>) ~ Nil {
 			i := 0;
 			while(i < all->Size()) {
 				scope := all->Get(i);
-				AddOnce(all, scope->GetOuter());
-				AddOnce(all, scope->GetAlso());
-				scope->AddHeld(all);
+				if(scope->GetOuter() <> Nil & scope->GetOuter() = scope->GetFixed()) {
+					AddOnce(all, scope->GetOuter());
+				};
 				i += 1;
 			};
 		}
@@ -2718,9 +2739,8 @@ scope->GetStepsUsed()->PrintLine();
 		method : Chain() ~ Vector<AgentScope> {
 			Init();
 			all := Vector->New()<AgentScope>;
-			all->AddBack(@self);
 			critical(@registry_lock) {
-				Expand(all);
+				Limits(all, @self);
 			};
 			return all;
 		}
@@ -2894,8 +2914,7 @@ scope->GetStepsUsed()->PrintLine();
 			taken := true;
 			critical(@registry_lock) {
 				all := Vector->New()<AgentScope>;
-				all->AddBack(@self);
-				Expand(all);
+				Limits(all, @self);
 				c := 0;
 				while(c < all->Size() & taken) {
 					left := 0;
@@ -2975,6 +2994,10 @@ scope->GetStepsUsed()->PrintLine();
 
 		method : GetAlso() ~ AgentScope {
 			return @also;
+		}
+
+		method : GetFixed() ~ AgentScope {
+			return @fixed_parent;
 		}
 
 		method : Add(steps : Int, tokens : Int, tool_calls : Int, wall_ms : Int) ~ Nil {
