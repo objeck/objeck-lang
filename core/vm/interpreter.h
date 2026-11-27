@@ -489,18 +489,37 @@ namespace Runtime {
     // ended by a fault, which it has then recorded for Join
     static bool ThreadEndedInFault(std::wstring& message);
     // The registry Thread->Join reads: threads that ended in a fault. A thread
-    // is known in it by a key the VM gives it when it is started, never by an
-    // id of the system's: NewThreadFaultKey for the thread, BindThreadFaultKey
-    // once its handle exists, ClaimThreadFaultKey by the Join that holds that
-    // handle, before it waits (0: no key, nothing to report).
-    static size_t NewThreadFaultKey();
-    static void BindThreadFaultKey(size_t handle, size_t key);
-    static size_t ClaimThreadFaultKey(size_t handle);
-    // a handle that will never be joined: its key and what was recorded under it go
-    static void ForgetThreadFault(size_t handle);
-    static void RecordThreadFault(size_t key, const std::wstring& message);
-    static void TakeThreadFault(size_t key);
+    // is known in it by a key the VM gives it before it is started, never by an
+    // id of the system's (RegisterThreadFault), and tells it how it ended
+    // (EndThreadFault), which is also when a thread nothing can join any more
+    // is dropped from it.
+    static size_t RegisterThreadFault();
+    // A Thread object's handle slot (its first word) changes hands in one step,
+    // under the registry's lock, so an Execute and a Join of the same object on
+    // two threads cannot undo each other:
+    // PublishThreadHandle, by Execute: binds the new thread's key to its handle
+    // and stores the handle; a handle already there can never be joined again,
+    // so what was kept for its Join goes.
+    // TakeThreadHandle, by Join before it waits: returns the handle and leaves
+    // the slot empty (0: nothing to join), with the key bound to the handle
+    // (0: nothing to report).
+    static void PublishThreadHandle(size_t* slot, size_t handle, size_t fault_key);
+    static size_t TakeThreadHandle(size_t* slot, size_t& fault_key);
+    static void EndThreadFault(size_t key, bool faulted, const std::wstring& message);
+    // `faulted`: what the joined thread itself said as it ended (its exit status)
+    static void TakeThreadFault(size_t key, bool faulted);
+    // The exit status of a thread the VM started that ended in an isolated
+    // fault (0 otherwise): the thread function's return value, which Join reads
+    // back from the system. It is how a Join knows the thread faulted when the
+    // registry no longer has its message (THREAD_FAULT_RECORD_CAP).
+    static const unsigned int THREAD_FAULT_EXIT = 1;
+    // The most messages kept for faulted threads that nothing has joined yet.
+    // One more drops the oldest; its Join then reports THREAD_FAULT_DROPPED.
+    static const size_t THREAD_FAULT_RECORD_CAP = 4096;
     static size_t ThreadFaultCount();
+    // Test hook: with OBJECK_THREAD_FAULT_STATS=1, what the registry still holds
+    // when Main has returned, as one line on stderr. Not a program-visible value.
+    static void ReportThreadFaultRegistry();
     static std::wstring LastThreadFault();
     // the fault of the thread this thread last joined ("" when it ended normally)
     static std::wstring& JoinedThreadFault();
@@ -844,6 +863,7 @@ namespace Runtime {
     void ProcessJitOnlyDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos);
     void CheckAutoJit(StackMethod* called, StackInstr* instr);
+    void CheckAutoJitDynamic(StackMethod* called);
     void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
 
     void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr* &instrs, long &ip);

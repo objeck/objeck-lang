@@ -54,14 +54,37 @@ spawned thread a **sentinel handler at the bottom of its handler stack**:
   the thread `faulted` instead of jumping to a handler address.
 - The dispatch loop turns `recovery_ip == THREAD_FAULT_IP` into `halt`. A method compiled on entry returns early
   with the recovery pending; `ExecuteThreadBody` clears it either way.
-- `ExecuteThreadBody` then calls `FinishThreadFault` (releases the entry frame, releases held locks) and records the
-  fault under the key the VM gave the thread when it was started (a counter; `NewThreadFaultKey`), which the parent
-  bound to the thread's handle before publishing the handle in the `Thread` object. `Thread->Join` (interpreter
-  `ThreadJoin` and the JIT's `THREAD_JOIN` callback) claims the key by the handle it holds before it waits, and takes
-  the record after. (Until v2026.11.4's second review the key was the OS thread id, `GetThreadId` of the handle or
-  the `pthread_t` itself. An OS id is given out again once its thread can no longer be joined, which with pthreads
-  is when `pthread_join` returns, before `Join` had read the record: a thread started in that gap could drop the
-  record or leave its own. `thread_fault_join_own.obs`.)
+- `ExecuteThreadBody` then calls `FinishThreadFault` (releases the entry frame, releases held locks) and tells the
+  registry how the thread ended (`EndThreadFault`), under the key the VM gave the thread before it was created (a
+  counter; `RegisterThreadFault`). A thread is registered only when isolation is on as it is started, which the
+  parent decides once for both of them.
+- The registry (in `interpreter.cpp`, one lock) knows for each key whether a `Join` can still come: the key is bound
+  to the thread's handle as `Execute` stores the handle in the `Thread` object (`PublishThreadHandle`), claimed by
+  the `Join` that takes the handle out of the object before it waits (`TakeThreadHandle`; the interpreter's
+  `ThreadJoin` and the JIT's `THREAD_JOIN` callback), and abandoned when another `Execute` overwrites the handle.
+  The handle slot is read and written only under that lock, so an `Execute` and a `Join` of one object on two
+  threads cannot undo each other. What is kept after a thread has ended: a faulted thread's message while a `Join`
+  can still come, until that `Join`; nothing for a thread that ended without a fault, and nothing for an abandoned
+  one. (Until v2026.11.4's second review the key was the OS thread id, `GetThreadId` of the handle or the
+  `pthread_t` itself. An OS id is given out again once its thread can no longer be joined, which with pthreads is
+  when `pthread_join` returns, before `Join` had read the record: a thread started in that gap could drop the record
+  or leave its own. Tests: `thread_fault_join_own.obs`, `thread_restart_join.obs`, `thread_fault_registry.obs`.)
+- **The registry is bounded.** The one thing it keeps with no natural end is the message of a thread that
+  faulted and that nothing has joined yet: a `Join` may still come, or may never. At most 4,096 of those are kept
+  (`THREAD_FAULT_RECORD_CAP`). One more drops the oldest, binding and message, and the VM says so once on stderr
+  (`[thread-faults] unjoined worker faults are being dropped (cap 4096): ...`) and prints the total when `Main`
+  returns (`[thread-faults] N unjoined worker faults dropped (cap 4096)`). What `Join` reports for a thread whose
+  record was dropped is **not** "no fault": `runtime.thread.join.fault` reads `Thread fault record dropped: the
+  thread ended in an uncaught error, but too many faulted threads were left unjoined to keep its message`. The
+  `Join` knows the thread faulted without the registry, from the thread's own exit status: a thread that ends in
+  an isolated fault returns `THREAD_FAULT_EXIT` from its thread function, which `Join` reads back
+  (`GetExitCodeThread`, or `pthread_join`'s status). So a program can still tell the three outcomes apart: empty
+  (no fault), the error text, or the dropped notice. `runtime.threads.faulted` counts every fault, dropped or not.
+  Tests: `thread_fault_registry.obs` "capped" with 10,000 faulting unjoined workers (`run_vm_flag_tests.py`
+  section 38: `records=4095 handles=4095 dropped=5904`) and `thread_fault_join_many.obs`.
+  A design that needs no cap would tie a record to the life of its `Thread` object, dropping it when the collector
+  finds the object dead. That needs the collector to tell the VM about dead objects (weak references or
+  finalizers), which it does not do today; not attempted here.
 - A real `Try()` inside the worker pushes above the sentinel and recovers as always; the thread is not faulted.
 
 Because the sentinel counts as a handler, `ThreadHasTryHandler()` is true on such a thread, so the places that

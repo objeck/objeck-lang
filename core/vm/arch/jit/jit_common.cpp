@@ -34,6 +34,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -90,6 +91,19 @@ StackProgram* JitCompiler::program;
 // debugger restart) drops the table with the program it described; no method
 // is being compiled then.
 //
+// The lock is a reader-writer lock, and PatchCallSites is its only writer.
+// The readers are the code that reads opcodes of methods it is not patching:
+// a backend compiling a method (TryAutoJitCompile holds the lock, shared,
+// around Compile) and HasLoop. A backend reads every opcode of the method it
+// compiles, several times, and that method's call sites belong to callees
+// that another thread may finish compiling at any moment: the callee's patch
+// stored the caller's opcode while the caller's backend was reading it. Both
+// opcodes compile to the same call, so no wrong code came of it, but it was a
+// data race in every pair of threads that compiled a caller and its callee
+// together (ThreadSanitizer: one report per pair). Compiles still run side by
+// side; a patch waits for the compiles in flight, which are milliseconds, and
+// is itself a handful of stores.
+//
 // What the lock does not cover, and need not: the interpreter executing a
 // call site while it is patched. See PatchCallSites and
 // docs/design/JIT_CALL_SITE_PATCHING.md.
@@ -103,7 +117,7 @@ namespace {
   };
   typedef std::unordered_map<CallSiteKey, std::vector<StackInstr*>, CallSiteKeyHash> CallSiteTable;
 
-  std::mutex call_site_mutex;
+  std::shared_mutex call_site_mutex;
   std::atomic<const CallSiteTable*> call_site_table(nullptr);
   // PatchCallSites calls since Initialize; the first is served by a walk
   std::atomic<long> call_site_patches(0);
@@ -179,9 +193,34 @@ void JitCompiler::Initialize(StackProgram* p)
 {
   program = p;
   // the table describes one program's instructions
-  std::lock_guard<std::mutex> lock(call_site_mutex);
+  std::lock_guard<std::shared_mutex> lock(call_site_mutex);
   delete call_site_table.exchange(nullptr, std::memory_order_acq_rel);
   call_site_patches.store(0, std::memory_order_release);
+}
+
+/**
+ * Whether the method holds a back-edge (see the header). Kept out of line: its
+ * one hot caller is the interpreter's CheckAutoJit, which runs for every
+ * interpreted call of an unpatched site and reaches this only on a callee's
+ * first call. Inlined there (by link-time optimisation), the lock's registers
+ * were saved and restored on every one of those calls: four instructions on
+ * each interpreted call under --jit=off, +0.46% on binarytrees.
+ */
+#ifdef _MSC_VER
+__declspec(noinline) bool JitCompiler::HasLoop(StackMethod* mthd)
+#else
+bool __attribute__((noinline)) JitCompiler::HasLoop(StackMethod* mthd)
+#endif
+{
+  // the method's call sites may be patched meanwhile: read as a compile does
+  std::shared_lock<std::shared_mutex> reading(call_site_mutex);
+  for(long i = 0; i < mthd->GetInstructionCount(); ++i) {
+    StackInstr* instr = mthd->GetInstruction(i);
+    if(instr->GetType() == JMP && instr->GetOperand() <= i) {
+      return true;
+    }
+  }
+  return false;
 }
 
 JitCompiler::JitCompiler()
@@ -282,7 +321,16 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
   Runtime::JitArm64 jit_compiler;
 #endif
 
-  if(jit_compiler.Compile(callee)) {
+  // The backend reads the method's opcodes with no patch in progress (see the
+  // call-site table's comment). Released before PatchCallSites, which takes
+  // the lock exclusively: Compile calls neither it nor this function.
+  bool compiled;
+  {
+    std::shared_lock<std::shared_mutex> reading(call_site_mutex);
+    compiled = jit_compiler.Compile(callee);
+  }
+
+  if(compiled) {
     // Compile() published native_code (release). Patch all call sites AFTER that
     // so any thread observing a *_JIT opcode / operand3>0 also sees native_code;
     // the interpreter's JIT paths additionally re-check GetNativeCode() and fall
@@ -310,7 +358,7 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
   const long target_mthd_id = callee->GetId();
 
   // one walk, table build or patch at a time (see the table's comment)
-  std::unique_lock<std::mutex> lock(call_site_mutex);
+  std::unique_lock<std::shared_mutex> lock(call_site_mutex);
 
   // the first method compiled: its sites straight from a walk (see the table's comment)
   std::vector<StackInstr*> first_sites;
@@ -344,6 +392,30 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
         walked.push_back(instr);
       }
     });
+    // and no dynamic call site has been written since the program was loaded:
+    // its operands name no method, so neither a patch nor the auto-JIT's
+    // "refused" mark belongs on it (operand3 is 0 as the loader left it)
+    long dynamic_written = 0;
+    const long cls_num = program->GetClassNumber();
+    for(long c = 0; c < cls_num; ++c) {
+      StackClass* cls = program->GetClasses()[c];
+      for(int m = 0; cls && m < cls->GetMethodCount(); ++m) {
+        StackMethod* method = cls->GetMethods()[m];
+        for(long i = 0; method && i < method->GetInstructionCount(); ++i) {
+          StackInstr* instr = method->GetInstruction(i);
+          if(instr->GetType() == DYN_MTHD_CALL && instr->GetOperand3() != 0) {
+            ++dynamic_written;
+          }
+        }
+      }
+    }
+    if(dynamic_written) {
+      lock.unlock();
+      std::wcerr << L">>> Internal error: " << dynamic_written << L" dynamic call site(s) were written to; found while patching '"
+                 << callee->GetName() << L"' <<<" << std::endl;
+      VmExit(1);
+    }
+
     if(walked != sites) {
       // not held through the exit, which destroys the mutex
       lock.unlock();
@@ -1115,21 +1187,21 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     // can promote this Thread object and leave the local 'instance' pointing into the
     // recycled nursery, so instance[0] would be whatever reused that memory (#874).
 #ifdef _WIN32
-    HANDLE vm_thread = (HANDLE)instance[0];
+    // The handle is taken out of the object NOW, while 'instance' is still the live
+    // object: after the wait it may have been moved, and no frame of this callback
+    // reliably holds the Thread (a bound call reaches here without a frame of its own, so
+    // the frame below is the caller's -- writing through it cleared a field of the
+    // caller's object and broke TaskScope under --jit=1). A second Join of the thread then
+    // finds the slot empty and returns, instead of waiting on, or closing, a handle the
+    // system may have reused. Taken in one step with its key, under the registry's lock
+    // (TakeThreadHandle): an Execute of the same object on another thread stores a new
+    // handle either before this, and is joined here, or after, and is left alone.
+    size_t fault_key = 0;
+    HANDLE vm_thread = (HANDLE)Runtime::StackInterpreter::TakeThreadHandle(instance, fault_key);
     if(!vm_thread) {
-      // already joined: its handle was taken, and is closed below
+      // already joined, or being joined: that Join took the handle
       break;
     }
-
-    // The slot is cleared NOW, while 'instance' is still the live object: after the wait
-    // it may have been moved, and no frame of this callback reliably holds the Thread
-    // (a bound call reaches here without a frame of its own, so the frame below is the
-    // caller's -- writing through it cleared a field of the caller's object and broke
-    // TaskScope under --jit=1). A second Join of the thread then finds the slot empty and
-    // returns, instead of waiting on, or closing, a handle the system may have reused.
-    instance[0] = 0;
-    // before the wait, while the handle is this thread's alone (see ClaimThreadFaultKey)
-    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
@@ -1148,14 +1220,13 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     }
 #else
     void* status;
-    pthread_t vm_thread = (pthread_t)instance[0];
+    // as above: out of the object and with its key in one step
+    size_t fault_key = 0;
+    pthread_t vm_thread = (pthread_t)Runtime::StackInterpreter::TakeThreadHandle(instance, fault_key);
     if(!vm_thread) {
-      // already joined: the slot was cleared by that join (as on Windows)
+      // already joined, or being joined: that Join took the handle
       break;
     }
-    instance[0] = 0;
-    // before the join, while the handle is this thread's alone (see ClaimThreadFaultKey)
-    const size_t fault_key = Runtime::StackInterpreter::ClaimThreadFaultKey((size_t)vm_thread);
 
     // see the note above: the handle is read before this thread parks
     MemoryManager::BeginBlocking();
@@ -1169,7 +1240,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
       VmExit(-1);
     }
-    Runtime::StackInterpreter::TakeThreadFault(fault_key);
+    Runtime::StackInterpreter::TakeThreadFault(fault_key, (size_t)status == Runtime::StackInterpreter::THREAD_FAULT_EXIT);
 #ifdef __linux__
     // the stack the VM allocated for it (ProcessAsyncMethodCall)
     Runtime::ThreadStacks::Release(vm_thread);
@@ -1178,7 +1249,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     MemoryManager::EndBlocking();
 
 #ifdef _WIN32
-    Runtime::StackInterpreter::TakeThreadFault(fault_key);
+    DWORD exit_code = 0;
+    GetExitCodeThread(vm_thread, &exit_code);
+    Runtime::StackInterpreter::TakeThreadFault(fault_key, exit_code == Runtime::StackInterpreter::THREAD_FAULT_EXIT);
     // The thread has finished and been joined: close its handle, which this path never
     // did, so a program whose join loop was compiled kept one kernel object per thread it
     // started (the interpreter's THREAD_JOIN closes it; only the first few joins of a

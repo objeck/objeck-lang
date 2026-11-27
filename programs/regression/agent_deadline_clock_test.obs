@@ -1,0 +1,127 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+A run's deadline is a point on the clock, however often the token is polled (API.Agent), against a
+scripted fake model (no key, no network).
+
+The token of a run with a deadline cancels itself when the deadline passes, so that a tool on the loop's
+own thread hears of it. It kept the time by adding up the stretches between polls: stop a timer, read it,
+start it again. Whatever passed between the stop and the next start was never counted. A thread that
+was descheduled there lost that whole pause, and a token that is polled in a loop lost a little on every
+poll, so IsCancelled() could answer false well after the wall-clock deadline. The loop's own clock was
+kept the same way. Both now compare the runtime's monotonic clock (the runtime.uptime_ms property) with a
+fixed point.
+
+The forced case: a token is polled as fast as a thread can for the whole of a 400 ms deadline, a few
+million polls, each of which used to drop the time between its stop and its start. A timer that is
+started once and read once says when the token first answered true; that must be within 60 ms of the
+deadline. Then the same through a run: a handler on the loop's thread that polls its token without a
+pause, and a run whose loop clock is read many times before the deadline.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+# polls its token without a pause until it is cancelled
+class Spinner implements AgentCancelableHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement, cancel : AgentCancel) ~ String {
+    polls := 0;
+    watch := System.Time.Timer->New(true);
+    while(<>cancel->IsCancelled() & polls < 2000000000) {
+      polls += 1;
+    };
+    AgentDeadlineClockTest->Stopped((watch->GetElapsedTime() * 1000.0)->As(Int), polls);
+    return "stopped";
+  }
+}
+
+class AgentDeadlineClockTest {
+  @failures : static : Int;
+  @handler_ms : static : Int;
+  @handler_polls : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Stopped(ms : Int, polls : Int) ~ Nil {
+    @handler_ms := ms;
+    @handler_polls := polls;
+  }
+
+  # polls a token with a deadline as fast as it can; returns the milliseconds until it answered true
+  function : Spin(deadline : Int) ~ Int {
+    token := AgentCancel->New();
+    token->SetDeadlineMs(deadline);
+    watch := System.Time.Timer->New(true);
+    polls := 0;
+    while(<>token->IsCancelled() & polls < 2000000000) {
+      polls += 1;
+    };
+    took := (watch->GetElapsedTime() * 1000.0)->As(Int);
+    if(took < deadline | took >= deadline + 60) {
+      "  a {$deadline} ms deadline, polled {$polls} times: the token answered true after {$took} ms"->PrintLine();
+    };
+    return took;
+  }
+
+  function : TestToken() ~ Nil {
+    "a token polled without a pause:"->PrintLine();
+    took := Spin(400);
+    Check("it is cancelled when the deadline passes, not later by what the polls lost", took >= 400 & took < 460);
+
+    # a token nobody polls until after its deadline
+    idle := AgentCancel->New();
+    idle->SetDeadlineMs(50);
+    Thread->Sleep(120);
+    Check("a token first polled after its deadline is cancelled", idle->IsCancelled() & idle->IsExpired() & idle->GetReason()->Equals("deadline"));
+
+    # a token whose deadline has not come
+    early := AgentCancel->New();
+    early->SetDeadlineMs(60000);
+    Check("a token before its deadline is not", <>early->IsCancelled() & <>early->IsExpired() & early->GetReason() = Nil);
+    early->Cancel("by hand");
+    Check("and a cancel before the deadline keeps its own reason", early->IsCancelled() & <>early->IsExpired() & early->GetReason()->Equals("by hand"));
+  }
+
+  function : TestRun() ~ Nil {
+    "a handler on the loop's thread that polls its token without a pause:"->PrintLine();
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("spin", "polls its token", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), Spinner->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "spin", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    agent->SetBudget(AgentBudget->New()->SetMaxWallMs(400));
+
+    watch := System.Time.Timer->New(true);
+    result := agent->Run("go");
+    took := (watch->GetElapsedTime() * 1000.0)->As(Int);
+    if(took < 400 | took >= 460) {
+      "  the run was back after {$took} ms; the handler polled {$@handler_polls} times in {$@handler_ms} ms"->PrintLine();
+    };
+    Check("the run is back when its 400 ms deadline passes", took >= 400 & took < 460);
+    Check("with the stop reason deadline", result->GetStopReason()->Equals("deadline"));
+    Check("the time the result reports is the time that passed", result->GetElapsedMs() >= 400 & result->GetElapsedMs() <= took + 1);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    TestToken();
+    TestRun();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

@@ -36,9 +36,23 @@
 #include "tree.h"
 
 #define SYSTEM_BASE_NAME L"System.Base" 
-// the longest String literal copied from the operand stack; a longer one is built an
-// element at a time (ContextAnalyzer::AnalyzeStaticArray)
-#define STRING_LITERAL_STACK_MAX 512
+// The longest String literal copied from the operand stack; a longer one is built an
+// element at a time (ContextAnalyzer::AnalyzeStaticArray).
+//
+// On the stack a literal costs a word for each element ON TOP of whatever its
+// expression already holds there: the arguments of the calls it is nested in wait
+// under it. At 512 a literal of 512 strings inside sixteen calls of 31 Ints each
+// (496 words waiting) passed the verifier's 1,000 and the program would not load.
+// So the stack form is kept only where it is worth something, and that is measured
+// (Linux x64, the literal returned by a function called 3,000,000 / N times):
+//   * both forms cost the same CPU, compiled and interpreted, within 2% up to 6
+//     elements and within the noise of a shared machine above;
+//   * the JIT does not compile the stack form from 7 elements ("no free integer
+//     register": one for each string), so that method stays interpreted, where the
+//     element form compiles at every length measured (to 512);
+//   * the element form is 1 to 3 bytes an element larger in the image.
+// At 6 a literal adds at most 8 words to the stack; the element form adds 3.
+#define STRING_LITERAL_STACK_MAX 6
 
 using namespace frontend;
 

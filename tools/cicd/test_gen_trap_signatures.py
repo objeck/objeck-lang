@@ -129,6 +129,100 @@ finally:
     gen.OVERRIDES.clear()
     gen.OVERRIDES.update(saved)
 
+# ------------------------------------- a corpus that lacks one valid context ----
+# SYS_TIME stands in two constructors of System.Time.Date. A corpus without the image
+# of one of them used to give a row that named only the other: not empty, so it was
+# written and --check passed it, and the loader then refused Date->New(Bool) in every
+# valid program. The library sources say where each directive is; the corpus is held
+# to them.
+print("generator: a corpus that lacks one of a trap's contexts")
+
+
+def committed_contexts():
+    """trap -> the contexts of its committed row, for every frame-reading trap."""
+    with open(HEADER, encoding="utf-8") as f:
+        text = f.read()
+    found = {}
+    for m in re.finditer(r'\{ instructions::([A-Z0-9_]+), L"[A-Z0-9_]+", [^\n]*, L"([^"\n]*)", (true|false) \},\n', text):
+        found[m.group(1)] = m.group(2).split("|")
+    return found
+
+
+def corpus_with(contexts):
+    """What census() returns for images holding each trap in exactly these methods."""
+    seen = {}
+    for trap, names in contexts.items():
+        rec = gen.Seen()
+        rec.contexts = set(names)
+        seen[trap] = rec
+    return seen
+
+
+library = gen.library_traps(set(shapes))
+whole = committed_contexts()
+check("the library sources hold SYS_TIME in both Date constructors",
+      sorted(where for where, _ in library.get("SYS_TIME", [])) == ["System.Time.Date:New", "System.Time.Date:New"], library.get("SYS_TIME"))
+check("the committed row of SYS_TIME names both", sorted(whole.get("SYS_TIME", [])) == ["System.Time.Date:New:", "System.Time.Date:New:l,"],
+      whole.get("SYS_TIME"))
+check("the library sources and the committed rows name the same methods, for all %d frame-reading traps" % len(whole),
+      all(not gen.context_problems(trap, whole[trap], library) for trap in whole) and set(whole) == set(t for t in frames if t in shapes))
+
+rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
+check("a corpus with every context: no error", not errors, errors[:3])
+
+partial = dict(whole, SYS_TIME=["System.Time.Date:New:"])
+rows, notes, errors = gen.build_rows(corpus_with(partial), shapes, ids)
+check("a corpus without System.Time.Date:New(Bool): an error for SYS_TIME, and only for it",
+      len(errors) == 1 and errors[0].startswith("SYS_TIME:") and "System.Time.Date:New" in errors[0], errors[:3])
+
+stray = dict(whole, GMT_TIME=whole["GMT_TIME"] + ["Stray.Class:Method:"])
+rows, notes, errors = gen.build_rows(corpus_with(stray), shapes, ids)
+check("a context in a method the library sources do not hold the directive in: an error",
+      len(errors) == 1 and errors[0].startswith("GMT_TIME:") and "Stray.Class:Method" in errors[0], errors[:3])
+
+# ------------------------------------------- whether a TRAP leaves a result ----
+# FILE_IN_BYTE is 'TRAP 2' at the end of FileReader->ReadByte() ~ Byte: the handler's
+# word is the method's result. A corpus that did not show it there used to get "no
+# result" with a note; the loader built from that row refuses ReadByte at its RTRN.
+print("generator: a TRAP the corpus does not show leaving its result")
+
+
+def row_of(rows, trap):
+    return next(r for r in rows if r[0] == trap)
+
+
+rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
+check("no image shows FILE_IN_BYTE in its wrapper: the library sources say it leaves one word",
+      not errors and row_of(rows, "FILE_IN_BYTE")[3] == 1 and gen.source_pushes("FILE_IN_BYTE", library) == 1, errors[:3])
+check("and STD_OUT_INT none", row_of(rows, "STD_OUT_INT")[3] == 0 and gen.source_pushes("STD_OUT_INT", library) == 0)
+check("SOCK_UDP_BIND, inside an 'if' of a method that returns a Bool, none (the directive does not end the method)",
+      row_of(rows, "SOCK_UDP_BIND")[3] == 0 and gen.source_pushes("SOCK_UDP_BIND", library) == 0)
+check("INST_STABLE_ID is found under the directive the sources write it as (LOAD_INST_UID)",
+      row_of(rows, "INST_STABLE_ID")[3] == 1 and gen.source_pushes("INST_STABLE_ID", library) == 1)
+check("no row's count is the old default: nothing is assumed",
+      not any("assumed" in n for n in notes), [n for n in notes if "assumed" in n][:3])
+
+# an image that shows the opposite of the sources
+disagree = corpus_with(whole)
+rec = gen.Seen()
+rec.args = [[gen.W_OBJ, set(), True]]
+rec.pushes = {0}
+disagree["FILE_IN_BYTE"] = rec
+rows, notes, errors = gen.build_rows(disagree, shapes, ids)
+check("images that show FILE_IN_BYTE leaving nothing, against the sources: an error",
+      len(errors) == 1 and errors[0].startswith("FILE_IN_BYTE:"), errors[:3])
+
+# a trap neither the corpus, the sources nor OVERRIDES speaks for
+saved = dict(gen.OVERRIDES)
+try:
+    del gen.OVERRIDES["SOCK_DTLS_SRV_CERT"]
+    rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
+    check("SOCK_DTLS_SRV_CERT, which no library writes, without its declaration: an error, not a default",
+          len(errors) == 1 and errors[0].startswith("SOCK_DTLS_SRV_CERT:") and "OVERRIDES" in errors[0], errors[:3])
+finally:
+    gen.OVERRIDES.clear()
+    gen.OVERRIDES.update(saved)
+
 # ------------------------------------------------------------------ --check ----
 print("--check: the committed header and what it must not accept")
 rc, out = run("--check")
@@ -145,6 +239,11 @@ cases = [
     ("the instance flag dropped", row_edit("LOAD_CLS_BY_INST", GETCLASS_TAIL, ', L"System.Base:GetClass:", false },'), "LOAD_CLS_BY_INST"),
     ("a context on a trap that reads the operand stack alone",
      row_edit("STD_OUT_INT", ', nullptr, false },', ', L"System.Int:Print:", false },'), "STD_OUT_INT"),
+    # not empty, and one valid caller short: what a partial corpus wrote
+    ("SYS_TIME without Date->New(Bool)",
+     row_edit("SYS_TIME", ', L"System.Time.Date:New:|System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:", false },'), "SYS_TIME"),
+    ("GMT_TIME in a method the library does not write it in",
+     row_edit("GMT_TIME", ', L"System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:l,|Stray.Class:Method:", false },'), "GMT_TIME"),
 ]
 
 
@@ -164,6 +263,14 @@ for trap in sorted(gen.LITERAL_COPIES) + ["CPY_CHAR_STR_ARYS"]:
 cases.append(("CPY_INT_STR_ARY with another count", row_cells("CPY_INT_STR_ARY", "true, 3", "true, 4"), "CPY_INT_STR_ARY"))
 cases.append(("CPY_CHAR_STR_ARYS with a fixed count", row_cells("CPY_CHAR_STR_ARYS", "true, -1", "true, 3"), "CPY_CHAR_STR_ARYS"))
 cases.append(("CPY_FLOAT_STR_ARY written TRAP", row_cells("CPY_FLOAT_STR_ARY", "true, 3", "false, 3"), "CPY_FLOAT_STR_ARY"))
+
+# the result words (the cell after the count): what a corpus without the trap's wrapper wrote
+cases.append(("FILE_IN_BYTE leaving no result", row_cells("FILE_IN_BYTE", "false, 2, 1", "false, 2, 0"), "FILE_IN_BYTE"))
+cases.append(("STD_OUT_INT leaving a result", row_cells("STD_OUT_INT", "false, 2, 0", "false, 2, 1"), "STD_OUT_INT"))
+cases.append(("SOCK_DTLS_SRV_CERT, which no library writes, leaving no result",
+              row_cells("SOCK_DTLS_SRV_CERT", "false, 2, 1", "false, 2, 0"), "SOCK_DTLS_SRV_CERT"))
+cases.append(("LOAD_CLS_BY_INST leaving a result, as a TRAP_RTRN would", row_cells("LOAD_CLS_BY_INST", "true, 1, 0", "true, 1, 1"),
+              "LOAD_CLS_BY_INST"))
 
 for name, change, trap in cases:
     changed, problems = check_copy(change)

@@ -1,0 +1,198 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+A bounded worker whose thread starts late does not act for a run that is over, and does not escape the
+scopes the run was under (API.Agent), against scripted fake models (no key, no network).
+
+A BOUNDED_THREAD tool runs on a worker thread inside a child of the run's scope. The child worked out
+what limits it when the worker thread entered it. A thread can be slow to get there: the run times out
+waiting, answers the model, returns, and the scope bodies return too. The worker then (1) ran the tool
+anyway, for a call nobody was waiting for and whose answer had been given, and (2) entered a child of a
+scope that had been left and had forgotten what it was inside, so an agent the tool started ran without
+the limit of the scope further up, and with no token to cancel it.
+
+Now the worker claims its result slot before it runs anything, so a call that was abandoned before it
+began is skipped; and the scopes that limit the worker's child, and the token it follows, are recorded
+when the worker is made, on the loop's thread.
+
+The late thread is forced with Agent->SetWorkerTestDelays (a hidden test hook): a wait as the worker
+thread starts, or a wait just before it enters its scope. Scope A allows one step, B is entered inside
+A, the run is made inside B with a tool that runs a second agent and a tool limit of 60 ms.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+class CountHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    return "ok";
+  }
+}
+
+# a tool that runs the second agent
+class SubAgentHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    AgentScopeLateWorkerTest->Second();
+    return "the sub agent ran";
+  }
+}
+
+class AgentScopeLateWorkerTest {
+  @failures : static : Int;
+  @agent : static : Agent;
+  @agent2 : static : Agent;
+  @backend : static : ScriptedBackend;
+  @backend2 : static : ScriptedBackend;
+  @result : static : AgentResult;
+  @second : static : AgentResult;
+  @tool_runs : static : Int;
+  @a : static : AgentScope;
+  @b : static : AgentScope;
+  @cancel_b : static : Bool;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  function : Json(text : String) ~ JsonElement {
+    return JsonParser->TextToElement(text);
+  }
+
+  # called by the tool, on the worker thread
+  function : Second() ~ Nil {
+    @tool_runs += 1;
+    @second := @agent2->Run("inner");
+  }
+
+  function : Setup(steps : Int) ~ Nil {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("delegate", "runs another agent", Json("{\"type\":\"object\",\"properties\":{}}"), SubAgentHandler->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("d1", "delegate", "{}"));
+    script->AddBack(AgentReply->Say("outer done"));
+    @backend := ScriptedBackend->New(script);
+    @agent := Agent->New(@backend, registry);
+    @agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    @agent->SetToolTimeout(60);
+
+    registry2 := ToolRegistry->New();
+    registry2->Add(AgentTool->New("count", "a test tool", Json("{\"type\":\"object\",\"properties\":{}}"), CountHandler->New()));
+    script2 := Vector->New()<AgentReply>;
+    script2->AddBack(AgentReply->Ask("n1", "count", "{}"));
+    script2->AddBack(AgentReply->Say("inner done"));
+    @backend2 := ScriptedBackend->New(script2);
+    @agent2 := Agent->New(@backend2, registry2);
+
+    @a := AgentScope->New()->SetMaxSteps(steps);
+    @b := AgentScope->New();
+    @result := Nil;
+    @second := Nil;
+    @tool_runs := 0;
+    @cancel_b := false;
+  }
+
+  function : InsideB() ~ Nil {
+    @result := @agent->Run("outer");
+    if(@cancel_b) {
+      AgentScope->Current()->Cancel("stopped after the run");
+    };
+  }
+
+  function : InsideA() ~ Nil {
+    AgentScope->Run(@b, InsideB() ~ Nil);
+  }
+
+  function : Status() ~ String {
+    return @result->GetSteps()->Get(0)->GetResults()->Get(0)->GetStatus();
+  }
+
+  # waits for the late worker to have run the second agent, or for the time to pass
+  function : Settle(millis : Int) ~ Nil {
+    waited := 0;
+    while(@second = Nil & waited < millis) {
+      Thread->Sleep(10);
+      waited += 10;
+    };
+    Thread->Sleep(100);
+  }
+
+  function : TestLateStart() ~ Nil {
+    "the worker thread starts after the run gave up on the call:"->PrintLine();
+    Setup(1);
+    Agent->SetWorkerTestDelays(400, 0);
+    AgentScope->Run(@a, InsideA() ~ Nil);
+    Agent->SetWorkerTestDelays(0, 0);
+    Check("the run did not wait: the call is a timeout and both scopes are left", Same(Status(), "timeout") & AgentScope->Current() = Nil);
+    Settle(900);
+    Check("the tool is not run for a call nobody waits for", @tool_runs = 0);
+    Check("so the second agent's model is never asked", @second = Nil & @backend2->GetAskedCount() = 0);
+  }
+
+  function : TestLateScope() ~ Nil {
+    "the worker enters its scope after both scope bodies returned:"->PrintLine();
+    Setup(1);
+    Agent->SetWorkerTestDelays(0, 400);
+    AgentScope->Run(@a, InsideA() ~ Nil);
+    Agent->SetWorkerTestDelays(0, 0);
+    Check("the run did not wait: the call is a timeout and both scopes are left", Same(Status(), "timeout") & AgentScope->Current() = Nil);
+    Settle(3000);
+    Check("the tool had begun, so it runs", @tool_runs = 1 & @second <> Nil);
+    if(@second <> Nil) {
+      Check("A's one step, used by the outer reply, still stops the second agent", Same(@second->GetStopReason(), "budget_steps") & @backend2->GetAskedCount() = 0);
+      Check("and A counts it: one step, two runs", @a->GetStepsUsed() = 1 & @a->GetRuns() = 2);
+    };
+  }
+
+  function : TestLateCancel() ~ Nil {
+    "the scope is cancelled before the late worker enters its child of it:"->PrintLine();
+    Setup(10);
+    @cancel_b := true;
+    Agent->SetWorkerTestDelays(0, 400);
+    AgentScope->Run(@a, InsideA() ~ Nil);
+    Agent->SetWorkerTestDelays(0, 0);
+    Settle(3000);
+    Check("the tool runs", @tool_runs = 1 & @second <> Nil);
+    if(@second <> Nil) {
+      Check("the token the worker was made under stops the second agent", Same(@second->GetStopReason(), "cancelled") & @backend2->GetAskedCount() = 0);
+    };
+  }
+
+  function : TestOnTime() ~ Nil {
+    "a worker that is not late:"->PrintLine();
+    Setup(4);
+    @agent->SetToolTimeout(0);
+    AgentScope->Run(@a, InsideA() ~ Nil);
+    Check("nothing changes: both agents complete and A counts four steps", @tool_runs = 1 & @second <> Nil & @second->IsCompleted() & @result->IsCompleted() & @a->GetStepsUsed() = 4);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    AgentScope->Init();
+    TestOnTime();
+    TestLateStart();
+    TestLateScope();
+    TestLateCancel();
+    Check("the main thread is in no scope at the end", AgentScope->Current() = Nil);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
