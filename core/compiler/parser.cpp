@@ -10071,7 +10071,7 @@ Expression* Parser::ParseExpressionText(const std::wstring& text, const std::wst
     result = expr_parser.ParseExpression(0);
   }
   catch(const NestingTooDeep&) {
-    result = nullptr;
+    // reported to expr_parser where it was found; refused below
   }
 
   // A token the scanner rejected is an error even where the parse recovered from it
