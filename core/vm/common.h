@@ -60,6 +60,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 #include <climits>
 #include <string.h>
@@ -1534,7 +1535,24 @@ class StackClass {
       return x >= y ? x * x + x + y : y * y + x;
     }
   };
-  std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> virtual_methods;
+  // The virtual-call cache: (declaring class id, declared method id) -> the
+  // override an instance of this class runs. Every thread's dispatch reads it,
+  // and the first call through a pair adds an entry, so it is read and written
+  // by several threads at once. The plain unordered_map this used to be was not
+  // safe for that: an insert that rehashes frees the bucket array a find() on
+  // another thread is walking.
+  //
+  // A reader takes no lock. It loads one pointer to a map that is never changed
+  // after it is published. A writer copies the published map, adds its entry
+  // and publishes the copy, under a mutex so that two writers cannot lose each
+  // other's entry. A map that has been replaced is kept until the class is
+  // destroyed, because a reader may still be inside it; a class gains one entry
+  // per virtual method it is called through and never loses one, so that is a
+  // bounded number of small maps for the life of the program.
+  typedef std::unordered_map<virtual_key_pair, StackMethod*, virtual_key_pair_hash> VirtualMethodMap;
+  std::atomic<const VirtualMethodMap*> virtual_methods;
+  std::vector<const VirtualMethodMap*> retired_virtual_methods;
+  std::mutex virtual_methods_lock;
   
   long InitializeClassMemory(long size) {
     if(size > 0) {
@@ -1566,10 +1584,17 @@ class StackClass {
     cls_space = InitializeClassMemory(cspace);
     inst_space = ispace;
     is_debug = d;
+    virtual_methods.store(nullptr, std::memory_order_relaxed);
   }
 
   ~StackClass() {
     // clean up
+    delete virtual_methods.load(std::memory_order_relaxed);
+    virtual_methods.store(nullptr, std::memory_order_relaxed);
+    for(const VirtualMethodMap* retired : retired_virtual_methods) {
+      delete retired;
+    }
+    retired_virtual_methods.clear();
     if(cls_dclrs) {
       for(int i = 0; i < cls_num_dclrs; ++i) {
         StackDclr* tmp = cls_dclrs[i];
@@ -1836,20 +1861,37 @@ class StackClass {
   }
 #endif
 
+  // Safe from any thread, with no lock: see virtual_methods.
   StackMethod* GetVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id) {
-    const auto virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    const auto result = virtual_methods.find(virtual_key);
-    if(result != virtual_methods.end()) {
-      return result->second;
+    const VirtualMethodMap* published = virtual_methods.load(std::memory_order_acquire);
+    if(published) {
+      const auto result = published->find(std::make_pair(virtual_cls_id, virtual_mthd_id));
+      if(result != published->end()) {
+        return result->second;
+      }
     }
 
     return nullptr;
   }
 
-  void AddVirutalMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
-    // TODO: thread safe?
+  // Safe from any thread: see virtual_methods. Two threads that miss on the
+  // same call both arrive here with the same answer; the second finds the
+  // entry and leaves the published map as it is.
+  void AddVirtualMethod(size_t virtual_cls_id, size_t virtual_mthd_id, StackMethod* mthd) {
     const virtual_key_pair virtual_key = std::make_pair(virtual_cls_id, virtual_mthd_id);
-    virtual_methods.insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+
+    std::lock_guard<std::mutex> guard(virtual_methods_lock);
+    const VirtualMethodMap* published = virtual_methods.load(std::memory_order_relaxed);
+    if(published && published->find(virtual_key) != published->end()) {
+      return;
+    }
+
+    VirtualMethodMap* next = published ? new VirtualMethodMap(*published) : new VirtualMethodMap;
+    next->insert(std::pair<virtual_key_pair, StackMethod*>(virtual_key, mthd));
+    virtual_methods.store(next, std::memory_order_release);
+    if(published) {
+      retired_virtual_methods.push_back(published);
+    }
   }
 };
 

@@ -2710,7 +2710,7 @@ StackMethod* StackInterpreter::ResolveVirtualTarget(StackClass* concrete_class, 
       method_name = klass->GetName() + method_ending;
       virtual_call = klass->GetMethod(method_name);
     }
-    concrete_class->AddVirutalMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
+    concrete_class->AddVirtualMethod(virtual_cls_id, virtual_mthd_id, virtual_call);
   }
 #ifdef _DEBUG
   assert(virtual_call);

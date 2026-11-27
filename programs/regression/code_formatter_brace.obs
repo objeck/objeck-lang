@@ -1,0 +1,93 @@
+# EXTRA_LIBS: net,misc
+#~
+System.Utility.CodeFormatter: what follows a closing brace, and two operators.
+
+The formatter joins the token after a '}' to the brace, so that "};" and "})"
+stay together. Every other follower that had no blank line before it was joined
+as well, which is the "Fix me!" its closing-brace case carried: a constructor
+came out as "}New() {", an enum as "}enum E {", a field as "}@y : Int;", a
+comment as "}# note". A class after a brace lost the space after its keyword,
+"classB {", which is no longer the same program. A constructor's line lost one
+character of indentation, and an empty block kept a line of indentation in it.
+
+The scanner beside it read "<=" as the lambda arrow and "=>" as "<>" with a
+stray '>', so formatting changed what a program meant: "a <= b" came back as
+"a => b" and "(x) => {" as "(x) <> > {".
+
+The language server carries its own copy of this formatter
+(tools/lsp/server/format_code), with its own tests; this is the library's.
+~#
+use Collection;
+
+class CodeFormatterBrace {
+	@failed : static : Int;
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Format(src : String) ~ String {
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+		return System.Utility.CodeFormatter->New(options)->Format(src, false);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		src := "class A {\n@x : Int;\nNew() {\n@x := 1;\n}\nNew(x : Int) {\n@x := x;\n}\nenum E {\nP,\nQ\n}\nconsts K {\nONE := 1\n}\n@y : Int;\nmethod : public : F() ~ Nil {\nif(@x > 1) {\n@x := 2;\n}\n# note\nb := A->New();\ndo {\n@x += 1;\n}\nwhile(@x < 5);\nc := [1, 2];\neach(i : c) {\n@x += c[i];\n};\n}\nmethod : public : G() ~ Nil {\n}\n}\nclass B {\n}\n";
+
+		result := Format(src);
+		Check("the source formats", result <> Nil);
+		if(result = Nil) {
+			"FAIL: CodeFormatter returned Nil"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		Check("a constructor after a field keeps its indentation", result->Find("@x : Int;\n  New() {") > -1);
+		Check("a constructor after a brace starts its own line", result->Find("}New") < 0 & result->Find("  }\n\n  New(x : Int) {") > -1);
+		Check("an enum after a brace is set apart", result->Find("  }\n\n  enum E {") > -1);
+		Check("a consts block after a brace is set apart", result->Find("  }\n\n  consts K {") > -1);
+		Check("a field after a brace starts its own line", result->Find("  }\n  @y : Int;") > -1);
+		Check("a comment after a brace starts its own line", result->Find("    }\n    # note\n") > -1);
+		Check("a statement after a comment is unchanged", result->Find("    # note\n    b := A->New();") > -1);
+		Check("a do-while's while stays on the brace's line", result->Find("    }while(@x < 5);") > -1);
+		Check("a semi-colon stays on the brace's line", result->Find("    };\n  }") > -1);
+		Check("a method after a brace is set apart", result->Find("  }\n\n  method : public : G() ~ Nil {") > -1);
+		Check("an empty block has no line of indentation in it", result->Find("G() ~ Nil {\n  }") > -1);
+		Check("a class after a brace keeps the space after its keyword", result->Find("classB") < 0 & result->Find("}\n\nclass B {\n}") > -1);
+
+		again := Format(result);
+		Check("formatting the result again changes nothing", again <> Nil & again->Equals(result));
+
+		# with the blank line already there, it is kept once
+		spaced := Format("class A {\n@x : Int;\nNew() {\n@x := 1;\n}\n\nNew(x : Int) {\n@x := x;\n}\n}\n");
+		Check("a blank line before a constructor is kept, once", spaced <> Nil & spaced->Find("  }\n\n  New(x : Int) {") > -1 & spaced->Find("\n\n\n") < 0);
+
+		# the operators
+		ops := Format("class A {\nfunction : Main(args : String[]) ~ Nil {\na := 1;\nif(a <= 2 & a >= 0 & a <> 5 & a < 9 & a > 0) {\na := 3;\n};\nf := Func->New((x) => {return x + 1;});\n}\n}\n");
+		Check("the operator source formats", ops <> Nil);
+		if(ops <> Nil) {
+			Check("<= is kept", ops->Find("a <= 2") > -1);
+			Check(">= is kept", ops->Find("a >= 0") > -1);
+			Check("<> is kept", ops->Find("a <> 5") > -1);
+			Check("< and > are kept", ops->Find("a < 9") > -1 & ops->Find("a > 0") > -1);
+			Check("the lambda arrow is kept", ops->Find("(x) => {") > -1);
+			Check("no arrow where there was none", ops->Find("a => 2") < 0 & ops->Find("<> >") < 0);
+
+			ops_again := Format(ops);
+			Check("formatting the operators again changes nothing", ops_again <> Nil & ops_again->Equals(ops));
+		};
+
+		if(@failed = 0) {
+			"PASS: CodeFormatter closing brace and operators"->PrintLine();
+		}
+		else {
+			"FAIL: {$@failed} CodeFormatter check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
