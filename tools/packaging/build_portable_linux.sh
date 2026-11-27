@@ -37,9 +37,14 @@ if [ "${1:-}" = --in-container ]; then
   [ -f /etc/almalinux-release ] || die "--in-container is for the build image only"
   # The checkout, the output and the libraries belong to whoever started the
   # container, however this ends.
-  # /out is the caller's directory and may hold other releases and backups, so
-  # only what this build puts there is chowned, never the whole directory.
-  trap 'chown -R "$HOST_UID:$HOST_GID" /src /deps; chown "$HOST_UID:$HOST_GID" /out/objeck-linux-*_0.0.0.tgz 2>/dev/null || true' EXIT
+  # /out is the caller's directory and may hold other releases (another
+  # architecture's, built by someone else) and backups. This invocation owns
+  # exactly one file there, the staging name the host passed in STAGE_NAME, so
+  # that one file is all that is chowned: a glob over objeck-linux-*.tgz would
+  # take ownership of a neighbour's archive even when this build fails early.
+  [ -n "${STAGE_NAME:-}" ] || die "STAGE_NAME names the staging archive in /out and is required"
+  case "$STAGE_NAME" in */*) die "STAGE_NAME must be a file name" ;; esac
+  trap 'chown -R "$HOST_UID:$HOST_GID" /src /deps; [ ! -e "/out/$STAGE_NAME" ] || chown "$HOST_UID:$HOST_GID" "/out/$STAGE_NAME" || true' EXIT
   export OBJECK_DEPS=/deps
   bash /src/tools/deps/build_linux_portable_deps.sh "$OBJECK_DEPS"
 
@@ -74,7 +79,6 @@ EOF
   ./deploy_posix.sh "$ARCH" deploy
   TARBALL="$HOME/Desktop/objeck-linux-${ARCH}_0.0.0.tgz"
   [ -f "$TARBALL" ] || die "deploy_posix.sh wrote no $TARBALL"
-  mv -f "$TARBALL" "/out/objeck-linux-${ARCH}_0.0.0.tgz"
 
   # A shared library links with symbols left undefined, and the loader only
   # looks for a function when it is first called. So a native library that
@@ -91,6 +95,9 @@ EOF
   done
   [ $unresolved -eq 0 ] || die "a native library has unresolved symbols"
   echo "native libraries: every symbol resolves"
+  # Only a build that passed its checks leaves anything in /out, and under the
+  # staging name: the host publishes it after its own gate.
+  mv -f "$TARBALL" "/out/$STAGE_NAME"
   exit 0
 fi
 
@@ -122,22 +129,29 @@ IMAGE=objeck-portable-linux:el8
 echo "== build image $IMAGE"
 "${DOCKER[@]}" build -q -t "$IMAGE" "$REPO/tools/packaging/portable-linux"
 
-# Whatever archive is already there is from an earlier build; remove it so one
-# found afterwards can only be this build's.
+# The archive a previous build left at $TGZ is the last good one, and stays until
+# a new one has passed every check. This build writes under a name of its own
+# (unique, so a file found there can only be this build's) and replaces $TGZ with
+# one atomic mv at the very end. A failed build, in the container or in the gate,
+# leaves $TGZ as it was and removes its staging file.
 TGZ="$OUT/objeck-linux-${ARCH}_0.0.0.tgz"
-rm -f "$TGZ"
+STAGE_NAME=".staging-$$-$(date +%s)-${RANDOM}.tgz"
+STAGE="$OUT/$STAGE_NAME"
+trap 'rm -f "$STAGE"' EXIT
 
 echo "== build linux-$ARCH in $IMAGE"
 "${DOCKER[@]}" run --rm \
   -v "$REPO:/src" -v "$DEPS:/deps" -v "$OUT:/out" \
-  -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+  -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e STAGE_NAME="$STAGE_NAME" \
   -e OBJECK_REQUIRE_API_DOCS="${OBJECK_REQUIRE_API_DOCS:-}" \
   -e GITHUB_ACTIONS="${GITHUB_ACTIONS:-}" -e VERBOSE="${VERBOSE:-}" \
   "$IMAGE" bash /src/tools/packaging/build_portable_linux.sh --in-container
 
-[ -f "$TGZ" ] || die "the build wrote no $TGZ"
+[ -f "$STAGE" ] || die "the build wrote no archive"
 
 if [ "$GATE" = 1 ]; then
   python3 "$REPO/tools/cicd/check_docs_deps.py" --portable "$REPO/core/release/deploy" --platform "linux-$ARCH"
 fi
+# Published only now, after the container's checks and the gate.
+mv -f "$STAGE" "$TGZ"
 echo "$TGZ"
