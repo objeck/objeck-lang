@@ -1025,6 +1025,15 @@
           return Fail(from, L"a jump outside the method", true);
         }
         if(verify) {
+          // The depth limit (see Run), before this state is kept: a copy of the stack
+          // is kept for every instruction, so a method that only pushes cost memory
+          // with the square of its length before the walk ended and the check after
+          // it ran: 42 GB to refuse 50,000 pushes (a String literal, as obc 2026.11.3
+          // compiled one), and a crafted image is as long as its author likes.
+          if(stack.size() > entry_stack.size() + MAX_OPERAND_GROWTH) {
+            return Fail(to, L"the operand stack grows to " + std::to_wstring(stack.size() - entry_stack.size()) +
+                        L" words past the arguments, more than a call's room", true);
+          }
           edges.push_back({ from, to });
         }
         if(!seen[to]) {
@@ -1377,6 +1386,19 @@
       // own id says, whatever the instruction's count is, and pushes a result or
       // not: the row is that declaration. The id is the literal just below (the
       // loader checked it is one, and no jump lands between the two).
+      // Whether the TRAP_RTRN at 'ip' leaves a word: every one does but a trap the
+      // table says pushes nothing. An id the table does not hold (or one that is not
+      // a literal) keeps the word, as before the table was read here.
+      bool TrapRtrnPushes(long ip) {
+        if(ip > 0 && instrs[ip - 1].GetType() == LOAD_INT_LIT) {
+          const trap_signatures::Row* row = trap_signatures::Find(instrs[ip - 1].GetInt64Operand());
+          if(row && row->rtrn && !row->pushes) {
+            return false;
+          }
+        }
+        return true;
+      }
+
       bool StepTrap(std::vector<int>& stack, long ip, bool rtrn, long count) {
         const trap_signatures::Row* row = nullptr;
         if(ip > 0 && instrs[ip - 1].GetType() == LOAD_INT_LIT) {
@@ -2148,7 +2170,13 @@
         }
         // one word back, typed by its uses (the JIT models it the same way)
         if(!PopN(stack, ip, op1)) return false;
-        stack.push_back(NewValue(RK_UNKNOWN));
+        // except the one trap written TRAP_RTRN whose handler pushes nothing
+        // (LOAD_CLS_BY_INST stores its result in the frame: trap_signatures.h, and
+        // StepTrap above). A word pushed for it here left every height after it in
+        // System.Base:GetClass one above the verifier's and the interpreter's.
+        if(TrapRtrnPushes(ip)) {
+          stack.push_back(NewValue(RK_UNKNOWN));
+        }
         break;
 
       case SWAP_INT: {
@@ -2904,8 +2932,11 @@
       // arguments, checked once at entry (call_stack.h), and nothing inside the
       // method checks again. Joins at one height keep a loop from growing the stack,
       // so the deepest entry height bounds the method; a body that pushes past the
-      // room writes beyond the reserved stack. The compiler cannot get near it (it
-      // refuses nesting far below the limit), so this only refuses a crafted image.
+      // room writes beyond the reserved stack. The compiler cannot get near it: it
+      // refuses nesting far below the limit, and a String literal, the one construct
+      // that put a word on the stack for each of its elements, is built an element at
+      // a time past 512 of them (STRING_LITERAL_STACK_MAX; one of 999 strings used to
+      // compile and be refused here). So this only refuses a crafted image.
       if(verify) {
         size_t deepest = 0;
         for(long ip = 0; ip < count; ++ip) {

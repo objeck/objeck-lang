@@ -4699,6 +4699,23 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     for(size_t i = 0; i < all_elements.size(); ++i) {
       AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
     }
+    // A String literal is copied from the operand stack: every element is pushed,
+    // then the array, and one trap fills it (CPY_CHAR_STR_ARYS). A method has room
+    // for about 1,000 words there, and the loader refuses one that holds more
+    // (RefMap, MAX_OPERAND_GROWTH), so a literal of 999 strings compiled and then
+    // would not load. A long one is built in a hidden local instead, an element at
+    // a time, as a literal with a variable in it is (AnalyzeDynamicArray): the
+    // stack holds one string however long the literal is.
+    if(all_elements.size() > STRING_LITERAL_STACK_MAX && current_method && current_table) {
+      Type* tmp_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
+      tmp_type->SetDimension(array->GetDimension());
+      static int static_array_id = 0;
+      const std::wstring tmp_name = current_method->GetName() + L":#string_array_tmp#" + std::to_wstring(static_array_id++);
+      SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, tmp_type, false, true);
+      current_table->AddEntry(entry, true);
+      entry->WasLoaded();
+      array->SetDynamicEntry(entry);
+    }
     break;
 
   default:

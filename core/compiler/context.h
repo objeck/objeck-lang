@@ -36,6 +36,9 @@
 #include "tree.h"
 
 #define SYSTEM_BASE_NAME L"System.Base" 
+// the longest String literal copied from the operand stack; a longer one is built an
+// element at a time (ContextAnalyzer::AnalyzeStaticArray)
+#define STRING_LITERAL_STACK_MAX 512
 
 using namespace frontend;
 

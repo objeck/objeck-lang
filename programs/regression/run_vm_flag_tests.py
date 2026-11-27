@@ -246,7 +246,10 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     func-ref parameters (closure_nested_capture) and the collections library
     (collect_hash_open): every map builds, every thread's frames account for
     every word on its stack, no word typed as a reference points at nothing,
-    and no word typed Int or Float points at an object.
+    and no word typed Int or Float points at an object. get_class_height_test
+    has a thread inside Base->GetClass() while another collects: the map of
+    GetClass was one word too high after its trap (the one TRAP_RTRN that
+    pushes nothing), and a thread parked there was mismatched.
  25. A minor collection leaves an Int alone, whatever its value (#1452). The
     collector relocated every operand-stack word equal to a moved object's old
     address, so an Int holding GetInstanceID() changed under a collection. It now
@@ -333,7 +336,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     call whose override was renamed away stops with "Invalid virtual call"
     instead of running the declaration's empty body. And a valid program that
     clears a Nil array (vm_flag_fixtures/nil_array_clear.obs) gets the Nil
-    runtime error in all three modes, where it crashed the VM.
+    runtime error in all three modes, where it crashed the VM. The limit on a
+    method's operand stack (1,000 words above its arguments) is met where it is
+    passed: a function given 400,000 pushes is refused at the 1,001st word, where
+    the walk used to keep a state for every one of them first (gigabytes) and
+    compare afterwards; 1,000 words load and run.
  31. A collection leaves an Int[] element alone when its value IS an object's
     address (GC roots phase 6, docs/GC_ROOTS_DESIGN.md section 10). An Int[]
     and an object array shared one heap tag, so the collector scanned every
@@ -781,6 +788,7 @@ def main():
 
     check_loader_rejects_malformed(obc, obr, env, bin_dir)
     check_loader_refuses_changed(obc, obr, env, bin_dir)
+    check_loader_depth_limit(obc, obr, env, bin_dir)
     check_address_int_array(obc, obr, env, bin_dir)
 
     check_error_exit_with_threads(obc, obr, env, bin_dir)
@@ -1825,7 +1833,8 @@ def check_gc_roots_audit(obc, obr, env, bin_dir):
     # ---- 24. the operand-stack reference maps agree with the live stacks -----------
     audit_env = dict(env)
     audit_env["OBJECK_GC_ROOTS"] = "audit"
-    for name in ("gc_cond_value_root", "opt_inline_and_or_slots", "closure_nested_capture", "collect_hash_open"):
+    for name in ("gc_cond_value_root", "opt_inline_and_or_slots", "closure_nested_capture", "collect_hash_open",
+                 "get_class_height_test"):
         src = os.path.join(SCRIPT_DIR, name + ".obs")
         dest = os.path.join(SCRIPT_DIR, name + ".obe")
         rc, out, err = run([obc, "-src", src, "-dest", dest], env=env, cwd=bin_dir)
@@ -2349,6 +2358,69 @@ def changed_program_cases(image):
     cases.append(("a String class id that names another class", "the String class id does not name System.String",
                   put(8, "<i", class_ids["Shape"])))
     return cases
+
+
+def check_loader_depth_limit(obc, obr, env, bin_dir):
+    # ---- the operand-stack limit is met where it is passed, not after the walk ----
+    # A method may hold 1,000 words above its arguments (RefMap, MAX_OPERAND_GROWTH).
+    # The verifier keeps the stack's state for every instruction and compared the
+    # deepest with the limit only when the walk was over, so a method that pushes N
+    # words cost N * N / 2 states first: 42 GB to refuse 50,000 pushes. obc cannot
+    # write such a method (it builds a long String literal an element at a time), so
+    # the image is made here: N 'LOAD_INT_LIT 0' and N 'POP_INT' put in front of a
+    # function that returns 7. With 1,000 it holds 1,000 words and must load and run;
+    # with 1,001 it must be refused; with 400,000 it must be refused at the same
+    # word, 1,001, which is what says the walk stopped there (it used to name the
+    # deepest, after gigabytes).
+    import struct
+    import time
+    sys.path.insert(0, os.path.join(SCRIPT_DIR, "..", "..", "tools", "fuzz", "loader"))
+    import obe_image
+    message = "the operand stack grows to 1001 words past the arguments"
+    with tempfile.TemporaryDirectory() as scratch:
+        src = os.path.join(scratch, "depth_limit.obs")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(os.linesep.join(["class DepthLimit {", "  function : Seven() ~ Int {", "    return 7;", "  }", "",
+                                     "  function : Main(args : String[]) ~ Nil {", "    Seven()->PrintLine();", "  }", "}", ""]))
+        control = os.path.join(scratch, "depth_limit.obe")
+        rc, out, err = run([obc, "-src", src, "-opt", "s0", "-dest", control], env=env, cwd=bin_dir)
+        check("the depth-limit program compiles", rc == 0 and os.path.exists(control), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+        image = obe_image_of(control)
+        _, classes, _ = obe_image.parse(image)
+        found = [(m, c) for c in classes for m in c["methods"] if ":Seven:" in m[0] and not c["debug"]]
+        check("the image holds the function to deepen", len(found) == 1, repr([m[0] for m, _ in found]))
+        if len(found) != 1:
+            return
+        _, code = obe_image.method_code(image, found[0][0][1], False)
+        first = code[0][1]
+        count_at = first - 4
+        count = struct.unpack_from("<I", image, count_at)[0]
+        check("the function's instruction count is where the image format puts it", count == len(code), f"{count} != {len(code)}")
+
+        def deepened(n):
+            pushes = (bytes([obe_image.OP["LOAD_INT_LIT"]]) + struct.pack("<q", 0)) * n
+            pops = bytes([obe_image.OP["POP_INT"]]) * n
+            return image[:count_at] + struct.pack("<I", count + 2 * n) + pushes + pops + image[first:]
+
+        verify_env = dict(env)
+        verify_env["OBJECK_VERIFY_ONLY"] = "1"
+        path = os.path.join(scratch, "deep.obe")
+        with open(path, "wb") as f:
+            f.write(obe_file_of(deepened(1000)))
+        rc, out, err = run([obr, path], env=verify_env, cwd=bin_dir, timeout=120)
+        check("1,000 words above the arguments load", rc == 0 and not err.strip(), f"rc={rc} err={err[-300:]!r}")
+        rc, out, err = run([obr, "--jit=off", path], env=env, cwd=bin_dir, timeout=120)
+        check("and run", rc == 0 and out.strip() == b"7", f"rc={rc} out={out[-100:]!r} err={err[-300:]!r}")
+        for n, label in ((1001, "1,001 words"), (400000, "400,000 words: at the 1,001st, not after the walk")):
+            with open(path, "wb") as f:
+                f.write(obe_file_of(deepened(n)))
+            started = time.time()
+            rc, out, err = run([obr, path], env=verify_env, cwd=bin_dir, timeout=300)
+            text = err.decode(errors="replace")
+            check(f"the loader refuses {label} ({time.time() - started:.1f} s)", loader_refused(rc, text, message),
+                  f"rc={rc} err={text[-300:]!r}")
 
 
 def check_loader_refuses_changed(obc, obr, env, bin_dir):
