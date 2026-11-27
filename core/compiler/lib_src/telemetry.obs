@@ -3189,7 +3189,7 @@ bundle System.Telemetry {
 		}
 
 		#~
-		Estimated energy between two times, from the retained samples with the end points interpolated. Past the last sample the last reading is held, which is what lets a call that has just returned be priced before the next sample arrives.
+		Estimated energy between two times, from the retained samples with the end points interpolated. Past the last sample the last reading is held, which is what lets a call that has just returned be priced before the next sample arrives. Where samples share a time the power stepped: an interval that starts there starts at the last of them, and one that ends there ends at the first.
 		@param t_from start time in seconds
 		@param t_to end time in seconds
 		@return joules, or NaN if the start is before the first retained sample, there is no sample, or the interval crosses a gap (or a held tail) longer than the maximum gap
@@ -3220,6 +3220,13 @@ bundle System.Telemetry {
 			for(i := 1; i < @size; i += 1;) {
 				t1 := At(i);
 				if(t1 <= t_from) {
+					# Samples may share a time: the power stepped there, and the last of them is
+					# the power from that time on. PowerAtLocked answers with the first, the value
+					# the segment before it ends on, so an interval that starts on the step would
+					# ramp up from the old power (0 W then 100 W at 1 s: 50 J for 1 to 2 s, not 100).
+					if(t1 = t_from) {
+						cur_w := WattsAt(i);
+					};
 					continue;
 				};
 				if(cur_t >= t_to) {

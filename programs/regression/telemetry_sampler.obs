@@ -63,6 +63,7 @@ class TelemetrySamplerTest {
 		Process();
 		RuntimeReadings();
 		Energy();
+		EqualTimes();
 		Loop();
 		Wiring();
 		Concurrent();
@@ -281,6 +282,100 @@ class TelemetrySamplerTest {
 		Near("total over all 10 samples: 9 J", b->GetJoules(), 9.0, 1.0e-12);
 		Near("retained span (7..9): 7.5 to 9 is 1.5 J", b->JoulesBetween(7.5, 9.0), 1.5, 1.0e-12);
 		Check("before the retained span: NaN", b->JoulesBetween(2.0, 3.0) <> b->JoulesBetween(2.0, 3.0));
+	}
+
+	# Samples that share a time are a step in the power. An interval that starts on the step
+	# starts at the power after it (the last sample at that time), one that ends on it ends at
+	# the power before it (the first), and an interval across it gets both sides. JoulesBetween
+	# started at the first sample of the step and ramped: 0 W then 100 W at 1 s, held to 2 s,
+	# is 100 J in total and was 50 J for "1 to 2 s".
+	function : EqualTimes() ~ Nil {
+		# a step up in the middle
+		up := EnergyEstimator->New();
+		up->AddSample(0.0, 0.0);
+		up->AddSample(1.0, 0.0);
+		up->AddSample(1.0, 100.0);
+		up->AddSample(2.0, 100.0);
+		Near("step up at 1 s: the total is 100 J", up->GetJoules(), 100.0, 1.0e-9);
+		Near("step up: 1 to 2 s is all of it, 100 J", up->JoulesBetween(1.0, 2.0), 100.0, 1.0e-9);
+		Near("step up: 0 to 1 s is 0 J", up->JoulesBetween(0.0, 1.0), 0.0, 1.0e-9);
+		Near("step up: 0 to 2 s is 100 J", up->JoulesBetween(0.0, 2.0), 100.0, 1.0e-9);
+		Near("step up: 0.5 to 1.5 s is 50 J", up->JoulesBetween(0.5, 1.5), 50.0, 1.0e-9);
+		Near("step up: 1 to 1.5 s is 50 J", up->JoulesBetween(1.0, 1.5), 50.0, 1.0e-9);
+		Near("step up: 1.5 to 2 s is 50 J", up->JoulesBetween(1.5, 2.0), 50.0, 1.0e-9);
+		Near("step up: 0 to 0.5 s is 0 J", up->JoulesBetween(0.0, 0.5), 0.0, 1.0e-9);
+		Near("step up: 0.25 to 1 s, ending on the step, is 0 J", up->JoulesBetween(0.25, 1.0), 0.0, 1.0e-9);
+		Near("step up: a zero-length interval on the step is 0 J", up->JoulesBetween(1.0, 1.0), 0.0, 1.0e-12);
+		Near("step up: 1 to 3 s holds the last reading, 200 J", up->JoulesBetween(1.0, 3.0), 200.0, 1.0e-9);
+		Near("step up: 2 to 3 s is the held tail, 100 J", up->JoulesBetween(2.0, 3.0), 100.0, 1.0e-9);
+		Near("step up: the two halves add up to the total", up->JoulesBetween(0.0, 1.0) + up->JoulesBetween(1.0, 2.0), up->GetJoules(), 1.0e-9);
+		Check("step up: before the first sample is still NaN", up->JoulesBetween(-1.0, 2.0) <> up->JoulesBetween(-1.0, 2.0));
+
+		# a step down: the interval after it has no energy
+		down := EnergyEstimator->New();
+		down->AddSample(0.0, 100.0);
+		down->AddSample(1.0, 100.0);
+		down->AddSample(1.0, 0.0);
+		down->AddSample(2.0, 0.0);
+		Near("step down: 0 to 1 s is 100 J", down->JoulesBetween(0.0, 1.0), 100.0, 1.0e-9);
+		Near("step down: 1 to 2 s is 0 J", down->JoulesBetween(1.0, 2.0), 0.0, 1.0e-9);
+		Near("step down: 0.5 to 1.5 s is 50 J", down->JoulesBetween(0.5, 1.5), 50.0, 1.0e-9);
+		Near("step down: 0 to 2 s is the total", down->JoulesBetween(0.0, 2.0), down->GetJoules(), 1.0e-9);
+
+		# three samples at one time in the middle: the last one counts from there on
+		three := EnergyEstimator->New();
+		three->AddSample(0.0, 0.0);
+		three->AddSample(1.0, 0.0);
+		three->AddSample(1.0, 40.0);
+		three->AddSample(1.0, 100.0);
+		three->AddSample(2.0, 100.0);
+		Near("three at 1 s: the total is 100 J", three->GetJoules(), 100.0, 1.0e-9);
+		Near("three at 1 s: 1 to 2 s is 100 J", three->JoulesBetween(1.0, 2.0), 100.0, 1.0e-9);
+		Near("three at 1 s: 0 to 1 s is 0 J", three->JoulesBetween(0.0, 1.0), 0.0, 1.0e-9);
+		Near("three at 1 s: 0.5 to 2 s is 100 J", three->JoulesBetween(0.5, 2.0), 100.0, 1.0e-9);
+
+		# equal times at the very start
+		first := EnergyEstimator->New();
+		first->AddSample(0.0, 5.0);
+		first->AddSample(0.0, 7.0);
+		first->AddSample(0.0, 10.0);
+		first->AddSample(1.0, 10.0);
+		Near("three at the start: the total is 10 J", first->GetJoules(), 10.0, 1.0e-9);
+		Near("three at the start: 0 to 1 s is 10 J", first->JoulesBetween(0.0, 1.0), 10.0, 1.0e-9);
+		Near("three at the start: 0 to 0.5 s is 5 J", first->JoulesBetween(0.0, 0.5), 5.0, 1.0e-9);
+		Near("three at the start: 0.5 to 1 s is 5 J", first->JoulesBetween(0.5, 1.0), 5.0, 1.0e-9);
+
+		# equal times at the very end: the held tail is the last reading
+		last := EnergyEstimator->New();
+		last->AddSample(0.0, 10.0);
+		last->AddSample(1.0, 10.0);
+		last->AddSample(1.0, 50.0);
+		Near("two at the end: the total is 10 J", last->GetJoules(), 10.0, 1.0e-9);
+		Near("two at the end: 0 to 1 s is 10 J", last->JoulesBetween(0.0, 1.0), 10.0, 1.0e-9);
+		Near("two at the end: 1 to 2 s holds 50 W, 50 J", last->JoulesBetween(1.0, 2.0), 50.0, 1.0e-9);
+		Near("two at the end: 0.5 to 2 s is 5 + 50 J", last->JoulesBetween(0.5, 2.0), 55.0, 1.0e-9);
+		Near("two at the end: 1.5 to 2 s is 25 J", last->JoulesBetween(1.5, 2.0), 25.0, 1.0e-9);
+
+		# a step, then a ramp: the start value is the one after the step, the rest interpolates
+		ramp := EnergyEstimator->New();
+		ramp->AddSample(0.0, 0.0);
+		ramp->AddSample(1.0, 0.0);
+		ramp->AddSample(1.0, 100.0);
+		ramp->AddSample(3.0, 200.0);
+		Near("step then ramp: 1 to 3 s is 300 J", ramp->JoulesBetween(1.0, 3.0), 300.0, 1.0e-9);
+		Near("step then ramp: 1 to 2 s is 125 J", ramp->JoulesBetween(1.0, 2.0), 125.0, 1.0e-9);
+		Near("step then ramp: 2 to 3 s is 175 J", ramp->JoulesBetween(2.0, 3.0), 175.0, 1.0e-9);
+
+		# the step survives the ring wrapping: only the last four samples are kept
+		ring := EnergyEstimator->New(4);
+		for(t := 0; t < 10; t += 1;) {
+			ring->AddSample(t->As(Float), 1.0);
+		};
+		ring->AddSample(10.0, 1.0);
+		ring->AddSample(10.0, 9.0);
+		ring->AddSample(11.0, 9.0);
+		Near("wrapped ring: 10 to 11 s after the step is 9 J", ring->JoulesBetween(10.0, 11.0), 9.0, 1.0e-9);
+		Near("wrapped ring: 9 to 10 s before it is 1 J", ring->JoulesBetween(9.0, 10.0), 1.0, 1.0e-9);
 	}
 
 	function : Loop() ~ Nil {
