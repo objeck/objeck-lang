@@ -73,7 +73,7 @@ bundle Web.HTTP {
 		method : public : GetQueryParameters() ~ Map<String, String> {
 			if(@parsed & @query_params = Nil) {
 				@query_params := Map->New()<String, String>;
-				
+
 				query_keys_values := @query->Split('&');
 				if(query_keys_values->Size() > 0) {
 					each(query_key_value in query_keys_values) {
@@ -90,7 +90,7 @@ bundle Web.HTTP {
 					};
 				};
 			};
-			
+
 			return @query_params;
 		}
 
@@ -145,7 +145,7 @@ bundle Web.HTTP {
 
 			return Nil;
 		}
-		
+
 		#~
 		Gets port
 		@return port, -1 if not present
@@ -233,18 +233,16 @@ bundle Web.HTTP {
 						port_str := part->SubString(port_index, part->Size() - port_index);
 						@port := port_str->ToInt();
 					}
-					
+
 					query_index := part->Find('?');
 					if(query_index > -1) {
 						query_index += 1;
 						@query := part->SubString(query_index, part->Size() - query_index);
 						@host := part->SubString(query_index - 1);
 					}
-					
-					if(@host = Nil) {
-						@host := part;
-					};
-					
+
+					@host := @host ?? part;
+
 					if(@host->EndsWith('/')) {
 						@path := "/";
 					};
@@ -252,9 +250,7 @@ bundle Web.HTTP {
 			}
 			# path, query and fragment
 			else {
-				if(@path = Nil) {
-					@path := "";
-				};
+				@path := @path ?? "";
 				@path += '/';
 
 				# query and fragment
@@ -336,8 +332,7 @@ bundle Web.HTTP {
 
 			buffer := String->New();
 			points := str->CodePoints();
-			each(i : points) {
-				cp := points[i];
+			each(cp in points) {
 				if(IsUnreserved(cp) | (keep_slash & cp = 0x2F)) {
 					buffer->Append(cp->As(Char));
 				}
@@ -595,7 +590,7 @@ bundle Web.HTTP {
 			if(@path <> Nil) {
 				buffer += "\tpath='{$@path}'\n";
 			};
-			
+
 			if(@port > -1) {
 				buffer += "\tport='{$@port}'\n";
 			};
@@ -603,12 +598,12 @@ bundle Web.HTTP {
 			if(@query <> Nil) {
 				buffer += "\tquery='{$@query}'\n";
 			};
-			
+
 			if(@frag <> Nil) {
 				buffer += "\tfragment='{$@frag}'\n";
 			};
-					
-			return buffer;			
+
+			return buffer;
 		}
 	}
 
@@ -618,10 +613,9 @@ bundle Web.HTTP {
 
 			names_values := attrib_str->Split("; ");
 			if(names_values->Size() > 0) {
-				each(i : names_values) {
-					names_value := names_values[i];					
+				each(names_value in names_values) {
 					name_value_index := names_value->Find('=');
-					if(name_value_index > 0) {						
+					if(name_value_index > 0) {
 						name := names_value->SubString(0, name_value_index);
 						name_value_index += 1;
 						value := names_value->SubString(name_value_index, names_value->Size() - name_value_index);
@@ -634,7 +628,7 @@ bundle Web.HTTP {
 			}
 			else {
 				name_value_index := attrib_str->Find('=');
-				if(name_value_index > 0) {						
+				if(name_value_index > 0) {
 					name := attrib_str->SubString(0, name_value_index);
 					name_value_index += 1;
 					value := attrib_str->SubString(name_value_index, attrib_str->Size() - name_value_index);
@@ -696,8 +690,7 @@ bundle Web.HTTP {
 
 			size := 0;
 			digits := 0;
-			each(i : line) {
-				c := line->Get(i);
+			each(c in line) {
 				value := -1;
 				if(c >= '0' & c <= '9') {
 					value := c->As(Int) - '0'->As(Int);
@@ -1401,9 +1394,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 		```
 		~#
 		method : public : AddAttrib(name : String, value : String) ~ Bool {
-			if(@attribs = Nil) {
-				@attribs := Map->New()<String, String>;
-			};
+			@attribs := @attribs ?? Map->New()<String, String>;
 
 			if(@attribs->Has(name)) {
 				return false;
@@ -1436,7 +1427,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 				@attribs->Remove("Expires");
 			};
 			@expires := System.Time.Date->New(true);
-			
+
 		}
 
 		#~
@@ -1448,7 +1439,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 				@attribs->Remove("Expires");
 			};
 			@expires := expires;
-			
+
 			return true;
 		}
 
@@ -1502,22 +1493,22 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 		~#
 		method : public : ToShortString() ~ String {
 			buffer := "";
-			
+
 			buffer += @name;
 			buffer += '=';
 			buffer += @value;
 
 			return buffer;
 		}
-		
+
 		method : Parse(cookie_str : String) ~ Nil {
 			if(cookie_str <> Nil) {
 				names_values := cookie_str->Split("; ");
 				if(names_values->Size() > 0) {
 					each(i : names_values) {
-						names_value := names_values[i];					
+						names_value := names_values[i];
 						name_value_index := names_value->Find('=');
-						if(name_value_index > 0) {						
+						if(name_value_index > 0) {
 							name := names_value->SubString(0, name_value_index);
 							name_value_index += 1;
 							value := names_value->SubString(name_value_index, names_value->Size() - name_value_index);
@@ -1530,7 +1521,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 				}
 				else {
 					name_value_index := cookie_str->Find('=');
-					if(name_value_index > 0) {						
+					if(name_value_index > 0) {
 						name := cookie_str->SubString(0, name_value_index);
 						name_value_index += 1;
 						value := cookie_str->SubString(name_value_index, cookie_str->Size() - name_value_index);
@@ -1550,9 +1541,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 				@value := value;
 			}
 			else {
-				if(@attribs = Nil) {
-					@attribs := Map->New()<String, String>;
-				};
+				@attribs := @attribs ?? Map->New()<String, String>;
 				@attribs->Insert(name, value);
 			};
 
@@ -1565,7 +1554,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 				};
 			};
 		}
-		
+
 		method : native : FormatGmtTime(date : System.Time.Date) ~ String {
 			buffer := "";
 
@@ -1575,7 +1564,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 
 			day := date->GetDay();
 			if(day < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += day;
 			buffer += " ";
@@ -1589,21 +1578,21 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 
 			hour := date->GetHours();
 			if(hour < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += hour;
 			buffer += ":";
 
 			min := date->GetMinutes();
 			if(min < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += min;
 			buffer += ":";
 
 			sec := date->GetSeconds();
 			if(sec < 10) {
-				buffer += '0';			
+				buffer += '0';
 			};
 			buffer += sec;
 			buffer += " GMT";
@@ -2183,7 +2172,7 @@ accept->PrintLine();  # s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 			# Read lines until we hit a blank line (event boundary)
 			line := @socket->ReadLine();
 			while(line <> Nil & line->Size() >= 0) {
-				if(line->Size() = 0) {
+				if(line->IsEmpty()) {
 					# Blank line = end of event
 					if(has_data) {
 						return SSEEvent->New(event_type, data_buf, id);

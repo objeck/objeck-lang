@@ -81,8 +81,8 @@ solver->GetRSquared()->PrintLine();
 				term := avg - sub_total;
 				num += term * term;
 			};
-# "{$num} / {$dom}"->PrintLine();				
-			
+# "{$num} / {$dom}"->PrintLine();
+
 			# A constant target column has no variance to explain, so the total sum
 			# of squares is zero and R-squared is undefined. Objeck raises on a
 			# divide by zero rather than yielding Inf, so without this an ordinary
@@ -114,7 +114,7 @@ solver->GetRSquared()->PrintLine();
 		}
 
 		#~
-		Gets the equation coefficients 
+		Gets the equation coefficients
 		@return equation coefficients
 		~#
 		method : public : GetCoefficients() ~ Float[] {
@@ -131,7 +131,7 @@ solver->GetRSquared()->PrintLine();
 
 		#~
 		Formats the result into a string
-		@return string representation 
+		@return string representation
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";

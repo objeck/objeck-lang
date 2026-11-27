@@ -266,7 +266,7 @@ if(html <> Nil) {
 			client->SetDeadline(deadline_ms);
 			return client->Post(url, data, content_type);
 		}
-		
+
 		#~
 		Gets the HTTPS request headers
 		@return HTTPS request headers
@@ -335,8 +335,8 @@ if(html <> Nil) {
 		~#
 		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
-		}	
-		
+		}
+
 		#~
 		Gets the cookies
 		@return vector of cookies
@@ -368,7 +368,7 @@ if(html <> Nil) {
 		method : public : HasCookie(name : String) ~ Bool {
 			return GetCookie(name) <> Nil;
 		}
-		
+
 		#~
 		Sets a cookie
 		@param cookie cookie
@@ -441,7 +441,7 @@ if(html <> Nil) {
 		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String) ~ Web.HTTP.Response {
 			return QuickPost(url, data, content_type, Nil);
 		}
-		
+
 		#~
 		Performs a HTTPS POST
 		@param url URL
@@ -450,12 +450,11 @@ if(html <> Nil) {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+		function : QuickPost(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -463,7 +462,7 @@ if(html <> Nil) {
 			};
 
 			return client->Post(url, data, content_type);
-		}		
+		}
 
 		#~
 		Performs a HTTP POST
@@ -474,7 +473,7 @@ if(html <> Nil) {
 		function : QuickPut(url : Web.HTTP.Url, data : Byte[]) ~ Web.HTTP.Response {
 			return HttpsClient->New()->Put(url, data);
 		}
-		
+
 		#~
 		Performs a HTTPS POST
 		@param url URL
@@ -494,13 +493,12 @@ if(html <> Nil) {
 		@param headers key/value headers
 		@return read strings
 		~#
-		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+		function : QuickPut(url : Web.HTTP.Url, data : Byte[], content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
 			client := HttpsClient->New();
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -617,8 +615,7 @@ if(html <> Nil) {
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					client->AddHeader(key, value);
@@ -702,9 +699,7 @@ if(html <> Nil) {
 
 			address := url->GetHost();
 			location := url->GetPath();
-			if(location = Nil) {
-				location := "/";
-			};
+			location := location ?? "/";
 
 			query := url->GetQuery();
 			if(query <> Nil) {
@@ -759,8 +754,7 @@ if(html <> Nil) {
 			oper->Append("\r\nAccept: text/event-stream\r\n");
 
 			request_keys := @request_headers->GetKeys()<String>;
-			each(i : request_keys) {
-				request_key := request_keys->Get(i);
+			each(request_key in request_keys) {
 				request_value := @request_headers->Find(request_key);
 				oper->Append(request_key);
 				oper->Append(": ");
@@ -874,9 +868,7 @@ if(html <> Nil) {
 				address := url->GetHost();
 
 				location := url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
+				location := location ?? "/";
 
 				query := url->GetQuery();
 				if(query <> Nil) {
@@ -936,8 +928,7 @@ if(html <> Nil) {
 					oper->Append("\r\nConnection: close\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {
 						# the caller's credentials go to the caller's origin only (#1453)
 						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
 							request_value := @request_headers->Find(request_key);
@@ -1057,7 +1048,7 @@ if(html <> Nil) {
 			content_type := GetContentType();
 			return Web.HTTP.Response->New(content->ToByteArray(), status_code, content_type);
 		}
-		
+
 		#~
 		Performs a HTTPS GET and returns results as a String
 		@param url URL
@@ -1095,7 +1086,7 @@ if(html <> Nil) {
 		function : QuickGet(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			return QuickGet(url, content_type, Nil);
 		}
-		
+
 		#~
 		Performs a HTTPS GET and returns results as a String
 		@param url URL
@@ -1103,15 +1094,14 @@ if(html <> Nil) {
 		@param headers key/value headers
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
-					
+
 					if(value->IsEmpty()) {
 						client->RemoveHeader(key);
 					}
@@ -1129,19 +1119,18 @@ if(html <> Nil) {
 		@param url URL
 		@param content_type content type
 		@param headers key/value headers
-		@param pem the Privacy Enhanced Mail file		
+		@param pem the Privacy Enhanced Mail file
 		@return output buffer
 		~#
-		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {		
+		function : QuickGet(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {
 			client := HttpsClient->New();
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
-					
+
 					if(value->IsEmpty()) {
 						client->RemoveHeader(key);
 					}
@@ -1217,7 +1206,7 @@ if(html <> Nil) {
 		function : QuickDelete(url : Web.HTTP.Url, content_type : String) ~ Web.HTTP.Response {
 			return QuickDelete(url, content_type, Nil);
 		}
-		
+
 		#~
 		Performs a HTTPS DELETE and returns results as a String
 		@param url URL
@@ -1225,15 +1214,14 @@ if(html <> Nil) {
 		@param headers key/value headers
 		@return output buffer
 		~#
-		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {			
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>) ~ Web.HTTP.Response {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
-					
+
 					if(value->IsEmpty()) {
 						client->RemoveHeader(key);
 					}
@@ -1254,15 +1242,14 @@ if(html <> Nil) {
 		@param pem the Privacy Enhanced Mail file
 		@return output buffer
 		~#
-		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {			
+		function : QuickDelete(url : Web.HTTP.Url, content_type : String, headers : Map<String, String>, pem : String) ~ Web.HTTP.Response {
 			client := HttpsClient->New();
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
-					
+
 					if(value->IsEmpty()) {
 						client->RemoveHeader(key);
 					}
@@ -1399,9 +1386,7 @@ if(response <> Nil & response->GetCode() = 200) {
 				address := url->GetHost();
 
 				location := url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
+				location := location ?? "/";
 
 				query := url->GetQuery();
 				if(query <> Nil) {
@@ -1454,8 +1439,7 @@ if(response <> Nil & response->GetCode() = 200) {
 					oper->Append("\r\nConnection: close\r\n");
 
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {
-						request_key := request_keys->Get(i);
+					each(request_key in request_keys) {
 						# the caller's credentials go to the caller's origin only (#1453)
 						if(<>strip | <>Web.HTTP.RedirectCheck->IsCredential(request_key)) {
 							request_value := @request_headers->Find(request_key);
@@ -1598,10 +1582,10 @@ if(response <> Nil & response->GetCode() = 200) {
 client := SecureWebSocket->New(Url->New("wss://echo.websocket.org"));
 if(client->Connect()) {
   client->ReadSocketText()->PrintLine();
-  
+
   client->WriteTextSocket("Hello World!");
   client->ReadSocketText()->PrintLine();
-  
+
   client->CloseSocket();
 };
 	```
@@ -1628,7 +1612,7 @@ if(client->Connect()) {
 		#~
 		Constructor
 		@param url URL
-		@param cookies_enabled true if cookies are enabled, false otherwise		
+		@param cookies_enabled true if cookies are enabled, false otherwise
 		~#
 		New(url : Web.HTTP.Url, cookies_enabled : Bool) {
 			@url := url;
@@ -1636,7 +1620,7 @@ if(client->Connect()) {
 			@request_headers := Hash->New()<String, String>;
 			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
 			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
-			
+
 			@response_headers := Hash->New()<String, String>;
 
 			@cookies_enabled := cookies_enabled;
@@ -1655,7 +1639,7 @@ if(client->Connect()) {
 			@request_headers := Hash->New()<String, String>;
 			@request_headers->Insert("Cache-Control"->ToLower(), "max-age=0");
 			@request_headers->Insert("User-Agent"->ToLower(), "Objeck/1.0");
-			
+
 			@response_headers := Hash->New()<String, String>;
 
 			# @is_debug := true;
@@ -1677,11 +1661,9 @@ if(client->Connect()) {
 		method : public : Connect() ~ Bool {
 			if(@url->GetScheme()->Equals("wss")) {
 				address := @url->GetHost();
-				
+
 				location := @url->GetPath();
-				if(location = Nil) {
-					location := "/";
-				};
+				location := location ?? "/";
 
 				query := @url->GetQuery();
 				if(query <> Nil) {
@@ -1706,7 +1688,7 @@ if(client->Connect()) {
 					@response_headers->Empty();
 
 					oper := "GET ";
-					
+
 					# location and address land verbatim in the request line, so a CR, LF
 					# or space here splits the request itself. Url->New does not
 					# sanitize, and a Url is the input most likely to be untrusted.
@@ -1720,11 +1702,10 @@ if(client->Connect()) {
 					oper->Append(':');
 					oper->Append(port);
 					oper->Append("\r\n");
-					
+
 					request_keys := @request_headers->GetKeys()<String>;
-					each(i : request_keys) {		
-						request_key := request_keys->Get(i);
-						request_value := @request_headers->Find(request_key);					
+					each(request_key in request_keys) {
+						request_value := @request_headers->Find(request_key);
 						oper->Append(request_key);
 						oper->Append(": ");
 						oper->Append(request_value);
@@ -1740,12 +1721,12 @@ if(client->Connect()) {
 					key := Cipher.Encrypt->Base64(nonce);
 
 					oper->Append(key);
-					oper->Append("\r\n\r\n");		
-					
+					oper->Append("\r\n\r\n");
+
 					# IO.Console->Print("Get: |")->Print(oper)->PrintLine("|");
-					
+
 					socket->WriteString(oper);
-					
+
 					status_line := socket->ReadLine();
 					@status_code := Web.HTTP.WebSocketHandshake->StatusCode(status_line);
 					@status_msg := Nil;
@@ -1799,7 +1780,7 @@ if(client->Connect()) {
 
 					socket->Close();
 				}
-			};	
+			};
 
 			return false;
 		}
@@ -2094,7 +2075,7 @@ if(client->Connect()) {
 
 			if(in_bounds) {
 				frame_offset : Int;
-				
+
 				# create frame
 				frame : Byte[];
 
@@ -2107,8 +2088,8 @@ if(client->Connect()) {
 				else {
 					frame_offset := 14;
 				};
-				frame := Byte->New[frame_offset + length];	
-				
+				frame := Byte->New[frame_offset + length];
+
 				# set utf-8 opcode
 				if(fragment) {
 					frame[0] := 0x0 + mode;
@@ -2147,7 +2128,7 @@ if(client->Connect()) {
 				}
 				else if(length < 65536) {
 					mask_payload_length += 126; # payload size
-					
+
 					frame[1] := mask_payload_length;
 					EncodeInt(length, frame, 2, 2);
 
@@ -2190,7 +2171,7 @@ if(client->Connect()) {
 						opcodes[5] := frame[5];
 						opcodes[6] := frame[6];
 						opcodes[7] := frame[7];
-						opcodes[8] := frame[8];	
+						opcodes[8] := frame[8];
 
 						System.IO.Console->Print("write - opcode+length-ext-8: ")->PrintLine(opcodes->ToHexString());
 					};
@@ -2224,7 +2205,7 @@ if(client->Connect()) {
 					each(f in frame) {
 						buffer->Append(f)
 					};
-					
+
 					"write - frame: "->Print();
 					buffer->ToByteArray()->ToHexString()->PrintLine();
 					"\n==="->PrintLine();
@@ -2342,8 +2323,8 @@ if(client->Connect()) {
 		}
 
 		#~
-		Gets the last status code 
-		@return last status code 
+		Gets the last status code
+		@return last status code
 		~#
 		method : public : GetStatusCode() ~ Int {
 			return @status_code;
@@ -2351,7 +2332,7 @@ if(client->Connect()) {
 
 		#~
 		Gets the last status message
-		@return last status message 
+		@return last status message
 		~#
 		method : public : GetStatusMessage() ~ String {
 			return @status_msg;
@@ -2379,8 +2360,8 @@ if(client->Connect()) {
 		~#
 		method : public : EnableCookies(cookies_enabled : Bool) ~ Nil {
 			@cookies_enabled := cookies_enabled;
-		}	
-		
+		}
+
 		#~
 		Gets the cookies
 		@return vector of cookies

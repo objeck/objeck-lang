@@ -102,7 +102,7 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 		@return the value, or Nil if the text is not a decimal integer
 		~#
 		function : Parse(text : String) ~ BigInt {
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return Nil;
 			};
 

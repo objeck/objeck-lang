@@ -227,13 +227,9 @@ bundle API.Agent {
 		~#
 		New(text : String, calls : Vector<AgentToolCall>, stop : String, input_tokens : Int, output_tokens : Int) {
 			@text := text;
-			if(@text = Nil) {
-				@text := "";
-			};
+			@text := @text ?? "";
 			@calls := calls;
-			if(@calls = Nil) {
-				@calls := Vector->New()<AgentToolCall>;
-			};
+			@calls := @calls ?? Vector->New()<AgentToolCall>;
 			@stop := stop;
 			@input_tokens := input_tokens;
 			@output_tokens := output_tokens;
@@ -357,9 +353,7 @@ bundle API.Agent {
 		New(role : String, text : String) {
 			@role := role;
 			@text := text;
-			if(@text = Nil) {
-				@text := "";
-			};
+			@text := @text ?? "";
 			@calls := Vector->New()<AgentToolCall>;
 		}
 
@@ -616,13 +610,17 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 			@json_func := func;
 		}
 
+		#~
+		Sets the fields both constructors share, and the defaults: an empty object schema when the schema is Nil, not dangerous, no time limit of its own, in-thread mode
+		@param name tool name
+		@param description what the tool does
+		@param schema JSON Schema of the arguments, or Nil for a tool with no arguments
+		~#
 		method : Init(name : String, description : String, schema : JsonElement) ~ Nil {
 			@name := name;
 			@description := description;
 			@schema := schema;
-			if(@schema = Nil) {
-				@schema := AgentJs->Arguments("{\"type\":\"object\",\"properties\":{}}");
-			};
+			@schema := @schema ?? AgentJs->Arguments("{\"type\":\"object\",\"properties\":{}}");
 			@dangerous := false;
 			@timeout_ms := 0;
 			@mode := AgentTool->Mode->IN_THREAD;
@@ -790,9 +788,7 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 		method : public : InvokeWith(arguments : JsonElement, cancel : AgentCancel) ~ String {
 			if(@cancel_handler <> Nil) {
 				token := cancel;
-				if(token = Nil) {
-					token := AgentCancel->New();
-				};
+				token := token ?? AgentCancel->New();
 				return @cancel_handler->Run(arguments, token);
 			};
 
@@ -964,6 +960,12 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 			return names;
 		}
 
+		#~
+		Tests whether a name is in a list, comparing case-sensitively
+		@param list names, not Nil
+		@param name name to look for
+		@return true when the list has the name
+		~#
 		method : Listed(list : Vector<String>, name : String) ~ Bool {
 			i := 0;
 			while(i < list->Size()) {
@@ -1330,6 +1332,11 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 			return Redactor->Scrub(out);
 		}
 
+		#~
+		Appends one step of the transcript: the model's text, then one line per tool call with its status and its output cut to 300 characters
+		@param out text being built
+		@param step the step to write
+		~#
 		method : AppendStep(out : String, step : AgentStep) ~ Nil {
 			index := step->GetIndex();
 			reply := step->GetReply();
@@ -1379,6 +1386,11 @@ tool := AgentTool->New("get_weather", "Get the weather for a city", schema, Func
 			return json;
 		}
 
+		#~
+		Writes one step as JSON: index, text, stop reason, token counts and the calls with their status and timing; text, arguments and output are scrubbed of API keys
+		@param step the step to write
+		@return an object for the steps array
+		~#
 		method : StepJson(step : AgentStep) ~ JsonElement {
 			json := AgentJs->Object();
 			json->Insert("index", step->GetIndex());
@@ -1844,9 +1856,7 @@ agent->SetBudget(budget);
 			@kind := kind;
 			@step := step;
 			@data := data;
-			if(@data = Nil) {
-				@data := AgentJs->Object();
-			};
+			@data := @data ?? AgentJs->Object();
 		}
 
 		#~
@@ -1939,6 +1949,10 @@ agent->SetBudget(budget);
 			@events := Vector->New()<AgentEvent>;
 		}
 
+		#~
+		Receives an event as it happens
+		@param event the event
+		~#
 		method : public : OnEvent(event : AgentEvent) ~ Nil {
 			@events->AddBack(event);
 		}
@@ -2805,11 +2819,18 @@ scope->GetStepsUsed()->PrintLine();
 		@timer : System.Time.Timer;
 		@total : Float;
 
+		#~
+		Constructor; starts the timer
+		~#
 		New() {
 			@timer := System.Time.Timer->New(true);
 			@total := 0.0;
 		}
 
+		#~
+		Reads the clock
+		@return milliseconds since the clock was created; the loop thread is the only reader
+		~#
 		method : public : Ms() ~ Int {
 			@total += @timer->GetElapsedTime();
 			@timer->Start();
@@ -2827,11 +2848,20 @@ scope->GetStepsUsed()->PrintLine();
 		@text : String;
 		@failure : String;
 		@reply : AgentReply;
+		#~
+		Constructor; the slot starts empty, not done and not abandoned
+		~#
 		New() {
 			@mutex := ThreadMutex->New("agent_slot");
 			@cond := Condition->New();
 		}
 
+		#~
+		Stores what the worker produced and wakes a waiter. Nothing is stored when the slot was abandoned, but the waiter is still signalled
+		@param text a tool's output, or Nil
+		@param failure the error message, or Nil when the call worked
+		@param reply a model's reply, or Nil
+		~#
 		method : public : Complete(text : String, failure : String, reply : AgentReply) ~ Nil {
 			critical(@mutex) {
 				if(<>@abandoned) {
@@ -2855,6 +2885,11 @@ scope->GetStepsUsed()->PrintLine();
 			return flag;
 		}
 
+		#~
+		Waits until the worker has completed or the time runs out
+		@param millis longest wait in milliseconds
+		@return true when the worker completed
+		~#
 		method : public : WaitDone(millis : Int) ~ Bool {
 			flag := false;
 			critical(@mutex) {
@@ -2866,6 +2901,10 @@ scope->GetStepsUsed()->PrintLine();
 			return flag;
 		}
 
+		#~
+		Cuts the worker loose so that its late result is dropped
+		@return true when the worker had not finished, false when it had
+		~#
 		# true when the worker had not finished and is now cut loose
 		method : public : Abandon() ~ Bool {
 			flag := false;
@@ -2878,14 +2917,26 @@ scope->GetStepsUsed()->PrintLine();
 			return flag;
 		}
 
+		#~
+		Gets the output of a tool call
+		@return text, or Nil
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 
+		#~
+		Gets the error message of the call
+		@return message, or Nil when the call worked
+		~#
 		method : public : GetFailure() ~ String {
 			return @failure;
 		}
 
+		#~
+		Gets the model reply
+		@return reply, or Nil
+		~#
 		method : public : GetReply() ~ AgentReply {
 			return @reply;
 		}
@@ -2902,11 +2953,22 @@ scope->GetStepsUsed()->PrintLine();
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
 
+		#~
+		Constructor
+		@param slot where the result is put
+		~#
 		New(slot : AgentSlot) {
 			Parent("agent_worker");
 			@slot := slot;
 		}
 
+		#~
+		Sets the worker up to run a tool call
+		@param tool the tool
+		@param arguments the call's arguments
+		@param cancel the run's cancellation token
+		@return self for chaining
+		~#
 		method : public : ForTool(tool : AgentTool, arguments : JsonElement, cancel : AgentCancel) ~ AgentWorker {
 			@kind := 0;
 			@tool := tool;
@@ -2915,6 +2977,13 @@ scope->GetStepsUsed()->PrintLine();
 			return @self;
 		}
 
+		#~
+		Sets the worker up to make a model call
+		@param backend the model
+		@param conversation a copy of the conversation to send
+		@param tools the tools to offer
+		@return self for chaining
+		~#
 		method : public : ForModel(backend : ChatBackend, conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentWorker {
 			@kind := 1;
 			@backend := backend;
@@ -2927,6 +2996,10 @@ scope->GetStepsUsed()->PrintLine();
 			return @slot->IsFinished();
 		}
 
+		#~
+		Runs the call on the worker thread and puts the outcome, or the error that was raised, in the slot
+		@param param not used
+		~#
 		method : public : Run(param : System.Base) ~ Nil {
 			text : String;
 			failure : String;
@@ -2939,17 +3012,13 @@ scope->GetStepsUsed()->PrintLine();
 					reply := @backend->Chat(@conversation, @tools);
 					if(reply = Nil) {
 						failure := @backend->GetLastError();
-						if(failure = Nil) {
-							failure := "the backend returned no reply";
-						};
+						failure := failure ?? "the backend returned no reply";
 					};
 				};
 			}
 			on(e : Error) {
 				failure := e->GetMessage();
-				if(failure = Nil) {
-					failure := "the worker failed";
-				};
+				failure := failure ?? "the worker failed";
 			};
 			@slot->Complete(text, failure, reply);
 		}
@@ -3016,9 +3085,7 @@ result->GetText()->PrintLine();
 		New(backend : ChatBackend, registry : ToolRegistry) {
 			@backend := backend;
 			@registry := registry;
-			if(@registry = Nil) {
-				@registry := ToolRegistry->New();
-			};
+			@registry := @registry ?? ToolRegistry->New();
 			@conversation := AgentConversation->New();
 			@max_steps := 10;
 			@tool_timeout_ms := 0;
@@ -3365,9 +3432,7 @@ result->GetText()->PrintLine();
 						}
 						else {
 							message := @last_error;
-							if(message = Nil) {
-								message := "the backend returned no reply";
-							};
+							message := message ?? "the backend returned no reply";
 							result->Finish("", "error", message);
 						};
 						running := false;
@@ -3466,6 +3531,11 @@ result->GetText()->PrintLine();
 			return result;
 		}
 
+		#~
+		Ends the result with a stop reason and the sentence that explains it
+		@param result the result to close
+		@param reason the stop reason, i.e. cancelled, deadline or a budget_ reason
+		~#
 		# ends the result with a stop reason and a sentence for it
 		method : Stop(result : AgentResult, reason : String) ~ Nil {
 			message := reason;
@@ -3515,6 +3585,11 @@ result->GetText()->PrintLine();
 			result->Halt(reason, message);
 		}
 
+		#~
+		Names a tool mode for the trace
+		@param mode the mode
+		@return bounded_thread or in_thread
+		~#
 		method : ModeName(mode : AgentTool->Mode) ~ String {
 			if(mode = AgentTool->Mode->BOUNDED_THREAD) {
 				return "bounded_thread";
@@ -3522,6 +3597,10 @@ result->GetText()->PrintLine();
 			return "in_thread";
 		}
 
+		#~
+		Tests whether the run must stop now. A deadline passing also cancels the token. Once a reason is found it is kept
+		@return deadline or cancelled, or Nil to carry on
+		~#
 		# cancelled or deadline when the run must stop now, else Nil; the first answer is kept
 		method : Checkpoint() ~ String {
 			if(@halt <> Nil) {
@@ -3544,6 +3623,11 @@ result->GetText()->PrintLine();
 			return reason;
 		}
 
+		#~
+		Tests the limits that end the run before a model call, and traces the check when tracing is on
+		@param step_number number of the step about to start
+		@return the budget_ or stop reason that applies, or Nil to carry on
+		~#
 		# the budget limits that decide, before a model call, that the run is over
 		method : BeforeModel(step_number : Int) ~ String {
 			reason := Checkpoint();
@@ -3585,6 +3669,10 @@ result->GetText()->PrintLine();
 			return reason;
 		}
 
+		#~
+		Tests the token and cost budgets, which are known only after a reply
+		@return budget_tokens or budget_cost when one is used up, else Nil
+		~#
 		# tokens and cost, which are known only after a reply
 		method : OverBudget() ~ String {
 			if(@budget = Nil) {
@@ -3661,6 +3749,10 @@ result->GetText()->PrintLine();
 			};
 		}
 
+		#~
+		Works out how long a model call may take: the per-call limit, cut down to the time left before the deadline
+		@return milliseconds, 0 for no limit
+		~#
 		# milliseconds a model call may take, 0 for no limit
 		method : CallLimit() ~ Int {
 			limit := 0;
@@ -3679,6 +3771,12 @@ result->GetText()->PrintLine();
 			return limit;
 		}
 
+		#~
+		Makes one model call and retries it up to the retry limit, pausing between attempts. Each attempt counts as a model call
+		@param tools the tools to offer
+		@param step_number number of the step, for the trace
+		@return the reply, or Nil when the run was halted or the backend failed, in which case the last error says why
+		~#
 		# one model call, with retries; Nil when the run was halted (@halt) or the backend failed (@last_error)
 		method : ModelCall(tools : Vector<AgentTool>, step_number : Int) ~ AgentReply {
 			reply : AgentReply;
@@ -3729,9 +3827,7 @@ result->GetText()->PrintLine();
 					finished := true;
 				}
 				else {
-					if(@last_error = Nil) {
-						@last_error := "the backend returned no reply";
-					};
+					@last_error := @last_error ?? "the backend returned no reply";
 
 					NearDeadline();
 					if(Checkpoint() <> Nil) {
@@ -3784,6 +3880,9 @@ result->GetText()->PrintLine();
 			return reply;
 		}
 
+		#~
+		Halts the run when the deadline is less than 25 ms away, because a deadline-aware backend gives up that much before the loop's own clock does
+		~#
 		# a deadline-aware backend gives up a moment before the loop's own clock says the deadline passed
 		method : NearDeadline() ~ Nil {
 			if(@halt = Nil & @budget <> Nil & @budget->GetMaxWallMs() > 0 & @clock->Ms() + 25 >= @budget->GetMaxWallMs()) {
@@ -3793,6 +3892,10 @@ result->GetText()->PrintLine();
 			};
 		}
 
+		#~
+		Sleeps in slices of 10 ms, and stops early when the run is cancelled or past its deadline
+		@param millis time to wait
+		~#
 		# sleeps in short slices, so a cancellation or the deadline cuts it short
 		method : Pause(millis : Int) ~ Nil {
 			waited := 0;
@@ -3802,6 +3905,10 @@ result->GetText()->PrintLine();
 			};
 		}
 
+		#~
+		Copies the conversation, so a worker that outlives the call does not see it change
+		@return the copy, with the same system prompt and entries
+		~#
 		# a copy of the conversation for a worker that may outlive the call
 		method : Snapshot() ~ AgentConversation {
 			copy := AgentConversation->New();
@@ -3815,12 +3922,18 @@ result->GetText()->PrintLine();
 			return copy;
 		}
 
+		#~
+		Waits for a worker, until it is done, over its limit, cancelled or past the deadline. A worker still running when the wait ends is abandoned: a thread cannot be killed, so it keeps running but its late result is dropped
+		@param slot where the worker puts its result
+		@param limit longest wait in milliseconds, 0 for no limit
+		@return done, timeout, cancelled or deadline
+		~#
 		# waits for a worker: done, timeout (over limit), cancelled or deadline. A worker still running when
 		# the wait ends is abandoned: a thread cannot be killed, so it keeps running and its late result is dropped
 		method : Await(slot : AgentSlot, limit : Int) ~ String {
 			start := @clock->Ms();
 			how := "";
-			while(how->Size() = 0) {
+			while(how->IsEmpty()) {
 				slice := 10;
 				if(limit > 0) {
 					left := limit - (@clock->Ms() - start);
@@ -3854,6 +3967,12 @@ result->GetText()->PrintLine();
 			return how;
 		}
 
+		#~
+		Sends an event to the trace sink and to the observer when that also takes events
+		@param kind event kind
+		@param step number of the step, 0 when none
+		@param data details of the event
+		~#
 		method : Emit(kind : String, step : Int, data : JsonElement) ~ Nil {
 			@event_seq += 1;
 			event := AgentEvent->New(@event_seq, @clock->Ms(), kind, step, data);
@@ -3866,6 +3985,11 @@ result->GetText()->PrintLine();
 			};
 		}
 
+		#~
+		Traces a halt when tracing is on
+		@param reason why the run stopped
+		@param step number of the step, 0 when none
+		~#
 		method : EmitHalt(reason : String, step : Int) ~ Nil {
 			if(@tracing) {
 				data := AgentJs->Object();
@@ -3874,6 +3998,12 @@ result->GetText()->PrintLine();
 			};
 		}
 
+		#~
+		Answers every call of a reply, so the conversation stays valid. A call that is not run, past the last step or after the run was halted, gets a skipped result
+		@param step the step that collects the results
+		@param reply the model's reply
+		@param skip true when the calls must not run
+		~#
 		# answers every call of a reply; calls that are not run (past the last step, or after the run was
 		# halted) are still answered so the conversation stays valid
 		method : AnswerCalls(step : AgentStep, reply : AgentReply, skip : Bool) ~ Nil {
@@ -3948,6 +4078,11 @@ result->GetText()->PrintLine();
 			};
 		}
 
+		#~
+		Gets the arguments of a call as text
+		@param call the call
+		@return JSON text, or null when the arguments could not be read
+		~#
 		method : ArgumentText(call : AgentToolCall) ~ String {
 			if(call->GetArguments() = Nil) {
 				return "null";
@@ -3955,6 +4090,11 @@ result->GetText()->PrintLine();
 			return call->GetArguments()->ToString();
 		}
 
+		#~
+		Runs one call through the gates: the tool must exist, be permitted, have valid arguments and be approved when it needs to be
+		@param call the call
+		@return the result, with a status that says how the call ended
+		~#
 		# runs one call through the gates
 		method : Execute(call : AgentToolCall) ~ AgentToolResult {
 			id := call->GetId();
@@ -3999,6 +4139,10 @@ result->GetText()->PrintLine();
 			return Invoke(tool, call, arguments);
 		}
 
+		#~
+		Lists the tools the model may use, for the message about an unknown tool
+		@return names separated by commas, or none
+		~#
 		method : AvailableNames() ~ String {
 			permitted := @registry->GetPermitted();
 			names := String->New();
@@ -4011,12 +4155,19 @@ result->GetText()->PrintLine();
 				i += 1;
 			};
 
-			if(names->Size() = 0) {
+			if(names->IsEmpty()) {
 				return "none";
 			};
 			return names;
 		}
 
+		#~
+		Runs a tool in the loop's thread or in a worker, with the time limit and trace events
+		@param tool the tool
+		@param call the call
+		@param arguments the arguments as text, for the result
+		@return the result
+		~#
 		method : Invoke(tool : AgentTool, call : AgentToolCall, arguments : String) ~ AgentToolResult {
 			id := call->GetId();
 			name := call->GetName();
@@ -4051,9 +4202,7 @@ result->GetText()->PrintLine();
 				}
 				on(e : Error) {
 					failure := e->GetMessage();
-					if(failure = Nil) {
-						failure := "the tool failed";
-					};
+					failure := failure ?? "the tool failed";
 				};
 			}
 			else {
@@ -4084,6 +4233,19 @@ result->GetText()->PrintLine();
 			return outcome;
 		}
 
+		#~
+		Turns how a call ended into the result the model reads: cancelled, timeout, error, or ok with the output cut to the result size limit
+		@param tool the tool
+		@param id call id
+		@param name tool name
+		@param arguments arguments as text
+		@param output what the tool returned, or Nil
+		@param failure the error message, or Nil
+		@param how done, timeout, cancelled or deadline
+		@param limit the time limit in milliseconds, 0 for none
+		@param millis how long the call took
+		@return the result
+		~#
 		# turns how a call ended into the result the model reads
 		method : Finish(tool : AgentTool, id : String, name : String, arguments : String, output : String, failure : String, how : String, limit : Int, millis : Int) ~ AgentToolResult {
 			if(how->Equals("cancelled")) {
@@ -4140,6 +4302,13 @@ result->GetText()->PrintLine();
 			return Walk(schema, value, "arguments");
 		}
 
+		#~
+		Checks a value against a schema, then descends into it by its kind
+		@param schema the schema; a schema that is not an object accepts anything
+		@param value the value
+		@param path where the value is, for the message
+		@return Nil when the value fits, else a message
+		~#
 		function : Walk(schema : JsonElement, value : JsonElement, path : String) ~ String {
 			if(<>AgentJs->IsObject(schema)) {
 				return Nil;
@@ -4199,6 +4368,13 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Checks anyOf and oneOf, either of which needs at least one option to fit
+		@param schema the schema
+		@param value the value
+		@param path where the value is
+		@return Nil when it fits, else a message
+		~#
 		# anyOf and oneOf: at least one option must fit
 		function : Combined(schema : JsonElement, value : JsonElement, path : String) ~ String {
 			names := Vector->New()<String>;
@@ -4225,6 +4401,13 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Checks the required properties, then each property against its schema, and rejects an unlisted property when additionalProperties is false or checks it against that schema
+		@param schema the schema
+		@param value an object
+		@param path where the value is
+		@return Nil when it fits, else a message
+		~#
 		function : WalkObject(schema : JsonElement, value : JsonElement, path : String) ~ String {
 			required := schema->Get("required");
 			if(AgentJs->IsArray(required)) {
@@ -4267,6 +4450,13 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Checks minItems, maxItems and the schema of each item
+		@param schema the schema
+		@param value an array
+		@param path where the value is
+		@return Nil when it fits, else a message
+		~#
 		function : WalkArray(schema : JsonElement, value : JsonElement, path : String) ~ String {
 			size := value->Size();
 			low := schema->Get("minItems");
@@ -4293,6 +4483,13 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Checks minLength and maxLength
+		@param schema the schema
+		@param value a string
+		@param path where the value is
+		@return Nil when it fits, else a message
+		~#
 		function : WalkString(schema : JsonElement, value : JsonElement, path : String) ~ String {
 			size := value->GetString()->Size();
 			low := schema->Get("minLength");
@@ -4307,6 +4504,13 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Checks minimum and maximum
+		@param schema the schema
+		@param value a number
+		@param path where the value is
+		@return Nil when it fits, else a message
+		~#
 		function : WalkNumber(schema : JsonElement, value : JsonElement, path : String) ~ String {
 			number := value->GetFloat();
 			low := schema->Get("minimum");
@@ -4321,6 +4525,12 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Tests a value against a type keyword
+		@param kind a type name, or an array of them, one of which must match; any other form accepts everything
+		@param value the value
+		@return true when the type fits
+		~#
 		# a type name, or a list of them
 		function : TypeMatches(kind : JsonElement, value : JsonElement) ~ Bool {
 			if(kind->GetType() = JsonElement->JsonType->STRING) {
@@ -4341,6 +4551,12 @@ result->GetText()->PrintLine();
 			return true;
 		}
 
+		#~
+		Tests a value against one JSON Schema type name. An unknown name accepts everything
+		@param name object, array, string, boolean, null, number or integer
+		@param value the value
+		@return true when the value is of that type
+		~#
 		function : IsType(name : String, value : JsonElement) ~ Bool {
 			type_of := value->GetType();
 			if(name->Equals("object")) {
@@ -4370,6 +4586,11 @@ result->GetText()->PrintLine();
 			return true;
 		}
 
+		#~
+		Tests whether the text of a number is a whole number
+		@param text the number as written
+		@return true for 3, 3.0 and 3e2, false for 3.5 or Nil
+		~#
 		# 3, 3.0 and 3e2 are whole numbers; 3.5 is not
 		function : IsWhole(text : String) ~ Bool {
 			if(text = Nil) {
@@ -4395,6 +4616,11 @@ result->GetText()->PrintLine();
 			return true;
 		}
 
+		#~
+		Names the expected type for a message
+		@param kind the type keyword
+		@return the name, or the list as JSON text
+		~#
 		function : Expected(kind : JsonElement) ~ String {
 			if(kind->GetType() = JsonElement->JsonType->STRING) {
 				return kind->GetString();
@@ -4402,6 +4628,11 @@ result->GetText()->PrintLine();
 			return kind->ToString();
 		}
 
+		#~
+		Names the type of a value for a message
+		@param value the value
+		@return object, array, string, number, null or boolean
+		~#
 		function : Describe(value : JsonElement) ~ String {
 			type_of := value->GetType();
 			if(type_of = JsonElement->JsonType->OBJECT) {
@@ -4422,6 +4653,12 @@ result->GetText()->PrintLine();
 			return "boolean";
 		}
 
+		#~
+		Compares two values for enum and const. Numbers compare by value, anything else by its JSON text
+		@param a first value
+		@param b second value
+		@return true when equal, false when either is Nil
+		~#
 		function : Equal(a : JsonElement, b : JsonElement) ~ Bool {
 			if(a = Nil | b = Nil) {
 				return false;
@@ -4526,6 +4763,13 @@ result->GetText()->PrintLine();
 			return result;
 		}
 
+		#~
+		Replaces a prefix and the token characters after it with [REDACTED] when the token is long enough to be a key and the prefix starts a word
+		@param text the text
+		@param prefix the prefix that starts a key
+		@param min_size fewest token characters that make it a key
+		@return the scrubbed text
+		~#
 		# replaces prefix plus the token characters after it when the token is long enough to be a key
 		function : ScrubPrefix(text : String, prefix : String, min_size : Int) ~ String {
 			if(<>text->Has(prefix)) {
@@ -4565,6 +4809,11 @@ result->GetText()->PrintLine();
 			return out;
 		}
 
+		#~
+		Tests whether a character can be part of a key
+		@param c the character
+		@return true for letters, digits, underscore, hyphen and period
+		~#
 		function : KeyChar(c : Char) ~ Bool {
 			return (c >= 'a' & c <= 'z') | (c >= 'A' & c <= 'Z') | (c >= '0' & c <= '9') | c = '_' | c = '-' | c = '.';
 		}
@@ -4572,26 +4821,55 @@ result->GetText()->PrintLine();
 
 	# JSON helpers
 	class : private : AgentJs {
+		#~
+		Makes an empty JSON object
+		@return the object
+		~#
 		function : Object() ~ JsonElement {
 			return JsonElement->New(JsonElement->JsonType->OBJECT);
 		}
 
+		#~
+		Makes an empty JSON array
+		@return the array
+		~#
 		function : Array() ~ JsonElement {
 			return JsonElement->New(JsonElement->JsonType->ARRAY);
 		}
 
+		#~
+		Tests for a JSON object
+		@param elem the element, may be Nil
+		@return true when it is an object
+		~#
 		function : IsObject(elem : JsonElement) ~ Bool {
 			return elem <> Nil & elem->GetType() = JsonElement->JsonType->OBJECT;
 		}
 
+		#~
+		Tests for a JSON array
+		@param elem the element, may be Nil
+		@return true when it is an array
+		~#
 		function : IsArray(elem : JsonElement) ~ Bool {
 			return elem <> Nil & elem->GetType() = JsonElement->JsonType->ARRAY;
 		}
 
+		#~
+		Tests two strings for equality, where Nil equals nothing
+		@param a first string
+		@param b second string
+		@return true when both are set and equal
+		~#
 		function : Same(a : String, b : String) ~ Bool {
 			return a <> Nil & b <> Nil & a->Equals(b);
 		}
 
+		#~
+		Gets the text of an element
+		@param elem the element, may be Nil
+		@return the decoded string value, the JSON text of another kind of value, or Nil when absent or null
+		~#
 		# decoded string value, or Nil when absent or null
 		function : Text(elem : JsonElement) ~ String {
 			if(elem = Nil | elem->IsNull()) {
@@ -4604,6 +4882,12 @@ result->GetText()->PrintLine();
 			return elem->ToString();
 		}
 
+		#~
+		Gets the text of a member of an object
+		@param json the object
+		@param name member name
+		@return the text, or Nil when json is not an object or the member is missing or null
+		~#
 		function : Text(json : JsonElement, name : String) ~ String {
 			if(<>IsObject(json)) {
 				return Nil;
@@ -4611,6 +4895,12 @@ result->GetText()->PrintLine();
 			return Text(json->Get(name));
 		}
 
+		#~
+		Gets a member of an object
+		@param json the object
+		@param name member name
+		@return the member, or Nil when json is not an object or has no such member
+		~#
 		function : Child(json : JsonElement, name : String) ~ JsonElement {
 			if(<>IsObject(json)) {
 				return Nil;
@@ -4618,6 +4908,12 @@ result->GetText()->PrintLine();
 			return json->Get(name);
 		}
 
+		#~
+		Gets a whole-number member of an object
+		@param json the object
+		@param name member name
+		@return the number, or 0 when it is missing or not a number
+		~#
 		function : IntOf(json : JsonElement, name : String) ~ Int {
 			elem := Child(json, name);
 			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->NUMBER) {
@@ -4626,6 +4922,11 @@ result->GetText()->PrintLine();
 			return elem->GetInt();
 		}
 
+		#~
+		Parses the text of tool call arguments
+		@param text JSON text, Nil or empty for no arguments
+		@return the object, the empty object for empty text, or Nil when the text is not a JSON object
+		~#
 		# a parsed JSON object, or Nil when the text is not one; empty text is the empty object
 		function : Arguments(text : String) ~ JsonElement {
 			if(text = Nil | text->Trim()->Size() = 0) {
@@ -4639,6 +4940,12 @@ result->GetText()->PrintLine();
 			return Nil;
 		}
 
+		#~
+		Makes a chat message
+		@param role message role
+		@param content message text
+		@return an object with role and content
+		~#
 		function : RoleText(role : String, content : String) ~ JsonElement {
 			item := Object();
 			item->Insert("role", role);
@@ -4646,6 +4953,11 @@ result->GetText()->PrintLine();
 			return item;
 		}
 
+		#~
+		Makes an independent copy of an element by writing and parsing it again
+		@param elem the element
+		@return the copy, or Nil when elem is Nil
+		~#
 		# the schema with no keyword a provider's validator would reject for being unknown to it
 		function : Copy(elem : JsonElement) ~ JsonElement {
 			if(elem = Nil) {
@@ -4683,9 +4995,7 @@ backend := ScriptedBackend->New(script);
 		~#
 		New(script : Vector<AgentReply>) {
 			@script := script;
-			if(@script = Nil) {
-				@script := Vector->New()<AgentReply>;
-			};
+			@script := @script ?? Vector->New()<AgentReply>;
 		}
 
 		#~
@@ -4698,10 +5008,18 @@ backend := ScriptedBackend->New(script);
 			return @self;
 		}
 
+		#~
+		Gets the backend name
+		@return scripted
+		~#
 		method : public : GetName() ~ String {
 			return "scripted";
 		}
 
+		#~
+		Gets why the last call returned no reply
+		@return message, or Nil when the last call worked
+		~#
 		method : public : GetLastError() ~ String {
 			return @last_error;
 		}
@@ -4733,6 +5051,10 @@ backend := ScriptedBackend->New(script);
 			return @self;
 		}
 
+		#~
+		Sets the time the next call may take, which only matters together with SetDelayMs
+		@param millis deadline in milliseconds, 0 for none
+		~#
 		method : public : SetDeadlineMs(millis : Int) ~ Nil {
 			@deadline_ms := millis;
 		}
@@ -4753,6 +5075,12 @@ backend := ScriptedBackend->New(script);
 			return @offered;
 		}
 
+		#~
+		Records the conversation and the offered tools, waits out the delay, and returns the next scripted reply
+		@param conversation the conversation
+		@param tools the tools offered, or Nil
+		@return the next reply, or Nil when the script ran out or the deadline passed, with the last error set
+		~#
 		method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
 			@last_error := Nil;
 			@asked += 1;
@@ -4795,19 +5123,36 @@ backend := ScriptedBackend->New(script);
 		@json : JsonElement;
 		@error : String;
 
+		#~
+		Constructor
+		@param json the response body, or Nil
+		@param error the error message, or Nil when the request worked
+		~#
 		New(json : JsonElement, error : String) {
 			@json := json;
 			@error := error;
 		}
 
+		#~
+		Tests whether the request worked
+		@return true when there is no error
+		~#
 		method : public : IsOk() ~ Bool {
 			return @error = Nil;
 		}
 
+		#~
+		Gets the body
+		@return the JSON object, or Nil on error
+		~#
 		method : public : GetJson() ~ JsonElement {
 			return @json;
 		}
 
+		#~
+		Gets the error
+		@return message, or Nil when the request worked
+		~#
 		method : public : GetError() ~ String {
 			return @error;
 		}
@@ -4815,6 +5160,11 @@ backend := ScriptedBackend->New(script);
 
 	# HTTP requests and response bodies, shared by the four provider backends
 	class : private : AgentWire {
+		#~
+		Reads the message out of an error body
+		@param json the body
+		@return the message, prefixed with its type or status when there is one, or Nil when the body carries no error
+		~#
 		# the message of an error body ({"error":{"message":...,"type"|"status":...}} or {"error":"..."}), or Nil
 		function : ErrorText(json : JsonElement) ~ String {
 			if(<>AgentJs->IsObject(json)) {
@@ -4832,19 +5182,20 @@ backend := ScriptedBackend->New(script);
 
 			message := AgentJs->Text(error_json, "message");
 			kind := AgentJs->Text(error_json, "type");
-			if(kind = Nil) {
-				kind := AgentJs->Text(error_json, "status");
-			};
+			kind := kind ?? AgentJs->Text(error_json, "status");
 
-			if(message = Nil) {
-				message := "the API returned an error";
-			};
+			message := message ?? "the API returned an error";
 			if(kind <> Nil) {
 				message := "{$kind}: {$message}";
 			};
 			return message;
 		}
 
+		#~
+		Reads a response body as a JSON object
+		@param text the body, may be Nil
+		@return the outcome: the object, or the error the body carries, or an error for text that is not JSON
+		~#
 		# a response body read as a JSON object, or the error it carries
 		function : Body(text : String) ~ AgentOutcome {
 			json : JsonElement;
@@ -4863,6 +5214,16 @@ backend := ScriptedBackend->New(script);
 			return AgentOutcome->New(json, Nil);
 		}
 
+		#~
+		Sends a POST with a JSON body and reads the answer
+		@param url the address
+		@param headers name and value pairs, one after the other, for HTTPS
+		@param body the request body
+		@param pem PEM file used as the trust anchor for HTTPS, or Nil for the system store
+		@param plain true for plain HTTP, which sends no headers
+		@param who the server's name for error messages
+		@return the outcome: the body of a successful answer, else an error for no response, a failure status or a body that is not JSON
+		~#
 		# POST a JSON body; headers holds name, value, name, value, ...; plain true uses HTTP (a local Ollama)
 		function : Post(url : String, headers : Vector<String>, body : JsonElement, pem : String, plain : Bool, who : String) ~ AgentOutcome {
 			response : Response;
@@ -4918,10 +5279,14 @@ backend := ScriptedBackend->New(script);
 
 	# API keys: where they come from, and the guard against sending one over an unchecked connection
 	class : private : AgentKeys {
+		#~
+		Tests whether TLS checking is off without an explicit OK for keys
+		@return true when OBJECK_TLS_INSECURE_SKIP_VERIFY is on and OBJECK_TLS_INSECURE_ALLOW_API_KEYS is not 1
+		~#
 		# true when TLS checking is off and nothing says sending a key that way is intended
 		function : InsecureTlsBlocksKey() ~ Bool {
 			skip := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY");
-			if(skip = Nil | skip->Size() = 0) {
+			if(skip = Nil | skip->IsEmpty()) {
 				return false;
 			};
 
@@ -4937,6 +5302,14 @@ backend := ScriptedBackend->New(script);
 			return true;
 		}
 
+		#~
+		Finds an API key and registers it for redaction
+		@param explicit the key passed in, or Nil
+		@param env_one first environment variable to try
+		@param env_two second environment variable, or Nil
+		@param file key file, of which the first line is used
+		@return the key, or Nil when there is none or TLS checking is off
+		~#
 		# the key passed in, else the first environment variable that is set, else the first line of the key file; registered for redaction
 		function : Find(explicit : String, env_one : String, env_two : String, file : String) ~ String {
 			if(InsecureTlsBlocksKey()) {
@@ -4961,7 +5334,7 @@ backend := ScriptedBackend->New(script);
 					if(line_end > -1) {
 						value := value->SubString(line_end)->Trim();
 					};
-					if(value->Size() = 0) {
+					if(value->IsEmpty()) {
 						value := Nil;
 					};
 				};
@@ -4971,6 +5344,11 @@ backend := ScriptedBackend->New(script);
 			return value;
 		}
 
+		#~
+		Reads an environment variable
+		@param name variable name
+		@return its trimmed value, or Nil when it is unset or empty
+		~#
 		function : FromEnvironment(name : String) ~ String {
 			value := System.Runtime->GetEnvironmentVariable(name);
 			if(value <> Nil) {
@@ -4982,6 +5360,10 @@ backend := ScriptedBackend->New(script);
 			return Nil;
 		}
 
+		#~
+		Gets the message for a key that was not used because of unchecked TLS
+		@return the message
+		~#
 		function : Refusal() ~ String {
 			return "refusing to use an API key: OBJECK_TLS_INSECURE_SKIP_VERIFY turns TLS certificate checking off, so the key would go to an unauthenticated server (set OBJECK_TLS_INSECURE_ALLOW_API_KEYS=1 to allow it for testing)";
 		}
@@ -5056,10 +5438,18 @@ backend := ScriptedBackend->New(script);
 			return @self;
 		}
 
+		#~
+		Gets the backend name
+		@return anthropic
+		~#
 		method : public : GetName() ~ String {
 			return "anthropic";
 		}
 
+		#~
+		Gets why the last call returned no reply
+		@return message, or Nil when the last call worked
+		~#
 		method : public : GetLastError() ~ String {
 			return @last_error;
 		}
@@ -5101,6 +5491,11 @@ backend := ScriptedBackend->New(script);
 			return request;
 		}
 
+		#~
+		Builds the messages array; the results of one reply's calls share one user message
+		@param conversation the conversation
+		@return array of messages
+		~#
 		method : Messages(conversation : AgentConversation) ~ JsonElement {
 			messages := AgentJs->Array();
 			entries := conversation->GetEntries();
@@ -5135,6 +5530,11 @@ backend := ScriptedBackend->New(script);
 			return messages;
 		}
 
+		#~
+		Builds an assistant message of text and tool_use blocks
+		@param entry the assistant entry
+		@return the message, or Nil when the entry has neither text nor calls
+		~#
 		method : Assistant(entry : AgentEntry) ~ JsonElement {
 			blocks := AgentJs->Array();
 			if(entry->GetText()->Size() > 0) {
@@ -5172,6 +5572,11 @@ backend := ScriptedBackend->New(script);
 			return message;
 		}
 
+		#~
+		Builds the tool_result block for one call
+		@param entry a tool entry
+		@return the block, marked is_error for a failed call
+		~#
 		method : ResultBlock(entry : AgentEntry) ~ JsonElement {
 			block := AgentJs->Object();
 			block->Insert("type", "tool_result");
@@ -5244,6 +5649,12 @@ backend := ScriptedBackend->New(script);
 			return AgentReply->New(text, calls, stop, AgentJs->IntOf(usage, "input_tokens"), AgentJs->IntOf(usage, "output_tokens"));
 		}
 
+		#~
+		Sends the conversation and reads the answer. The last error is set when there is no reply
+		@param conversation the conversation
+		@param tools the tools to offer, or Nil
+		@return the reply, or Nil when there is no key, the request failed or the answer could not be read
+		~#
 		method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
 			@last_error := Nil;
 			if(AgentKeys->InsecureTlsBlocksKey()) {
@@ -5340,10 +5751,18 @@ backend := ScriptedBackend->New(script);
 			return @self;
 		}
 
+		#~
+		Gets the backend name
+		@return openai
+		~#
 		method : public : GetName() ~ String {
 			return "openai";
 		}
 
+		#~
+		Gets why the last call returned no reply
+		@return message, or Nil when the last call worked
+		~#
 		method : public : GetLastError() ~ String {
 			return @last_error;
 		}
@@ -5388,6 +5807,11 @@ backend := ScriptedBackend->New(script);
 			return request;
 		}
 
+		#~
+		Builds the messages array, with the system prompt first and one tool message per result
+		@param conversation the conversation
+		@return array of messages
+		~#
 		method : Messages(conversation : AgentConversation) ~ JsonElement {
 			messages := AgentJs->Array();
 			if(conversation->GetSystem() <> Nil) {
@@ -5417,11 +5841,16 @@ backend := ScriptedBackend->New(script);
 			return messages;
 		}
 
+		#~
+		Builds an assistant message, with the tool calls as function calls whose arguments are JSON text
+		@param entry the assistant entry
+		@return the message
+		~#
 		method : Assistant(entry : AgentEntry) ~ JsonElement {
 			message := AgentJs->Object();
 			message->Insert("role", "assistant");
 			calls := entry->GetToolCalls();
-			if(entry->GetText()->Size() > 0 | calls->Size() = 0) {
+			if(entry->GetText()->Size() > 0 | calls->IsEmpty()) {
 				message->Insert("content", entry->GetText());
 			};
 
@@ -5479,9 +5908,7 @@ backend := ScriptedBackend->New(script);
 			};
 
 			text := AgentJs->Text(message, "content");
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 
 			refusal := AgentJs->Text(message, "refusal");
 			calls := Vector->New()<AgentToolCall>;
@@ -5510,7 +5937,7 @@ backend := ScriptedBackend->New(script);
 				stop := "filtered";
 			};
 
-			if(refusal <> Nil & text->Size() = 0 & calls->Size() = 0) {
+			if(refusal <> Nil & text->IsEmpty() & calls->IsEmpty()) {
 				text := refusal;
 				stop := "filtered";
 			};
@@ -5519,6 +5946,12 @@ backend := ScriptedBackend->New(script);
 			return AgentReply->New(text, calls, stop, AgentJs->IntOf(usage, "prompt_tokens"), AgentJs->IntOf(usage, "completion_tokens"));
 		}
 
+		#~
+		Sends the conversation and reads the answer. The last error is set when there is no reply
+		@param conversation the conversation
+		@param tools the tools to offer, or Nil
+		@return the reply, or Nil when there is no key, the request failed or the answer could not be read
+		~#
 		method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
 			@last_error := Nil;
 			if(AgentKeys->InsecureTlsBlocksKey()) {
@@ -5618,10 +6051,18 @@ backend := ScriptedBackend->New(script);
 			return @self;
 		}
 
+		#~
+		Gets the backend name
+		@return gemini
+		~#
 		method : public : GetName() ~ String {
 			return "gemini";
 		}
 
+		#~
+		Gets why the last call returned no reply
+		@return message, or Nil when the last call worked
+		~#
 		method : public : GetLastError() ~ String {
 			return @last_error;
 		}
@@ -5682,11 +6123,21 @@ backend := ScriptedBackend->New(script);
 			return request;
 		}
 
+		#~
+		Tests whether a schema declares any properties
+		@param schema the tool's argument schema
+		@return true when properties is a non-empty object
+		~#
 		method : HasProperties(schema : JsonElement) ~ Bool {
 			properties := AgentJs->Child(schema, "properties");
 			return AgentJs->IsObject(properties) & properties->Size() > 0;
 		}
 
+		#~
+		Builds the contents array; the results of one reply's calls share one user turn
+		@param conversation the conversation
+		@return array of turns
+		~#
 		method : Contents(conversation : AgentConversation) ~ JsonElement {
 			contents := AgentJs->Array();
 			entries := conversation->GetEntries();
@@ -5721,6 +6172,11 @@ backend := ScriptedBackend->New(script);
 			return contents;
 		}
 
+		#~
+		Makes a parts list holding one text part
+		@param text the text
+		@return the parts array
+		~#
 		method : TextPart(text : String) ~ JsonElement {
 			part := AgentJs->Object();
 			part->Insert("text", text);
@@ -5729,6 +6185,12 @@ backend := ScriptedBackend->New(script);
 			return parts;
 		}
 
+		#~
+		Makes a turn
+		@param role user or model
+		@param parts the parts array
+		@return the turn
+		~#
 		method : Turn(role : String, parts : JsonElement) ~ JsonElement {
 			turn := AgentJs->Object();
 			turn->Insert("role", role);
@@ -5736,6 +6198,11 @@ backend := ScriptedBackend->New(script);
 			return turn;
 		}
 
+		#~
+		Builds a model turn. Parts kept from a Gemini reply are sent back unchanged, else text and function calls are rebuilt
+		@param entry the assistant entry
+		@return the turn, or Nil when the entry has neither text nor calls
+		~#
 		method : Assistant(entry : AgentEntry) ~ JsonElement {
 			# the model's own parts go back unchanged
 			if(AgentJs->Same(entry->GetProvider(), "gemini") & AgentJs->IsArray(entry->GetRaw()) & entry->GetRaw()->Size() > 0) {
@@ -5774,6 +6241,11 @@ backend := ScriptedBackend->New(script);
 			return Turn("model", parts);
 		}
 
+		#~
+		Builds the functionResponse part for one result, as an error or a result; an id made up by this library is left out
+		@param entry a tool entry
+		@return the part
+		~#
 		method : ResponsePart(entry : AgentEntry) ~ JsonElement {
 			content := AgentJs->Object();
 			if(entry->IsError()) {
@@ -5839,9 +6311,7 @@ backend := ScriptedBackend->New(script);
 							args := AgentJs->Object();
 						};
 						id := AgentJs->Text(function_json, "id");
-						if(id = Nil) {
-							id := AgentIds->Next("gemini_call_");
-						};
+						id := id ?? AgentIds->Next("gemini_call_");
 						calls->AddBack(AgentToolCall->New(id, AgentJs->Text(function_json, "name"), args));
 					}
 					else {
@@ -5879,6 +6349,12 @@ backend := ScriptedBackend->New(script);
 			return reply;
 		}
 
+		#~
+		Sends the conversation and reads the answer. The last error is set when there is no reply
+		@param conversation the conversation
+		@param tools the tools to offer, or Nil
+		@return the reply, or Nil when there is no key, the request failed or the answer could not be read
+		~#
 		method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
 			@last_error := Nil;
 			if(AgentKeys->InsecureTlsBlocksKey()) {
@@ -5907,6 +6383,11 @@ backend := ScriptedBackend->New(script);
 
 	# Trims a JSON Schema to the keywords Gemini's function Schema accepts
 	class : private : GeminiSchema {
+		#~
+		Trims a schema to the keywords Gemini accepts, descending into properties, items and anyOf. A oneOf becomes anyOf, a const becomes a one-value enum and unknown keywords such as additionalProperties are dropped
+		@param schema the JSON Schema
+		@return the trimmed copy, or the value itself when it is not an object
+		~#
 		function : Clean(schema : JsonElement) ~ JsonElement {
 			if(<>AgentJs->IsObject(schema)) {
 				return schema;
@@ -5962,6 +6443,11 @@ backend := ScriptedBackend->New(script);
 			return clean;
 		}
 
+		#~
+		Tests whether Gemini's Schema keeps a keyword
+		@param name keyword
+		@return true when it is kept as it is
+		~#
 		function : Allowed(name : String) ~ Bool {
 			return name->Equals("format") | name->Equals("title") | name->Equals("description") | name->Equals("nullable") |
 				name->Equals("enum") | name->Equals("required") | name->Equals("minItems") | name->Equals("maxItems") |
@@ -5969,6 +6455,11 @@ backend := ScriptedBackend->New(script);
 				name->Equals("pattern") | name->Equals("propertyOrdering");
 		}
 
+		#~
+		Copies a type keyword into a trimmed schema
+		@param clean the schema being built
+		@param value a type name, or a list: null makes the schema nullable and the first other name is the type
+		~#
 		# a list of types such as ["string","null"] becomes one type and nullable
 		function : CleanType(clean : JsonElement, value : JsonElement) ~ Nil {
 			if(value = Nil) {
@@ -6052,10 +6543,18 @@ backend := ScriptedBackend->New(script);
 			return @self;
 		}
 
+		#~
+		Gets the backend name
+		@return ollama
+		~#
 		method : public : GetName() ~ String {
 			return "ollama";
 		}
 
+		#~
+		Gets why the last call returned no reply
+		@return message, or Nil when the last call worked
+		~#
 		method : public : GetLastError() ~ String {
 			return @last_error;
 		}
@@ -6106,6 +6605,11 @@ backend := ScriptedBackend->New(script);
 			return request;
 		}
 
+		#~
+		Builds the messages array, with the system prompt first and one tool message per result that names its tool
+		@param conversation the conversation
+		@return array of messages
+		~#
 		method : Messages(conversation : AgentConversation) ~ JsonElement {
 			messages := AgentJs->Array();
 			if(conversation->GetSystem() <> Nil) {
@@ -6133,6 +6637,11 @@ backend := ScriptedBackend->New(script);
 			return messages;
 		}
 
+		#~
+		Builds an assistant message, with the tool calls as functions whose arguments are objects
+		@param entry the assistant entry
+		@return the message
+		~#
 		method : Assistant(entry : AgentEntry) ~ JsonElement {
 			message := AgentJs->RoleText("assistant", entry->GetText());
 			calls := entry->GetToolCalls();
@@ -6181,9 +6690,7 @@ backend := ScriptedBackend->New(script);
 			};
 
 			text := AgentJs->Text(message, "content");
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 
 			calls := Vector->New()<AgentToolCall>;
 			made := AgentJs->Child(message, "tool_calls");
@@ -6218,6 +6725,12 @@ backend := ScriptedBackend->New(script);
 			return AgentReply->New(text, calls, stop, AgentJs->IntOf(json, "prompt_eval_count"), AgentJs->IntOf(json, "eval_count"));
 		}
 
+		#~
+		Sends the conversation and reads the answer. The last error is set when there is no reply
+		@param conversation the conversation
+		@param tools the tools to offer, or Nil
+		@return the reply, or Nil when the request failed or the answer could not be read
+		~#
 		method : public : Chat(conversation : AgentConversation, tools : Vector<AgentTool>) ~ AgentReply {
 			@last_error := Nil;
 			outcome := AgentWire->Post("{$@host}/api/chat", Nil, BuildRequest(conversation, tools), Nil, true, "the Ollama server at {$@host}");
@@ -6296,7 +6809,7 @@ registry->Add(AgentTools->ReadFile("notes"));
 			};
 
 			clean := path->ReplaceAll('\\', '/')->Trim();
-			if(clean->Size() = 0 | clean->StartsWith('/') | clean->Has('\0')) {
+			if(clean->IsEmpty() | clean->StartsWith('/') | clean->Has('\0')) {
 				return Nil;
 			};
 
@@ -6329,9 +6842,17 @@ registry->Add(AgentTools->ReadFile("notes"));
 	}
 
 	class : private : CalculatorHandler implements AgentToolHandler {
+		#~
+		Constructor
+		~#
 		New() {
 		}
 
+		#~
+		Evaluates the expression
+		@param arguments the call's arguments, with an expression string
+		@return the number as text, with no trailing zeros; an error is raised for an expression that cannot be read
+		~#
 		method : public : Run(arguments : JsonElement) ~ String {
 			expression := AgentJs->Text(arguments, "expression");
 			calc := AgentCalc->New(expression);
@@ -6357,9 +6878,17 @@ registry->Add(AgentTools->ReadFile("notes"));
 	}
 
 	class : private : TimeHandler implements AgentToolHandler {
+		#~
+		Constructor
+		~#
 		New() {
 		}
 
+		#~
+		Reads the current time
+		@param arguments the call's arguments, with an optional offset_hours
+		@return date and time as text, ending in UTC or the offset
+		~#
 		method : public : Run(arguments : JsonElement) ~ String {
 			now := System.Time.Date->New(true);
 			offset := AgentJs->IntOf(arguments, "offset_hours");
@@ -6386,10 +6915,19 @@ registry->Add(AgentTools->ReadFile("notes"));
 	class : private : FileHandler implements AgentToolHandler {
 		@sandbox : String;
 
+		#~
+		Constructor
+		@param sandbox the directory the reader is confined to
+		~#
 		New(sandbox : String) {
 			@sandbox := sandbox;
 		}
 
+		#~
+		Reads the file
+		@param arguments the call's arguments, with a path string
+		@return the text, cut to 64000 characters; an error is raised for a path outside the sandbox or a file that is missing
+		~#
 		method : public : Run(arguments : JsonElement) ~ String {
 			path := AgentJs->Text(arguments, "path");
 			full := AgentTools->SafePath(@sandbox, path);
@@ -6414,14 +6952,20 @@ registry->Add(AgentTools->ReadFile("notes"));
 		@chars : Char[];
 		@pos : Int;
 
+		#~
+		Constructor
+		@param text the expression; Nil counts as empty
+		~#
 		New(text : String) {
-			if(text = Nil) {
-				text := "";
-			};
+			text := text ?? "";
 			@chars := text->ToCharArray();
 			@pos := 0;
 		}
 
+		#~
+		Evaluates the whole text
+		@return the value; an error is raised when the text cannot be read or has leftovers
+		~#
 		method : public : Evaluate() ~ Float {
 			value := Sum();
 			Skip();
@@ -6431,16 +6975,27 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return value;
 		}
 
+		#~
+		Raises an error
+		@param message what is wrong
+		~#
 		method : Fail(message : String) ~ Nil {
 			Runtime->Raise(Error->New(message));
 		}
 
+		#~
+		Moves past spaces and tabs
+		~#
 		method : Skip() ~ Nil {
 			while(@pos < @chars->Size() & (@chars[@pos] = ' ' | @chars[@pos] = '\t')) {
 				@pos += 1;
 			};
 		}
 
+		#~
+		Looks at the next character without consuming it
+		@return the character, or the NUL character at the end of the text
+		~#
 		method : Peek() ~ Char {
 			Skip();
 			if(@pos < @chars->Size()) {
@@ -6449,6 +7004,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return '\0';
 		}
 
+		#~
+		Reads terms joined by + and -
+		@return the value
+		~#
 		method : Sum() ~ Float {
 			value := Product();
 			more := true;
@@ -6469,6 +7028,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return value;
 		}
 
+		#~
+		Reads factors joined by *, / and %; an error is raised for a zero divisor
+		@return the value
+		~#
 		method : Product() ~ Float {
 			value := Power();
 			more := true;
@@ -6501,6 +7064,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return value;
 		}
 
+		#~
+		Reads a power
+		@return the value, where ^ is right-associative and binds tighter than a unary minus on its left
+		~#
 		# ^ is right-associative and binds tighter than unary minus on its left: -2^2 is -4
 		method : Power() ~ Float {
 			base := Unary();
@@ -6511,6 +7078,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return base;
 		}
 
+		#~
+		Reads a unary minus or plus, or a primary
+		@return the value
+		~#
 		method : Unary() ~ Float {
 			c := Peek();
 			if(c = '-') {
@@ -6524,6 +7095,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return Primary();
 		}
 
+		#~
+		Reads a parenthesised sum, a number or a name
+		@return the value
+		~#
 		method : Primary() ~ Float {
 			c := Peek();
 			if(c = '(') {
@@ -6551,6 +7126,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return 0.0;
 		}
 
+		#~
+		Reads a number
+		@return the value; an error is raised when the digits are not a number
+		~#
 		method : Number() ~ Float {
 			start := @pos;
 			while(@pos < @chars->Size() & ((@chars[@pos] >= '0' & @chars[@pos] <= '9') | @chars[@pos] = '.')) {
@@ -6570,6 +7149,10 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return text->ToFloat();
 		}
 
+		#~
+		Reads a constant such as pi or e, or a function call
+		@return the value; an error is raised for an unknown name
+		~#
 		method : Named() ~ Float {
 			name := String->New();
 			while(@pos < @chars->Size() & ((@chars[@pos] >= 'a' & @chars[@pos] <= 'z') | (@chars[@pos] >= 'A' & @chars[@pos] <= 'Z') | (@chars[@pos] >= '0' & @chars[@pos] <= '9'))) {
@@ -6597,6 +7180,12 @@ registry->Add(AgentTools->ReadFile("notes"));
 			return Apply(lower, arg);
 		}
 
+		#~
+		Applies a function
+		@param name function name, lower case
+		@param arg the argument
+		@return the result; an error is raised for an unknown function or an argument outside its domain
+		~#
 		method : Apply(name : String, arg : Float) ~ Float {
 			if(name->Equals("sqrt")) {
 				if(arg < 0.0) {
@@ -6649,6 +7238,11 @@ registry->Add(AgentTools->ReadFile("notes"));
 	class : private : AgentIds {
 		@next : static : Int;
 
+		#~
+		Makes an id
+		@param prefix the id's prefix
+		@return the prefix followed by a counter that grows with each call
+		~#
 		function : Next(prefix : String) ~ String {
 			@next += 1;
 			count := @next;

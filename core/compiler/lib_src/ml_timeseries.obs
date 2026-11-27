@@ -456,7 +456,7 @@ bundle System.ML.TimeSeries {
 		}
 
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		method : public : GetError() ~ String {
@@ -1442,7 +1442,7 @@ bundle System.ML.TimeSeries {
 		}
 
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		method : public : GetError() ~ String {
@@ -1725,7 +1725,7 @@ bundle System.ML.TimeSeries {
 		}
 
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		method : public : GetError() ~ String {

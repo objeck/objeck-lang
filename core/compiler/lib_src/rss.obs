@@ -57,7 +57,7 @@ if(reader->IsOk()) {
 };
 ```
 		~#
-		method : public : GetChannel() ~ RSSChannel {			
+		method : public : GetChannel() ~ RSSChannel {
 			return @channel;
 		}
 
@@ -115,8 +115,7 @@ if(reader->IsOk()) {
 			posts := Vector->New()<RSSPost>;
 
 			items := parser->FindElements("/rss/channel/item")<XmlElement>;
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				title := GetContent(item->GetFirstChild("title"));
 				link := GetContent(item->GetFirstChild("link"));
 				description := GetContent(item->GetFirstChild("description"));
@@ -135,10 +134,10 @@ if(reader->IsOk()) {
 
 		method : GetMatch(path : String, parser : XmlParser) ~ String {
 			matches := parser->FindElements(path)<XmlElement>;
-			if(matches->Size() > 0) {			
+			if(matches->Size() > 0) {
 				return GetContent(matches->Get(0));
 			};
-			
+
 			return Nil;
 		}
 
@@ -153,7 +152,7 @@ if(reader->IsOk()) {
 			}
 			else {
 				return XmlElement->DecodeString(elem->GetContent());
-			};	
+			};
 		}
 
 		# a failed fetch or read returns Nil; the constructor then leaves the reader not-OK

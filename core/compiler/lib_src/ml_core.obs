@@ -15,11 +15,9 @@ Core machine learning types: the seedable Random generator, Matrix2D linear alge
 bundle System.ML {
 	class : private: Proxy {
 		@lib_proxy : static : System.API.DllProxy;
-		
+
 		function : GetDllProxy() ~ System.API.DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := System.API.DllProxy->New("libobjk_ml");
-			};
+			@lib_proxy := @lib_proxy ?? System.API.DllProxy->New("libobjk_ml");
 
 			return @lib_proxy;
 		}
@@ -285,10 +283,10 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_solve_matrix_matrix = Nil) { @fn_ml_matrix_solve_matrix_matrix := "ml_matrix_solve_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_solve_matrix_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -363,7 +361,7 @@ each(c in coeffs) {
 
 				return row;
 			};
-			
+
 			return Nil;
 		}
 
@@ -387,7 +385,7 @@ each(c in coeffs) {
 
 				return sum;
 			};
-			
+
 			return 0.0;
 		}
 
@@ -411,7 +409,7 @@ each(c in coeffs) {
 
 				return SafeDiv(sum, cols->As(Float));
 			};
-			
+
 			return 0.0;
 		}
 
@@ -459,7 +457,7 @@ each(c in coeffs) {
 
 				return col;
 			};
-			
+
 			return Nil;
 		}
 
@@ -483,7 +481,7 @@ each(c in coeffs) {
 
 				return sum;
 			};
-			
+
 			return 0.0;
 		}
 
@@ -500,14 +498,14 @@ each(c in coeffs) {
 
 			if(c < cols) {
 				sum := 0.0;
-				
+
 				each(i : rows) {
 					sum += matrix[i, c];
 				};
 
 				return SafeDiv(sum, rows->As(Float));
 			};
-			
+
 			return 0.0;
 		}
 
@@ -550,10 +548,10 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_add_scalar_matrix = Nil) { @fn_ml_matrix_add_scalar_matrix := "ml_matrix_add_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_add_scalar_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -568,17 +566,17 @@ each(c in coeffs) {
 				array_args := Base->New[3];
 				holder := FloatMatrixRef->New();
 				array_args[0] := holder;
-				array_args[1] := FloatMatrixRef->New(m);				
-				array_args[2] := FloatRef->New(c);				
+				array_args[1] := FloatMatrixRef->New(m);
+				array_args[2] := FloatRef->New(c);
 				if(@fn_ml_matrix_add_matrix_scalar = Nil) { @fn_ml_matrix_add_matrix_scalar := "ml_matrix_add_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_add_matrix_scalar, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Adds two matrices
 		@param m1 left matrix
@@ -594,10 +592,10 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_add_matrix_matrix = Nil) { @fn_ml_matrix_add_matrix_matrix := "ml_matrix_add_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_add_matrix_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -616,13 +614,13 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_sub_scalar_matrix = Nil) { @fn_ml_matrix_sub_scalar_matrix := "ml_matrix_sub_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_sub_scalar_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Adds a constant to a matrix
 		@param m matrix
@@ -634,14 +632,14 @@ each(c in coeffs) {
 				array_args := Base->New[3];
 				holder := FloatMatrixRef->New();
 				array_args[0] := holder;
-				array_args[1] := FloatMatrixRef->New(m);				
-				array_args[2] := FloatRef->New(c);				
+				array_args[1] := FloatMatrixRef->New(m);
+				array_args[2] := FloatRef->New(c);
 				if(@fn_ml_matrix_sub_matrix_scalar = Nil) { @fn_ml_matrix_sub_matrix_scalar := "ml_matrix_sub_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_sub_matrix_scalar, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -660,10 +658,10 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_sub_matrix_matrix = Nil) { @fn_ml_matrix_sub_matrix_matrix := "ml_matrix_sub_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_sub_matrix_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -682,10 +680,10 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_mul_scalar_matrix = Nil) { @fn_ml_matrix_mul_scalar_matrix := "ml_matrix_mul_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_mul_scalar_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -700,14 +698,14 @@ each(c in coeffs) {
 				array_args := Base->New[3];
 				holder := FloatMatrixRef->New();
 				array_args[0] := holder;
-				array_args[1] := FloatMatrixRef->New(m);				
-				array_args[2] := FloatRef->New(c);				
+				array_args[1] := FloatMatrixRef->New(m);
+				array_args[2] := FloatRef->New(c);
 				if(@fn_ml_matrix_mul_matrix_scalar = Nil) { @fn_ml_matrix_mul_matrix_scalar := "ml_matrix_mul_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_mul_matrix_scalar, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -755,13 +753,13 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_dot_matrix_matrix = Nil) { @fn_ml_matrix_dot_matrix_matrix := "ml_matrix_dot_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_dot_matrix_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Divides a constant by a matrix
 		@param c constant
@@ -777,10 +775,10 @@ each(c in coeffs) {
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_div_scalar_matrix = Nil) { @fn_ml_matrix_div_scalar_matrix := "ml_matrix_div_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_div_scalar_matrix, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -795,14 +793,14 @@ each(c in coeffs) {
 				array_args := Base->New[3];
 				holder := FloatMatrixRef->New();
 				array_args[0] := holder;
-				array_args[1] := FloatMatrixRef->New(m);				
-				array_args[2] := FloatRef->New(c);				
+				array_args[1] := FloatMatrixRef->New(m);
+				array_args[2] := FloatRef->New(c);
 				if(@fn_ml_matrix_div_matrix_scalar = Nil) { @fn_ml_matrix_div_matrix_scalar := "ml_matrix_div_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_div_matrix_scalar, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -848,10 +846,10 @@ each(c in coeffs) {
 				array_args[1] := FloatMatrixRef->New(a);
 				if(@fn_ml_matrix_transpose = Nil) { @fn_ml_matrix_transpose := "ml_matrix_transpose"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_transpose, array_args);
-				
+
 				return holder->Get();
 			};
-			
+
 			return Nil;
 		}
 
@@ -881,7 +879,7 @@ each(c in coeffs) {
 
 			return holder->Get();
 		}
-		
+
 		#~
 		Sigmoid 'S' function
 		@param x input value
@@ -923,7 +921,7 @@ val := Matrix2D->Sigmoid(2.0);
 
 			return c;
 		}
-		
+
 		#~
 		Calculates the Dot Product applying while applying the Sigmoid function to all elements
 		@param a matrix
@@ -1182,10 +1180,10 @@ each(i : probs->Size()[0]) {
 					m[i,j] := Float->Random();
 				};
 			};
-			
+
 			return m;
 		}
-		
+
 		#~
 		Generates a random normal distribution of values
 		@param mean center of values
@@ -1230,7 +1228,7 @@ each(i : probs->Size()[0]) {
 			b_dims := b->Size();
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
-			
+
 			c : Float[,];
 			if(is_row) {
 				if(count + offset <= 0 | count + offset > b_rows) {
@@ -1261,7 +1259,7 @@ each(i : probs->Size()[0]) {
 
 			return c;
 		}
-		
+
 		#~
 		Concatenates two matrix
 		@param a left matrix
@@ -1377,21 +1375,21 @@ each(i : probs->Size()[0]) {
 		method : public : ToString() ~ String {
 			return @value->ToString();
 		}
-		
+
 		#~
 		Builds random bootstrapped dataset
 		@return bootstrapped dataset
 		~#
-		method : native : public : Bootstrap() ~ BoolMatrixRef {		
+		method : native : public : Bootstrap() ~ BoolMatrixRef {
 			dims := @value->Size();
 			rows := dims[0];
 			cols := dims[1];
-			
+
 			random_rows := Int->New[rows];
 			each(i : rows) {
 				random_rows[i] := (rows - 1)->Random();
 			};
-			
+
 			bag_matrix := Bool->New[rows, cols];
 			each(i : rows) {
 				random_row := random_rows[i];
@@ -1476,7 +1474,7 @@ each(i : probs->Size()[0]) {
 
 		#~
 		Set boolean value
-		@param value boolean value		
+		@param value boolean value
 		~#
 		method : public : Set(value : Float[,]) ~ Nil {
 			@value := value;
@@ -1521,7 +1519,7 @@ each(i : probs->Size()[0]) {
 	}
 
 	#~
-	Simple neural network. Input values should be scaled to between 0.0 to 1.0. 
+	Simple neural network. Input values should be scaled to between 0.0 to 1.0.
 	The tuned network should return outputs between 0.0 to 1.0.
 
 	```
@@ -1593,7 +1591,7 @@ else if(args->Size() = 1) {
 
 			network := NeuralNetwork->New(input_nodes, hidden_factor * input_nodes, output_nodes, learning_rate);
 			network->Train(inputs, targets, learning_rate, iterations);
-			return network;		
+			return network;
 		}
 
 		# True when every matrix is a rows x 1 column.
@@ -1622,7 +1620,7 @@ else if(args->Size() = 1) {
 
 			return true;
 		}
-		
+
 		New : private (input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
 			@input_nodes := input_nodes;
 			@hidden_nodes := hidden_nodes;
@@ -1672,7 +1670,7 @@ else if(args->Size() = 1) {
 				result := Confidence(inputs);
 				if(result > @threshold) {
 					return true;
-				};		
+				};
 			};
 
 			return false;
@@ -2293,7 +2291,7 @@ Y_hat := net->Predict(X);
 
 		method : CheckInput(X : Float[,], cols : Int) ~ Bool {
 			if(@w = Nil) {
-				if(@error = Nil | @error->Size() = 0) {
+				if(@error = Nil | @error->IsEmpty()) {
 					@error := "the network was not constructed";
 				};
 				return false;
@@ -2476,7 +2474,7 @@ Y_hat := net->Predict(X);
 	}
 
 	#~
-	Utilities for reading data from CSV data sources 
+	Utilities for reading data from CSV data sources
 	~#
 	class MatrixReader {
 		#~
@@ -2546,7 +2544,7 @@ Y_hat := net->Predict(X);
 			# Declared here, not inside the branches: a local declared in a nested
 			# block and read outside it is a known way to fault.
 			table : CsvTable;
-			if(line_ending = Nil | line_ending->Size() = 0) {
+			if(line_ending = Nil | line_ending->IsEmpty()) {
 				table := CsvTable->New(data);
 			}
 			else {

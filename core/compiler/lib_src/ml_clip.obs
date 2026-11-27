@@ -502,7 +502,7 @@ pairs := FacePairs->ReadLfw("lfw_home/pairsDevTest.txt", "lfw_home/lfw_funneled"
 		@return true when it holds pairs
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -938,9 +938,7 @@ if(<>encoder->IsOpen()) {
 				};
 
 				dims := rows->Size();
-				if(result = Nil) {
-					result := Float->New[total, dims[1]];
-				};
+				result := result ?? Float->New[total, dims[1]];
 				for(b := 0; b < count; b += 1;) {
 					for(j := 0; j < dims[1]; j += 1;) {
 						result[start + b, j] := rows[b, j];
@@ -959,7 +957,7 @@ if(<>encoder->IsOpen()) {
 			inputs := Vector->New()<Tensor>;
 			inputs->AddBack(Tensor->New(@input_name, [count, 3, side, side], pixels));
 			outputs := @session->Run(inputs, [@output_name]);
-			if(outputs = Nil | outputs->Size() = 0) {
+			if(outputs = Nil | outputs->IsEmpty()) {
 				reason := EndPoint->GetLastError();
 				@error := "the model run failed: {$reason}";
 				return Nil;
@@ -968,9 +966,7 @@ if(<>encoder->IsOpen()) {
 			tensor := outputs->Get(0);
 			shape := tensor->GetShape();
 			values := tensor->GetFloats();
-			if(values = Nil) {
-				values := tensor->AsFloats();
-			};
+			values := values ?? tensor->AsFloats();
 			if(shape->Size() <> 2 | shape[0] <> count | values = Nil) {
 				text := tensor->ToString();
 				@error := "the model returned {$text}, not [{$count}, dimension]";

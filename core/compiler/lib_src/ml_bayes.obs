@@ -333,7 +333,7 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 		#~
 		Constructor
 		@param name entry name
-		@param count count of occurrences 
+		@param count count of occurrences
 		~#
 		New(name : String, count : Int) {
 			@name := name;
@@ -417,7 +417,7 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 
 ```
 normal := BayesGroup->New(8.0 / 12.0);
-normal->AddEntry(BayesEntry->New("dear", 8));		
+normal->AddEntry(BayesEntry->New("dear", 8));
 normal->AddEntry(BayesEntry->New("friend", 5));
 normal->AddEntry(BayesEntry->New("lunch", 3));
 normal->AddEntry(BayesEntry->New("money", 1));
@@ -435,11 +435,11 @@ if(finding = 0) {
   "normal"->PrintLine();
 }
 else if(finding = 1) {
-  "spam"->PrintLine();	
+  "spam"->PrintLine();
 }
 else {
-  "invalid"->PrintLine();	
-}	
+  "invalid"->PrintLine();
+}
 	```
 	~#
 	class NaiveBayes {
@@ -538,14 +538,14 @@ matrix := [
   [55.0, 170.0]];
 
 labels := [
-  "underweight", 
-  "normal", 
-  "normal", 
-  "normal", 
-  "normal", 
-  "underweight", 
-  "normal", 
-  "normal", 
+  "underweight",
+  "normal",
+  "normal",
+  "normal",
+  "normal",
+  "underweight",
+  "normal",
+  "normal",
   "normal"];
 
 knn := KNearestNeighbors->New(matrix, labels);

@@ -1257,7 +1257,7 @@ t->Save("rf_trees.csv");
 			if(format = Nil | <>IsFormat(format)) {
 				Refuse("unknown number format '{$format}': use fixed, sci, p or int");
 			};
-			if(name = Nil | name->Size() = 0) {
+			if(name = Nil | name->IsEmpty()) {
 				Refuse("a column needs a name");
 			};
 			if(@row_names->Size() > 0) {
@@ -2247,7 +2247,7 @@ t->Save("rf_trees.csv");
 		}
 
 		function : ReadCsvNumber(text : String) ~ Float {
-			if(text = Nil | text->Size() = 0 | text->Equals("n/a")) {
+			if(text = Nil | text->IsEmpty() | text->Equals("n/a")) {
 				return Float->NaN();
 			};
 
@@ -2852,7 +2852,7 @@ c->Save("recall_vs_c.svg");
 		@return SVG 1.1 text; raises LabError when there is nothing to draw or a log axis meets a non-positive x
 		~#
 		method : public : ToSvg() ~ String {
-			if(@series->Size() = 0) {
+			if(@series->IsEmpty()) {
 				Refuse("nothing to draw: add a line or bars first");
 			};
 

@@ -1,6 +1,6 @@
 #~~
 Copyright (c) 2024 Randy Hollines
-~~#	
+~~#
 
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme;
 
@@ -24,12 +24,12 @@ bundle API.Google.Gemini {
 			token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
 			if(token_str = Nil) {
 				scopes := [
-					"https://www.googleapis.com/auth/cloud-platform", 
+					"https://www.googleapis.com/auth/cloud-platform",
 					"https://www.googleapis.com/auth/generative-language.retriever",
 					"https://www.googleapis.com/auth/generative-language.tuning"];
 				token := System.IO.Net.OAuth.OAuthClient->New("client_secrets.json", scopes)->GetToken();
 				if(token <> Nil) {
-					System.IO.Filesystem.FileWriter->WriteFile("client_secrets.dat", 
+					System.IO.Filesystem.FileWriter->WriteFile("client_secrets.dat",
 						System.IO.Net.OAuth.OAuthToken->FormatNewToken(token->GetAccessToken(), token->GetExpiresIn()));
 					token_str := System.IO.Net.OAuth.OAuthToken->ReadTokenFormat(System.IO.Filesystem.FileReader->ReadFile("client_secrets.dat"));
 				}
@@ -98,10 +98,10 @@ bundle API.Google.Gemini {
 			return @last_message;
 		}
 	}
-	
+
 	#~
 	Gemini model interactions
-	
+
 ```
 content := Content->New("user")->AddPart(TextPart->New("What number is this image showing?"))
   ->AddPart(BinaryPart->New(FileReader->ReadBinaryFile("thirdteen.png"), "image/png"));
@@ -311,7 +311,7 @@ each(candidate in candidates) {
 
 			return Model->New(model_json);
 		}
-		
+
 		#~
 		Lists available models
 		@param key API key
@@ -372,7 +372,7 @@ model := Model->Get(Model->GEMINI_2_0_FLASH(), EndPoint->GetApiKey());
 
 			if(model_json <> Nil) {
 				return Model->New(model_json);
-				
+
 			};
 
 			return Nil;
@@ -532,9 +532,7 @@ each(candidate in candidates) {
 				schema_json := resp_schema->GetSecond();
 				schema_mime_type := resp_schema->GetFirst();
 
-				if(gen_config_obj_json = Nil) {
-					gen_config_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-				};
+				gen_config_obj_json := gen_config_obj_json ?? JsonElement->New(JsonElement->JsonType->OBJECT);
 				gen_config_obj_json->Insert("responseMimeType", schema_mime_type);
 				gen_config_obj_json->Insert("responseSchema", schema_json->ToJson());
 			};
@@ -545,7 +543,7 @@ each(candidate in candidates) {
 
 			if(funcs <> Nil) {
 				function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		
+
 				func_key_values := funcs->GetKeyValues()<Pair<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>>;
 				each(func_key_value in func_key_values) {
 					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
@@ -553,7 +551,7 @@ each(candidate in candidates) {
 
 					function_declaration_array_json->Add(JsonParser->TextToElement(func_dclr->ToString()));
 				};
-				
+
 				# create array of functions
 				function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				function_declaration_obj_array_json->Insert("function_declarations", function_declaration_array_json);
@@ -564,7 +562,7 @@ each(candidate in candidates) {
 				# set tools
 				contents_obj_json->Insert("tools", tools_array_json);
 			};
-			
+
 			# safety settings
 			if(safety_settings <> Nil) {
 				safety_setting_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -574,7 +572,7 @@ each(candidate in candidates) {
 					safety_setting_obj_json->Insert("threshold", safety_setting->GetSecond());
 					safety_setting_array_json->Add(safety_setting_obj_json);
 				};
-				
+
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 
@@ -597,20 +595,20 @@ each(candidate in candidates) {
 			content_array_json := contents_obj_json->Get("contents");
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
-			if(url->GetQueryParameters()->Has("key")) {			
+			if(url->GetQueryParameters()->Has("key")) {
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
 
 					return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, false);
 				};
 			};
-			
+
 			return Nil;
 		}
 
-		function : BuildContentResponse(contents_obj_json : JsonElement, content_array_json : JsonElement, response : JsonElement, 
+		function : BuildContentResponse(contents_obj_json : JsonElement, content_array_json : JsonElement, response : JsonElement,
 				funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, url : Url, is_chat : Bool) ~ Vector<Candidate> {
-			
+
 			candidates := Vector->New()<Candidate>;
 
 			# a prompt blocked by a safety filter comes back with no 'candidates',
@@ -649,9 +647,7 @@ each(candidate in candidates) {
 				if(content_json <> Nil) {
 					parts_json := content_json->Get("parts");
 				};
-				if(parts_json = Nil) {
-					parts_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-				};
+				parts_json := parts_json ?? JsonElement->New(JsonElement->JsonType->ARRAY);
 
 				if(is_chat & content_json <> Nil) {
 					content_array_json->Add(content_json);
@@ -682,7 +678,7 @@ each(candidate in candidates) {
 					# inline part
 					else if(part_json->Has("functionCall")) {
 						func_call_json := part_json->Get("functionCall");
-						
+
 						func_name := func_call_json->Get("name")->GetString();
 						func_args := func_call_json->Get("args");
 
@@ -720,7 +716,7 @@ each(candidate in candidates) {
 							# set response parts array
 							parts_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 							parts_obj_array_json->Insert("parts", parts_obj_array);
-							
+
 							# add function callback request
 							content_array_json->Add(content_json);
 
@@ -729,7 +725,7 @@ each(candidate in candidates) {
 
 
 							if(url->GetQueryParameters()->Has("key")) {
-								response := PostRequest(contents_obj_json, url);															
+								response := PostRequest(contents_obj_json, url);
 								if(response <> Nil) {
 
 									return BuildContentResponse(contents_obj_json, content_array_json, response, funcs, url, is_chat);
@@ -748,7 +744,7 @@ each(candidate in candidates) {
 				# safety ratings
 				safety_ratings := Vector->New()<Collection.Tuple.Pair<String, String>>;
 				safety_ratings_json := candidate_json->Get("safetyRatings");
-				
+
 				if(safety_ratings_json <> Nil) {
 					each(safety_rating_json in safety_ratings_json) {
 						safety_category := safety_rating_json->Get("category")->GetString();
@@ -800,7 +796,7 @@ embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 		@param content model content=
 		@param title title for the text. Only applicable when TaskType is RETRIEVAL_DOCUMENT
 		@param type task type for which the embeddings will be used
-		@param key API key		
+		@param key API key
 		~#
 		function : EmbedContent(content : Content, title : String, type : Model->TaskType, key : String) ~ Float[] {
 			# content
@@ -817,36 +813,36 @@ embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 				};
 			};
 			content_obj_json->Insert("parts", parts_obj_json);
-	
+
 			embed_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			embed_obj_json->Insert("content", content_obj_json);
 
 			if(type = Model->TaskType->RETRIEVAL_DOCUMENT) {
 				embed_obj_json->Insert("title", title);
 			};
-			
+
 			select(type) {
 					label Model->TaskType->RETRIEVAL_QUERY {
 						embed_obj_json->Insert("taskType", "RETRIEVAL_QUERY");
 					}
-					
+
 					label Model->TaskType->RETRIEVAL_DOCUMENT {
 						embed_obj_json->Insert("taskType", "RETRIEVAL_DOCUMENT");
 					}
-					
+
 					label Model->TaskType->SEMANTIC_SIMILARITY {
 						embed_obj_json->Insert("taskType", "SEMANTIC_SIMILARITY");
 					}
-					
+
 					label Model->TaskType->CLASSIFICATION {
 						embed_obj_json->Insert("taskType", "CLASSIFICATION");
 					}
-					
+
 					label Model->TaskType->CLUSTERING {
 						embed_obj_json->Insert("taskType", "CLUSTERING");
 					}
 			};
-			
+
 			model := "models/embedding-001";
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model}:embedContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {
@@ -855,7 +851,7 @@ embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 					return EmbeddingFromJson(response_json);
 				};
 			};
-						
+
 			return Nil;
 		}
 
@@ -882,7 +878,7 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 		Runs a model's tokenizer on input content and returns the token count
 		@param model_name model name
 		@param contents list of content for the model
-		@param key API key		
+		@param key API key
 		~#
 		function : CountTokens(model_name : String, contents : Vector<Content>, key : String) ~ Int {
 			# contents
@@ -933,7 +929,7 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 			contents_obj_json->Insert("contents", content_array_json);
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1/{$model_name}:countTokens?key={$key}");
-			if(url->GetQueryParameters()->Has("key")) {			
+			if(url->GetQueryParameters()->Has("key")) {
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
 					return TokenCountFromJson(response);
@@ -1037,9 +1033,7 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 			if(embeddings_json <> Nil) {
 				each(embedding_json in embeddings_json) {
 					values := ValuesFromJson(embedding_json->Get("values"));
-					if(values = Nil) {
-						values := Float->New[0];
-					};
+					values := values ?? Float->New[0];
 					results->AddBack(EmbeddingValues->New(values));
 				};
 			};
@@ -1174,11 +1168,11 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 		}
 
 		#~
-		Controls the randomness of the output. Values can range over [0.0,1.0], 
-		inclusive. A value closer to 1.0 will produce responses that are more 
-		varied, while a value closer to 0.0 will typically result in less 
+		Controls the randomness of the output. Values can range over [0.0,1.0],
+		inclusive. A value closer to 1.0 will produce responses that are more
+		varied, while a value closer to 0.0 will typically result in less
 		surprising responses from the model.
-		@return model temperature 
+		@return model temperature
 		~#
 		method : public : GetTemperature() ~ Float {
 			return @temperature;
@@ -1470,9 +1464,7 @@ candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, Nil, Ni
 		@return self reference
 		~#
 		method : public : AddStopSequence(stop_sequence : String) ~ GenerationConfig {
-			if(@stop_sequences = Nil) {
-				@stop_sequences := Vector->New()<String>;
-			};
+			@stop_sequences := @stop_sequences ?? Vector->New()<String>;
 			@stop_sequences->AddBack(stop_sequence);
 			return @self;
 		}
@@ -1618,7 +1610,7 @@ candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, Nil, Ni
 				buffer->Append(part->ToString());
 			};
 			buffer->Append("\n---");
-						
+
 			return buffer;
 		}
 	}
@@ -1629,7 +1621,7 @@ candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, Nil, Ni
 	class Candidate from Content implements Stringify {
 		@finish_reason : String;
 		@safety_ratings : Vector<Collection.Tuple.Pair<String,String>>;
-		
+
 		New(role : String, finish_reason : String, parts : Vector<Part>, safety_ratings : Vector<Collection.Tuple.Pair<String,String>>) {
 			Parent(parts, role);
 
@@ -1777,14 +1769,14 @@ candidate->GetAllText()->PrintLine();
 			if(part->TypeOf(TextPart)) {
 				text_part := part->As(TextPart);
 				part_obj_json->Insert("text", text_part->GetText());
-			}					
+			}
 			else {
 				binary_part := part->As(BinaryPart);
 
 				inline_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				inline_obj_json->Insert("mimeType", binary_part->GetMimeType());
 				inline_obj_json->Insert("data", binary_part->GetBase64Data());
-				
+
 				part_obj_json->Insert("inlineData", inline_obj_json);
 			};
 
@@ -1802,7 +1794,7 @@ candidate->GetAllText()->PrintLine();
 					return candidates->Last();
 				};
 			};
-			
+
 			return Nil;
 		}
 
@@ -1818,7 +1810,7 @@ candidate->GetAllText()->PrintLine();
 				# role and parts
 				role := candidate_json->Get("role")->GetString();
 				parts_json := candidate_json->Get("parts");
-				
+
 				parts := Vector->New()<Part>;
 				each(part_json in parts_json) {
 					part : Part := Nil;
@@ -2501,7 +2493,7 @@ candidate->GetAllText()->PrintLine();
 		~#
 		function : InsecureTlsBlocksKey() ~ Bool {
 			skip := System.Runtime->GetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY");
-			if(skip = Nil | skip->Size() = 0) {
+			if(skip = Nil | skip->IsEmpty()) {
 				return false;
 			};
 
@@ -2537,7 +2529,7 @@ candidate->GetAllText()->PrintLine();
 					dir_str := System.IO.Filesystem.Directory->GetWorking();
 					dir_str += System.IO.Filesystem.Directory->GetSlash();
 					dir_str += filename;
-					
+
 					">>> Unable to read API key from: '{$dir_str}', also consider calling SetApiKey(..)"->ErrorLine();
 				}
 				else {
@@ -2579,7 +2571,7 @@ bundle API.Google.Gemini.Tuning {
 		@top_p : Float;
 		@top_k : Int;
 
-		New : private(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>, 
+		New : private(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>,
 				base_model : String, temperature : Float, top_p : Float, top_k : Int) {
 			Parent();
 
@@ -2616,7 +2608,7 @@ bundle API.Google.Gemini.Tuning {
 		@param top_k for top-k sampling considers the set of top-k most probable tokens. this value specifies default to be used by the backend while making the call to the model
 		@return snapshot of tuned model and metadata
 		~#
-		function : Create(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>, 
+		function : Create(display_name : String, description : String, tuning_task : TuningTask, tune_model_source : Pair<String, String>,
 				base_model : String, temperature : Float, top_p : Float, top_k : Int) ~ API.Google.Gemini.Tuning.TunedModel {
 			query_json := Tuner->New(display_name, description, tuning_task, tune_model_source, base_model, temperature, top_p, top_k);
 			data := query_json->ToString()->ToByteArray();
@@ -2627,13 +2619,13 @@ bundle API.Google.Gemini.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), data, "application/json", headers);
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -2659,13 +2651,13 @@ bundle API.Google.Gemini.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(url_str), "application/json", headers);
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -2689,7 +2681,7 @@ bundle API.Google.Gemini.Tuning {
 					return false;
 				}
 			};
-			
+
 			return true;
 		}
 
@@ -2704,13 +2696,13 @@ bundle API.Google.Gemini.Tuning {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/tunedModels"), "application/json", headers);
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -2737,7 +2729,7 @@ bundle API.Google.Gemini.Tuning {
 								"### Error: Unable to parse response ###"->ErrorLine();
 								return Nil;
 							};
-							
+
 							if(response_json->Has("error")) {
 								error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 								SetLastError(error_str);
@@ -2748,7 +2740,7 @@ bundle API.Google.Gemini.Tuning {
 
 					tuned_models_json := response_json->Get("tunedModels");
 					if(tuned_models_json <> Nil) {
-						each(tuned_model_json in tuned_models_json) {						
+						each(tuned_model_json in tuned_models_json) {
 							tuned_models->AddBack(API.Google.Gemini.Tuning.TunedModel->New(tuned_model_json));
 						};
 					};
@@ -2777,14 +2769,14 @@ bundle API.Google.Gemini.Tuning {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_id}:transferOwnership"), data, "application/json", headers);			
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_id}:transferOwnership"), data, "application/json", headers);
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					return false;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -2878,7 +2870,7 @@ bundle API.Google.Gemini.Tuning {
 				@metadata := Map->New()<String, String>;
 				metadata_names := metadata_json->GetNames();
 				each(metadata_name in metadata_names) {
-					metadata_value := metadata_json->Get(metadata_name)->GetString();				
+					metadata_value := metadata_json->Get(metadata_name)->GetString();
 					@metadata->Insert(metadata_name, metadata_value);
 				};
 			};
@@ -2912,7 +2904,7 @@ bundle API.Google.Gemini.Tuning {
 		Generates a response from the model given an input
 		@param model_name model name
 		@param contents list of content for the model
-		@param funcs map of function callbacks, name must to map to function callback name		
+		@param funcs map of function callbacks, name must to map to function callback name
 		@param safety_settings key/value safety settings
 		~#
 		method : public : GenerateContent(contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, resp_schema : Pair<String, ParameterType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>) ~ Vector<Candidate> {
@@ -2963,7 +2955,7 @@ bundle API.Google.Gemini.Tuning {
 			contents_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			contents_obj_json->Insert("contents", content_array_json);
 
-			# response schema 
+			# response schema
 			if(resp_schema <> Nil) {
 				schema_json := resp_schema->GetSecond();
 				schema_mime_type := resp_schema->GetFirst();
@@ -2977,7 +2969,7 @@ bundle API.Google.Gemini.Tuning {
 
 			if(funcs <> Nil) {
 				function_declaration_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-		
+
 				func_key_values := funcs->GetKeyValues()<Pair<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>>;
 				each(func_key_value in func_key_values) {
 					func_def_dclr := func_key_value->GetSecond()<FunctionType, Func2Ref<JsonElement, JsonElement>>;
@@ -2985,7 +2977,7 @@ bundle API.Google.Gemini.Tuning {
 
 					function_declaration_array_json->Add(JsonParser->TextToElement(func_dclr->ToString()));
 				};
-				
+
 				# create array of functions
 				function_declaration_obj_array_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 				function_declaration_obj_array_json->Insert("function_declarations", function_declaration_array_json);
@@ -2996,7 +2988,7 @@ bundle API.Google.Gemini.Tuning {
 				# set tools
 				contents_obj_json->Insert("tools", tools_array_json);
 			};
-			
+
 			# safety settings
 			if(safety_settings <> Nil) {
 				safety_setting_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -3025,7 +3017,7 @@ bundle API.Google.Gemini.Tuning {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				return Model->BuildContentResponse(contents_obj_json, content_array_json, response_json, funcs, url, false);
 			};
 
@@ -3043,7 +3035,7 @@ bundle API.Google.Gemini.Tuning {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			
+
 			url_str := "https://generativelanguage.googleapis.com/v1beta/tunedModels";
 			response := HttpsClient->QuickGet(Url->New(url_str), headers);
 			if(response = Nil | response->GetCode() = 0) {
@@ -3080,7 +3072,7 @@ bundle API.Google.Gemini.Tuning {
 							"### Error: Unable to parse response ###"->ErrorLine();
 							return Nil;
 						};
-						
+
 						if(response_json->Has("error")) {
 							error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 							SetLastError(error_str);
@@ -3112,15 +3104,15 @@ bundle API.Google.Gemini.Tuning {
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3130,7 +3122,7 @@ bundle API.Google.Gemini.Tuning {
 				return true;
 			};
 
-			return false;	
+			return false;
 		}
 
 		#~
@@ -3262,7 +3254,7 @@ bundle API.Google.Gemini.Tuning {
 				buffer += "\nmetadata:";
 				each(metadata_key_value in metadata_keys_values) {
 					buffer += "\n\t";
-				
+
 					metadata_name := metadata_key_value->GetFirst();
 					metadata_value := metadata_key_value->GetSecond();
 
@@ -3287,7 +3279,7 @@ bundle API.Google.Gemini.Tuning {
 	class TuningTask implements Stringify {
 		@training_data : Dataset;
 		@hyper_params : Hyperparameters;
-		
+
 		#~
 		Constructor
 		@param training_data model training data
@@ -3349,7 +3341,7 @@ bundle API.Google.Gemini.Tuning {
 		~#
 		New() {
 			Parent();
-			
+
 			@examples := Vector->New()<TuningExample>;
 		}
 
@@ -3413,7 +3405,7 @@ bundle API.Google.Gemini.Tuning {
 		~#
 		New(text_input : String, output : String) {
 			Parent();
-			
+
 			@text_input := text_input;
 			@output := output;
 		}
@@ -3443,7 +3435,7 @@ bundle API.Google.Gemini.Tuning {
 
 			tuning_example_json->Insert("textInput", @text_input);
 			tuning_example_json->Insert("output", @output);
-			
+
 			return tuning_example_json;
 		}
 
@@ -3473,7 +3465,7 @@ bundle API.Google.Gemini.Tuning {
 		~#
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int) {
 			Parent();
-			
+
 			@batch_size := batch_size;
 			@learning_rate := learning_rate;
 			@epoch_count := epoch_count;
@@ -3489,7 +3481,7 @@ bundle API.Google.Gemini.Tuning {
 		~#
 		New(batch_size : Int, learning_rate : Float, epoch_count : Int, learning_rate_multiplier : Float) {
 			Parent();
-			
+
 			@batch_size := batch_size;
 			@learning_rate := learning_rate;
 			@epoch_count := epoch_count;
@@ -3619,7 +3611,7 @@ each(result in results) {
   metadata->ToString()->PrintLine();
   "---"->PrintLine();
 }
-```	
+```
 	~#
 	class Corpus from OAuthEndPoint implements Stringify {
 		@name : String;
@@ -3681,17 +3673,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/corpora"), data, 
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/corpora"), data,
 				"application/json", headers);
 
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3701,7 +3693,7 @@ each(result in results) {
 				return Corpus->New(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -3713,18 +3705,18 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"),
 				"application/json", headers);
 
 			if(response <> Nil) {
 				#response->GetContent()->ToString()->PrintLine();
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3734,9 +3726,9 @@ each(result in results) {
 				return Corpus->New(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
-		
+
 		#~
 		Delete existing corpus
 		@return true if successful, false otherwise
@@ -3746,15 +3738,15 @@ each(result in results) {
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), "application/json", headers);
-			
+
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3764,7 +3756,7 @@ each(result in results) {
 				return true;
 			};
 
-			return false;	
+			return false;
 		}
 
 		#~
@@ -3781,17 +3773,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}:query"), data, 
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}:query"), data,
 				"application/json", headers);
 
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3801,7 +3793,7 @@ each(result in results) {
 				return Corpus->ParseQueryResults(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -3944,17 +3936,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}:query"), data, 
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}:query"), data,
 				"application/json", headers);
 
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -3964,7 +3956,7 @@ each(result in results) {
 				return Corpus->ParseQueryResults(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -3996,17 +3988,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$corpora_id}/documents"), data, 
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$corpora_id}/documents"), data,
 				"application/json", headers);
 
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4016,7 +4008,7 @@ each(result in results) {
 				return Document->New(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -4028,18 +4020,18 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"),
 				"application/json", headers);
 
 			if(response <> Nil) {
 				#response->GetContent()->ToString()->PrintLine();
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4049,7 +4041,7 @@ each(result in results) {
 				return Document->New(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -4063,18 +4055,18 @@ each(result in results) {
 			headers->Insert("Authorization", "Bearer {$token}");
 
 			corpora_id := corpus->GetId();
-			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$corpora_id}/documents"), 
+			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$corpora_id}/documents"),
 				"application/json", headers);
 
 			if(response <> Nil) {
-				
-				
+
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4082,7 +4074,7 @@ each(result in results) {
 				};
 
 				corpuses := Collection.Vector->New()<Document>;
-				
+
 				next_page_json : JsonElement;
 				do {
 					# load next page, if it exists
@@ -4101,7 +4093,7 @@ each(result in results) {
 								"### Error: Unable to parse response ###"->ErrorLine();
 								return Nil;
 							};
-							
+
 							if(response_json->Has("error")) {
 								error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 								SetLastError(error_str);
@@ -4124,7 +4116,7 @@ each(result in results) {
 				return corpuses;
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -4135,17 +4127,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), 
+			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"),
 				"application/json", headers);
-			
+
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4155,7 +4147,7 @@ each(result in results) {
 				return true;
 			};
 
-			return false;	
+			return false;
 		}
 
 		#~
@@ -4272,7 +4264,7 @@ each(result in results) {
 
 			request_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			request_json->Insert("data", request_data_json);
-			
+
 			request_json->Insert("customMetadata", metadata_array_json);
 			data := request_json->ToString()->ToByteArray();
 
@@ -4280,17 +4272,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), data, 
+			response := HttpsClient->QuickPost(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), data,
 				"application/json", headers);
 
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4312,18 +4304,18 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"), 
+			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$name}"),
 				"application/json", headers);
 
 			if(response <> Nil) {
 				#response->GetContent()->ToString()->PrintLine();
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4333,7 +4325,7 @@ each(result in results) {
 				return Chunk->New(response_json);
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~
@@ -4344,17 +4336,17 @@ each(result in results) {
 			token := GetToken();
 			headers := Collection.Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
-			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"), 
+			response := HttpsClient->QuickDelete(Url->New("https://generativelanguage.googleapis.com/v1beta/{$@name}"),
 				"application/json", headers);
-			
+
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return false;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4364,7 +4356,7 @@ each(result in results) {
 				return true;
 			};
 
-			return false;	
+			return false;
 		}
 
 		#~
@@ -4380,13 +4372,13 @@ each(result in results) {
 			doc_id := document->GetId();
 			response := HttpsClient->QuickGet(Url->New("https://generativelanguage.googleapis.com/v1beta/{$doc_id}/chunks"), "application/json", headers);
 			if(response <> Nil) {
-				
+
 				response_json := JsonParser->TextToElement(API.Google.Gemini.OAuthEndPoint->ResponseText(response));
 				if(response_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
 					return Nil;
 				};
-				
+
 				if(response_json->Has("error")) {
 					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
@@ -4394,7 +4386,7 @@ each(result in results) {
 				};
 
 				corpuses := Collection.Vector->New()<Chunk>;
-				
+
 				next_page_json : JsonElement;
 				do {
 					# load next page, if it exists
@@ -4413,7 +4405,7 @@ each(result in results) {
 								"### Error: Unable to parse response ###"->ErrorLine();
 								return Nil;
 							};
-							
+
 							if(response_json->Has("error")) {
 								error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 								SetLastError(error_str);
@@ -4436,7 +4428,7 @@ each(result in results) {
 				return corpuses;
 			};
 
-			return Nil;	
+			return Nil;
 		}
 
 		#~

@@ -27,9 +27,7 @@ bundle Game.OpenGL {
 		@lib_proxy : static : DllProxy;
 
 		function : GetDllProxy() ~ DllProxy {
-			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_sdl");
-			};
+			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_sdl");
 
 			return @lib_proxy;
 		}
@@ -685,7 +683,7 @@ bundle Game.OpenGL {
 			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gl_extensions, array_args);
 
 			all := array_args[0]->As(String);
-			if(all = Nil | all->Size() = 0) {
+			if(all = Nil | all->IsEmpty()) {
 				return String->New[0];
 			};
 
@@ -698,7 +696,7 @@ bundle Game.OpenGL {
 		@return true when it is present
 		~#
 		function : HasExtension(name : String) ~ Bool {
-			if(name = Nil | name->Size() = 0) {
+			if(name = Nil | name->IsEmpty()) {
 				return false;
 			};
 
@@ -846,8 +844,7 @@ bundle Game.OpenGL {
 
 			if(count > 0) {
 				"{$count} GL error(s) during {$during}:"->ErrorLine();
-				each(i : errors) {
-					code := errors[i];
+				each(code in errors) {
 					"  0x{$code}"->ErrorLine();
 				};
 			};
@@ -1260,7 +1257,7 @@ bundle Game.OpenGL {
 
 		method : CheckVersion() ~ Bool {
 			version := Core->GLGetVersionString();
-			if(version = Nil | version->Size() = 0) {
+			if(version = Nil | version->IsEmpty()) {
 				@error := "no current GL context after creation";
 				return false;
 			};
@@ -2218,8 +2215,7 @@ bundle Game.OpenGL {
 			# Free here bottoms out in a glDelete*, which needs one. Order within
 			# this list does not matter; order relative to the context does.
 			if(@owned <> Nil) {
-				each(i : @owned) {
-					owned := @owned->Get(i);
+				each(owned in @owned) {
 					if(owned <> Nil) {
 						owned->Free();
 					};
@@ -2390,7 +2386,7 @@ bundle Game.OpenGL {
 			if(@program <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntRef->New(@program);
-				if(@use_name = Nil) { @use_name := "sdl_gl_program_use"; };
+				@use_name := @use_name ?? "sdl_gl_program_use";
 				Proxy->GetDllProxy()->CallFunction(@use_name, array_args);
 			};
 		}
@@ -2457,7 +2453,7 @@ bundle Game.OpenGL {
 				array_args[1] := name;
 				array_args[2] := IntRef->New(value);
 
-				if(@int_name = Nil) { @int_name := "sdl_gl_uniform_int"; };
+				@int_name := @int_name ?? "sdl_gl_uniform_int";
 				Proxy->GetDllProxy()->CallFunction(@int_name, array_args);
 			};
 		}
@@ -2511,7 +2507,7 @@ bundle Game.OpenGL {
 			array_args[1] := name;
 			array_args[2] := FloatRef->New(value);
 
-			if(@float_name = Nil) { @float_name := "sdl_gl_uniform_float"; };
+			@float_name := @float_name ?? "sdl_gl_uniform_float";
 			Proxy->GetDllProxy()->CallFunction(@float_name, array_args);
 		}
 
@@ -2536,7 +2532,7 @@ bundle Game.OpenGL {
 			array_args[3] := FloatRef->New(y);
 			array_args[4] := FloatRef->New(z);
 
-			if(@vec3_name = Nil) { @vec3_name := "sdl_gl_uniform_vec3"; };
+			@vec3_name := @vec3_name ?? "sdl_gl_uniform_vec3";
 			Proxy->GetDllProxy()->CallFunction(@vec3_name, array_args);
 		}
 
@@ -2564,7 +2560,7 @@ bundle Game.OpenGL {
 			array_args[4] := FloatRef->New(z);
 			array_args[5] := FloatRef->New(w);
 
-			if(@vec4_name = Nil) { @vec4_name := "sdl_gl_uniform_vec4"; };
+			@vec4_name := @vec4_name ?? "sdl_gl_uniform_vec4";
 			Proxy->GetDllProxy()->CallFunction(@vec4_name, array_args);
 		}
 
@@ -4198,7 +4194,7 @@ bundle Game.OpenGL {
 			};
 
 			trimmed := line->Trim();
-			if(trimmed->Size() = 0) {
+			if(trimmed->IsEmpty()) {
 				return Nil;
 			};
 			if(trimmed->Get(0) = '#') {
@@ -4215,8 +4211,7 @@ bundle Game.OpenGL {
 				return Nil;
 			};
 
-			each(i : pieces) {
-				piece := pieces[i];
+			each(piece in pieces) {
 				if(piece <> Nil & piece->Size() > 0) {
 					words->AddBack(piece);
 				};
@@ -4314,7 +4309,7 @@ bundle Game.OpenGL {
 		@return a 0-based index, or -1 when there is none
 		~#
 		function : private : Resolve(field : String, count : Int) ~ Int {
-			if(field = Nil | field->Size() = 0 | count = 0) {
+			if(field = Nil | field->IsEmpty() | count = 0) {
 				return -1;
 			};
 
@@ -4818,7 +4813,7 @@ bundle Game.OpenGL {
 				array_args := Base->New[2];
 				array_args[0] := IntRef->New(@texture);
 				array_args[1] := IntRef->New(unit);
-				if(@bind_name = Nil) { @bind_name := "sdl_gl_texture_bind"; };
+				@bind_name := @bind_name ?? "sdl_gl_texture_bind";
 				Proxy->GetDllProxy()->CallFunction(@bind_name, array_args);
 			};
 		}
@@ -5624,7 +5619,7 @@ bundle Game.OpenGL {
 				@error := "the sky needs an inward-facing cube mesh";
 			};
 
-			if(@error->Size() = 0 & (@shader = Nil | <>@shader->IsOk())) {
+			if(@error->IsEmpty() & (@shader = Nil | <>@shader->IsOk())) {
 				@error := "the sky shader did not build";
 				if(@shader <> Nil & @shader->GetLog()->Size() > 0) {
 					@error := @shader->GetLog();
@@ -5636,7 +5631,7 @@ bundle Game.OpenGL {
 		@return true when the shader built and the geometry uploaded
 		~#
 		method : public : IsOk() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -7398,7 +7393,7 @@ bundle Game.OpenGL {
 		@return the width the text occupied, so the next one can follow it
 		~#
 		method : public : Text(text : String, x : Int, y : Int) ~ Int {
-			if(<>IsOk() | @font = Nil | text = Nil | text->Size() = 0) {
+			if(<>IsOk() | @font = Nil | text = Nil | text->IsEmpty()) {
 				return 0;
 			};
 
@@ -7426,7 +7421,7 @@ bundle Game.OpenGL {
 		@return its width in pixels, or 0 when there is no font
 		~#
 		method : public : MeasureWidth(text : String) ~ Int {
-			if(<>IsOk() | @font = Nil | text = Nil | text->Size() = 0) {
+			if(<>IsOk() | @font = Nil | text = Nil | text->IsEmpty()) {
 				return 0;
 			};
 
@@ -8272,7 +8267,7 @@ bundle Game.OpenGL {
 			};
 
 			@depth_shader := Shader->DepthCube();
-			if(@error->Size() = 0 & <>@depth_shader->IsOk()) {
+			if(@error->IsEmpty() & <>@depth_shader->IsOk()) {
 				@error := @depth_shader->GetLog();
 			};
 		}
@@ -8622,7 +8617,7 @@ bundle Game.OpenGL {
 			};
 
 			@depth_shader := Shader->DepthOnly();
-			if(@error->Size() = 0 & <>@depth_shader->IsOk()) {
+			if(@error->IsEmpty() & <>@depth_shader->IsOk()) {
 				@error := @depth_shader->GetLog();
 			};
 		}
@@ -10272,9 +10267,7 @@ bundle Game.OpenGL {
 		@param opacity 0.0 invisible to 1.0 solid
 		~#
 		method : public : SetOpacity(opacity : Float) ~ Nil {
-			if(@material = Nil) {
-				@material := Material->New(@texture);
-			};
+			@material := @material ?? Material->New(@texture);
 
 			@material->SetOpacity(opacity);
 		}
@@ -10887,7 +10880,7 @@ bundle Game.OpenGL {
 			if(<>@visible | view_projection = Nil | <>IsOk()) {
 				return;
 			};
-			if(@transforms->Size() = 0) {
+			if(@transforms->IsEmpty()) {
 				return;
 			};
 
@@ -10933,13 +10926,9 @@ bundle Game.OpenGL {
 			};
 
 			use_rig := @rig;
-			if(use_rig = Nil) {
-				use_rig := rig;
-			};
+			use_rig := use_rig ?? rig;
 			use_light := @light;
-			if(use_light = Nil) {
-				use_light := light;
-			};
+			use_light := use_light ?? light;
 
 			if(use_rig <> Nil) {
 				use_rig->ApplyTo(@shader);
@@ -12121,8 +12110,7 @@ bundle Game.OpenGL {
 		method : DrawBatches(view_projection : Float[]) ~ Nil {
 			touched := false;
 
-			each(i : @batches) {
-				batch := @batches->Get(i);
+			each(batch in @batches) {
 
 				visible := batch->IsVisible();
 				# Radius is 0 until the batch has packed, which happens on its first
@@ -12276,8 +12264,7 @@ bundle Game.OpenGL {
 				@frustum->SetFromMatrix(view_projection);
 			};
 
-			each(i : @boxes) {
-				box := @boxes->Get(i);
+			each(box in @boxes) {
 
 				visible := true;
 				if(cull_here) {
@@ -12302,8 +12289,7 @@ bundle Game.OpenGL {
 			# Transparency is ignored here on purpose: a depth pass records where
 			# geometry IS, and a half-transparent pane still occludes light. Doing
 			# otherwise needs alpha-tested shadows, which is a different feature.
-			each(i : @props) {
-				prop := @props->Get(i);
+			each(prop in @props) {
 				mesh := prop->GetMesh();
 
 				visible := prop->IsVisible() & mesh <> Nil & mesh->IsOk();
@@ -12558,8 +12544,7 @@ bundle Game.OpenGL {
 			best_box := Nil->As(Box);
 			best_prop := Nil->As(Prop);
 
-			each(i : @boxes) {
-				box := @boxes->Get(i);
+			each(box in @boxes) {
 				centre := box->GetCenter();
 				half := box->GetHalf();
 
@@ -12636,8 +12621,7 @@ bundle Game.OpenGL {
 			# segfaulted the moment a prop was in range. Boxes never hit it because
 			# their loop happens to declare at one level shallower. Assignment into
 			# an already-declared local is fine at any depth.
-			each(i : @props) {
-				prop := @props->Get(i);
+			each(prop in @props) {
 				at := prop->GetTransform();
 				radius := prop->GetBoundsRadius();
 
@@ -12838,8 +12822,7 @@ bundle Game.OpenGL {
 		@return true when the position is blocked
 		~#
 		method : public : Blocked(x : Float, z : Float, radius : Float) ~ Bool {
-			each(i : @boxes) {
-				box := @boxes->Get(i);
+			each(box in @boxes) {
 				if(box->IsSolid() & box->OverlapsXZ(x, z, radius)) {
 					return true;
 				};

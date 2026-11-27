@@ -246,9 +246,9 @@ label := knn->Classify(3, query);
 
 		#~
 		Query the matrix for classification
-		@param k number of nearest neighbors 
+		@param k number of nearest neighbors
 		@param query input query
-		@return k nearest neighbors 
+		@return k nearest neighbors
 		~#
 		method : public : Query(k : Int, query : Float[]) ~ KNeighbor[] {
 			return Query(query, k);
@@ -442,7 +442,7 @@ knn->Classify(3, [57.0, 170.0])->PrintLine();
 			};
 
 			total := 0.0;
-			
+
 			each(i : a) {
 				diff := b[i] - a[i];
 				total += diff * diff;
@@ -473,7 +473,7 @@ knn->Classify(3, [57.0, 170.0])->PrintLine();
 		}
 
 		#~
-		Compares neighbors 
+		Compares neighbors
 		@param rhs neighbor to compare
 		@return 0 if equal, -1 if types differ, 1 if equal
 		~#

@@ -1054,8 +1054,7 @@ bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 
 			# a term seen in too few documents is dropped, then only the most frequent are kept
 			candidates := Vector->New()<String>;
-			each(i : order) {
-				term := order->Get(i);
+			each(term in order) {
 				if(doc_freq->Find(term)->Get() >= @min_df) {
 					candidates->AddBack(term);
 				};
@@ -1081,8 +1080,7 @@ bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 				};
 			};
 
-			each(i : candidates) {
-				term := candidates->Get(i);
+			each(term in candidates) {
 				freq := total_freq->Find(term)->Get();
 				if(<>limited | freq > threshold) {
 					@vocabulary->Insert(term, IntRef->New(@vocabulary->Size()));
@@ -1106,7 +1104,7 @@ bigrams->GetVocabulary()->Has("the cat")->PrintLine();
 				};
 			};
 
-			if(@vocabulary->Size() = 0) {
+			if(@vocabulary->IsEmpty()) {
 				@fit_error := "no term is left: the documents have no words, or min_df is above every term's document count";
 				return false;
 			};
@@ -1581,8 +1579,7 @@ suggestions := checker->Suggest("teh", 2, 3);
 			names := Vector->New()<String>;
 			distances := IntVector->New();
 			keys := @words->GetKeys()<String>;
-			each(k : keys) {
-				candidate := keys->Get(k);
+			each(candidate in keys) {
 				gap := candidate->Size() - lower->Size();
 				if(gap < 0) {
 					gap := -gap;
@@ -2022,13 +2019,9 @@ jaccard := TextSimilarity->JaccardSimilarity(t1, t2);
 ```
 		~#
 		function : JaccardSimilarity(tokens1 : String[], tokens2 : String[]) ~ Float {
-			if(tokens1 = Nil) {
-				tokens1 := String->New[0];
-			};
+			tokens1 := tokens1 ?? String->New[0];
 
-			if(tokens2 = Nil) {
-				tokens2 := String->New[0];
-			};
+			tokens2 := tokens2 ?? String->New[0];
 
 			if(tokens1->Size() = 0 & tokens2->Size() = 0) {
 				return 1.0;
@@ -2080,13 +2073,9 @@ dist := TextSimilarity->LevenshteinDistance("kitten", "sitting");
 ```
 		~#
 		function : LevenshteinDistance(str1 : String, str2 : String) ~ Int {
-			if(str1 = Nil) {
-				str1 := "";
-			};
+			str1 := str1 ?? "";
 
-			if(str2 = Nil) {
-				str2 := "";
-			};
+			str2 := str2 ?? "";
 
 			len1 := str1->Size();
 			len2 := str2->Size();
@@ -2151,13 +2140,9 @@ if(TextSimilarity->LevenshteinDistance("opentelemetry", "opentelemetri", 2) <= 2
 ```
 		~#
 		function : LevenshteinDistance(str1 : String, str2 : String, max_distance : Int) ~ Int {
-			if(str1 = Nil) {
-				str1 := "";
-			};
+			str1 := str1 ?? "";
 
-			if(str2 = Nil) {
-				str2 := "";
-			};
+			str2 := str2 ?? "";
 
 			if(max_distance < 0) {
 				max_distance := 0;
@@ -2285,13 +2270,9 @@ nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
 ```
 		~#
 		function : NormalizedEditDistance(str1 : String, str2 : String) ~ Float {
-			if(str1 = Nil) {
-				str1 := "";
-			};
+			str1 := str1 ?? "";
 
-			if(str2 = Nil) {
-				str2 := "";
-			};
+			str2 := str2 ?? "";
 
 			distance := LevenshteinDistance(str1, str2);
 			max_len := str1->Size() > str2->Size() ? str1->Size() : str2->Size();
@@ -3554,9 +3535,7 @@ encoding := tokenizer->Encode("the quick brown fox", 128);
 			first := true;
 			each(i : ids) {
 				token := IdToToken(ids[i]);
-				if(token = Nil) {
-					token := "[UNK]";
-				};
+				token := token ?? "[UNK]";
 
 				if(<>skip_special | <>IsSpecial(token)) {
 					if(<>first & token->StartsWith("##")) {
@@ -3748,8 +3727,7 @@ encoding := tokenizer->Encode("the quick brown fox", 128);
 				return Nil;
 			};
 
-			each(i : @specials) {
-				special := @specials[i];
+			each(special in @specials) {
 				if(at + special->Size() <= points->Size() & @vocab->Has(special)) {
 					match := true;
 					for(j := 0; j < special->Size() & match; j += 1;) {
@@ -3818,8 +3796,7 @@ encoding := tokenizer->Encode("the quick brown fox", 128);
 			};
 
 			run := IntVector->New();
-			each(i : points) {
-				cp := points[i];
+			each(cp in points) {
 				if(WordPieceText->IsPunctuation(cp)) {
 					if(run->Size() > 0) {
 						words->AddBack(IntArrayRef->New(run->ToArray()));
@@ -4009,7 +3986,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		~#
 		method : public : AddSpecialToken(content : String, lstrip : Bool, rstrip : Bool) ~ Bool {
 			id := Id(content);
-			if(id < 0 | content->Size() = 0) {
+			if(id < 0 | content->IsEmpty()) {
 				@error := "the vocabulary has no '{$content}'";
 				return false;
 			};
@@ -4179,8 +4156,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 			};
 
 			bytes := IntVector->New();
-			each(i : ids) {
-				id := ids[i];
+			each(id in ids) {
 				if(id <> @cls_id & id <> @sep_id & id <> @pad_id & id >= 0 & id < @tokens->Size()) {
 					token := @tokens[id];
 					if(token <> Nil & <>IsAdded(id)) {
@@ -4258,8 +4234,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 		# the longest special token that starts at position i
 		method : MatchAdded(points : Int[], i : Int) ~ BpeAdded {
 			best : BpeAdded;
-			each(k : @added) {
-				candidate := @added->Get(k);
+			each(candidate in @added) {
 				content := candidate->GetPoints();
 				length := content->Size();
 				if(i + length <= points->Size() & (best = Nil | length > best->GetLength())) {
@@ -4394,8 +4369,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 			word := Merge(key);
 			symbols := word->GetSymbols();
 			at := 0;
-			each(s : symbols) {
-				symbol := symbols[s];
+			each(symbol in symbols) {
 				first := owners->Get(at);
 				last := owners->Get(at + symbol->Size() - 1);
 				at += symbol->Size();
@@ -4896,8 +4870,7 @@ encoding->GetTokens()->Size()->PrintLine();   # 8: <s> Hello Ġworld </s> <pad> 
 			values := WordPieceUnicode->GetStripValues();
 
 			out := IntVector->New();
-			each(i : points) {
-				cp := points[i];
+			each(cp in points) {
 				if(cp >= 0xAC00 & cp <= 0xD7A3) {
 					# Hangul syllable: leading consonant, vowel, optional trailing consonant
 					s := cp - 0xAC00;
@@ -6103,8 +6076,7 @@ text := apis->ToText("CreateFileW,ReadFile", 0);        # "CreateFileW ReadFile"
 				return text;
 			};
 
-			each(i : ids) {
-				id := ids[i];
+			each(id in ids) {
 				if(id > 3) {
 					token := IdToToken(id);
 					if(token <> Nil) {
@@ -6170,8 +6142,7 @@ text := apis->ToText("CreateFileW,ReadFile", 0);        # "CreateFileW ReadFile"
 				return false;
 			};
 
-			each(i : @tokens) {
-				line := @tokens->Get(i);
+			each(line in @tokens) {
 				writer->WriteString("{$line}\n");
 			};
 			writer->Close();

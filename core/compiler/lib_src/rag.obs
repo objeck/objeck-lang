@@ -158,7 +158,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		@return true if Split will cut
 		~#
 		method : public : IsValid() ~ Bool {
-			return @error->Size() = 0;
+			return @error->IsEmpty();
 		}
 
 		#~
@@ -218,7 +218,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		~#
 		method : public : SplitBySize(source : String, text : String) ~ Vector<RagChunk> {
 			chunks := Vector->New()<RagChunk>;
-			if(<>IsValid() | text = Nil | text->Size() = 0) {
+			if(<>IsValid() | text = Nil | text->IsEmpty()) {
 				return chunks;
 			};
 
@@ -247,7 +247,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		~#
 		method : public : SplitParagraphs(source : String, text : String) ~ Vector<RagChunk> {
 			chunks := Vector->New()<RagChunk>;
-			if(<>IsValid() | text = Nil | text->Size() = 0) {
+			if(<>IsValid() | text = Nil | text->IsEmpty()) {
 				return chunks;
 			};
 
@@ -263,7 +263,7 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		~#
 		method : public : SplitSentences(source : String, text : String) ~ Vector<RagChunk> {
 			chunks := Vector->New()<RagChunk>;
-			if(<>IsValid() | text = Nil | text->Size() = 0) {
+			if(<>IsValid() | text = Nil | text->IsEmpty()) {
 				return chunks;
 			};
 
@@ -271,6 +271,14 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 			return chunks;
 		}
 
+		#~
+		Adds the text from start up to end as a chunk numbered by its position in the list. Whitespace-only text is skipped.
+		@param chunks list the chunk is added to
+		@param source source name
+		@param text the whole text
+		@param start offset where the chunk starts
+		@param end offset where the chunk ends
+		~#
 		method : AddChunk(chunks : Vector<RagChunk>, source : String, text : String, start : Int, end : Int) ~ Nil {
 			piece := text->SubString(start, end - start);
 			if(piece->Trim()->Size() = 0) {
@@ -281,6 +289,13 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		}
 
 		# spans are [start, end) pairs in two parallel lists, whitespace trimmed away
+		#~
+		Groups the spans into chunks: consecutive spans are joined while they fit the chunk size, and a span longer than the size is cut into overlapping windows
+		@param chunks list the chunks are added to
+		@param source source name
+		@param text the whole text
+		@param spans start and end offsets in pairs, one after the other
+		~#
 		method : Pack(chunks : Vector<RagChunk>, source : String, text : String, spans : Vector<IntRef>) ~ Nil {
 			first := -1;
 			last := -1;
@@ -313,6 +328,14 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 			Flush(chunks, source, text, first, last);
 		}
 
+		#~
+		Adds the chunk that runs from first to last, if there is one
+		@param chunks list the chunk is added to
+		@param source source name
+		@param text the whole text
+		@param first offset where it starts, or below 0 for none
+		@param last offset where it ends
+		~#
 		method : Flush(chunks : Vector<RagChunk>, source : String, text : String, first : Int, last : Int) ~ Nil {
 			if(first >= 0) {
 				AddChunk(chunks, source, text, first, last);
@@ -320,6 +343,14 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		}
 
 		# a unit longer than size is cut into overlapping windows of its own
+		#~
+		Cuts a span into windows of the chunk size that overlap by the chunk overlap, the last one ending at the span's end
+		@param chunks list the chunks are added to
+		@param source source name
+		@param text the whole text
+		@param start offset where the span starts
+		@param end offset where the span ends
+		~#
 		method : CutLong(chunks : Vector<RagChunk>, source : String, text : String, start : Int, end : Int) ~ Nil {
 			stride := @size - @overlap;
 			at := start;
@@ -335,12 +366,24 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 			};
 		}
 
+		#~
+		Tells whether a character is white space: space, tab, line feed, carriage return, vertical tab, form feed or no-break space
+		@param c character
+		@return true if it is white space
+		~#
 		function : IsSpace(c : Char) ~ Bool {
 			code := c->As(Int);
 			return code = 32 | code = 9 | code = 10 | code = 13 | code = 11 | code = 12 | code = 160;
 		}
 
 		# trims whitespace off [start, end) and adds the span when something is left
+		#~
+		Adds the start and end offsets of the text from start to end, with white space trimmed off both ends, to the spans. Nothing is added if only white space is left.
+		@param spans start and end offsets in pairs
+		@param text the whole text
+		@param start offset where the unit starts
+		@param end offset where the unit ends
+		~#
 		function : AddSpan(spans : Vector<IntRef>, text : String, start : Int, end : Int) ~ Nil {
 			while(start < end & IsSpace(text->Get(start))) {
 				start += 1;
@@ -356,6 +399,11 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		}
 
 		# paragraphs: runs of lines split at a line that holds only whitespace
+		#~
+		Splits a text into paragraphs, which are separated by lines that hold only white space
+		@param text text to split
+		@return start and end offsets in pairs, one pair per paragraph
+		~#
 		function : ParagraphSpans(text : String) ~ Vector<IntRef> {
 			spans := Vector->New()<IntRef>;
 			length := text->Size();
@@ -387,6 +435,11 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 		}
 
 		# sentences: end at . ! or ? (and any closing quote or bracket) followed by whitespace or the end
+		#~
+		Splits a text into sentences, which end at '.', '!' or '?' (and any closing quote or bracket) followed by white space or the end of the text
+		@param text text to split
+		@return start and end offsets in pairs, one pair per sentence
+		~#
 		function : SentenceSpans(text : String) ~ Vector<IntRef> {
 			spans := Vector->New()<IntRef>;
 			length := text->Size();
@@ -418,6 +471,11 @@ chunks := chunker->Split("notes.txt", "First paragraph.\n\nSecond paragraph.");
 			return spans;
 		}
 
+		#~
+		Tells whether a character can close a sentence after its punctuation: a double or single quote, ')' or ']'
+		@param c character
+		@return true if it is such a character
+		~#
 		function : IsCloser(c : Char) ~ Bool {
 			code := c->As(Int);
 			return code = 34 | code = 39 | code = 41 | code = 93;
@@ -563,6 +621,10 @@ vectors := embedder->Embed(["red apples", "green pears"]);
 			Init(dim);
 		}
 
+		#~
+		Sets the dimension and the stop word list. A dimension below 1 becomes 256.
+		@param dim number of buckets
+		~#
 		method : Init(dim : Int) ~ Nil {
 			@dim := dim;
 			if(@dim < 1) {
@@ -605,8 +667,7 @@ vectors := embedder->Embed(["red apples", "green pears"]);
 
 			lower := text->ToLower();
 			word := "";
-			each(i : lower) {
-				c := lower->Get(i);
+			each(c in lower) {
 				if(IsWordChar(c)) {
 					word += c;
 				}
@@ -620,17 +681,33 @@ vectors := embedder->Embed(["red apples", "green pears"]);
 			return words;
 		}
 
+		#~
+		Adds a word to the list unless it is empty or a stop word
+		@param words list the word is added to
+		@param word word to add
+		~#
 		method : AddWord(words : Vector<String>, word : String) ~ Nil {
 			if(word->Size() > 0 & @stop->Find(word) = Nil) {
 				words->AddBack(word);
 			};
 		}
 
+		#~
+		Tells whether a character is part of a word: a digit, a lower case ASCII letter or any character above 127
+		@param c character
+		@return true if it is a word character
+		~#
 		function : IsWordChar(c : Char) ~ Bool {
 			code := c->As(Int);
 			return (code >= 48 & code <= 57) | (code >= 97 & code <= 122) | code > 127;
 		}
 
+		#~
+		Hashes a word to one of the buckets
+		@param word word to hash
+		@param dim number of buckets
+		@return bucket from 0 up to dim
+		~#
 		function : Bucket(word : String, dim : Int) ~ Int {
 			h := 5381;
 			each(i : word) {
@@ -677,6 +754,9 @@ reply->PrintLine();
 		@calls : Int;
 		@fail : Bool;
 
+		#~
+		Constructor; counts no calls, records no prompt and does not fail
+		~#
 		New() {
 			@last_prompt := "";
 			@calls := 0;
@@ -760,6 +840,11 @@ reply->PrintLine();
 		}
 
 		# the question line of a RagPromptBuilder prompt, or "" when there is none
+		#~
+		Finds the question in a prompt that RagPromptBuilder wrote
+		@param prompt prompt text
+		@return the text after the last 'Question: ' line, up to 'Answer:', or an empty string if there is no question
+		~#
 		function : QuestionOf(prompt : String) ~ String {
 			at := prompt->FindLast("\nQuestion: ");
 			if(at < 0) {
@@ -776,9 +861,15 @@ reply->PrintLine();
 		}
 
 		# the sentence of the text that shares the most words with the question; the first on a tie
+		#~
+		Finds the sentence that shares the most words with a question. The first one wins a tie.
+		@param text text to search
+		@param question question text
+		@return the best sentence, or the whole text if it has no sentences
+		~#
 		function : BestSentence(text : String, question : String) ~ String {
 			spans := RagChunker->SentenceSpans(text);
-			if(spans->Size() = 0) {
+			if(spans->IsEmpty()) {
 				return text;
 			};
 
@@ -958,7 +1049,7 @@ index->Store("rag.idx");
 			};
 
 			id := chunk->GetId();
-			if(id = Nil | id->Size() = 0) {
+			if(id = Nil | id->IsEmpty()) {
 				return Fail("chunk id is Nil or empty");
 			};
 
@@ -982,6 +1073,11 @@ index->Store("rag.idx");
 			return true;
 		}
 
+		#~
+		Records why the last call failed
+		@param reason the reason
+		@return false
+		~#
 		method : Fail(reason : String) ~ Bool {
 			@error := reason;
 			return false;
@@ -1016,8 +1112,7 @@ index->Store("rag.idx");
 		~#
 		method : public : RemoveSource(source : String) ~ Int {
 			doomed := Vector->New()<String>;
-			each(i : @order) {
-				chunk := @order->Get(i);
+			each(chunk in @order) {
 				if(source <> Nil & chunk->GetSource() <> Nil & chunk->GetSource()->Equals(source)) {
 					doomed->AddBack(chunk->GetId());
 				};
@@ -1040,8 +1135,7 @@ index->Store("rag.idx");
 			matches := Vector->New()<RagMatch>;
 			hits := @vectors->Search(query, k);
 			@error := @vectors->GetError();
-			each(i : hits) {
-				hit := hits->Get(i);
+			each(hit in hits) {
 				chunk := @chunks->Find(hit->GetId());
 				if(chunk <> Nil) {
 					matches->AddBack(RagMatch->New(chunk, hit->GetScore(), matches->Size() + 1));
@@ -1061,7 +1155,7 @@ index->Store("rag.idx");
 				return Fail("the index has no valid dimension");
 			};
 
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Fail("file name is Nil or empty");
 			};
 
@@ -1077,8 +1171,7 @@ index->Store("rag.idx");
 			serializer->Write(@dim);
 			serializer->Write(code);
 			serializer->Write(@order->Size());
-			each(i : @order) {
-				chunk := @order->Get(i);
+			each(chunk in @order) {
 				serializer->Write(Bytes(chunk->GetId()));
 				serializer->Write(Bytes(chunk->GetSource()));
 				serializer->Write(chunk->GetOffset());
@@ -1108,14 +1201,24 @@ index->Store("rag.idx");
 			return true;
 		}
 
+		#~
+		Converts text to bytes
+		@param text text to convert
+		@return the bytes, empty if the text is Nil or empty
+		~#
 		function : Bytes(text : String) ~ Byte[] {
-			if(text = Nil | text->Size() = 0) {
+			if(text = Nil | text->IsEmpty()) {
 				return Byte->New[0];
 			};
 
 			return text->ToByteArray();
 		}
 
+		#~
+		Converts bytes to text
+		@param bytes bytes to convert
+		@return the text, empty if the bytes are Nil or empty
+		~#
 		function : Text(bytes : Byte[]) ~ String {
 			if(bytes = Nil | bytes->Size() = 0) {
 				return "";
@@ -1124,6 +1227,12 @@ index->Store("rag.idx");
 			return String->New(bytes);
 		}
 
+		#~
+		Takes one byte of a number
+		@param value number
+		@param shift bits to shift right first
+		@return the lowest byte of the shifted number
+		~#
 		function : ByteOf(value : Int, shift : Int) ~ Byte {
 			return ((value >>> shift) % 256)->As(Byte);
 		}
@@ -1134,7 +1243,7 @@ index->Store("rag.idx");
 		@return the index, or Nil
 		~#
 		function : Load(filename : String) ~ RagIndex {
-			if(filename = Nil | filename->Size() = 0) {
+			if(filename = Nil | filename->IsEmpty()) {
 				return Nil;
 			};
 
@@ -1165,6 +1274,11 @@ index->Store("rag.idx");
 			return index;
 		}
 
+		#~
+		Reads the contents of an index file after its header: dimension, metric, count and then each chunk with its vector
+		@param body bytes after the header
+		@return the index, or Nil if the values are invalid, an id is empty or repeated, or a chunk cannot be added
+		~#
 		function : Decode(body : Byte[]) ~ RagIndex {
 			deserializer := System.IO.Deserializer->New(body);
 			dim := deserializer->ReadInt();
@@ -1189,7 +1303,7 @@ index->Store("rag.idx");
 				offset := deserializer->ReadInt();
 				text := Text(deserializer->ReadByteArray());
 				vector := deserializer->ReadFloatArray();
-				if(id->Size() = 0 | vector = Nil | index->Contains(id)) {
+				if(id->IsEmpty() | vector = Nil | index->Contains(id)) {
 					return Nil;
 				};
 
@@ -1298,7 +1412,7 @@ prompt->PrintLine();
 		method : public : Build(question : String, matches : Vector<RagMatch>) ~ String {
 			chosen := Select(matches);
 			prompt := "{$@instruction}\n\nSources:\n";
-			if(chosen->Size() = 0) {
+			if(chosen->IsEmpty()) {
 				prompt += "(none)\n";
 			};
 
@@ -1314,6 +1428,11 @@ prompt->PrintLine();
 		}
 
 		# line breaks and runs of white space become one space
+		#~
+		Turns line breaks and runs of white space into a single space
+		@param text text to flatten
+		@return the flattened text, empty if the text is Nil
+		~#
 		function : Flatten(text : String) ~ String {
 			if(text = Nil) {
 				return "";
@@ -1321,8 +1440,7 @@ prompt->PrintLine();
 
 			out := "";
 			pending := false;
-			each(i : text) {
-				c := text->Get(i);
+			each(c in text) {
 				code := c->As(Int);
 				if(code = 32 | code = 9 | code = 10 | code = 13) {
 					pending := out->Size() > 0;
@@ -1431,6 +1549,12 @@ each(i : cited) {
 		}
 
 		# reads "n]" or "n, m]" starting after a '['; returns where to carry on
+		#~
+		Reads the numbers of a citation such as '1]' or '1, 2]' that follows a '[' and adds each valid source number not yet found to the list. A bracket that is not a citation adds nothing.
+		@param at offset after the '['
+		@param found source numbers found so far
+		@return the offset after the closing ']', or at if it was not a citation
+		~#
 		method : ReadBracket(at : Int, found : Vector<IntRef>) ~ Int {
 			numbers := Vector->New()<IntRef>;
 			value := -1;
@@ -1479,6 +1603,12 @@ each(i : cited) {
 			return at;
 		}
 
+		#~
+		Tells whether a number is in a list
+		@param list numbers to look in
+		@param number number to look for
+		@return true if it is there
+		~#
 		function : Has(list : Vector<IntRef>, number : Int) ~ Bool {
 			each(i : list) {
 				if(list->Get(i)->Get() = number) {
@@ -1549,6 +1679,13 @@ pipeline->GetIndex()->Store("faq.idx");
 			Init(embedder, generator, chunker, metric);
 		}
 
+		#~
+		Sets the parts of the pipeline and its defaults: 4 chunks per question, no minimum score, batches of 16 texts and a standard no-answer reply
+		@param embedder embedder
+		@param generator generator
+		@param chunker chunker
+		@param metric metric of the index
+		~#
 		method : Init(embedder : RagEmbedder, generator : RagGenerator, chunker : RagChunker, metric : VectorMetric) ~ Nil {
 			@embedder := embedder;
 			@generator := generator;
@@ -1571,6 +1708,10 @@ pipeline->GetIndex()->Store("faq.idx");
 			return @error;
 		}
 
+		#~
+		Records why the last call failed
+		@param reason the reason
+		~#
 		method : Fail(reason : String) ~ Nil {
 			@error := reason;
 		}
@@ -1696,7 +1837,7 @@ pipeline->GetIndex()->Store("faq.idx");
 		@return how many chunks were added; -1 on failure (see GetError)
 		~#
 		method : public : AddText(source : String, text : String) ~ Int {
-			if(source = Nil | source->Size() = 0) {
+			if(source = Nil | source->IsEmpty()) {
 				Fail("source is Nil or empty");
 				return -1;
 			};
@@ -1774,6 +1915,11 @@ pipeline->GetIndex()->Store("faq.idx");
 		}
 
 		# embeds texts and checks the shape of what comes back; Nil with the error set
+		#~
+		Embeds texts and checks the result has one row per text and the index's dimension
+		@param texts texts to embed
+		@return the vectors, or Nil with the error set
+		~#
 		method : Embed(texts : String[]) ~ Float[,] {
 			vectors := @embedder->Embed(texts);
 			if(vectors = Nil) {
@@ -1801,7 +1947,7 @@ pipeline->GetIndex()->Store("faq.idx");
 		@return matches, closest first, at most the top k; empty when nothing is indexed or nothing scores above the floor; Nil on failure (see GetError)
 		~#
 		method : public : Retrieve(question : String) ~ Vector<RagMatch> {
-			if(question = Nil | question->Size() = 0) {
+			if(question = Nil | question->IsEmpty()) {
 				Fail("question is Nil or empty");
 				return Nil;
 			};
@@ -1826,13 +1972,12 @@ pipeline->GetIndex()->Store("faq.idx");
 			};
 
 			hits := @index->Search(query, @top_k);
-			if(hits->Size() = 0 & @index->GetError()->Size() > 0) {
+			if(hits->IsEmpty() & @index->GetError()->Size() > 0) {
 				Fail("index: {$@index->GetError()}");
 				return Nil;
 			};
 
-			each(i : hits) {
-				hit := hits->Get(i);
+			each(hit in hits) {
 				if(@use_min & @metric <> VectorMetric->L2 & hit->GetScore() < @min_score) {
 					return found;
 				};
@@ -1854,7 +1999,7 @@ pipeline->GetIndex()->Store("faq.idx");
 				return Nil;
 			};
 
-			if(matches->Size() = 0) {
+			if(matches->IsEmpty()) {
 				return RagAnswer->New(question, @no_answer, matches, "");
 			};
 

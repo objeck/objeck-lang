@@ -1145,9 +1145,7 @@ bundle Query.Structured {
 		# gives a column of no type the arrays for one
 		method : Become(type : ColumnType) ~ Nil {
 			@type := type;
-			if(@nulls = Nil) {
-				@nulls := Int->New[(@capacity + 63) / 64];
-			};
+			@nulls := @nulls ?? Int->New[(@capacity + 63) / 64];
 
 			select(type) {
 				label ColumnType->INT: {
@@ -1420,9 +1418,7 @@ bundle Query.Structured {
 		@lock : static : System.Concurrency.ThreadMutex;
 
 		function : Get() ~ System.Concurrency.ThreadMutex {
-			if(@lock = Nil) {
-				@lock := System.Concurrency.ThreadMutex->New("query_rebuild");
-			};
+			@lock := @lock ?? System.Concurrency.ThreadMutex->New("query_rebuild");
 
 			return @lock;
 		}
@@ -1446,9 +1442,7 @@ bundle Query.Structured {
 		}
 
 		function : Lock() ~ System.Concurrency.ThreadMutex {
-			if(@lock = Nil) {
-				@lock := System.Concurrency.ThreadMutex->New("query_errors");
-			};
+			@lock := @lock ?? System.Concurrency.ThreadMutex->New("query_errors");
 
 			return @lock;
 		}
@@ -1481,9 +1475,7 @@ bundle Query.Structured {
 			lock := Lock();
 			critical(lock) {
 				if(message <> Nil) {
-					if(@messages = Nil) {
-						@messages := Map->New()<IntRef, String>;
-					};
+					@messages := @messages ?? Map->New()<IntRef, String>;
 					@messages->Insert(id, message);
 				}
 				else if(@messages <> Nil) {
@@ -1504,7 +1496,7 @@ bundle Query.Structured {
 					};
 				};
 
-				if(@messages->Size() = 0) {
+				if(@messages->IsEmpty()) {
 					@messages := Nil;
 				};
 			};
@@ -1524,9 +1516,7 @@ bundle Query.Structured {
 		@files : static : System.Concurrency.ThreadMutex[];
 
 		function : Prepare() ~ Nil {
-			if(@maps = Nil) {
-				@maps := System.Concurrency.ThreadMutex->New("query_catalog");
-			};
+			@maps := @maps ?? System.Concurrency.ThreadMutex->New("query_catalog");
 
 			if(@files = Nil) {
 				files := System.Concurrency.ThreadMutex->New[16];
@@ -2092,8 +2082,7 @@ bundle Query.Structured {
 
 		# appends the marked slots of a list, in its order
 		function : Marked(slots : Int[], words : Int[], out : Int[], n : Int) ~ Int {
-			each(i : slots) {
-				slot := slots[i];
+			each(slot in slots) {
 				if((words[slot >> 6] and (1 << (slot and 63))) <> 0) {
 					out[n] := slot;
 					n += 1;
@@ -2903,9 +2892,7 @@ results->ToString()->PrintLine();
 				return false;
 			};
 
-			if(name = Nil) {
-				name := "{$@name}_{$column}";
-			};
+			name := name ?? "{$@name}_{$column}";
 
 			for(i := 1; i < @columns->Size(); i += 1;) {
 				other_name := @columns[i]->GetIndexName();
@@ -4327,9 +4314,7 @@ results->ToString()->PrintLine();
 				return false;
 			};
 
-			if(@deleted = Nil) {
-				@deleted := Int->New[(@size + 64) / 64 + 1];
-			};
+			@deleted := @deleted ?? Int->New[(@size + 64) / 64 + 1];
 
 			@deleted[row >> 6] := @deleted[row >> 6] or (1 << (row and 63));
 			@count -= 1;
@@ -4410,8 +4395,7 @@ results->ToString()->PrintLine();
 				sum := 0.0;
 				low := 0.0;
 				high := 0.0;
-				each(j : rows) {
-					row := rows[j];
+				each(row in rows) {
 					if(<>column->IsNull(row)) {
 						filled += 1;
 						if(column->IsNumeric(row)) {
@@ -4762,9 +4746,9 @@ results->ToString()->PrintLine();
 		@left : Int;
 		@qualifier : Conditional->Qualifier;
 		@value : Compare;
-		
+
 		#~
-		Conditional comparisons 
+		Conditional comparisons
 		~#
 		enum Qualifier {
 			EQUAL,
@@ -4776,7 +4760,7 @@ results->ToString()->PrintLine();
 			LIKE,
 			NOT_LIKE
 		}
-		
+
 		#~
 		Constructor
 		@param left index of column to compare
@@ -4788,7 +4772,7 @@ results->ToString()->PrintLine();
 			@qualifier := qualifier;
 			@value := value;
 		}
-		
+
 		#~
 		Get the qualifying value
 		@return qualifying value
@@ -4796,7 +4780,7 @@ results->ToString()->PrintLine();
 		method : public : GetQualifier() ~ Qualifier {
 			return @qualifier;
 		}
-		
+
 		#~
 		Gets the comparison value
 		@return comparison value
@@ -4804,7 +4788,7 @@ results->ToString()->PrintLine();
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
-		
+
 		#~
 		Gets comparison index
 		@return comparison index
@@ -4813,7 +4797,7 @@ results->ToString()->PrintLine();
 			return @left;
 		}
 	}
-	
+
 	# Cell value helpers shared by Table and Query: numeric tests for the
 	# aggregates, type-aware comparison for 'where' and 'order by', LIKE
 	# matching and CSV text conversion.
@@ -5167,7 +5151,7 @@ results->ToString()->PrintLine();
 			return text;
 		}
 	}
-	
+
 
 	#~
 	A cursor over one row of a table: reading or writing it reads or writes the table's columns.
@@ -5264,9 +5248,7 @@ results->ToString()->PrintLine();
 		@return 'true' value holder
 		~#
 		function : True() ~ IntRef {
-			if(@true_token = Nil) {
-				@true_token := IntRef->New(1);
-			};
+			@true_token := @true_token ?? IntRef->New(1);
 
 			return @true_token;
 		}
@@ -5276,9 +5258,7 @@ results->ToString()->PrintLine();
 		@return 'false' value holder
 		~#
 		function : False() ~ IntRef {
-			if(@false_token = Nil) {
-				@false_token := IntRef->New(0);
-			};
+			@false_token := @false_token ?? IntRef->New(0);
 
 			return @false_token;
 		}
@@ -6410,8 +6390,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 					if(probe <> Nil) {
 						merged := false;
 						if(probe->IsRange()) {
-							each(j : probes) {
-								earlier := probes->Get(j);
+							each(earlier in probes) {
 								if(<>merged & earlier->IsRange() & earlier->GetIndex() = probe->GetIndex()) {
 									earlier->Intersect(probe);
 									merged := true;
@@ -6467,8 +6446,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 
 			best : IndexProbe;
 			best_count := 0;
-			each(i : probes) {
-				probe := probes->Get(i);
+			each(probe in probes) {
 				if(probe->IsEmpty()) {
 					return probe;
 				};
@@ -6681,8 +6659,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 			if(rows <> Nil) {
 				kept := Int->New[rows->Size()];
 				n := 0;
-				each(i : rows) {
-					row := rows[i];
+				each(row in rows) {
 					if(Test(row)) {
 						kept[n] := row;
 						n += 1;
@@ -8833,7 +8810,7 @@ results := statement->Execute();
 					return Nil;
 				};
 
-				if(name->Size() = 0) {
+				if(name->IsEmpty()) {
 					error->Set("the footer's index {$(i + 1)} has no name");
 					return Nil;
 				};
@@ -10233,8 +10210,7 @@ if(file->IsOpen()) {
 
 			table := Table->Restore(@name, column_names, columns, @next_key);
 			# the indexes of the columns read, built by the first query that uses each
-			each(i : @indexes) {
-				definition := @indexes[i];
+			each(definition in @indexes) {
 				each(w : wanted) {
 					if(w > 0 & wanted[w] = definition->GetColumn()) {
 						table->AttachIndex(w, definition->GetName(), definition->GetIndexKind());
@@ -11713,8 +11689,7 @@ if(file->IsOpen()) {
 
 		# whether the select list, HAVING or ORDER BY uses an aggregate
 		method : public : HasAggregates() ~ Bool {
-			each(i : @items) {
-				item := @items->Get(i);
+			each(item in @items) {
 				if(item->IsAggregate() | (item->GetExpr() <> Nil & item->GetExpr()->HasAggregate())) {
 					return true;
 				};
@@ -13268,8 +13243,7 @@ if(file->IsOpen()) {
 				base := @member;
 			};
 			name := "";
-			each(i : base) {
-				c := base->Get(i);
+			each(c in base) {
 				if(c <> '*' & c <> '?') {
 					name->Append(c);
 				};
@@ -13352,8 +13326,7 @@ if(file->IsOpen()) {
 				};
 
 				matched := Vector->New()<String>;
-				each(i : names) {
-					name := names[i];
+				each(name in names) {
 					if(<>name->Equals(".") & <>name->Equals("..") & GlobMatches(pattern, 0, name, 0)) {
 						full := cut < 0 ? String->New(name) : "{$folder}/{$name}";
 						if(<>Directory->Exists(full)) {
@@ -13362,7 +13335,7 @@ if(file->IsOpen()) {
 					};
 				};
 
-				if(matched->Size() = 0) {
+				if(matched->IsEmpty()) {
 					error->Set("no files match '{$path}'");
 					return Nil;
 				};
@@ -13427,8 +13400,7 @@ if(file->IsOpen()) {
 		# seconds: see FileEntry for the write a stamp cannot tell)
 		function : Stamp(files : Vector<String>) ~ String {
 			stamp := "";
-			each(i : files) {
-				name := files->Get(i);
+			each(name in files) {
 				size := File->Size(name);
 				modified := File->ModifiedTime(name);
 				when := modified <> Nil ? modified->ToString() : "";
@@ -13651,8 +13623,7 @@ if(file->IsOpen()) {
 
 			# each path once, in archive order: a tar may repeat one, and the last copy is read
 			matched := Vector->New()<String>;
-			each(i : members) {
-				candidate := members[i];
+			each(candidate in members) {
 				if(GlobMatches(member, 0, candidate, 0)) {
 					seen := false;
 					each(j : matched) {
@@ -13666,7 +13637,7 @@ if(file->IsOpen()) {
 				};
 			};
 
-			if(matched->Size() = 0) {
+			if(matched->IsEmpty()) {
 				error->Set("no member of '{$(file->GetPath())}' matches '{$member}'");
 				return Nil;
 			};
@@ -13704,7 +13675,7 @@ if(file->IsOpen()) {
 
 				each(i : names) {
 					if(sheet = Nil) {
-						if(sheets->Size() = 0) {
+						if(sheets->IsEmpty()) {
 							sheets->AddBack(names[i]);
 						};
 					}
@@ -13713,7 +13684,7 @@ if(file->IsOpen()) {
 					};
 				};
 
-				if(sheets->Size() = 0) {
+				if(sheets->IsEmpty()) {
 					if(sheet = Nil) {
 						error->Set("'{$(file->GetPath())}' has no worksheets");
 					}
@@ -14167,7 +14138,7 @@ if(file->IsOpen()) {
 			# no column list: every column, in a list of its own; the statement's list belongs to a
 			# cached plan, so filling it would fix this table's columns into the plan for good
 			names := @statement->GetColumns();
-			if(names->Size() = 0) {
+			if(names->IsEmpty()) {
 				names := Vector->New()<String>;
 				all := table->GetColumnNames();
 				for(i := 1; i < all->Size(); i += 1;) {
@@ -14190,8 +14161,7 @@ if(file->IsOpen()) {
 
 			added := Vector->New()<IntRef>;
 			ok := BoolRef->New(true);
-			each(i : rows) {
-				values := rows->Get(i);
+			each(values in rows) {
 				row := table->Insert();
 				added->AddBack(row->GetKey());
 				each(j : indexes) {
@@ -14246,8 +14216,7 @@ if(file->IsOpen()) {
 			old_columns := Vector->New()<IntRef>;
 			old_rows := Vector->New()<IntRef>;
 			old_values := Vector->New()<Compare>;
-			each(i : rows) {
-				row := rows[i];
+			each(row in rows) {
 				each(j : indexes) {
 					column := table->GetColumn(indexes[j]);
 					old_columns->AddBack(indexes[j]);
@@ -14904,8 +14873,7 @@ if(file->IsOpen()) {
 			# each expression bound to the working table before anything is copied, so an
 			# unknown column is reported first
 			bound := Vector->New()<SqlEval>;
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				eval : SqlEval := Nil;
 				if(item->GetExpr() <> Nil) {
 					expr := WorkExpr(item->GetExpr(), Nil, "'{$(item->GetName())}'", false);
@@ -14995,8 +14963,7 @@ if(file->IsOpen()) {
 			if(where <> Nil) {
 				parts := Vector->New()<Predicate>;
 				Conjuncts(where, parts);
-				each(i : parts) {
-					part := parts->Get(i);
+				each(part in parts) {
 					source := SourceOf(part);
 					if(source = -2) {
 						return Nil;
@@ -15028,8 +14995,7 @@ if(file->IsOpen()) {
 				right := k + 1;
 				parts := Vector->New()<Predicate>;
 				Conjuncts(joins->Get(k)->GetOn(), parts);
-				each(i : parts) {
-					part := parts->Get(i);
+				each(part in parts) {
 					tables := TablesOf(part);
 					if(tables < 0) {
 						return Nil;
@@ -15440,8 +15406,7 @@ if(file->IsOpen()) {
 			};
 
 			# the other key equalities, matched as join keys are
-			each(k : extra_keys) {
-				test := extra_keys->Get(k);
+			each(test in extra_keys) {
 				left := PairColumn(test->GetLeftExpr(), table, passing);
 				right_side := PairColumn(test->GetRightExpr(), table, passing);
 				if(left = Nil | right_side = Nil) {
@@ -15483,8 +15448,7 @@ if(file->IsOpen()) {
 
 		# adds a column to the working set once
 		method : Want(wanted : Vector<SqlRef>, ref : SqlRef) ~ Nil {
-			each(i : wanted) {
-				known := wanted->Get(i);
+			each(known in wanted) {
 				if(known->GetSource() = ref->GetSource() & known->GetColumn()->Equals(ref->GetColumn())) {
 					return;
 				};
@@ -15576,8 +15540,7 @@ if(file->IsOpen()) {
 				};
 			}
 			else {
-				each(i : items) {
-					item := items->Get(i);
+				each(item in items) {
 					expr := item->GetExpr();
 					if(expr <> Nil) {
 						reads := Vector->New()<String>;
@@ -15624,8 +15587,7 @@ if(file->IsOpen()) {
 
 			# an ORDER BY name may be a select-list label rather than a column
 			order := @statement->GetOrder();
-			each(i : order) {
-				entry := order->Get(i);
+			each(entry in order) {
 				if(entry->GetExpr() <> Nil) {
 					# inside an ORDER BY expression a name is a select-list alias first
 					reads := Vector->New()<String>;
@@ -16015,8 +15977,7 @@ if(file->IsOpen()) {
 			# HAVING's and ORDER BY's
 			@aggs := Vector->New()<SqlExpr>;
 			@agg_labels := Vector->New()<String>;
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				if(item->IsAggregate()) {
 					if(<>NoteAggregateItem(item)) {
 						return Nil;
@@ -16082,8 +16043,7 @@ if(file->IsOpen()) {
 			};
 
 			# a plain column in the select list must be one of the grouping columns
-			each(i : items) {
-				item := items->Get(i);
+			each(item in items) {
 				if(<>item->IsAggregate() & item->GetExpr() = Nil) {
 					index := WorkIndex(item->GetName());
 					if(index < 0) {
@@ -16502,8 +16462,7 @@ if(file->IsOpen()) {
 			};
 
 			extras := @statement->GetExtra();
-			each(i : extras) {
-				extra := extras->Get(i);
+			each(extra in extras) {
 				if(extra->GetCall()->Equals(name)) {
 					return LabelIndex(labels, extra->GetLabel());
 				};
@@ -17103,18 +17062,18 @@ if(file->IsOpen()) {
 			@reserved->Insert("order", Token->New(Token->Type->ORDER));
 			@reserved->Insert("by", Token->New(Token->Type->BY));
 		}
-		
+
 		method : public : Parse() ~ Term {
 			@tokens := Scan();
 
 			term : Term;
 			if(@tokens = Nil)	{
 				return Nil;
-			};			
+			};
 			NextToken();
 
 			if(TokenType() = Token->Type->SELECT) {
-				NextToken();		
+				NextToken();
 				term := ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
@@ -17144,23 +17103,23 @@ if(file->IsOpen()) {
 			if(TokenType() <> Token->Type->EOS) {
 				return Nil;
 			};
-			
+
 			return term;
 		}
-		
+
 		method : ParseSelect() ~ Term {
-# "--- Select ---"->PrintLine();		
+# "--- Select ---"->PrintLine();
 			term := Term->New(Token->Type->SELECT);
 			term->SetValue(TokenValue());
-			
+
 			if(TokenType() = Token->Type->STAR) {
 				term->AddTerm(Term->New(TokenType()));
-				NextToken();		
+				NextToken();
 			}
 			else if(TokenType() = Token->Type->DISTINCT) {
 				term->AddTerm(Term->New(TokenType()));
 				NextToken();
-				
+
 				if(TokenType() <> Token->Type->REF) {
 					return Nil;
 				};
@@ -17179,21 +17138,21 @@ if(file->IsOpen()) {
 					term->AddTerm(name);
 					NextToken();
 
-				
+
 					if(TokenType() = Token->Type->COMMA) {
 						NextToken();
 					};
 				}
 				while(TokenType() <> Token->Type->EOS & TokenType() <> Token->Type->FROM);
 			};
-			
-			if(TokenType() <> Token->Type->FROM) {			
+
+			if(TokenType() <> Token->Type->FROM) {
 				return Nil;
 			};
-			
+
 			NextToken();
 			left := ParseFrom();
-			if(left = Nil) {			
+			if(left = Nil) {
 				return Nil;
 			};
 			term->SetLeft(left);
@@ -17210,7 +17169,7 @@ if(file->IsOpen()) {
 			term := Term->New(Token->Type->FROM);
 			term->SetValue(TokenValue());
 			NextToken();
-			
+
 			if(TokenType() = Token->Type->WHERE) {
 				NextToken();
 				left := ParseWhere();
@@ -17219,7 +17178,7 @@ if(file->IsOpen()) {
 				};
 				term->SetLeft(left);
 			};
-			
+
 			term->SetRight(Term->New(Token->Type->EOS));
 			return term;
 		}
@@ -17234,28 +17193,28 @@ if(file->IsOpen()) {
 			if(left = Nil) {
 				return Nil;
 			};
-			
+
 			where := Term->New(Token->Type->WHERE);
 			where->SetLeft(left);
 			return where;
 		}
-		
+
 		method : ParseOr() ~ Term {
 			left := ParseAnd();
 			if(left = Nil) {
 				return Nil;
 			};
-			
+
 			while(TokenType() = Token->Type->OR) {
 				term := Term->New(TokenType());
 				term->SetValue(TokenValue());
 				NextToken();
-				
+
 				right := ParseAnd();
 				if(right = Nil) {
 					return Nil;
 				};
-				
+
 				term->SetLeft(left);
 				term->SetRight(right);
 				left := term;
@@ -17263,7 +17222,7 @@ if(file->IsOpen()) {
 
 			return left;
 		}
-		
+
 		method : ParseAnd() ~ Term {
 			left := ParsePrimary();
 			if(left = Nil) {
@@ -17303,13 +17262,13 @@ if(file->IsOpen()) {
 
 			return ParseTerm();
 		}
-		
+
 		# column [not] operator value; the left side must name a column
 		method : ParseTerm() ~ Term {
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
 			};
-			
+
 			left := Term->New(TokenType());
 			left->SetValue(TokenValue());
 			NextToken();
@@ -17317,9 +17276,9 @@ if(file->IsOpen()) {
 			is_not := false;
 			if(TokenType() = Token->Type->NOT) {
 				is_not := true;
-				NextToken();		
+				NextToken();
 			};
-			
+
 			term : Term;
 			select(TokenType()) {
 				label Token->Type->LIKE:
@@ -17328,7 +17287,7 @@ if(file->IsOpen()) {
 				label Token->Type->LESS:
 				label Token->Type->GREATER:
 				label Token->Type->LESS_EQUAL:
-				label Token->Type->GREATER_EQUAL: {				
+				label Token->Type->GREATER_EQUAL: {
 					term := Term->New(TokenType());
 					term->SetValue(TokenValue());
 					term->SetNot(is_not);
@@ -17339,57 +17298,57 @@ if(file->IsOpen()) {
 					return Nil;
 				}
 			};
-			
-			right : Term;			
+
+			right : Term;
 			select(TokenType()) {
 				label Token->Type->REF:
 				label Token->Type->DATE:
 				label Token->Type->INT:
 				label Token->Type->PARAM:
-				label Token->Type->FLOAT: {			
-					right := Term->New(TokenType());					
+				label Token->Type->FLOAT: {
+					right := Term->New(TokenType());
 					right->SetValue(TokenValue());
 					NextToken();
 				}
-				
+
 				other: {
 					return Nil;
 				}
 			};
-		
+
 			term->SetLeft(left);
 			term->SetRight(right);
-			
+
 			return term;
 		}
-		
+
 		method : NextToken() ~ Bool {
 			if(@tokens_index < @tokens->Size()) {
 				@cur_token := @tokens->Get(@tokens_index);
 				@tokens_index += 1;
 				return true;
 			};
-			
+
 			@cur_token := Nil;
 			return false;
 		}
-		
+
 		method : TokenType() ~ Token->Type {
 			if(@cur_token <> Nil) {
 				return @cur_token->GetType();
 			};
-			
+
 			return Token->Type->EOS;
 		}
-		
+
 		method : TokenValue() ~ Compare {
 			if(@cur_token <> Nil) {
 				return @cur_token->GetValue();
 			};
-			
+
 			return "";
 		}
-		
+
 		# the character at index, or '\0' past the end of the line
 		method : Peek(index : Int) ~ Char {
 			if(index < @line->Size()) {
@@ -17421,12 +17380,12 @@ if(file->IsOpen()) {
 			i := 0;
 			params := 0;
 			tokens := Vector->New()<Token>;
-			while(i < @line->Size()) { 			 			  
+			while(i < @line->Size()) {
 				# skip whitespace
 				while(i < @line->Size() & (@line->Get(i) = ' ' | @line->Get(i) = '\t' | @line->Get(i) = '\r' | @line->Get(i) = '\n')) {
-					i += 1;					
+					i += 1;
 				};
-				
+
 				# parse the @line
 				if(i < @line->Size()) {
 					# string
@@ -17437,44 +17396,44 @@ if(file->IsOpen()) {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
-						
+
 						# unterminated
 						if(i >= @line->Size()) {
 							return Nil;
 						};
 						i += 1;
-						
+
 						tokens->AddBack(Token->New(string));
 					}
 					# date
 					else if(@line->Get(i) = '#') {
-						i += 1;					
+						i += 1;
 						string := "";
 						while(i < @line->Size() & @line->Get(i) <> '#') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
-					
+
 						# unterminated
 						if(i >= @line->Size()) {
 							return Nil;
 						};
 						i += 1;
-						
+
 						date : Date := Nil;
 						select(string->Size()) {
 							label 8: {
 								date := DateUtility->Parse(string, "MM/dd/yy", false);
 							}
-							
-							label 10: {						
-								date := DateUtility->Parse(string, "MM/dd/yyyy", false);	
+
+							label 10: {
+								date := DateUtility->Parse(string, "MM/dd/yyyy", false);
 							}
-							
+
 							label 17: {
 								date := DateUtility->Parse(string, "MM/dd/yy hh:mm:ss", false);
 							}
-							
+
 							label 19: {
 								date := DateUtility->Parse(string, "MM/dd/yyyy hh:mm:ss", false);
 							}
@@ -17551,19 +17510,19 @@ if(file->IsOpen()) {
 							label ',': {
 								tokens->AddBack(Token->New(Token->Type->COMMA));
 							}
-							
+
 							label '(': {
 								tokens->AddBack(Token->New(Token->Type->OPRN));
 							}
-							
+
 							label ')': {
 								tokens->AddBack(Token->New(Token->Type->CPRN));
 							}
-							
+
 							label '=': {
 								tokens->AddBack(Token->New(Token->Type->EQUAL));
 							}
-							
+
 							label '<': {
 								if(Peek(i + 1) = '>') {
 									i += 1;
@@ -17577,7 +17536,7 @@ if(file->IsOpen()) {
 									tokens->AddBack(Token->New(Token->Type->LESS));
 								};
 							}
-							
+
 							label '!': {
 								if(Peek(i + 1) <> '=') {
 									return Nil;
@@ -17595,21 +17554,21 @@ if(file->IsOpen()) {
 									tokens->AddBack(Token->New(Token->Type->GREATER));
 								};
 							}
-              
+
 							other: {
 								return Nil;
 							}
 						};
 						i += 1;
 					};
-				};			
-			};			
+				};
+			};
 			tokens->AddBack(Token->New(Token->Type->EOS));
 
 			return tokens;
 		}
 	}
-	
+
 	class Term {
 		@type : Token->Type;
 		@oper : Conditional->Qualifier;
@@ -17619,15 +17578,15 @@ if(file->IsOpen()) {
 		@value : Compare;
 		@is_not : Bool;
 
-		
+
 		New(type : Token->Type) {
 			@type := type;
 		}
-		
+
 		method : public : GetType() ~ Token->Type {
 			return @type;
 		}
-		
+
 		method : public : SetType(type : Token->Type) ~ Nil {
 			@type := type;
 		}
@@ -17635,56 +17594,54 @@ if(file->IsOpen()) {
 		method : public : GetNot() ~ Bool {
 			return @is_not;
 		}
-		
+
 		method : public : SetNot(is_not : Bool) ~ Nil {
 			@is_not := is_not;
 		}
-		
+
 		method : public : GetOperator() ~ Conditional->Qualifier {
 			return @oper;
 		}
-		
+
 		method : public : SetOperator(oper : Conditional->Qualifier) ~ Nil {
 			@oper := oper;
 		}
-		
+
 		method : public : SetValue(value : Compare) ~ Nil {
 			@value := value;
 		}
-		
+
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
-		
+
 		method : public : SetLeft(left : Term) ~ Nil {
 			@left := left;
 		}
-		
+
 		method : public : GetLeft() ~ Term {
 			return @left;
 		}
-		
+
 		method : public : SetRight(right : Term) ~ Nil {
 			@right := right;
 		}
-		
+
 		method : public : GetRight() ~ Term {
 			return @right;
 		}
-		
+
 		method : public : AddTerm(term : Term) ~ Nil {
-			if(@terms = Nil) {
-				@terms := Vector->New()<Term>;
-			};
-			
+			@terms := @terms ?? Vector->New()<Term>;
+
 			@terms->AddBack(term);
 		}
-		
+
 		method : public : GetTerms() ~ Vector<Term> {
 			return @terms;
 		}
 	}
-	
+
 	class Token {
 		@type : Type;
 		@value : Compare;
@@ -17743,17 +17700,17 @@ if(file->IsOpen()) {
 			~#
 			PARAM
 		}
-		
+
 		New(value : String) {
 			@type := Type->REF;
 			@value := value;
 		}
-		
+
 		New(value : Date) {
 			@type := Type->DATE;
 			@value := value;
 		}
-		
+
 		New(type : Type) {
 			@type := type;
 			@value := "";
@@ -17763,7 +17720,7 @@ if(file->IsOpen()) {
 			@type := type;
 			@value := value;
 		}
-		
+
 		New(value : Float) {
 			@type := Type->FLOAT;
 			@value := FloatRef->New(value);
@@ -17773,11 +17730,11 @@ if(file->IsOpen()) {
 			@type := Type->INT;
 			@value := IntRef->New(value);
 		}
-		
+
 		method : public : GetType() ~ Type {
 			return @type;
 		}
-		
+
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
@@ -17793,7 +17750,7 @@ if(file->IsOpen()) {
 				label Type->DISTINCT: {
 					buffer += "DISTINCT";
 				}
-				
+
 				label Type->FROM: {
 					buffer += "FROM";
 				}
@@ -17845,7 +17802,7 @@ if(file->IsOpen()) {
 				label Type->OPRN: {
 					buffer += "OPRN";
 				}
-				
+
 				label Type->CPRN: {
 					buffer += "CPRN";
 				}
@@ -19435,9 +19392,7 @@ catalog->Load(source);
 
 		function : Folder() ~ String {
 			folder := Runtime->GetTempDir();
-			if(folder = Nil) {
-				folder := ".";
-			};
+			folder := folder ?? ".";
 
 			last := folder->Size() > 0 ? folder->Get(folder->Size() - 1) : ' ';
 			folder := String->New(folder);
@@ -19481,7 +19436,7 @@ catalog->Load(source);
 			};
 
 			base := path->SubString(start, path->Size() - start);
-			if(base->Size() = 0) {
+			if(base->IsEmpty()) {
 				base := "index";
 			};
 			return base;
@@ -19569,9 +19524,7 @@ catalog->Load(source);
 			};
 
 			body := response->GetContent();
-			if(body = Nil) {
-				body := Byte->New[0];
-			};
+			body := body ?? Byte->New[0];
 
 			headers := client->GetResponseHeaders();
 			etag := headers->Find("etag");
@@ -19582,7 +19535,7 @@ catalog->Load(source);
 
 			# without a validator the content itself tells versions apart
 			stamp := "{$etag}|{$modified}";
-			if(etag->Size() = 0 & modified->Size() = 0) {
+			if(etag->IsEmpty() & modified->IsEmpty()) {
 				size := body->Size();
 				check := body->CRC32();
 				stamp := "{$size}|{$check}";
@@ -19657,7 +19610,7 @@ catalog->Load(source);
 			};
 
 			version := fields->Get(3);
-			if(version->Size() = 0 | version->Has("/") | version->Has("\\") | <>File->Exists("{$entry}/{$version}")) {
+			if(version->IsEmpty() | version->Has("/") | version->Has("\\") | <>File->Exists("{$entry}/{$version}")) {
 				return Nil;
 			};
 			return fields;
@@ -19718,8 +19671,7 @@ catalog->Load(source);
 				return;
 			};
 
-			each(i : names) {
-				name := names[i];
+			each(name in names) {
 				if(<>name->Equals("current") & <>name->Equals(current) & <>name->Equals(keep)) {
 					path := "{$entry}/{$name}";
 					if(now - File->ModifiedTime(path, true)->GetUnixTime() > grace) {
@@ -20125,14 +20077,13 @@ runs := source->Read();
 
 		# the value at a dotted path, Nil if a step is missing; an empty path is the root
 		function : Navigate(root : Data.JSON.JsonElement, path : String) ~ Data.JSON.JsonElement {
-			if(path = Nil | path->Size() = 0) {
+			if(path = Nil | path->IsEmpty()) {
 				return root;
 			};
 
 			node := root;
 			part := "";
-			each(i : path) {
-				c := path->Get(i);
+			each(c in path) {
 				if(c = '.') {
 					node := Step(node, part);
 					if(node = Nil) {
@@ -20329,8 +20280,7 @@ runs := source->Read();
 			has_float := false;
 			has_date := false;
 			has_text := false;
-			each(i : values) {
-				text := values->Get(i);
+			each(text in values) {
 				if(text <> Nil & text->Size() > 0) {
 					kind := Cell->NumberKind(text);
 					if(kind = 1) {
@@ -20894,8 +20844,7 @@ runs->Describe()->ToString()->PrintLine();
 		# an object's members as cells, nested objects under dotted names, arrays as child rows
 		method : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>, id : Int) ~ Nil {
 			names := element->GetNames();
-			each(i : names) {
-				key := names->Get(i);
+			each(key in names) {
 				name := String->New(prefix);
 				name += key;
 				child := element->Get(key);
@@ -20934,8 +20883,7 @@ runs->Describe()->ToString()->PrintLine();
 			if(table = Nil) {
 				name := String->New(@name);
 				name += '_';
-				each(i : member) {
-					c := member->Get(i);
+				each(c in member) {
 					name->Append(c = '.' ? '_' : c);
 				};
 				table := JsonTableBuilder->New(name, true);
@@ -20958,8 +20906,7 @@ runs->Describe()->ToString()->PrintLine();
 			};
 
 			first_data := names->Size();
-			each(i : @order) {
-				name := @order->Get(i);
+			each(name in @order) {
 				if(hint = Nil | hint->Wants(name)) {
 					names->AddBack(name);
 				};
@@ -21050,7 +20997,7 @@ runs->Describe()->ToString()->PrintLine();
 	# the shapes of tables, for Source->GetTables
 	class : private : TableShapes {
 		function : Of(tables : Vector<Table>, fallback : String) ~ TableSpec[] {
-			if(tables = Nil | tables->Size() = 0) {
+			if(tables = Nil | tables->IsEmpty()) {
 				specs := TableSpec->New[1];
 				specs[0] := TableSpec->New(fallback, String->New[0], ColumnType->New[0]);
 				return specs;
@@ -21282,8 +21229,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			found := Vector->New()<XmlElement>;
 			children := element->GetChildren();
 			if(children <> Nil) {
-				each(i : children) {
-					child := children->Get(i);
+				each(child in children) {
 					if(IsElement(child)) {
 						found->AddBack(child);
 					};
@@ -21315,8 +21261,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			order := Vector->New()<String>;
 			seen := Hash->New()<String, IntRef>;
 			nested := Hash->New()<String, BoolRef>;
-			each(r : @rows) {
-				row := @rows->Get(r);
+			each(row in @rows) {
 				attributes := row->GetAttributes();
 				each(a : attributes) {
 					attribute_name := attributes->Get(a)->GetName();
@@ -21343,7 +21288,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 					Remember(name, order, seen);
 				};
 
-				if(elements->Size() = 0 & TextOf(row) <> Nil) {
+				if(elements->IsEmpty() & TextOf(row) <> Nil) {
 					Remember("_text", order, seen);
 				};
 			};
@@ -21351,8 +21296,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			# the child tables, one per nested element name, in the order first seen
 			children := Vector->New()<XmlTableBuilder>;
 			child_index := Hash->New()<String, XmlTableBuilder>;
-			each(i : order) {
-				name := order->Get(i);
+			each(name in order) {
 				if(nested->Has(name)) {
 					child := XmlTableBuilder->New("{$@name}_{$name}", true);
 					children->AddBack(child);
@@ -21369,8 +21313,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 				names->AddBack("_parent_id");
 			};
 			first_data := names->Size();
-			each(i : order) {
-				name := order->Get(i);
+			each(name in order) {
 				if(<>nested->Has(name) & (hint = Nil | hint->Wants(name))) {
 					names->AddBack(name);
 				};
@@ -21387,8 +21330,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 				row := @rows->Get(r);
 				values := Hash->New()<String, String>;
 				attributes := row->GetAttributes();
-				each(a : attributes) {
-					attribute := attributes->Get(a);
+				each(attribute in attributes) {
 					value := attribute->GetValue();
 					if(value <> Nil) {
 						attribute_name := attribute->GetName();
@@ -21397,8 +21339,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 				};
 
 				elements := Elements(row);
-				each(e : elements) {
-					element := elements->Get(e);
+				each(element in elements) {
 					child := child_index->Find(element->GetName());
 					if(child <> Nil) {
 						child->Add(element, r + 1);
@@ -21411,7 +21352,7 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 					};
 				};
 
-				if(elements->Size() = 0) {
+				if(elements->IsEmpty()) {
 					text := TextOf(row);
 					if(text <> Nil) {
 						values->Insert("_text", text);
@@ -21578,7 +21519,7 @@ rs := catalog->Query("select title, @lang from books where year > 2000");
 		method : public : Read(hint : ScanHint) ~ Table {
 			@error := Nil;
 			@tables := Nil;
-			if(@row_element = Nil | @row_element->Size() = 0) {
+			if(@row_element = Nil | @row_element->IsEmpty()) {
 				@error := "no row element named";
 				return Nil;
 			};
@@ -21854,8 +21795,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 
 			files := Vector->New()<String>;
 			entries := reader->GetEntries();
-			each(i : entries) {
-				entry := entries->Get(i);
+			each(entry in entries) {
 				if(entry->GetType()->Equals("file")) {
 					files->AddBack(entry->GetPath());
 				};
@@ -21960,7 +21900,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			chosen := format->Size() > 0 ? format : FormatOf(member);
-			if(chosen->Size() = 0) {
+			if(chosen->IsEmpty()) {
 				@error := "'{$@title}': member '{$member}' is not in a format read as a table; name it with csv(), tsv(), json(), jsonl() or xml()";
 				return Nil;
 			};
@@ -22036,7 +21976,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		# whether a member becomes a table: a known format, matching the pattern
 		method : IsTable(path : String) ~ Bool {
 			format := FormatOf(path);
-			if(format->Size() = 0 | (format->Equals("xml") & @row_element = Nil)) {
+			if(format->IsEmpty() | (format->Equals("xml") & @row_element = Nil)) {
 				return false;
 			};
 
@@ -22100,7 +22040,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			tables := Vector->New()<Table>;
-			if(format->Size() = 0) {
+			if(format->IsEmpty()) {
 				format := FormatOf(path);
 			};
 			if(format->Equals("otab")) {
@@ -22221,8 +22161,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			folders := Map->New()<String, IntRef>;
 			entries := reader->GetEntries();
 			row : Row := Nil;
-			each(i : entries) {
-				entry := entries->Get(i);
+			each(entry in entries) {
 				path := entry->GetPath();
 				is_dir := entry->GetType()->Equals("dir");
 				parent := AddFolders(table, folders, path);
@@ -22409,8 +22348,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		method : public : Find(path : String) ~ ArchiveEntry {
 			found : ArchiveEntry := Nil;
 			if(path <> Nil) {
-				each(i : @entries) {
-					entry := @entries->Get(i);
+				each(entry in @entries) {
 					if(entry->GetPath()->Equals(path)) {
 						found := entry;
 					};
@@ -22556,14 +22494,13 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		# the archive's own folder ('./'); Nil, with 'error' set, for an absolute path or one
 		# that climbs out of the archive
 		method : Normalize(raw : String, error : StringHolder) ~ String {
-			if(raw = Nil | raw->Size() = 0) {
+			if(raw = Nil | raw->IsEmpty()) {
 				error->Set("'{$@title}' has a member with no name");
 				return Nil;
 			};
 
 			text := "";
-			each(i : raw) {
-				c := raw->Get(i);
+			each(c in raw) {
 				if(c = '\0') {
 					error->Set("'{$@title}' has a member whose name holds a NUL character; refused");
 					return Nil;
@@ -22780,7 +22717,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 					type := "symlink";
 				};
 
-				if(path->Size() = 0) {
+				if(path->IsEmpty()) {
 					if(<>type->Equals("dir")) {
 						error->Set("'{$@title}' has a member with no name");
 						return false;
@@ -22818,8 +22755,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			# members' data must not overlap, or a few bytes could be read as many members
 			starts := spans->GetKeys();
 			previous_end := 0;
-			each(i : starts) {
-				start := starts->Get(i);
+			each(start in starts) {
 				if(start->Get() < previous_end) {
 					error->Set("'{$@title}': members overlap at byte {$(start->Get())}; refused");
 					return false;
@@ -23205,7 +23141,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 								return false;
 							};
 
-							if(path->Size() = 0) {
+							if(path->IsEmpty()) {
 								if(<>kind->Equals("dir")) {
 									error->Set("'{$@title}' has a member with no name");
 									return false;
@@ -23465,7 +23401,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		~#
 		method : public : Read() ~ Table {
 			tables := ReadAll();
-			if(tables = Nil | tables->Size() = 0) {
+			if(tables = Nil | tables->IsEmpty()) {
 				return Nil;
 			};
 
@@ -23498,7 +23434,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 				};
 			};
 
-			if(@sheet <> Nil & tables->Size() = 0) {
+			if(@sheet <> Nil & tables->IsEmpty()) {
 				@error := "'{$@title}' has no worksheet '{$@sheet}'";
 				return Nil;
 			};
@@ -23648,8 +23584,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			};
 
 			children := XmlTableBuilder->Elements(root);
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				if(child->GetName()->Equals("Relationship")) {
 					id := Attribute(child, "Id");
 					type := Attribute(child, "Type");
@@ -23726,8 +23661,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		function : ItemText(item : XmlElement) ~ String {
 			text := "";
 			children := XmlTableBuilder->Elements(item);
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				name := child->GetName();
 				if(name->Equals("t")) {
 					text += Text(child);
@@ -23747,8 +23681,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		function : Text(element : XmlElement) ~ String {
 			text := element->GetDecodedText();
 			children := element->GetChildren();
-			each(i : children) {
-				child := children->Get(i);
+			each(child in children) {
 				if(child->GetType() = XmlElement->Type->CDATA) {
 					text += child->GetContent();
 				};
@@ -23796,8 +23729,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			sheets := Child(root, "sheets");
 			if(sheets <> Nil) {
 				children := XmlTableBuilder->Elements(sheets);
-				each(i : children) {
-					sheet := children->Get(i);
+				each(sheet in children) {
 					name := Attribute(sheet, "name");
 					id := Attribute(sheet, "id");
 					if(name <> Nil & id <> Nil) {
@@ -23857,8 +23789,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			formats := Child(styles, "numFmts");
 			if(formats <> Nil) {
 				children := XmlTableBuilder->Elements(formats);
-				each(i : children) {
-					format := children->Get(i);
+				each(format in children) {
 					id := Attribute(format, "numFmtId");
 					code := Attribute(format, "formatCode");
 					if(id <> Nil & code <> Nil & Cell->NumberKind(id) = 1) {
@@ -23870,8 +23801,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			cell_formats := Child(styles, "cellXfs");
 			if(cell_formats <> Nil) {
 				children := XmlTableBuilder->Elements(cell_formats);
-				each(i : children) {
-					xf := children->Get(i);
+				each(xf in children) {
 					if(xf->GetName()->Equals("xf")) {
 						id_text := Attribute(xf, "numFmtId");
 						id := id_text <> Nil & Cell->NumberKind(id_text) = 1 ? id_text->ToInt() : 0;
@@ -24122,9 +24052,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		# a cell's kind and value; Nil for a cell with no value
 		method : ReadCell(element : XmlElement, row : Int, column : Int, where : String, error : StringHolder) ~ XlsxCell {
 			type := Attribute(element, "t");
-			if(type = Nil) {
-				type := "n";
-			};
+			type := type ?? "n";
 
 			if(type->Equals("inlineStr")) {
 				inline := Child(element, "is");
@@ -24140,7 +24068,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			};
 			# a formula not yet calculated may carry an empty value
 			value := Text(value_element);
-			if(value->Size() = 0) {
+			if(value->IsEmpty()) {
 				return Nil;
 			};
 			reference := "{$(Letters(column))}{$row}";
@@ -24197,8 +24125,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 		# the cells with each merged range's top-left value copied into the rest of the range
 		method : FillMerged(cells : Vector<XlsxCell>, ranges : Vector<XmlElement>, where : String, error : StringHolder) ~ Vector<XlsxCell> {
 			at := Map->New()<IntRef, XlsxCell>;
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				at->Insert(IntRef->New(cell->GetRow() * 16385 + cell->GetColumn()), cell);
 			};
 
@@ -24261,8 +24188,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			bottom := -1;
 			left := -1;
 			right := -1;
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				if(cell->GetRow() >= top) {
 					if(cell->GetRow() > bottom) {
 						bottom := cell->GetRow();
@@ -24297,8 +24223,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 				names[c] := Letters(left + c);
 			};
 			if(header) {
-				each(i : cells) {
-					cell := cells->Get(i);
+				each(cell in cells) {
 					if(cell->GetRow() = top) {
 						text := Value(cell, ColumnType->STRING)->As(String)->Trim();
 						if(text->Size() > 0) {
@@ -24315,8 +24240,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			each(c : whole) {
 				whole[c] := true;
 			};
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				if(cell->GetRow() >= data_top) {
 					c := cell->GetColumn() - left;
 					kinds[c * 5 + cell->GetKind()] += 1;
@@ -24351,8 +24275,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 				table->Insert();
 			};
 
-			each(i : cells) {
-				cell := cells->Get(i);
+			each(cell in cells) {
 				if(cell->GetRow() >= data_top) {
 					c := cell->GetColumn() - left;
 					table->Get(cell->GetRow() - data_top)->Set(c + 1, Value(cell, types[c]));
@@ -24570,8 +24493,7 @@ if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
 			live := files->LiveRows();
 			rows := Int->New[live->Size()];
 			n := 0;
-			each(i : live) {
-				row := live[i];
+			each(row in live) {
 				if(dirs->GetInt(row) = 0) {
 					full_name := File->GetFullName(paths->GetString(row));
 					if(full_name <> Nil & @regex->MatchExact(full_name)) {

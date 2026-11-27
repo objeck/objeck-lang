@@ -31,7 +31,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 		~#
 		function : Parse(date_str : String, format : String, gmt : Bool) ~ Date {
 			parts := Map->New()<IntRef, DatePart>;
-		
+
 			# month
 			month := format->Find("MM");
 			if(month > -1) {
@@ -57,7 +57,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 					long_year_format := false;
 				};
 			};
-	
+
 			# hour
 			hours := format->Find("hh");
 			if(hours > -1) {
@@ -78,17 +78,16 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 			date_month := 0; date_day := 0; date_year := 0;
 			date_hours := 0; date_mins := 0; date_secs := 0;
-		
+
 			offset := 0;
 			values := parts->GetValues()<DatePart>;
-			each(i : values) {
-				part := values->Get(i);
+			each(part in values) {
 				type := part->GetType();
 
 				select(type) {
 					label DatePart->Type->Month: {
 						pos := month + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_month := date_str->SubString(month + offset, 2)->ToInt();
 							}
@@ -101,7 +100,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Day: {
 						pos := day + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_day := date_str->SubString(day + offset, 2)->ToInt();
 							}
@@ -111,13 +110,13 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 							};
 						};
 					}
-				
+
 					label DatePart->Type->Year: {
 						pos := year + offset;
 						if(pos > -1 & pos < date_str->Size()) {
 							if(long_year_format) {
 								date_year := date_str->SubString(year + offset, 4)->ToInt();
-							}	
+							}
 							else {
 								date_year := 2000;
 								date_year += date_str->SubString(year + offset, 2)->ToInt();
@@ -127,7 +126,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Hour: {
 						pos := hours + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_hours := date_str->SubString(hours + offset, 2)->ToInt();
 							}
@@ -140,7 +139,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Min: {
 						pos := mins + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_mins := date_str->SubString(mins + offset, 2)->ToInt();
 							}
@@ -153,7 +152,7 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 
 					label DatePart->Type->Sec: {
 						pos := secs + offset + 1;
-						if(pos > -1 & pos < date_str->Size()) { 
+						if(pos > -1 & pos < date_str->Size()) {
 							if(date_str->Get(pos)->IsDigit()) {
 								date_secs := date_str->SubString(secs + offset, 2)->ToInt();
 							}
@@ -275,13 +274,13 @@ if(triplet <> Nil) {
 			if(response <> Nil & response->GetCode() = 200 & response->GetContent() <> Nil) {
 				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(response_json <> Nil) {
-					unix_time_json := response_json->Get("unixtime");					
+					unix_time_json := response_json->Get("unixtime");
 					utc_time_json := response_json->Get("utc_datetime");
 					dst_time_json := response_json->Get("datetime");
 					if(unix_time_json <> Nil & utc_time_json <> Nil & dst_time_json <> Nil) {
 						utc_date := System.Time.DateUtility->Parse(utc_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);
-						dst_date := System.Time.DateUtility->Parse(dst_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);	
-						
+						dst_date := System.Time.DateUtility->Parse(dst_time_json->GetString(), "yyyy-MM-ddThh:mm:ss", false);
+
 						return Collection.Tuple.Triplet->New(IntRef->New(unix_time_json->GetInt()), utc_date, dst_date)<IntRef, Date, Date>;
 					};
 				};
@@ -290,7 +289,7 @@ if(triplet <> Nil) {
 			return Nil;
 		}
 	}
-	
+
 	class : private : DatePart {
 		@index : Int;
 		@type : Type;
@@ -561,7 +560,7 @@ formatter := CodeFormatter->New(opts);
 			if(ident_space_check <> Nil & <>ident_space_check->IsEmpty()) {
 				@ident_space := ident_space_check->ToInt() - 1;
 			};
-			
+
 			# get start and end range
 			@start_range := -1;
 			start_line_check := options->Find("start-line");
@@ -607,11 +606,11 @@ formatter := CodeFormatter->New(opts);
 
 		method : InRange() ~ Bool {
 			return (@start_range < 0 & @end_range < 0) | (@token <> Nil & @start_range <= @token->GetLine() & @end_range >= @token->GetLine());
-		}	
+		}
 
 		method : CheckGeneric(tokens : Vector<Token>, i : Int) ~ Bool {
 			level := 0;
-			
+
 			token := tokens->Get(i);
 			while(token->GetType() <> System.Utility.Token->Type->SEMI & token->GetType() <> System.Utility.Token->Type->OTHER) {
 				select(token->GetType()) {
@@ -695,11 +694,11 @@ formatter->Format(src, false)->PrintLine();
 					else {
 						@next_token := Token->New(-1, System.Utility.Token->Type->OTHER, "other");
 					};
-					
+
 					select(@token->GetType()) {
 						label System.Utility.Token->Type->CLASS_ID {
 							VerticalSpace(@prev_token, tab_space, @ident_space);
-							
+
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
@@ -717,7 +716,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("function");
 
 							if(is_color) {
@@ -766,7 +765,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("if");
 
 							if(is_color) {
@@ -778,7 +777,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer('\n');
 							TabSpace(tab_space, @ident_space);
 							AppendBuffer("else");
@@ -786,13 +785,13 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_END);
 							};
-						}					
+						}
 
 						label System.Utility.Token->Type->DO_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("do");
 
 							if(is_color) {
@@ -804,7 +803,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("while");
 
 							if(is_color) {
@@ -816,7 +815,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("for");
 
 							if(is_color) {
@@ -830,7 +829,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("each");
 
 							if(is_color) {
@@ -842,7 +841,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("break");
 
 							if(is_color) {
@@ -854,7 +853,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("continue");
 
 							if(is_color) {
@@ -866,7 +865,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("return");
 
 							if(is_color) {
@@ -878,7 +877,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("alias");
 
 							if(is_color) {
@@ -890,7 +889,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("leaving");
 						}
 
@@ -898,7 +897,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("use");
 
 							if(is_color) {
@@ -910,7 +909,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("native");
 
 							if(is_color) {
@@ -922,7 +921,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("static");
 						}
 
@@ -930,7 +929,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("select");
 
 							if(is_color) {
@@ -960,7 +959,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("other");
 
 							if(is_color) {
@@ -987,18 +986,18 @@ formatter->Format(src, false)->PrintLine();
 
 							AppendBuffer("# ");
 							AppendBuffer(@token->GetValue()->Trim());
-							
+
 							if(is_color) {
 								AppendBuffer("\033[0m");
 							};
-							
+
 							AppendBuffer('\n');
 							@skip_space := insert_tabs := true;
 						}
 
 						label System.Utility.Token->Type->MULTI_COMMENT {
 							PopBuffer();
-							
+
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_COMMENT);
 							};
@@ -1055,7 +1054,7 @@ formatter->Format(src, false)->PrintLine();
 
 							if(@next_token->GetType() <> System.Utility.Token->Type->CCBRACE & @next_token->GetType() <> System.Utility.Token->Type->VTAB & <>in_for) {
 								AppendBuffer('\n');
-								
+
 								@skip_space := true;
 								if(<>in_for) {
 									insert_tabs := true;
@@ -1100,7 +1099,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("<>");
 
 							if(is_color) {
@@ -1112,7 +1111,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer('&');
 
 							if(is_color) {
@@ -1128,7 +1127,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer('?');
 
 							if(is_color) {
@@ -1137,8 +1136,8 @@ formatter->Format(src, false)->PrintLine();
 						}
 
 						label System.Utility.Token->Type->IDENT {
-							if(@prev_token->GetType() = System.Utility.Token->Type->ASSESSOR | 
-									@prev_token->GetType() = System.Utility.Token->Type->ADD_ADD | 
+							if(@prev_token->GetType() = System.Utility.Token->Type->ASSESSOR |
+									@prev_token->GetType() = System.Utility.Token->Type->ADD_ADD |
 									@prev_token->GetType() = System.Utility.Token->Type->SUB_SUB) {
 								PopBuffer();
 							};
@@ -1150,7 +1149,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_CONST);
 							}
-							
+
 							value := @token->GetValue();
 							AppendBuffer('"');
 							AppendBuffer(value);
@@ -1186,7 +1185,7 @@ formatter->Format(src, false)->PrintLine();
 								AppendBuffer(ASCII_END);
 							}
 						}
-						
+
 						label System.Utility.Token->Type->STRING_ID {
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
@@ -1215,7 +1214,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_TYPE);
 							};
-							
+
 							AppendBuffer("Float");
 
 							if(is_color) {
@@ -1275,7 +1274,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("and");
 
 							if(is_color) {
@@ -1287,7 +1286,7 @@ formatter->Format(src, false)->PrintLine();
 							if(is_color) {
 								AppendBuffer(ASCII_COLOR_KEYWORD);
 							};
-							
+
 							AppendBuffer("or");
 
 							if(is_color) {
@@ -1767,11 +1766,11 @@ formatter->Format(src, false)->PrintLine();
 							tab_space -= 1;
 							TabSpace(tab_space, @ident_space);
 							AppendBuffer('}');
-						
+
 							if(in_consts) {
 								in_consts := false;
 							};
-						
+
 							# What follows the brace. AppendBuffer joins the next token to
 							# a '}', which is right for the few that belong on its line and
 							# wrong for the rest: a constructor, field, enum, comment or
@@ -1796,7 +1795,7 @@ formatter->Format(src, false)->PrintLine();
 								# end of the source
 								label System.Utility.Token->Type->OTHER {
 								}
-						
+
 								# a constructor and the other declarations are set apart like a method
 								label System.Utility.Token->Type->NEW_ID
 								label System.Utility.Token->Type->ENUM_ID
@@ -1808,7 +1807,7 @@ formatter->Format(src, false)->PrintLine();
 									TabSpace(tab_space, @ident_space);
 									@skip_space := true;
 								}
-						
+
 								other {
 									AppendBuffer('\n');
 									TabSpace(tab_space, @ident_space);
@@ -1838,7 +1837,7 @@ formatter->Format(src, false)->PrintLine();
 					};
 				};
 			};
-			
+
 			# clean up output
 			offset_start := 0;
 			each(i : @buffer) {
@@ -1861,11 +1860,11 @@ formatter->Format(src, false)->PrintLine();
 			};
 
 			formatted := @buffer->SubString(offset_start, @buffer->Size() - offset_start - offset_end);
-			
+
 			if(@trim_trailing & formatted <> Nil) {
 				formatted := formatted->Trim();
 			};
-			
+
 			return formatted;
 		}
 
@@ -1920,7 +1919,7 @@ formatter->Format(src, false)->PrintLine();
 			@tokens := Vector->New()<Token>;
 
 			@keywords := Hash->New()<String, Token>;
-			
+
 			@keywords->Insert("and", Token->New(@line_num, System.Utility.Token->Type->AND_ID, "and_id"));
 			@keywords->Insert("or", Token->New(@line_num, System.Utility.Token->Type->OR_ID, "or_id"));
 			@keywords->Insert("xor", Token->New(@line_num, System.Utility.Token->Type->XOR_ID, "xor_id"));
@@ -1999,7 +1998,7 @@ formatter->Format(src, false)->PrintLine();
 
 				NextChar();
 			};
-			
+
 			if(new_line_count > 1) {
 				for(i := 0; i < new_line_count; i += 2;) {
 					@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->VTAB, "vtab"));
@@ -2016,7 +2015,7 @@ formatter->Format(src, false)->PrintLine();
 
 			while(@cur_char <> '\0') {
 				Whitespace();
-				
+
 				# comment
 				if(@cur_char = '#') {
 					NextChar();
@@ -2053,7 +2052,7 @@ formatter->Format(src, false)->PrintLine();
 				}
 				# string literal
 				else if(@cur_char = '"') {
-					NextChar();				
+					NextChar();
 					is_escape := false;
 
 					start := @buffer_index - 1;
@@ -2067,7 +2066,7 @@ formatter->Format(src, false)->PrintLine();
 						};
 
 						NextChar();
-					};				
+					};
 					end := @buffer_index;
 					NextChar();
 
@@ -2076,7 +2075,7 @@ formatter->Format(src, false)->PrintLine();
 				}
 				# char const
 				else if(@cur_char = '\'') {
-					NextChar();				
+					NextChar();
 
 					start := @buffer_index - 1;
 					if(@cur_char <> '\\') {
@@ -2084,7 +2083,7 @@ formatter->Format(src, false)->PrintLine();
 						if(@cur_char = '\\') {
 							NextChar();
 						};
-					};				
+					};
 					end := @buffer_index;
 					NextChar();
 
@@ -2099,7 +2098,7 @@ formatter->Format(src, false)->PrintLine();
 					};
 					end := @buffer_index;
 					word := String->New(@buffer, start, end - start - 1);
-					
+
 					keyword := @keywords->Find(word);
 					if(keyword = Nil) {
 						@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->IDENT, word));
@@ -2109,7 +2108,7 @@ formatter->Format(src, false)->PrintLine();
 					};
 				}
 				# number or digit
-				else if(@cur_char->IsDigit() | @cur_char = '.' | (@cur_char = '+' & (@next_char->IsDigit()| @cur_char = '.')) | 
+				else if(@cur_char->IsDigit() | @cur_char = '.' | (@cur_char = '+' & (@next_char->IsDigit()| @cur_char = '.')) |
 						@cur_char = '-' & (@next_char->IsDigit() | @cur_char = '.')) {
 					start := @buffer_index - 1;
 
@@ -2117,7 +2116,7 @@ formatter->Format(src, false)->PrintLine();
 						NextChar();
 					};
 
-					while(@cur_char = '.' | @cur_char->IsDigit() | @cur_char = 'x' | @cur_char = 'X' | 
+					while(@cur_char = '.' | @cur_char->IsDigit() | @cur_char = 'x' | @cur_char = 'X' |
 							(@cur_char >= 'a' & @cur_char <= 'f') | (@cur_char >= 'A' & @cur_char <= 'F')) {
 						NextChar();
 					};
@@ -2252,7 +2251,7 @@ formatter->Format(src, false)->PrintLine();
 							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR_EQL, "gtr_eql"));
 							NextChar();
 						}
-						
+
 						label '≤' {
 							@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->LESS_EQL, "less_eql"));
 							NextChar();
@@ -2351,7 +2350,7 @@ formatter->Format(src, false)->PrintLine();
 								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR_EQL, "gtr_eql"));
 								NextChar();
 							}
-							else { 
+							else {
 								@tokens->AddBack(Token->New(@line_num, System.Utility.Token->Type->GTR, "gtr"));
 							};
 							NextChar();
@@ -2361,7 +2360,7 @@ formatter->Format(src, false)->PrintLine();
 							if(@cur_char <> '\0') {
 								id := @cur_char->As(Int);
 								next_id := @next_char->As(Int);
-								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'({$id}), '{$@next_char}'({$next_id})] ---"->ErrorLine();						
+								"\n--- [Other ({$@line_num},{$@line_pos}): '{$@cur_char}'({$id}), '{$@next_char}'({$next_id})] ---"->ErrorLine();
 								Runtime->Exit(1);
 							};
 						}
@@ -2400,7 +2399,7 @@ formatter->Format(src, false)->PrintLine();
 			AS_ID,
 			TYPE_OF_ID,
 			CRITICAL_ID,
-			LAMBDA,			
+			LAMBDA,
 			USE_ID,
 			DO_ID,
 			FOR_ID,
@@ -2482,7 +2481,7 @@ formatter->Format(src, false)->PrintLine();
 			EOS,
 			OTHER
 		}
-		
+
 		New(line_num : Int, type : Token->Type, value : String) {
 			@line_num := line_num;
 			@type := type;
@@ -2492,15 +2491,15 @@ formatter->Format(src, false)->PrintLine();
 		method : public : Copy(line_num : Int) ~ Token {
 			return Token->New(line_num, @type, @value);
 		}
-		
+
 		method : public : GetLine() ~ Int {
 			return @line_num;
 		}
-		
+
 		method : public : GetType() ~ Token->Type {
 			return @type;
 		}
-		
+
 		method : public : GetValue() ~ String {
 			return @value;
 		}

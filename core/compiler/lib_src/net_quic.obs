@@ -402,8 +402,7 @@ bundle Web.HTTP {
 
 			if(headers <> Nil) {
 				header_key_values := headers->GetKeyValues()<Pair<String, String>>;
-				each(i : header_key_values) {
-					key_value := header_key_values->Get(i);
+				each(key_value in header_key_values) {
 					key := key_value->GetFirst();
 					value := key_value->GetSecond();
 					if(value->IsEmpty()) {

@@ -23,7 +23,7 @@ builder->ToString()->PrintLine();
 		@root : XmlElement;
 		@version : String;
 		@encoding : String;
-		
+
 		#~
 		Default constructor
 		@param name root element name
@@ -37,7 +37,7 @@ builder->ToString()->PrintLine();
 		New(name : String) {
 			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
 		}
-		
+
 		#~
 		Default constructor
 		@param name root element name
@@ -52,7 +52,7 @@ builder->ToString()->PrintLine();
 			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
 			@version := version;
 		}
-		
+
 		#~
 		Default constructor
 		@param name root element name
@@ -69,7 +69,7 @@ builder->ToString()->PrintLine();
 			@version := version;
 			@encoding := encoding;
 		}
-		
+
 		#~
 		Returns the root node of the XML document
 		@return root node
@@ -167,11 +167,11 @@ builder->ToString()->PrintLine();
 			};
 			# serialize DOM
 			out->Append(@root->ToString());
-			
+
 			return out;
 		}
 	}
-	
+
 	#~
 	Parses an XML document
 
@@ -214,7 +214,7 @@ if(parser->Parse()) {
    # get all prices
    results := parser->FindElements("/inventory/section/item/price")<XmlElement>;
    if(results <> Nil) {
-      each(i : results) {               
+      each(i : results) {
          element := results->Get(i)->As(XmlElement);
          element->GetContent()->PrintLine();
       };
@@ -233,7 +233,7 @@ if(parser->Parse()) {
 		@error_msg : String;
 		@root : XmlElement;
 		@declarations : Hash<String, XmlElement>;
-		
+
 		#~
 		Default constructor
 		@param string XML to parse
@@ -256,7 +256,7 @@ if(parser->Parse()) {
 			@buffer_pos := 0;
 			@declarations := Hash->New()<String, XmlElement>;
 		}
-		
+
 		#~
 		Default constructor
 		@param buffer XML to parse
@@ -279,7 +279,7 @@ if(parser->Parse()) {
 			@buffer_pos := 0;
 			@declarations := Hash->New()<String, XmlElement>;
 		}
-		
+
 		#~
 		Get the current parsing error
 		@return current parsing error
@@ -294,7 +294,7 @@ if(parser->Parse() = false) {
 		method : public : GetError() ~ String {
 			return @error_msg;
 		}
-		
+
 		#~
 		Gets XML version
 		@return XML version
@@ -314,10 +314,10 @@ if(parser->Parse()) {
 					return attrib->GetValue();
 				};
 			};
-			
+
 			return "1.0";
 		}
-		
+
 		#~
 		Gets the XML encoding
 		@return XML encoding
@@ -337,10 +337,10 @@ if(parser->Parse()) {
 					return attrib->GetValue();
 				};
 			};
-			
+
 			return "utf-8";
 		}
-		
+
 		#~
 		Produces an XML string representation of the document
 		@return string representation of the document
@@ -360,13 +360,13 @@ if(parser->Parse()) {
 			out->Append("\" encoding=\"");
 			out->Append("utf-8");
 			out->Append("\"?>");
-			
+
 			# serialize DOM
 			out->Append(@root->ToString());
-			
+
 			return out;
 		}
-		
+
 		#~
 		Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.
 		@param path search string
@@ -431,7 +431,7 @@ if(parser->Parse()) {
 			if(@error_msg <> Nil) {
 				return false;
 			};
-			
+
 			# parse first tag
 			tag := ParseElement();
 			if(@error_msg <> Nil) {
@@ -447,7 +447,7 @@ if(parser->Parse()) {
 					return false;
 				};
 			};
-			
+
 			# find root; a self-closing root ('<a k="v"/>') is a whole document too
 			if(tag <> Nil & (tag->GetType() = XmlElement->Type->ELEMENT | tag->GetType() = XmlElement->Type->UNARY_ELEMENT)) {
 				@root := tag;
@@ -456,7 +456,7 @@ if(parser->Parse()) {
 				@error_msg := "Invalid root element...";
 				return false;
 			};
-			
+
 			stack := Stack->New()<XmlElement>;
 			while(tag <> Nil) {
 				# update element stack
@@ -469,7 +469,7 @@ if(parser->Parse()) {
 					};
 					stack->Push(tag);
 				}
-				else if(tag->GetType() = XmlElement->Type->UNARY_ELEMENT | 
+				else if(tag->GetType() = XmlElement->Type->UNARY_ELEMENT |
 					tag->GetType() = XmlElement->Type->CDATA) {
 					parent : XmlElement;
 					if(stack->IsEmpty() = false) {
@@ -502,11 +502,11 @@ if(parser->Parse()) {
 					@error_msg := "Invalid tag type...";
 					return false;
 				};
-				
+
 				if(@error_msg <> Nil) {
 					return false;
 				};
-				
+
 				# update
 				tag := ParseElement();
 				if(@error_msg <> Nil) {
@@ -542,10 +542,10 @@ if(parser->Parse()) {
 				};
 			};
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parse attribute name
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : native : ParseName() ~ String {
 			# check name start; the bound is checked before each read, so a name that runs to
 			# the end of the input ('<a') is not read past
@@ -567,17 +567,17 @@ if(parser->Parse()) {
 						done := true;
 					};
 				};
-				
+
 				# copy buffer
 				return String->New(@buffer, start_pos, @buffer_pos - start_pos);
 			};
-						
+
 			return Nil;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parse attribute value
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : native : ParseValue() ~ String {
 			# check name start
 			if(Match('"')) {
@@ -587,7 +587,7 @@ if(parser->Parse()) {
 				while(Unmatch('"')) {
 					@buffer_pos += 1;
 				};
-				
+
 				if(Match('"')) {
 					# copy buffer
 					name := String->New();
@@ -597,29 +597,29 @@ if(parser->Parse()) {
 							label ' ': {
 								name->Append("&#x20;");
 							}
-							
+
 							label '\t': {
 								name->Append("&#x9;");
 							}
-							
+
 							label '\n': {
 								name->Append("&#xA;");
 							}
-							
+
 							label '\r': {
 								name->Append("&#xD;");
 							}
-							
+
 							other: {
 								name->Append(@buffer[i]);
 							}
 						};
 					};
 					@buffer_pos += 1;
-					
+
 					return name;
 				};
-				
+
 				return Nil;
 			}
 			else if(Match('\'')) {
@@ -629,7 +629,7 @@ if(parser->Parse()) {
 				while(Unmatch('\'')) {
 					@buffer_pos += 1;
 				};
-				
+
 				if(Match('\'')) {
 					# copy buffer
 					name := String->New();
@@ -639,64 +639,64 @@ if(parser->Parse()) {
 							label ' ': {
 								name->Append("&#x20;");
 							}
-							
+
 							label '\t': {
 								name->Append("&#x9;");
 							}
-							
+
 							label '\n': {
 								name->Append("&#xA;");
 							}
-							
+
 							label '\r': {
 								name->Append("&#xD;");
 							}
-							
+
 							other: {
 								name->Append(@buffer[i]);
 							}
 						};
 					};
 					@buffer_pos += 1;
-					
+
 					return name;
 				};
-				
+
 				return Nil;
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# match and unmatch
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : native : Match(c : Char) ~ Bool {
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] = c) {
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		method : native : Unmatch(c : Char) ~ Bool {
 			if(@buffer_pos < @buffer->Size() & @buffer[@buffer_pos] <> c) {
 				return true;
 			};
-			
+
 			return false;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parse element
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : native : ParseElement() ~ XmlElement {
 			# are we done?
 			IgnoreWhiteSpace();
 			if(@buffer_pos = @buffer->Size()) {
 				return Nil;
 			};
-			
+
 			# looks for '<'
 			if(Unmatch('<')) {
 				@error_msg := "Expected '<'...";
@@ -704,11 +704,11 @@ if(parser->Parse()) {
 			};
 			@buffer_pos += 1;
 			IgnoreWhiteSpace();
-			
-			
+
+
 			is_end_tag := false;
 			is_dclr_tag := false;
-			
+
 			# looks for '</'
 			if(Match('/')) {
 				is_end_tag := true;
@@ -722,22 +722,22 @@ if(parser->Parse()) {
 			# looks for '<!'
 			else if(Match('!')) {
 				@buffer_pos += 1;
-			
+
 				# comment (ignored)
 				if(Match('-')) {
 					@buffer_pos += 1;
-						
+
 					if(Unmatch('-')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-			
+
 					# ignore commented chars
 					state := 0;
 					while(@buffer_pos < @buffer->Size() & state < 3) {
 						@buffer_pos += 1;
-											
+
 						# match comment end
 						if(Match('-')) {
 							if(state = 0) {
@@ -758,13 +758,13 @@ if(parser->Parse()) {
 							state := 0;
 						};
 					};
-						
+
 					# rest for comment
 					IgnoreWhiteSpace();
 					if(@buffer_pos = @buffer->Size()) {
 						return Nil;
 					};
-						
+
 					# looks for '<'
 					if(Unmatch('<')) {
 						@error_msg := "Expected '<'...";
@@ -772,7 +772,7 @@ if(parser->Parse()) {
 					};
 					@buffer_pos += 1;
 					IgnoreWhiteSpace();
-						
+
 					# looks for '</'
 					is_end_tag := false;
 					if(Match('/')) {
@@ -783,25 +783,25 @@ if(parser->Parse()) {
 				# doctype (ignored)
 				else if(Match('D')) {
 					@buffer_pos += 1;
-						
+
 					if(Unmatch('O')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('C')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('T')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('Y')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
@@ -830,7 +830,7 @@ if(parser->Parse()) {
 					if(@buffer_pos = @buffer->Size()) {
 						return Nil;
 					};
-				
+
 					# looks for '<'
 					if(Unmatch('<')) {
 						@error_msg := "Expected '<'...";
@@ -844,54 +844,54 @@ if(parser->Parse()) {
 					if(Match('/')) {
 						is_end_tag := true;
 						@buffer_pos += 1;
-					};			
+					};
 				}
 				# cdata section
 				else if(Match('[')) {
 					@buffer_pos += 1;
-						
+
 					if(Unmatch('C')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('D')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('A')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('T')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('A')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					if(Unmatch('[')) {
 						@error_msg := "Unsupported tag...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-					
+
 					# ignore commented chars
 					state := 0;
 					start_pos := @buffer_pos;
 					while(@buffer_pos < @buffer->Size() & state < 3) {
 						@buffer_pos += 1;
-										
+
 						# match comment end
 						if(Match(']')) {
 							if(state = 0) {
@@ -908,7 +908,7 @@ if(parser->Parse()) {
 							state := 3;
 							@buffer_pos += 1;
 						};
-					};				
+					};
 					# copy data
 					data : String;
 					if(@buffer_pos > start_pos + 3) {
@@ -927,7 +927,7 @@ if(parser->Parse()) {
 					return Nil;
 				};
 			};
-				
+
 			# looks for tag name or multpile comments
 			IgnoreWhiteSpace();
 			tag_name : String;
@@ -942,9 +942,9 @@ if(parser->Parse()) {
 					return Nil;
 				};
 			};
-			
-# IO.Console->GetInstance()->Print("name: ")->PrintLine(tag_name); 
-		  
+
+# IO.Console->GetInstance()->Print("name: ")->PrintLine(tag_name);
+
 			# look for attributes
 			IgnoreWhiteSpace();
 			attrib_key := ParseName();
@@ -952,21 +952,21 @@ if(parser->Parse()) {
 				@error_msg := "End tags may not have attributes...";
 				return Nil;
 			};
-		  
+
 			# in document order, so GetAttributes() can return them that way
 			attribs := Vector->New()<XmlAttribute>;
 			if(attrib_key <> Nil) {
-				while(attrib_key <> Nil) {	
-			
-# IO.Console->Print("key: ")->PrintLine(attrib_key);    
-					
+				while(attrib_key <> Nil) {
+
+# IO.Console->Print("key: ")->PrintLine(attrib_key);
+
 					IgnoreWhiteSpace();
 					if(Unmatch('=')) {
 						@error_msg := "Expected '='...";
 						return Nil;
 					};
 					@buffer_pos += 1;
-				
+
 					# looks for tag value
 					IgnoreWhiteSpace();
 					attrib_value := ParseValue();
@@ -974,17 +974,17 @@ if(parser->Parse()) {
 						@error_msg := "Invalid tag name...";
 						return Nil;
 					};
-			
-# IO.Console->Print("value: ")->PrintLine(attrib_value);    
-			
+
+# IO.Console->Print("value: ")->PrintLine(attrib_value);
+
 					attribs->AddBack(XmlAttribute->New(attrib_key, attrib_value));
-			
+
 					# update
 					IgnoreWhiteSpace();
 					attrib_key := ParseName();
 				};
 			};
-		  
+
 			# unary
 			is_unary_tag := false;
 			if(Match('/')) {
@@ -995,7 +995,7 @@ if(parser->Parse()) {
 				@error_msg := "Tag cannot be an end and unary tag...";
 				return Nil;
 			};
-			
+
 			if(Match('?')) {
 				if(is_dclr_tag = false) {
 					@error_msg := "Invalid declaration tag...";
@@ -1003,7 +1003,7 @@ if(parser->Parse()) {
 				};
 				@buffer_pos += 1;
 			};
-			
+
 			IgnoreWhiteSpace();
 			if(Match('>')) {
 				@buffer_pos += 1;
@@ -1012,18 +1012,18 @@ if(parser->Parse()) {
 				@error_msg := "Expected closing tag...";
 				return Nil;
 			};
-			
+
 			# copy tag contents
 			start_pos := @buffer_pos;
 			while(Unmatch('<')) {
 				@buffer_pos += 1;
 			};
-			
+
 			tag_contents : String := Nil;
 			if(@buffer_pos > start_pos) {
 				tag_contents := String->New(@buffer, start_pos, @buffer_pos - start_pos);
-			};				
-	
+			};
+
 			type : XmlElement->Type;
 			if(is_unary_tag) {
 				type := XmlElement->Type->UNARY_ELEMENT;
@@ -1037,7 +1037,7 @@ if(parser->Parse()) {
 			else {
 				type := XmlElement->Type->ELEMENT;
 			};
-			
+
 			no_attribs : Hash<String, XmlAttribute>;
 			element := XmlElement->New(type, tag_name, no_attribs, tag_contents);
 			each(i : attribs) {
@@ -1046,7 +1046,7 @@ if(parser->Parse()) {
 
 			return element;
 		}
-			
+
 		#~
 		Gets the root XML element
 		@return root XML element
@@ -1063,7 +1063,7 @@ if(parser->Parse()) {
 			return @root;
 		}
 	}
-	
+
 	#~
 	Represents an XML attribute
 	~#
@@ -1073,7 +1073,7 @@ if(parser->Parse()) {
 		@namespace : String;
 
 		#~
-		Constructor 
+		Constructor
 		@param name attribute name
 		@param value attribute value
 		~#
@@ -1214,7 +1214,7 @@ attrib->GetNamespace()->PrintLine();
 			@namespace := namespace;
 		}
 	}
-	
+
 	#~
 	Represents an XML element
 
@@ -1239,7 +1239,7 @@ if(parser->Parse()) {
 		@content : String;
 		@elem_parent : XmlElement;
 		@children : Vector<XmlElement>;
-		
+
 		#~
 		XmlElement types
 		@class XmlElement
@@ -1251,33 +1251,33 @@ if(parser->Parse()) {
 			CLOSING_ELEMENT,
 			UNARY_ELEMENT
 		}
-		
+
 		#~
 		Constructor
 		@param type element type
-		@param name element name 
+		@param name element name
 		~#
 		New(type : XmlElement->Type, name : String) {
 			@type := type;
 			SetNames(name);
 		}
-		
+
 		#~
 		Constructor
 		@param type element type
-		@param name element name 
+		@param name element name
 		@param content content type
 		~#
 		New(type : XmlElement->Type, name : String, content : String) {
 			@type := type;
 			@content := content;
-			SetNames(name);			
+			SetNames(name);
 		}
-		
+
 		#~
 		Constructor
 		@param type element type
-		@param name element name 
+		@param name element name
 		@param attribs element name/value pairs; GetAttributes returns them in the hash's order
 		@param content content type
 		~#
@@ -1300,7 +1300,7 @@ if(parser->Parse()) {
 				SetNames(name);
 			};
 		}
-		
+
 		method : SetNames(name : String) ~ Nil {
 			offset := name->FindLast(':');
 			if(offset > 0) {
@@ -1313,7 +1313,7 @@ if(parser->Parse()) {
 				@name := name;
 			};
 		}
-		
+
 		#~
 		Gets the element name
 		@return element name
@@ -1379,7 +1379,7 @@ elem->GetNamespace()->PrintLine();
 		method : public : SetNamespace(namespace : String) ~ Nil {
 			@namespace := namespace;
 		}
-		
+
 		#~
 		Gets the element type
 		@return element type
@@ -1410,7 +1410,7 @@ elem->SetType(XmlElement->Type->UNARY_ELEMENT);
 		method : public : SetType(type : XmlElement->Type) ~ Nil {
 			@type := type;
 		}
-		
+
 		#~
 		Gets the element content as it appeared in the source: entity
 		references such as &amp;lt; are NOT decoded. Use GetDecodedContent
@@ -1483,7 +1483,7 @@ elem->SetEncodedContent("5 < 6 & 7");
 				@content := Nil;
 			};
 		}
-		
+
 		#~
 		Adds an element attribute
 		@param attrib element attribute
@@ -1531,7 +1531,7 @@ if(parser->Parse()) {
 
 			return attribs;
 		}
-		
+
 		#~
 		Gets an element attribute
 		@param key attribute name
@@ -1549,10 +1549,10 @@ if(parser->Parse()) {
 			if(@attribs <> Nil) {
 				return @attribs->Find(key);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Adds an XML subelement tag
 		@param tag element tag
@@ -1566,12 +1566,10 @@ root->ToString()->PrintLine();
 ```
 		~#
 		method : public : AddChild(tag : XmlElement) ~ Nil {
-			if(@children = Nil) {
-				@children := Vector->New()<XmlElement>;
-			};
+			@children := @children ?? Vector->New()<XmlElement>;
 			@children->AddBack(tag);
 		}
-		
+
 		#~
 		Get the number of child elements
 		@return number of child elements
@@ -1587,10 +1585,10 @@ if(parser->Parse()) {
 			if(@children <> Nil) {
 				return @children->Size();
 			};
-		
+
 			return 0;
 		}
-		
+
 		#~
 		Gets a child element
 		@param i child index
@@ -1610,10 +1608,10 @@ if(parser->Parse()) {
 			if(@children <> Nil & i < @children->Size()) {
 				return @children->Get(i);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Gets a child's parent element
 		@return parent element
@@ -1644,7 +1642,7 @@ child->GetParent()->GetName()->PrintLine();
 		method : public : SetParent(parent : XmlElement) ~ Nil {
 			@elem_parent := parent;
 		}
-		
+
 		#~
 		Creates a string representation of the element
 		@return string representation of the element
@@ -1660,11 +1658,11 @@ elem->ToString()->PrintLine();
 			ToString(input);
 			return input;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# serializes an element 
+		# serializes an element
 		# into a string
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : ToString(input : String) ~ Nil {
 			# element
 			# a parsed self-closing tag is a UNARY_ELEMENT; it used to serialize to nothing,
@@ -1675,9 +1673,9 @@ elem->ToString()->PrintLine();
 				if(@namespace <> Nil & @namespace->Size() > 0) {
 					input->Append(@namespace);
 					input->Append(':');
-				};				
+				};
 				input->Append(@name);
-				
+
 				# attribs, in the order they were added (document order for a parsed element),
 				# so a document round-trips; the hash's own order is unspecified
 				if(@attribs <> Nil & @attrib_names <> Nil) {
@@ -1701,7 +1699,7 @@ elem->ToString()->PrintLine();
 
 				# the parser files the text that follows a self-closing tag as that tag's
 				# content, so it is written after the tag, where it came from
-				if(@type = XmlElement->Type->UNARY_ELEMENT & (@children = Nil | @children->Size() = 0)) {
+				if(@type = XmlElement->Type->UNARY_ELEMENT & (@children = Nil | @children->IsEmpty())) {
 					input->Append("/>");
 					if(@content <> Nil) {
 						input->Append(@content);
@@ -1714,7 +1712,7 @@ elem->ToString()->PrintLine();
 				if(@content <> Nil) {
 					input->Append(@content);
 				};
-					
+
 				# process children
 				if(@children <> Nil) {
 					each(i : @children) {
@@ -1736,7 +1734,7 @@ elem->ToString()->PrintLine();
 				input->Append("]]>");
 			};
 		}
-		
+
 		#~
 		Get all child elements that matchs the given filter
 		@param name element name
@@ -1752,7 +1750,7 @@ if(parser->Parse()) {
 		~#
 		method : public : native : GetChildren(name : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
-			
+
 			if(@children <> Nil) {
 				each(i : @children) {
 					element : XmlElement := @children->Get(i);
@@ -1761,10 +1759,10 @@ if(parser->Parse()) {
 					};
 				};
 			};
-						
+
 			return filtered;
 		}
-		
+
 		#~
 		Get the first element that matchs the given filter
 		@param name element name
@@ -1786,10 +1784,10 @@ if(parser->Parse()) {
 			if(filtered->Size() > 0) {
 				return filtered->Get(0);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Get the last element that matchs the given filter
 		@param name element name
@@ -1807,14 +1805,14 @@ if(parser->Parse()) {
 		~#
 		method : public : native : GetLastChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
-			
+
 			if(filtered->Size() > 0) {
 				return filtered->Get(filtered->Size() - 1);
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~
 		Get all child elements that matchs the given filter
 		@param name element name
@@ -1831,7 +1829,7 @@ if(parser->Parse()) {
 		~#
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector<XmlElement> {
 			filtered := Vector->New()<XmlElement>;
-			
+
 			if(@children <> Nil) {
 				each(i : @children) {
 					element : XmlElement := @children->Get(i);
@@ -1840,10 +1838,10 @@ if(parser->Parse()) {
 					};
 				};
 			};
-			
+
 			return filtered;
 		}
-		
+
 		#~
 		Get all child elements that matchs the given filter
 		@param name element name
@@ -1871,10 +1869,10 @@ if(parser->Parse()) {
 					};
 				};
 			};
-			
+
 			return filtered;
 		}
-		
+
 		#~
 		Get all children
 		@return child elements
@@ -1892,29 +1890,29 @@ if(parser->Parse()) {
 			if(@children <> Nil) {
 				return @children;
 			};
-			
-			return Vector->New()<XmlElement>; 
+
+			return Vector->New()<XmlElement>;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element name
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : GetElementName(filter : String) ~ String {
 			name := String->New();
-			
+
 			i := 0;
 			while(i < filter->Size() & filter->Get(i) <> '[') {
 				name->Append(filter->Get(i));
 				i += 1;
 			};
-			
+
 			return name;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element expression
 		# tags
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : GetElementExpression(filter : String) ~ String {
 			if(filter->EndsWith("]")) {
 				end_pos := filter->Size() - 1;
@@ -1926,19 +1924,19 @@ if(parser->Parse()) {
 				expr : String;
 				if(start_pos < end_pos) {
 					start_pos += 1;
-					expr := filter->SubString(start_pos, end_pos - start_pos);	
+					expr := filter->SubString(start_pos, end_pos - start_pos);
 				};
-								
+
 				return expr;
 			};
-			
+
 			return Nil;
 		}
-		
+
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element expression
 		# tags
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 		method : ProcessExpression(filter : String, element : XmlElement) ~ Vector<XmlElement> {
 			expr := GetElementExpression(filter);
 			if(expr <> Nil) {
@@ -1959,7 +1957,7 @@ if(parser->Parse()) {
 					if(match <> Nil) {
 						matches->AddBack(match);
 					};
-					
+
 					return matches;
 				}
 				else {
@@ -1973,19 +1971,19 @@ if(parser->Parse()) {
 								matches->AddBack(named->Get(position - 1));
 							};
 							return matches;
-						} 
+						}
 						else if(expr->Get(0)->IsChar()) {
 							return element->GetChildren(GetElementName(filter), expr);
 						};
 					};
 				};
-				
+
 				return Vector->New()<XmlElement>;
 			};
-				
+
 			return element->GetChildren(filter)<XmlElement>;
 		}
-		
+
 		#~
 		Finds matching XML elements using xpath like syntax. Supports '[n]' (the n-th match, 1-based, as in XPath), 'first()', 'last()', '[attribute]' and '[cdata]' functions.
 		@param path search string
@@ -2001,7 +1999,7 @@ if(parser->Parse()) {
 		~#
 		method : public : FindElements(path : String) ~ Vector<XmlElement> {
 			children := Vector->New()<XmlElement>;
-						
+
 			# tokenize path into filters
 			start := 0;
 			filters := Vector->New()<String>;
@@ -2018,7 +2016,7 @@ if(parser->Parse()) {
 				filter := path->SubString(start, path->Size() - start);
 				filters->AddBack(filter);
 			};
-			
+
 			# process query
 			first_filter := filters->Get(0)->As(String);
 			if(filters->Size() > 0 & first_filter->Equals(@self->GetName())) {
@@ -2029,7 +2027,7 @@ if(parser->Parse()) {
 					# process root query
 					filter := filters->Get(1)->As(String);
 					children := ProcessExpression(filter, @self);
-											
+
 					# process children
 					for(i := 2; i < filters->Size(); i += 1;) {
 						# get filter
@@ -2048,10 +2046,10 @@ if(parser->Parse()) {
 					};
 				};
 			};
-			
+
 			return children;
 		}
-		
+
 		#~
 		Encodes the five XML markup characters (&lt; &gt; &amp; &quot; ')
 		and leaves everything else — including whitespace — untouched.
@@ -2069,8 +2067,7 @@ XmlElement->EncodeText(raw)->PrintLine();   # price &lt; 10 &amp; size &gt; 5
 		function : EncodeText(input : String) ~ String {
 			out := String->New();
 
-			each(i : input) {
-				c := input->Get(i);
+			each(c in input) {
 				select(c) {
 					label '<': {
 						out->Append("&lt;");
@@ -2116,22 +2113,21 @@ encoded->PrintLine();
 		~#
 		function : EncodeString(input : String) ~ String {
 			out := String->New();
-			
-			each(i : input) {
-				c := input->Get(i);
+
+			each(c in input) {
 				select(c) {
 					label ' ': {
 						out->Append("&#x20;");
 					}
-					
+
 					label '\t': {
 						out->Append("&#x9;");
 					}
-					
+
 					label '\n': {
 						out->Append("&#xA;");
 					}
-					
+
 					label '\r': {
 						out->Append("&#xD;");
 					}
@@ -2143,7 +2139,7 @@ encoded->PrintLine();
 					label '>': {
 						out->Append("&gt;");
 					}
-					
+
 					label '&': {
 						out->Append("&amp;");
 					}
@@ -2151,16 +2147,16 @@ encoded->PrintLine();
 					label '"': {
 						out->Append("&quot;");
 					}
-					
+
 					other: {
 						out->Append(c);
 					}
 				};
 			};
-			
+
 			return out;
 		}
-		
+
 		#~
 		Decodes an XML string
 		@param input string to decode
@@ -2175,7 +2171,7 @@ decoded->PrintLine();
 		function : DecodeString(input : String) ~ String {
 			max := input->Size();
 			i := 0;
-			
+
 			out := String->New();
 			while(i < max) {
 				c := input->Get(i);
@@ -2332,13 +2328,13 @@ decoded->PrintLine();
 						if(i < max & input->Get(i) = 'x') {
 							i += 1;
 							str_num := "0x";
-							while(i < max & (input->Get(i)->IsDigit() | 
+							while(i < max & (input->Get(i)->IsDigit() |
 								(input->Get(i) >= 'a' & input->Get(i) <= 'f') |
 								(input->Get(i) >= 'A' & input->Get(i) <= 'F'))) {
 								str_num->Append(input->Get(i));
 								i += 1;
 							};
-							
+
 							if(i < max & input->Get(i) = ';') {
 								out->Append(str_num->ToInt()->As(Char));
 								i += 1;
@@ -2381,7 +2377,7 @@ decoded->PrintLine();
 					i += 1;
 				};
 			};
-			
+
 			return out;
 		}
 

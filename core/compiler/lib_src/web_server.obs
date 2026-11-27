@@ -222,7 +222,7 @@ bundle Web.Server {
 	        };
 
 	        encoding_size := encoded->Size();
-	        
+
 	        # fetch all markers
 	        marker_indexes := Byte->FindAll(encoded, marker_bytes);
 	        if(marker_indexes = Nil) {
@@ -242,17 +242,17 @@ bundle Web.Server {
 	                return Nil;
 	            };
 	            boundry_index += 2;
-	 
+
 	            # read content headers
 	            done := false;
 	            headers := Map->New()<String, String>;
 	            do {
 	                # read content line
 	                header_bytes := ReadLine(boundry_index, encoded);
-	                if(header_bytes <> Nil) {            
+	                if(header_bytes <> Nil) {
 	                    boundry_index += header_bytes->Size();
 	                    content_str := header_bytes->ToString();
-	                    
+
 	                    # parse header name/value pair
 	                    content_str_index := content_str->Find(':');
 	                    if(content_str_index > 0) {
@@ -263,7 +263,7 @@ bundle Web.Server {
 	                        if(content_str_index < content_str->Size()) {
 	                            header_value := content_str->SubString(content_str_index, content_str->Size() - content_str_index);
 	                        };
-	                        
+
 	                        if(<>header_name->IsEmpty() & <>header_value->IsEmpty()) {
 	                            headers->Insert(header_name, header_value);
 	                        };
@@ -280,7 +280,7 @@ bundle Web.Server {
 	                boundry_index += 2;
 	            }
 	            while(<>done);
-	            
+
 	            # read content
 	            content_size := marker_indexes[i + 1] - boundry_index - 2;
 
@@ -288,7 +288,7 @@ bundle Web.Server {
 	            if(content_size < 0 | boundry_index + content_size > encoding_size) {
 	                return Nil;
 	            };
-	            
+
 	            content_bytes := Byte->New[content_size];
 	            Runtime->Copy(content_bytes, 0, encoded, boundry_index, content_size);
 	            boundry_index += content_bytes->Size();
@@ -405,7 +405,7 @@ bundle Web.Server {
 	}
 
 	#~
-	Web Response 
+	Web Response
 	~#
 	class Response {
 		# Backed by Web.HTTP.Server.Response. See the note on Request and
@@ -457,7 +457,7 @@ bundle Web.Server {
 
 			return data->Size();
 		}
-		
+
 		#~
 		Set the content type
 		@param type content type
