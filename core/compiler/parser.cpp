@@ -2540,6 +2540,73 @@ StatementList* Parser::ParseStatementList(int depth)
 }
 
 /****************************
+ * Statements that ParseStatement and ParseIf hand to a function of their own,
+ * and that must stay there (PARSER_NO_INLINE). Those two are on every path of
+ * a nested block and of an 'else if' ladder, and the parser stops when its
+ * stack passes STACK_BUDGET: a local of a rarely taken branch (a name, a
+ * message being put together) is paid for at every level. With the branches
+ * below written in place, the longest 'else if' ladder obc reads fell from
+ * 1,800 rungs to 899 and the deepest block nesting from 395 to 332.
+ ****************************/
+
+// 'x ?? { ...; return };': leave when x is Nil
+PARSER_NO_INLINE Statement* Parser::ParseNilGuardStatement(int line_num, int line_pos, int depth)
+{
+  const std::wstring guard_name = scanner->GetToken()->GetIdentifier();
+  IdentifierContext guard_context(guard_name, line_num, line_pos);
+  NextToken();
+  Variable* guard_target = ParseVariable(guard_context, depth + 1);
+  NextToken();
+  StatementList* guard_bail = ParseNilGuardBail(depth + 1);
+  return MakeNilGuard(guard_target, guard_bail);
+}
+
+// 'match subject { ... }' as a statement
+PARSER_NO_INLINE Statement* Parser::ParseMatchStatement(int line_num, int line_pos, int depth)
+{
+  const std::wstring file_name = GetFileName();
+  std::wstring value_ident;
+  Select* select = ParseMatch(true, value_ident, depth + 1);
+  if(!select->IsValue()) {
+    return select;
+  }
+
+  // a value with a call on it, as any expression statement is
+  Expression* expression = MakeValueSelect(select, value_ident, line_num, line_pos);
+  if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
+    ParseMethodCall(expression, depth + 1);
+  }
+  else {
+    ParseCastTypeOf(expression, depth + 1);
+  }
+  return TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
+}
+
+// 'if(value is Type name)': whether 'is' follows the tested value
+PARSER_NO_INLINE bool Parser::IsTypeTestStart()
+{
+  return Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"is";
+}
+
+// the bound name is declared in the scope of the 'if' block; false when the block's scope has the name
+PARSER_NO_INLINE bool Parser::DeclareTypeTestName(SymbolEntry* bind_entry, Assignment* bind_assign)
+{
+  if(!symbol_table->CurrentParseScope()->AddEntry(bind_entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + bind_assign->GetVariable()->GetName() + L"'");
+    return false;
+  }
+  return true;
+}
+
+// 'name := value->As(Type)' is the block's first statement
+PARSER_NO_INLINE void Parser::PrependTypeTestBinding(StatementList* if_statements, SymbolEntry* bind_entry, Assignment* bind_assign)
+{
+  if_statements->PrependStatement(TreeFactory::Instance()->MakeDeclaration(GetFileName(), bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
+                                                                           bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
+                                                                           bind_entry, bind_assign));
+}
+
+/****************************
  * Parses a statement.
  ****************************/
 Statement* Parser::ParseStatement(int depth, bool semi_colon)
@@ -2563,13 +2630,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   }
   // 'x ?? { ...; return };': leave when x is Nil
   else if(Match(TOKEN_IDENT) && Match(TOKEN_QUESTION_QUESTION, SECOND_INDEX) && Match(TOKEN_OPEN_BRACE, THIRD_INDEX)) {
-    const std::wstring guard_name = scanner->GetToken()->GetIdentifier();
-    IdentifierContext guard_context(guard_name, line_num, line_pos);
-    NextToken();
-    Variable* guard_target = ParseVariable(guard_context, depth + 1);
-    NextToken();
-    StatementList* guard_bail = ParseNilGuardBail(depth + 1);
-    statement = MakeNilGuard(guard_target, guard_bail);
+    statement = ParseNilGuardStatement(line_num, line_pos, depth);
   }
   // 'assert E : "label";': a contextual keyword too, taken only where a name could not follow
   else if(Match(TOKEN_IDENT) && IsAssertStatement()) {
@@ -2586,22 +2647,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   }
   // 'match subject {': a contextual keyword as well (see IsMatchStart)
   else if(IsMatchStart()) {
-    std::wstring value_ident;
-    Select* select = ParseMatch(true, value_ident, depth + 1);
-    if(select->IsValue()) {
-      // a value with a call on it, as any expression statement is
-      Expression* expression = MakeValueSelect(select, value_ident, line_num, line_pos);
-      if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-        ParseMethodCall(expression, depth + 1);
-      }
-      else {
-        ParseCastTypeOf(expression, depth + 1);
-      }
-      statement = TreeFactory::Instance()->MakeSimpleStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), expression);
-    }
-    else {
-      statement = select;
-    }
+    statement = ParseMatchStatement(line_num, line_pos, depth);
   }
   // 'spawn {': a contextual keyword, so 'spawn' stays an ordinary name
   else if(IsSpawn()) {
@@ -5242,7 +5288,7 @@ Statement* Parser::ParseControlFlowStatement(int line_num, int line_pos, const s
  * '{' starts nothing else in an expression, so 'json' is a keyword only in
  * this position and stays an ordinary name everywhere else.
  ****************************/
-bool Parser::IsJsonLiteralStart()
+PARSER_NO_INLINE bool Parser::IsJsonLiteralStart()
 {
   return Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"json";
 }
@@ -5288,7 +5334,7 @@ SequenceExpression* Parser::MakeJsonContainer(const std::wstring& json_type, std
  * or array, or any expression JsonElement has an Insert for (a String, Int,
  * Float, Bool or JsonElement), and Nil is JSON's null.
  ****************************/
-Expression* Parser::ParseJsonObject(int depth)
+PARSER_NO_INLINE Expression* Parser::ParseJsonObject(int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -5431,7 +5477,7 @@ Expression* Parser::ParseJsonValue(int depth)
  * left as MAP_LITERAL_MARKER and the analyzer names it from the type the
  * literal is assigned to or returned as (ContextAnalyzer::TypeMapLiteral).
  ****************************/
-Expression* Parser::ParseMapLiteral(int depth)
+PARSER_NO_INLINE Expression* Parser::ParseMapLiteral(int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -7705,7 +7751,7 @@ MethodCall* Parser::ParseCurriedCalls(MethodCall* method_call, int depth)
 /****************************
  * 'spawn' is a word of the language only in front of a '{'
  ****************************/
-bool Parser::IsSpawn()
+PARSER_NO_INLINE bool Parser::IsSpawn()
 {
   return Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"spawn";
 }
@@ -7728,7 +7774,7 @@ bool Parser::IsSpawn()
  * they were when the thread was started, exactly as a lambda does. The class
  * is parsed from text; the block is parsed from the program.
  ****************************/
-MethodCall* Parser::ParseSpawn(int depth)
+PARSER_NO_INLINE MethodCall* Parser::ParseSpawn(int depth)
 {
   CheckDepth(depth);
   const int line_num = GetLineNumber();
@@ -7987,7 +8033,7 @@ If* Parser::ParseIf(int depth)
   // value, where a name cannot follow an expression. It stays an ordinary name.
   SymbolEntry* bind_entry = nullptr;
   Assignment* bind_assign = nullptr;
-  if(expression && Match(TOKEN_IDENT) && scanner->GetToken()->GetIdentifier() == L"is") {
+  if(expression && IsTypeTestStart()) {
     expression = ParseTypeTest(expression, bind_entry, bind_assign, depth + 1);
   }
 
@@ -7997,16 +8043,13 @@ If* Parser::ParseIf(int depth)
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   // the name belongs to the block: declared in its scope, by its first statement
-  if(bind_entry && !symbol_table->CurrentParseScope()->AddEntry(bind_entry)) {
-    ProcessError(L"Variable already defined in this scope: '" + bind_assign->GetVariable()->GetName() + L"'");
+  if(bind_entry && !DeclareTypeTestName(bind_entry, bind_assign)) {
     bind_entry = nullptr;
   }
   StatementList* if_statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
   if(bind_entry) {
-    if_statements->PrependStatement(TreeFactory::Instance()->MakeDeclaration(file_name, bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
-                                                                             bind_assign->GetLineNumber(), bind_assign->GetLinePosition(),
-                                                                             bind_entry, bind_assign));
+    PrependTypeTestBinding(if_statements, bind_entry, bind_assign);
   }
 
   If* if_stmt;
@@ -8034,7 +8077,7 @@ If* Parser::ParseIf(int depth)
  * that ends in one of those or Runtime->Exit(..). A block that can fall through would
  * leave the variable Nil, which is the case the guard exists to rule out.
  ****************************/
-StatementList* Parser::ParseNilGuardBail(int depth)
+PARSER_NO_INLINE StatementList* Parser::ParseNilGuardBail(int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -8099,7 +8142,7 @@ StatementList* Parser::ParseNilGuardBail(int depth)
 /****************************
  * if(target = Nil) { bail }
  ****************************/
-If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
+PARSER_NO_INLINE If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
 {
   const std::wstring file_name = GetFileName();
   const int line_num = target->GetLineNumber();
@@ -8121,7 +8164,7 @@ If* Parser::MakeNilGuard(Variable* target, StatementList* bail)
  * cast read. Nil is of no type: the test is false, where a bare TypeOf on Nil
  * is a runtime error.
  ****************************/
-Expression* Parser::ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth)
+PARSER_NO_INLINE Expression* Parser::ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -8446,7 +8489,7 @@ Expression* Parser::ClonePureOperand(Expression* expression, const std::wstring&
  * parenthesis comes a binary operator or the label's ':', which a call statement
  * cannot have.
  ****************************/
-bool Parser::IsAssertStatement()
+PARSER_NO_INLINE bool Parser::IsAssertStatement()
 {
   if(scanner->GetToken()->GetIdentifier() != L"assert") {
     return false;
@@ -8535,7 +8578,7 @@ std::wstring Parser::AssertSourceText(int start_line, int start_pos, int end_lin
  * so the operands are evaluated once, and nothing but the test runs when the
  * assertion holds. The label is any String expression, and is optional.
  ****************************/
-Statement* Parser::ParseAssert(int depth)
+PARSER_NO_INLINE Statement* Parser::ParseAssert(int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -8659,7 +8702,7 @@ Statement* Parser::ParseAssert(int depth)
  * call never is. The resource's name lives in a scope of its own around the
  * body, so two blocks in a method may both name theirs 'f'.
  ****************************/
-Using* Parser::ParseUsing(int depth)
+PARSER_NO_INLINE Using* Parser::ParseUsing(int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -9278,7 +9321,7 @@ Select* Parser::ParseSelect(int depth)
  * Two names in a row start nothing else, so 'match' is a keyword only in this
  * position and stays an ordinary name everywhere else.
  ****************************/
-bool Parser::IsMatchStart()
+PARSER_NO_INLINE bool Parser::IsMatchStart()
 {
   return Match(TOKEN_IDENT) && Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"match";
 }
@@ -9292,7 +9335,7 @@ bool Parser::IsMatchStart()
  * starts the first arm decides which it is, so 'match c { A => "a", other =>
  * "b" }->PrintLine();' is a value like any other expression statement.
  ****************************/
-Select* Parser::ParseMatch(bool is_statement, std::wstring& value_ident, int depth)
+PARSER_NO_INLINE Select* Parser::ParseMatch(bool is_statement, std::wstring& value_ident, int depth)
 {
   CheckDepth(depth);
   const int line_num = GetLineNumber();
@@ -9417,7 +9460,7 @@ Select* Parser::ParseMatch(bool is_statement, std::wstring& value_ident, int dep
 /****************************
  * Parses 'match' where a value is expected
  ****************************/
-Expression* Parser::ParseMatchExpression(int depth)
+PARSER_NO_INLINE Expression* Parser::ParseMatchExpression(int depth)
 {
   CheckDepth(depth);
   const int line_num = GetLineNumber();
@@ -9433,7 +9476,7 @@ Expression* Parser::ParseMatchExpression(int depth)
  * 'select(subject) { label a, b: value  other: value }'. The arms are
  * expressions; apart from the spelling it is 'match' used as a value.
  ****************************/
-Expression* Parser::ParseSelectExpression(int depth)
+PARSER_NO_INLINE Expression* Parser::ParseSelectExpression(int depth)
 {
   CheckDepth(depth);
   const int line_num = GetLineNumber();
@@ -11452,7 +11495,7 @@ namespace {
   }
 }
 
-Expression* Parser::ParsePromptLiteral(int depth)
+PARSER_NO_INLINE Expression* Parser::ParsePromptLiteral(int depth)
 {
   CheckDepth(depth);
   const std::wstring file_name = GetFileName();
@@ -11755,7 +11798,7 @@ void Parser::CheckAgentToolClasses()
  * A class named in an agent's 'tools': the statement written for it starts with a placeholder, and
  * the name is given the place it has in the user's file.
  ****************************/
-Statement* Parser::ParseAgentName(int depth)
+PARSER_NO_INLINE Statement* Parser::ParseAgentName(int depth)
 {
   const std::wstring ident = scanner->GetToken()->GetIdentifier();
   const AgentSplice& splice = (*agent_splices)[(size_t)std::stoi(ident.substr(AGENT_SPLICE_PREFIX.size()))];

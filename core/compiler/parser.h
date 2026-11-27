@@ -36,6 +36,13 @@
 
 using namespace frontend;
 
+// a function that must not be merged into its caller: see the note above Parser::ParseNilGuardStatement
+#if defined(_MSC_VER)
+#define PARSER_NO_INLINE __declspec(noinline)
+#else
+#define PARSER_NO_INLINE __attribute__((noinline))
+#endif
+
 #define SECOND_INDEX 1
 #define THIRD_INDEX 2
 #define DEFAULT_BUNDLE_NAME L"Default"
@@ -228,6 +235,12 @@ class Parser {
     ~ChainScope() { ref = saved; }
   };
   void CheckDepth(int depth);
+  // branches of ParseStatement and ParseIf kept out of their stack frames
+  Statement* ParseNilGuardStatement(int line_num, int line_pos, int depth);
+  Statement* ParseMatchStatement(int line_num, int line_pos, int depth);
+  bool IsTypeTestStart();
+  bool DeclareTypeTestName(SymbolEntry* bind_entry, Assignment* bind_assign);
+  void PrependTypeTestBinding(StatementList* if_statements, SymbolEntry* bind_entry, Assignment* bind_assign);
   void CheckChain();
 
   // true for a token that can only begin a declaration, never appear inside a body

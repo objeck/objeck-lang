@@ -18,6 +18,7 @@ calls, array subscripts, unary operators, generic types) at 100, 250, 500 and 50
     an access violation),
   * a refusal says "Nesting is too deep", on the line the nesting is on, once,
   * 100 levels of parentheses and of blocks compile (ordinary generated code nests that far),
+  * an 'else if' ladder of 400 rungs compiles (it is not nesting, but each rung is a call of the parser),
   * and, for each shape, once a depth is refused every greater depth is refused too.
 
 bad_nesting_too_deep.obs holds the same error in the regression suite for one shape; it also names no column.
@@ -30,6 +31,7 @@ import time
 
 EXE = ".exe" if os.name == "nt" else ""
 LEVELS = [100, 250, 500, 5000]
+LADDER = 400
 TIME_LIMIT = 120
 MESSAGE = "Nesting is too deep"
 
@@ -121,6 +123,23 @@ def main():
                     if shallow_compiles and levels == 100:
                         check("%s: 100 levels compile" % shape, False, out)
             check("%s: 5000 levels are refused" % shape, refused_at is not None)
+
+        # An 'else if' ladder is read by one call of the parser per rung, so it is held to the same stack
+        # budget though nothing in it is nested. A generated dispatcher is hundreds of rungs long: 400 must
+        # compile. (The rung's stack frame doubled when functions called once from it were merged into it
+        # by the optimizer, and the longest ladder obc read fell from 1,800 rungs to 899.)
+        ladder = "x := args->Size();\n\t\ty := 0;\n\t\tif(x = -1) { y := 0; }"
+        ladder += "".join("\n\t\telse if(x = %d) { y := %d; }" % (i, i) for i in range(LADDER)) + ";\n\t\ty->PrintLine();"
+        src = os.path.join(work, "ladder.obs")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(program(ladder))
+        obe = os.path.join(work, "ladder.obe")
+        try:
+            p = subprocess.run([obc, "-src", src, "-dest", obe, "-lib", "gen_collect"], cwd=work, env=env, capture_output=True, timeout=TIME_LIMIT)
+            check("an 'else if' ladder of %d rungs compiles" % LADDER, p.returncode == 0 and os.path.exists(obe),
+                  (p.stdout + p.stderr).decode("utf-8", "replace"))
+        except subprocess.TimeoutExpired:
+            check("an 'else if' ladder of %d rungs: answered within %d s" % (LADDER, TIME_LIMIT), False)
 
     if failures:
         print("FAIL: %d check(s) failed" % len(failures))
