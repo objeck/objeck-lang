@@ -1,0 +1,181 @@
+# EXTRA_LIBS: gen_collect
+#~
+When a generic class has several constructors that take as many arguments, its
+type arguments are inferred from the ones the arguments can be passed to.
+
+With `New(left : T, right : Widget)` and `New(left : IntRef, right : T)`,
+`Couple->New("left", widget)` was refused: "its constructors make type parameter
+'T' both 'System.String' and 'Widget'". Inference matched each constructor's
+type-parameter positions only, so the second one said T is Widget although its
+first parameter, an IntRef, cannot take a String; the two answers were reported
+as a conflict before overload resolution could discard the second constructor.
+A constructor is now asked only when every argument can be passed to it with
+its own bindings in place.
+
+Each constructor is selected in turn, by a class argument, a primitive (boxed
+for the holder parameter, or for T), a subclass, an array and a generic
+argument. Two constructors that can both be called and disagree are still
+refused: bad_generic_infer_viable_conflict.obs. Exits 1 on a mismatch.
+~#
+use Collection;
+
+class Widget {
+	@id : Int;
+
+	New(id : Int) {
+		@id := id;
+	}
+
+	method : public : Id() ~ Int {
+		return @id;
+	}
+}
+
+class Gadget from Widget {
+	New(id : Int) {
+		Parent(id);
+	}
+}
+
+class Couple<T> {
+	@which : Int;
+	@value : T;
+
+	New(left : T, right : Widget) {
+		@which := 1;
+		@value := left;
+	}
+
+	New(left : IntRef, right : T) {
+		@which := 2;
+		@value := right;
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+}
+
+# a primitive, an array and a generic among the fixed parameters
+class Mixed<T> {
+	@which : Int;
+	@value : T;
+
+	New(value : T, scale : Float) {
+		@which := 1;
+		@value := value;
+	}
+
+	New(value : T, names : String[]) {
+		@which := 2;
+		@value := value;
+	}
+
+	New(values : Vector<String>, value : T) {
+		@which := 3;
+		@value := value;
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+}
+
+# both constructors can be called and they agree
+class Agreed<T> {
+	@which : Int;
+
+	New(value : T, count : Int) {
+		@which := 1;
+	}
+
+	New(value : T, ratio : FloatRef) {
+		@which := 2;
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+}
+
+class GenericInferenceViableConstructors {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := GenericInferenceViableConstructors->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	method : Run() ~ Nil {
+		widget := Widget->New(3);
+
+		# the finding: only the first constructor takes a String, then a Widget
+		first := Couple->New("left", widget);
+		Check("String, Widget: first constructor", first->Which() = 1);
+		Check("String, Widget: T is String", first->Value()->Equals("left"));
+
+		# only the second takes an IntRef, then a String
+		second := Couple->New(IntRef->New(4), "right");
+		Check("IntRef, String: second constructor", second->Which() = 2);
+		Check("IntRef, String: T is String", second->Value()->Equals("right"));
+
+		# an Int is boxed for the IntRef parameter; a String is no Widget
+		boxed := Couple->New(7, "seven");
+		Check("Int, String: second constructor", boxed->Which() = 2);
+		Check("Int, String: T is String", boxed->Value()->Size() = 5);
+
+		# a subclass is a Widget
+		gadget := Gadget->New(9);
+		derived := Couple->New("gadget", gadget);
+		Check("String, Gadget: first constructor", derived->Which() = 1);
+		Check("String, Gadget: T is String", derived->Value()->Equals("gadget"));
+
+		# T from a primitive: an Int is held as an IntRef
+		counted := Couple->New(5, widget)<IntRef>;
+		Check("written type argument still chosen", counted->Which() = 1);
+
+		scaled := Mixed->New("s", 2.5);
+		Check("T, Float: first constructor", scaled->Which() = 1 & scaled->Value()->Equals("s"));
+		scaled_int := Mixed->New("s", 2);
+		Check("T, Int for the Float: first constructor", scaled_int->Which() = 1);
+
+		names := String->New[2];
+		named := Mixed->New(widget, names);
+		Check("T, String[]: second constructor", named->Which() = 2 & named->Value()->Id() = 3);
+
+		words := Vector->New()<String>;
+		words->AddBack("w");
+		listed := Mixed->New(words, widget);
+		Check("Vector<String>, T: third constructor", listed->Which() = 3 & listed->Value()->Id() = 3);
+
+		agreed := Agreed->New("a", 1);
+		Check("both callable and agreeing, Int", agreed->Which() = 1);
+		agreed_ref := Agreed->New("a", FloatRef->New(1.5));
+		Check("both callable and agreeing, FloatRef", agreed_ref->Which() = 2);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: type arguments come from the constructors the arguments fit"->PrintLine();
+	}
+}

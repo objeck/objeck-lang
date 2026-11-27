@@ -1,0 +1,138 @@
+# EXTRA_LIBS: gen_collect
+#~
+An array argument is never boxed, and an overload that would need it boxed
+does not get in the way of one that takes the array.
+
+With `Pick(values : Int[], scale : Float)` and `Pick(value : IntRef, scale :
+Float)`, `Pick(values, 1)` on an Int[] was refused: each overload was tried, and
+for the IntRef one the compiler built and analyzed `IntRef->New(values)` (an
+array's type is its element's with a dimension, so it passed for an Int). That
+constructor does not exist; its error stayed reported although the other
+overload fits. Boxing is now tried only for one value where a holder is wanted.
+
+The overloads are declared in both orders, in the program and (Vector, Map) in
+a library, and the array is passed as a local, a field, a call's result and a
+literal. Exits 1 on a mismatch.
+~#
+use Collection;
+
+class Declared {
+	# the array overload first
+	function : Pick(values : Int[], scale : Float) ~ Int {
+		return 1;
+	}
+
+	function : Pick(value : IntRef, scale : Float) ~ Int {
+		return 2;
+	}
+
+	# the holder overload first
+	function : Take(value : FloatRef, count : Int) ~ Int {
+		return 3;
+	}
+
+	function : Take(values : Float[], count : Int) ~ Int {
+		return 4;
+	}
+
+	# every primitive
+	function : Kind(values : Bool[]) ~ Int {
+		return 10;
+	}
+
+	function : Kind(value : BoolRef) ~ Int {
+		return 11;
+	}
+
+	function : Kind(values : Char[]) ~ Int {
+		return 12;
+	}
+
+	function : Kind(value : CharRef) ~ Int {
+		return 13;
+	}
+
+	function : Kind(values : Byte[]) ~ Int {
+		return 14;
+	}
+
+	function : Kind(value : ByteRef) ~ Int {
+		return 15;
+	}
+}
+
+class BoxingOverloadArrayArgument {
+	@fails : Int;
+	@field : Int[];
+
+	function : Main(args : String[]) ~ Nil {
+		test := BoxingOverloadArrayArgument->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@field := Int->New[2];
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	method : Values() ~ Int[] {
+		return @field;
+	}
+
+	# an instance method, resolved the same way
+	method : Size(values : Int[], scale : Float) ~ Int {
+		return values->Size();
+	}
+
+	method : Size(value : IntRef, scale : Float) ~ Int {
+		return 0 - value->Get();
+	}
+
+	method : Run() ~ Nil {
+		values := Int->New[3];
+		floats := Float->New[2];
+
+		Check("Int[] local, Int for the Float", Declared->Pick(values, 1), 1);
+		Check("Int[] local, Float", Declared->Pick(values, 1.5), 1);
+		Check("Int[] field", Declared->Pick(@field, 1), 1);
+		Check("Int[] call result", Declared->Pick(Values(), 1), 1);
+		Check("Int[] literal", Declared->Pick([1, 2, 3], 1), 1);
+		Check("Int, boxed", Declared->Pick(7, 1), 2);
+		Check("Int element, boxed", Declared->Pick(values[0], 1), 2);
+		Check("IntRef", Declared->Pick(IntRef->New(7), 2.0), 2);
+
+		Check("Float[] local", Declared->Take(floats, 1), 4);
+		Check("Float[] literal", Declared->Take([1.5, 2.5], 1), 4);
+		Check("Float, boxed", Declared->Take(1.5, 1), 3);
+		Check("Float element, boxed", Declared->Take(floats[1], 1), 3);
+		Check("Int, converted and boxed", Declared->Take(2, 1), 3);
+
+		Check("Bool[]", Declared->Kind(Bool->New[2]), 10);
+		Check("Bool", Declared->Kind(true), 11);
+		Check("Char[]", Declared->Kind(Char->New[2]), 12);
+		Check("Char", Declared->Kind('c'), 13);
+		Check("Byte[]", Declared->Kind(Byte->New[2]), 14);
+
+		Check("instance, Int[]", Size(values, 1), 3);
+		Check("instance, Int", Size(5, 1), -5);
+
+		# a library class: the holder is the element type, the array is not one
+		holders := Vector->New()<IntRef>;
+		holders->AddBack(4);
+		holders->AddBack(values[0]);
+		Check("Vector<IntRef>, boxed elements", holders->Size(), 2);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: an array argument picks the array overload and is never boxed"->PrintLine();
+	}
+}

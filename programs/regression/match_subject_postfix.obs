@@ -1,0 +1,211 @@
+#~
+A postfix update in the subject of a 'match' or 'select' runs once, whichever
+arm is taken, and the arm is chosen by the value from before it.
+
+`match i++ { 0 => 10, 1 => 20, other => 30 }` queued the increment while the
+subject was emitted and left it queued across the dispatch, so it was emitted
+at the head of whichever arm came first in the bytecode: with i = 1 the value
+was 20 and i was still 1, and only the first arm ever changed i. A 'select'
+statement behaved the same way. The update is now emitted between the subject
+and the dispatch.
+
+Every way a select is emitted is covered (one label, a dense jump table, a
+sparse tree), as a value and as a statement, for each arm and for 'other', with
+a local, a field and an array element as the subject. Exits 1 on a mismatch.
+~#
+class MatchSubjectPostfix {
+	@fails : Int;
+	@field : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := MatchSubjectPostfix->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@field := 0;
+	}
+
+	method : Check(name : String, got_value : Int, want_value : Int, got_subject : Int, want_subject : Int) ~ Nil {
+		if(got_value <> want_value | got_subject <> want_subject) {
+			@fails += 1;
+			"FAIL {$name}: value {$got_value} (expected {$want_value}), subject {$got_subject} (expected {$want_subject})"->PrintLine();
+		};
+	}
+
+	# one label: a compare and a jump
+	function : Single(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := match i++ { 1 => 20, other => 30 };
+		after->Set(i);
+		return v;
+	}
+
+	# labels 0..2: a jump table
+	function : Dense(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := match i++ { 0 => 10, 1 => 20, 2 => 25, other => 30 };
+		after->Set(i);
+		return v;
+	}
+
+	# labels far apart: a tree of compares
+	function : Sparse(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := match i++ { 1 => 20, 500 => 40, 90000 => 50, 7000000 => 60, other => 30 };
+		after->Set(i);
+		return v;
+	}
+
+	function : DenseDown(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := match i-- { 0 => 10, 1 => 20, 2 => 25, other => 30 };
+		after->Set(i);
+		return v;
+	}
+
+	# the arm reads the subject's variable: it sees the update
+	function : ArmReads(start : Int) ~ Int {
+		i := start;
+		return match i++ { 0 => i * 100, 1 => i * 1000, other => i };
+	}
+
+	function : StatementDense(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := -1;
+		select(i++) {
+			label 0 { v := 10; }
+			label 1 { v := 20; }
+			label 2 { v := 25; }
+			other { v := 30; }
+		};
+		after->Set(i);
+		return v;
+	}
+
+	# no 'other': a subject no label names still updates
+	function : StatementNoOther(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := -1;
+		select(i++) {
+			label 0 { v := 10; }
+			label 1 { v := 20; }
+		};
+		after->Set(i);
+		return v;
+	}
+
+	function : StatementSingle(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := -1;
+		select(i--) {
+			label 4 { v := 40; }
+		};
+		after->Set(i);
+		return v;
+	}
+
+	function : StatementSparse(start : Int, after : IntRef) ~ Int {
+		i := start;
+		v := -1;
+		select(i++) {
+			label 1 { v := 20; }
+			label 500 { v := 40; }
+			label 90000 { v := 50; }
+			label 7000000 { v := 60; }
+			other { v := 30; }
+		};
+		after->Set(i);
+		return v;
+	}
+
+	method : FieldSubject(start : Int) ~ Int {
+		@field := start;
+		return match @field++ { 0 => 10, 1 => 20, 2 => 25, other => 30 };
+	}
+
+	function : ElementSubject(start : Int, after : IntRef) ~ Int {
+		cells := Int->New[2];
+		cells[1] := start;
+		v := match cells[1]++ { 0 => 10, 1 => 20, 2 => 25, other => 30 };
+		after->Set(cells[1]);
+		return v;
+	}
+
+	# two updates in the subject: both run before the dispatch
+	function : TwoUpdates(a : Int, b : Int, after : IntRef) ~ Int {
+		v := match a++ + b++ { 0 => 10, 1 => 20, 2 => 25, other => 30 };
+		after->Set(a * 10 + b);
+		return v;
+	}
+
+	method : Run() ~ Nil {
+		after := IntRef->New(0);
+
+		v := Single(1, after); Check("single, label", v, 20, after->Get(), 2);
+		v := Single(3, after); Check("single, other", v, 30, after->Get(), 4);
+
+		v := Dense(0, after); Check("dense, first label", v, 10, after->Get(), 1);
+		v := Dense(1, after); Check("dense, second label", v, 20, after->Get(), 2);
+		v := Dense(2, after); Check("dense, last label", v, 25, after->Get(), 3);
+		v := Dense(7, after); Check("dense, other", v, 30, after->Get(), 8);
+		v := Dense(-1, after); Check("dense, below the table", v, 30, after->Get(), 0);
+
+		v := Sparse(1, after); Check("sparse, first label", v, 20, after->Get(), 2);
+		v := Sparse(500, after); Check("sparse, second label", v, 40, after->Get(), 501);
+		v := Sparse(90000, after); Check("sparse, third label", v, 50, after->Get(), 90001);
+		v := Sparse(7000000, after); Check("sparse, last label", v, 60, after->Get(), 7000001);
+		v := Sparse(2, after); Check("sparse, other", v, 30, after->Get(), 3);
+
+		v := DenseDown(0, after); Check("decrement, first label", v, 10, after->Get(), -1);
+		v := DenseDown(2, after); Check("decrement, last label", v, 25, after->Get(), 1);
+		v := DenseDown(9, after); Check("decrement, other", v, 30, after->Get(), 8);
+
+		Check("arm reads, first", ArmReads(0), 100, 0, 0);
+		Check("arm reads, second", ArmReads(1), 2000, 0, 0);
+		Check("arm reads, other", ArmReads(5), 6, 0, 0);
+
+		v := StatementDense(0, after); Check("statement dense, first label", v, 10, after->Get(), 1);
+		v := StatementDense(1, after); Check("statement dense, second label", v, 20, after->Get(), 2);
+		v := StatementDense(2, after); Check("statement dense, last label", v, 25, after->Get(), 3);
+		v := StatementDense(9, after); Check("statement dense, other", v, 30, after->Get(), 10);
+
+		v := StatementNoOther(0, after); Check("statement no other, first label", v, 10, after->Get(), 1);
+		v := StatementNoOther(1, after); Check("statement no other, second label", v, 20, after->Get(), 2);
+		v := StatementNoOther(9, after); Check("statement no other, no label", v, -1, after->Get(), 10);
+
+		v := StatementSingle(4, after); Check("statement single, label", v, 40, after->Get(), 3);
+		v := StatementSingle(5, after); Check("statement single, no label", v, -1, after->Get(), 4);
+
+		v := StatementSparse(1, after); Check("statement sparse, first label", v, 20, after->Get(), 2);
+		v := StatementSparse(90000, after); Check("statement sparse, third label", v, 50, after->Get(), 90001);
+		v := StatementSparse(3, after); Check("statement sparse, other", v, 30, after->Get(), 4);
+
+		v := FieldSubject(0); Check("field, first label", v, 10, @field, 1);
+		v := FieldSubject(1); Check("field, second label", v, 20, @field, 2);
+		v := FieldSubject(8); Check("field, other", v, 30, @field, 9);
+
+		v := ElementSubject(0, after); Check("element, first label", v, 10, after->Get(), 1);
+		v := ElementSubject(2, after); Check("element, last label", v, 25, after->Get(), 3);
+		v := ElementSubject(8, after); Check("element, other", v, 30, after->Get(), 9);
+
+		v := TwoUpdates(0, 0, after); Check("two updates, first label", v, 10, after->Get(), 11);
+		v := TwoUpdates(1, 1, after); Check("two updates, last label", v, 25, after->Get(), 22);
+		v := TwoUpdates(4, 5, after); Check("two updates, other", v, 30, after->Get(), 56);
+
+		# in a loop: one update per iteration, every arm reached
+		total := 0;
+		i := 0;
+		for(n := 0; n < 6; n += 1;) {
+			total += match i++ { 0 => 1, 1 => 10, 2 => 100, other => 1000 };
+		};
+		Check("loop", total, 3111, i, 6);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a postfix update in a match/select subject runs once on every path"->PrintLine();
+	}
+}

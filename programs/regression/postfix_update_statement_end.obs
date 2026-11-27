@@ -1,0 +1,165 @@
+#~
+Every postfix update written in a statement has run when the statement ends.
+
+An update ('i++', 'i--') is queued when its variable is read and emitted after
+the statement, so the statement itself sees the value from before it. One
+update was emitted per statement. With two, `k := i++ + j++;`, the second
+stayed queued and was emitted after the NEXT statement: that statement still
+read the old value, an assignment to the variable in between was undone by the
+late update, and an update left over at the end of a method, or of the arm of a
+'match' used as a value, never ran at all.
+
+Checked right after the statement, and again one statement later (nothing may
+arrive late): two and three updates in an assignment, in call arguments, in a
+subscript and its value, in a 'return', as a method's last statement, in a
+'match' arm, and in the conditions of 'do'/'while' and 'while' loops, on
+locals, fields and array elements. Exits 1 on a mismatch.
+~#
+class PostfixUpdateStatementEnd {
+	@fails : Int;
+	@a : Int;
+	@b : Int;
+	@c : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := PostfixUpdateStatementEnd->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@a := 0;
+		@b := 0;
+		@c := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	function : Add3(x : Int, y : Int, z : Int) ~ Int {
+		return x * 100 + y * 10 + z;
+	}
+
+	# both fields are updated by the time the caller looks
+	method : ReturnsSum() ~ Int {
+		return @a++ + @b++;
+	}
+
+	# the statement that holds the updates is the method's last
+	method : LastStatement() ~ Nil {
+		sum := @a++ + @b++ + @c++;
+	}
+
+	# a 'match' used as a value: the arm is a statement of its own
+	method : InArm(n : Int) ~ Int {
+		return match n { 0 => @a++ + @b++, 1 => @a-- + @b-- + @c--, other => 0 };
+	}
+
+	method : Run() ~ Nil {
+		# two updates
+		i := 1;
+		j := 1;
+		k := i++ + j++;
+		Check("two: value", k, 2);
+		Check("two: first", i, 2);
+		Check("two: second", j, 2);
+		Check("two: first, a statement later", i, 2);
+		Check("two: second, a statement later", j, 2);
+
+		# an assignment right after is not undone by a late update
+		i := 1;
+		j := 1;
+		k := i++ + j++;
+		i := 10;
+		j := 20;
+		Check("two, then assigned: first", i, 10);
+		Check("two, then assigned: second", j, 20);
+
+		# three updates, increments and decrements
+		i := 1;
+		j := 1;
+		n := 5;
+		k := i++ + j++ + n--;
+		Check("three: value", k, 7);
+		Check("three: updates", i * 100 + j * 10 + n, 224);
+
+		# the same variable twice: both updates, and the statement saw neither
+		i := 3;
+		k := i++ + i++;
+		Check("same variable: value", k, 6);
+		Check("same variable: updates", i, 5);
+
+		# call arguments
+		i := 1;
+		j := 2;
+		n := 3;
+		k := Add3(i++, j++, n++);
+		Check("arguments: value", k, 123);
+		Check("arguments: updates", i * 100 + j * 10 + n, 234);
+
+		# a subscript and the value stored through it
+		cells := Int->New[4];
+		i := 1;
+		j := 7;
+		cells[i++] := j++;
+		Check("subscript and value: element", cells[1], 7);
+		Check("subscript and value: updates", i * 10 + j, 28);
+
+		# array elements
+		cells[0] := 4;
+		cells[1] := 5;
+		k := cells[0]++ + cells[1]--;
+		Check("elements: value", k, 9);
+		Check("elements: updates", cells[0] * 10 + cells[1], 54);
+
+		# fields, in a return
+		k := ReturnsSum();
+		Check("return: value", k, 0);
+		Check("return: updates", @a * 10 + @b, 11);
+
+		# fields, in a method's last statement
+		LastStatement();
+		Check("last statement: updates", @a * 100 + @b * 10 + @c, 221);
+
+		# fields, in the arm of a match used as a value
+		k := InArm(0);
+		Check("match arm: value", k, 4);
+		Check("match arm: updates", @a * 100 + @b * 10 + @c, 331);
+		k := InArm(1);
+		Check("match arm, three: value", k, 7);
+		Check("match arm, three: updates", @a * 100 + @b * 10 + @c, 220);
+		k := InArm(2);
+		Check("match arm, other: updates", @a * 100 + @b * 10 + @c, 220);
+
+		# two updates in a do/while condition: both, once per test
+		i := 0;
+		j := 10;
+		rounds := 0;
+		do {
+			rounds += 1;
+		}
+		while(i++ - j-- < -4 & rounds < 20);
+		Check("do/while: rounds", rounds, 4);
+		Check("do/while: updates", i * 100 + j, 406);
+
+		# two updates in a while condition: both, once per round entered
+		i := 0;
+		j := 10;
+		rounds := 0;
+		while(i++ - j-- < -4 & rounds < 20) {
+			rounds += 1;
+		};
+		Check("while: rounds", rounds, 3);
+		Check("while: updates", i * 100 + j, 307);
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: every postfix update has run when its statement ends"->PrintLine();
+	}
+}

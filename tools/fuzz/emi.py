@@ -758,7 +758,29 @@ class Tools:
 
     def run(self, obe, flags, cwd, timeout, args=()):
         cmd = fuzzlib.tool_command(self.tc.obr) + list(flags) + [os.path.abspath(obe)] + list(args)
-        return run_proc(cmd, cwd, self.env, timeout)
+        return scrub_own_position(run_proc(cmd, cwd, self.env, timeout), source_of(obe))
+
+
+def source_of(obe):
+    """The .obs a Tester compiled this .obe from: <stem>_s0.obe and <stem>_s3.obe come from <stem>.obs."""
+    return re.sub(r"_s[03]\.obe$", ".obs", os.path.abspath(obe))
+
+
+def scrub_own_position(result, src_path):
+    """Replace '<this program's own source file>:<line>' in a run's output with a fixed text.
+
+    A failed 'assert' prints the file and line it was written on, and some tests fail one on
+    purpose (interact_using_assert_try: "FAIL: <file>:155: assert r->Size() = 99 ..."). Every
+    variant is a file of its own (orig.obs, v0.obs, v0_c.obs) and a 'dead' mutation moves the
+    lines after it, so that line of output differed from the reference for every variant: a
+    "uniform" divergence, which the confirming runs (another file name again) then failed to
+    repeat, and the variant was counted as flaky. The position says where the text is, not what
+    the program computed, so it is not compared.
+    """
+    own = re.compile(re.escape(os.path.abspath(src_path)) + r":\d+")
+    result.stdout = own.sub("<source>:<line>", result.stdout or "")
+    result.stderr = own.sub("<source>:<line>", result.stderr or "")
+    return result
 
 
 def run_proc(cmd, cwd, env, timeout):

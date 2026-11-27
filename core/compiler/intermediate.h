@@ -34,6 +34,7 @@
 
 #include "tree.h"
 #include "emit.h"
+#include <set>
 
 using namespace frontend;
 using namespace backend;
@@ -80,6 +81,12 @@ class IntermediateEmitter {
   void EmitCriticalUnlocks(size_t keep_depth, Statement* statement);
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;
+  // set while an 'if' condition is emitted: EmitBranch then emits the queued
+  // updates before each conditional jump
+  bool branch_emits_post_statements = false;
+  void EmitPostStatements();
+  void BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
+  void EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements);
   
   // emit operations
   void EmitStrings();

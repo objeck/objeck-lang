@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: (12,8): '?' invalid type mismatch
+# EXPECT_ERROR_COUNT: 3
+#~
+Nil is a value of every class and of every array (cond_expr_array_or_nil.obs),
+and of nothing else: a single Int, Float or Bool beside Nil is not a
+conditional, whichever branch the Nil is.
+~#
+class BadCondExprScalarOrNil {
+	function : Main(args : String[]) ~ Nil {
+		t := args->Size() = 0;
+		ints := [1, 2, 3];
+		a := t ? 5 : Nil;
+		b := t ? Nil : 2.5;
+		c := t ? ints[0] : Nil;
+	}
+}

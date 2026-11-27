@@ -1,0 +1,48 @@
+# EXPECT_COMPILE_ERROR: (26,2): All method/function paths must return a value
+# EXPECT_ERROR_COUNT: 3
+#~
+A method that ends in a 'match' with no 'other' arm returns on every path only
+when the match is on an enum, names every item and every arm returns
+(match_exhaustive_returns.obs). Each of these is still refused, once:
+
+  - Whole: an Int subject. The labels cannot name every Int, so a value none
+    of them names falls out of the match.
+  - Partly: every item is named, but one arm does not return.
+  - Plain: a 'select' statement. It is not checked for coverage (a value no
+    label names is skipped by design), so naming every item does not make it
+    return on every path.
+~#
+enum Color {
+	Red,
+	Green,
+	Blue
+}
+
+class BadMatchReturnsNotExhaustive {
+	function : Main(args : String[]) ~ Nil {
+		(Whole(1) + Partly(Color->Red) + Plain(Color->Red))->PrintLine();
+	}
+
+	function : Whole(n : Int) ~ Int {
+		match n {
+			0 => { return 1; }
+			1 => { return 2; }
+		};
+	}
+
+	function : Partly(c : Color) ~ Int {
+		match c {
+			Color->Red => { return 1; }
+			Color->Green => { c->As(Int)->PrintLine(); }
+			Color->Blue => { return 3; }
+		};
+	}
+
+	function : Plain(c : Color) ~ Int {
+		select(c) {
+			label Color->Red { return 1; }
+			label Color->Green { return 2; }
+			label Color->Blue { return 3; }
+		};
+	}
+}

@@ -44,9 +44,16 @@ SelectArrayTree::SelectArrayTree(Select* s, IntermediateEmitter* e)
   // map and sort values
   int i = 0;
   std::map<INT64_VALUE, StatementList*>::iterator iter;
+  // labels that share an arm ('label 0: label 1: { .. }', '0 | 1 => ..') share its
+  // target: the arm is emitted once (Emit)
+  std::map<StatementList*, int> arm_labels;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
     values[i] = iter->first;
-    value_label_map[iter->first] = ++emitter->conditional_label;
+    std::map<StatementList*, int>::iterator arm = arm_labels.find(iter->second);
+    if(arm == arm_labels.end()) {
+      arm = arm_labels.insert(std::pair<StatementList*, int>(iter->second, ++emitter->conditional_label)).first;
+    }
+    value_label_map[iter->first] = arm->second;
     i++;
   }
   // map other
@@ -115,14 +122,27 @@ void SelectArrayTree::Emit()
       
   emitter->EmitExpression(select->GetAssignment()->GetExpression());
   // the selector, an Int, Char or enum, waits in the and/or temporary
+  // the subject's 'i++' runs before the dispatch, on the way to every arm; and
+  // before the store, as an update may use the temporary itself ('a[x ?? 0]++')
+  emitter->EmitPostStatements();
   emitter->EmitAndOrStore(select, nullptr, STOR_INT_VAR, INT_PARM);
 
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
   // write statements
+  //
+  // An arm that several labels name is emitted once, at the first of them. It
+  // used to be emitted once per label, and emitting a tree twice is not
+  // repeatable: a variable's postfix update is taken off its node the first
+  // time (EmitVariable), so the second copy had none. With
+  // `match n { 0 | 1 => i++, other => 0 }` only n = 0 incremented i.
   std::map<INT64_VALUE, StatementList*> label_statements = select->GetLabelStatements();
   std::map<INT64_VALUE, StatementList*>::iterator iter;
+  std::set<StatementList*> emitted_arms;
   for(iter = label_statements.begin(); iter != label_statements.end(); ++iter) {
+    if(!emitted_arms.insert(iter->second).second) {
+      continue;
+    }
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select, emitter->cur_line_num, LBL, (long)value_label_map[iter->first]));
     StatementList* statement_list = iter->second;
     std::vector<Statement*> statements = statement_list->GetStatements();
@@ -1508,11 +1528,8 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
         EmitByteNarrowing();
       }
     }
-    // post statements
-    if(!post_statements.empty()) {
-      EmitAssignment(post_statements.front());
-      post_statements.pop();
-    }
+    // post statements, all of them (see the end of this function)
+    EmitPostStatements();
     // leaving: as for finally, a returned string literal on the stack must not
     // pair with the leaving block's own literals (#1247)
     if(current_method->GetLeaving()) {
@@ -1593,10 +1610,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     throw CompilerFatal(L"internal error");
   }
   
-  if(!post_statements.empty()) {
-    EmitAssignment(post_statements.front());
-    post_statements.pop();
-  }
+  // Every postfix update the statement queued runs here. One was emitted per
+  // statement: with two in a statement ('k := i++ + j++;') the second stayed
+  // queued and ran after the NEXT statement, so that statement still read the
+  // old value; left over at the end of a 'match' arm or a method it never ran.
+  EmitPostStatements();
 
   current_statement = nullptr;
 }
@@ -1621,7 +1639,9 @@ static bool ReturnsValueType(MethodCall* method_call)
     rtrn = method_call->GetLibraryMethod()->GetReturn();
   }
 
-  if(!rtrn || rtrn->GetDimension() > 0) {
+  // an array is a reference, unless the call's result is subscripted
+  // ('p?->Items()[0]'): the value is then the element
+  if(!rtrn || (rtrn->GetDimension() > 0 && !method_call->GetCallIndices())) {
     return false;
   }
 
@@ -4226,6 +4246,51 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
 }
 
 /****************************
+ * Emits every postfix update ('i++', 'i--') that is waiting.
+ *
+ * An update is queued when its variable is read and emitted later, so the
+ * expression it is written in sees the value from before it. 'Later' has to be
+ * a point the program reaches whenever it read the variable: a subject that is
+ * dispatched on, or an operand that is evaluated only on one path, emits its
+ * updates here, before control divides or rejoins. Left in the queue, an update
+ * went into whichever branch was emitted next and ran only when that branch did
+ * (`match i++ { 0 => .., 1 => .. }` incremented for 0 and for no other value).
+ *
+ * The updates are assignments: they leave the operand stack as they found it,
+ * so a value the expression has already pushed stays where it is.
+ ****************************/
+void IntermediateEmitter::EmitPostStatements()
+{
+  while(!post_statements.empty()) {
+    OperationAssignment* post_statement = post_statements.front();
+    post_statements.pop();
+    EmitAssignment(post_statement);
+  }
+}
+
+/****************************
+ * Brackets an operand that only one path evaluates: the fallback of '??', an
+ * arm of '?:'. Its postfix updates belong to that path. Left queued they were
+ * emitted after the paths rejoin, at the end of the statement, and ran whether
+ * the operand had or not: `current ?? IntRef->New(i++)` incremented i for a
+ * non-Nil 'current'.
+ *
+ * Begin sets aside what the statement has queued so far (those run on every
+ * path, at its end); End emits what the operand queued, while the operand's
+ * value is on the stack, and puts the statement's own back.
+ ****************************/
+void IntermediateEmitter::BeginConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements)
+{
+  outer_post_statements.swap(post_statements);
+}
+
+void IntermediateEmitter::EndConditionalOperand(std::queue<OperationAssignment*> &outer_post_statements)
+{
+  EmitPostStatements();
+  post_statements.swap(outer_post_statements);
+}
+
+/****************************
  * Translates an 'select' statement
  ****************************/
 void IntermediateEmitter::EmitSelect(Select* select_stmt)
@@ -4250,6 +4315,8 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     // emit code
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(select_stmt, cur_line_num, value));
     EmitExpression(select_stmt->GetAssignment()->GetExpression());
+    // the subject's 'i++' runs before the test, on the way to every arm
+    EmitPostStatements();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(select_stmt, cur_line_num, JMP, other_label, false));
@@ -4310,10 +4377,16 @@ void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
   cur_line_num = select_stmt->GetLineNumber();
   const auto& label_stmts = select_stmt->GetLabelStatements();
 
-  // assign a target label to each case
+  // assign a target label to each case; labels that share an arm
+  // ('label 0: label 1: { .. }', '0 | 1 => ..') share its target
   std::map<INT64_VALUE, long> value_to_label;
+  std::map<StatementList*, long> arm_labels;
   for(const auto& entry : label_stmts) {
-    value_to_label[entry.first] = ++conditional_label;
+    std::map<StatementList*, long>::iterator arm = arm_labels.find(entry.second);
+    if(arm == arm_labels.end()) {
+      arm = arm_labels.insert(std::pair<StatementList*, long>(entry.second, ++conditional_label)).first;
+    }
+    value_to_label[entry.first] = arm->second;
   }
   long default_label = ++conditional_label;
   long end_label = ++unconditional_label;
@@ -4324,6 +4397,8 @@ void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
 
   // evaluate select expression; result consumed by JMP_TABLE
   EmitExpression(select_stmt->GetAssignment()->GetExpression());
+  // the subject's 'i++' runs before the dispatch, on the way to every arm
+  EmitPostStatements();
 
   // JMP_TABLE header: base(min_val), range, default_label
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
@@ -4338,8 +4413,14 @@ void IntermediateEmitter::EmitSelectJumpTable(Select* select_stmt)
       select_stmt, cur_line_num, JMP_TABLE_SLOT, slot_target));
   }
 
-  // case bodies
+  // case bodies: a shared arm once, at the first of its labels (emitting it per
+  // label left every copy but the first without the arm's postfix updates, see
+  // SelectArrayTree::Emit)
+  std::set<StatementList*> emitted_arms;
   for(const auto& entry : label_stmts) {
+    if(!emitted_arms.insert(entry.second).second) {
+      continue;
+    }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(
       select_stmt, cur_line_num, LBL, value_to_label[entry.first]));
     for(Statement* stmt : entry.second->GetStatements()) {
@@ -4409,10 +4490,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   // EmitWhile is unaffected -- it drains the queue after the body, once the
   // condition has already been emitted.
   EmitExpression(do_while_stmt->GetExpression());
-  if(!post_statements.empty()) {
-    EmitAssignment(post_statements.front());
-    post_statements.pop();
-  }
+  EmitPostStatements();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   // the jump consumed the condition's string literal (see EmitBranch)
   new_char_str_count = 0;
@@ -4437,7 +4515,12 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   const int break_label = ++conditional_label;
   break_labels.push(std::pair<int, int>(break_label, unconditional));
   break_critical_depth.push(active_criticals.size());
+  // a 'while' keeps its updates queued until the body has run (see
+  // EmitBranch), also when it is written inside an 'if' condition's lambda
+  const bool outer_branch_emits = branch_emits_post_statements;
+  branch_emits_post_statements = false;
   EmitBranch(while_stmt->GetExpression(), break_label, false);
+  branch_emits_post_statements = outer_branch_emits;
   
 
   // statements
@@ -4446,10 +4529,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
     EmitStatement(while_statements[i]);
   }
 
-  if(!post_statements.empty()) {
-    EmitAssignment(post_statements.front());
-    post_statements.pop();
-  }
+  EmitPostStatements();
   
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, unconditional, -1));
   
@@ -4619,7 +4699,10 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     const long unconditional_continue = ++unconditional_label;
     break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
     break_critical_depth.push(active_criticals.size());
+    const bool outer_branch_emits = branch_emits_post_statements;
+    branch_emits_post_statements = false;
     EmitBranch(for_stmt->GetExpression(), break_label, false);
+    branch_emits_post_statements = outer_branch_emits;
 
     // statements
     std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
@@ -4663,13 +4746,22 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     // expression
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(if_stmt, cur_line_num, LBL, (long)next_label));
     // the condition branches to the next arm (or the end) when false
+    //
+    // A postfix update in the condition runs before that branch, on the way to
+    // either side. It used to stay queued across the jump and was emitted by
+    // the first statement of the 'if' block, so it ran only when the condition
+    // held: 'if(i++ = 5) { .. } else { .. }' left i unchanged on the 'else'
+    // side, and after an 'else if' that tested 'i++' again.
     long conditional = ++conditional_label;
-    if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {      
+    const bool outer_branch_emits = branch_emits_post_statements;
+    branch_emits_post_statements = true;
+    if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {
       EmitBranch(if_stmt->GetExpression(), conditional, false);
     }
     else {
       EmitBranch(if_stmt->GetExpression(), end_label, false);
     }
+    branch_emits_post_statements = outer_branch_emits;
     
     // statements
     std::vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
@@ -5999,9 +6091,18 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   long end_label = ++unconditional_label;
   // if-expression
   long cond = ++conditional_label;
+  // the test's own updates stay the statement's (it is always evaluated)
+  const bool outer_branch_emits = branch_emits_post_statements;
+  branch_emits_post_statements = false;
   EmitBranch(conditional->GetCondExpression(), cond, false);
+  branch_emits_post_statements = outer_branch_emits;
+  // each branch's postfix updates run with the branch (BeginConditionalOperand):
+  // queued to the end of the statement, 't ? 7 : i++' incremented i for a true t
+  std::queue<OperationAssignment*> outer_post_statements;
+  BeginConditionalOperand(outer_post_statements);
   EmitExpression(conditional->GetExpression());
   EmitCast(conditional);
+  EndConditionalOperand(outer_post_statements);
   if(in_and_or) {
     EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
   }
@@ -6012,8 +6113,10 @@ void IntermediateEmitter::EmitConditional(Cond* conditional)
   new_char_str_count = 0;
   // else-expression
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, conditional, cur_line_num, LBL, cond));
+  BeginConditionalOperand(outer_post_statements);
   EmitExpression(conditional->GetElseExpression());
   EmitCast(conditional);
+  EndConditionalOperand(outer_post_statements);
   if(in_and_or) {
     EmitAndOrStore(current_statement, conditional, stor_type, temp_kind);
   }
@@ -6149,8 +6252,13 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
 
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
       const std::vector<Expression*>& defaults = method_call->GetCallingParameters()->GetExpressions();
+      // the default's postfix updates run here, with the default (see
+      // BeginConditionalOperand)
+      std::queue<OperationAssignment*> outer_post_statements;
+      BeginConditionalOperand(outer_post_statements);
       EmitExpression(defaults[0]);
       EmitCast(method_call);
+      EndConditionalOperand(outer_post_statements);
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
       new_char_str_count = 0;
 
@@ -6185,6 +6293,14 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     // normal method call in chain: its arguments go under the receiver that is
     // on the stack (a '$' helper whose receiver is parameter 0 gets them from
     // EmitMethodCall instead), as in EmitExpression's chain
+    //
+    // The arguments are evaluated only for a receiver that is not Nil, so their
+    // postfix updates run here, once they are on the stack and before the call
+    // (BeginConditionalOperand): 'none?->Take(i++)' incremented i though the
+    // call, and its argument, were skipped.
+    std::queue<OperationAssignment*> outer_post_statements;
+    BeginConditionalOperand(outer_post_statements);
+    bool arguments_emitted = false;
     if(!ReceiverIsFirstParameter(method_call) && method_call->GetCallingParameters()) {
       const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
         (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
@@ -6198,8 +6314,17 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
         }
       }
       new_char_str_count = 0;
+      EndConditionalOperand(outer_post_statements);
+      arguments_emitted = true;
     }
     EmitMethodCall(method_call, is_nested);
+    if(!arguments_emitted) {
+      EndConditionalOperand(outer_post_statements);
+    }
+    // subscript on the call result: 'provider?->Items()[0]'. The chain loops in
+    // EmitExpression emit it; this one did not, so the array itself was left
+    // where its element was expected.
+    EmitCallIndices(method_call);
     EmitCast(method_call);
     if(CastsCallResult(method_call)) {
       EmitClassCast(method_call);
@@ -6301,8 +6426,13 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   // of a pair under the first). `("q" ?? "x")` got a SWAP_INT here that put the
   // word under the receiver's into the slot instead of the default.
   new_char_str_count = 0;
+  // the default's postfix updates run here, on the Nil path alone (see
+  // BeginConditionalOperand)
+  std::queue<OperationAssignment*> outer_post_statements;
+  BeginConditionalOperand(outer_post_statements);
   EmitExpression(args[0]);
   EmitCast(method_call);
+  EndConditionalOperand(outer_post_statements);
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
   new_char_str_count = 0;
@@ -6362,6 +6492,9 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
     }
 
     EmitMethodCall(tail_call, is_nested);
+    // subscript on the call result: '(provider ?? fallback)->Items()[0]' (see
+    // EmitTryIntrinsic)
+    EmitCallIndices(tail_call);
     EmitCast(tail_call);
     if(CastsCallResult(tail_call)) {
       EmitClassCast(tail_call);
@@ -6940,6 +7073,20 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
   }
   // anything else: evaluate, then jump on the value
   EmitExpression(expression);
+  // An 'if' condition's postfix updates run here, between the test and the
+  // jump, so both sides of the branch have them -- and, for an operand of
+  // '&'/'|', only when that operand was evaluated. The tested value waits on
+  // the stack, as it does in EmitDoWhile.
+  //
+  // A 'while' and a 'for' do not: their updates stay queued and are emitted in
+  // the body (after its first statement, or at its end), so the body's first
+  // statement reads the value from before the update and leaving the loop
+  // skips it. Programs are written to that (core_do_while_post_op.obs pins the
+  // iteration count; 'while(i-- <> 0 & (c[i] % n) = 0);' in the examples reads
+  // c[i] before the decrement), so it is left as it is.
+  if(branch_emits_post_statements) {
+    EmitPostStatements();
+  }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, target_label, jump_if_true ? 1L : 0L));
   // The jump consumed the value, and with it any string literal the test pushed
   // ('s = "hi"'). The count of literals waiting to be paired must not carry into
@@ -6971,8 +7118,13 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
-    // emit left
+    // emit left: the operand the short circuit skips, so its postfix updates
+    // run here, with it (BeginConditionalOperand): 'false & (i++ > 0)'
+    // incremented i
+    std::queue<OperationAssignment*> outer_post_statements;
+    BeginConditionalOperand(outer_post_statements);
     EmitExpression(expression->GetLeft());
+    EndConditionalOperand(outer_post_statements);
     EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }
@@ -6989,8 +7141,11 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
     long end = ++unconditional_label;
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end, -1));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, label));
-    // emit left
+    // emit left: skipped when the first operand is true (see AND_EXPR)
+    std::queue<OperationAssignment*> outer_post_statements;
+    BeginConditionalOperand(outer_post_statements);
     EmitExpression(expression->GetLeft());
+    EndConditionalOperand(outer_post_statements);
     EmitAndOrStore(current_statement, expression, STOR_INT_VAR, INT_PARM);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end));
   }

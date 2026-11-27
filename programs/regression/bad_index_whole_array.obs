@@ -1,0 +1,41 @@
+# EXPECT_COMPILE_ERROR: (31,15): An array is not an index: expected a Byte, Char, Int or Enum value
+# EXPECT_ERROR_COUNT: 8
+#~
+An index is one value. An array's type is its element's with a dimension, so a
+whole Int[] (or Char[], Byte[], an array of an enum) passed the index check as
+an Int, and the array's address was used as the index: `values[Indices()]`
+with `Indices() ~ Int[]` compiled and failed at run time with "Index out of
+bounds: 110744171741680,3". Each of these is refused, once, where the index is
+written: a call's result, a variable, a jagged array's row and an array
+literal, as the index of a variable and of a call's result. An element of an
+array (its own subscript has selected one value) is still an index:
+array_index_scalar_forms.obs.
+~#
+enum Slot {
+	First,
+	Second
+}
+
+class BadIndexWholeArray {
+	function : Indices() ~ Int[] {
+		return Int->New[2];
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		values := Int->New[3];
+		idx := Int->New[2];
+		chars := Char->New[2];
+		slots := Slot->New[2];
+		rows := Int[]->New[2];
+		rows[0] := [0, 1];
+		v := values[Indices()];
+		v += values[idx];
+		v += values[chars];
+		v += values[slots];
+		v += values[rows[0]];
+		v += values[[1, 2]];
+		v += Indices()[idx];
+		v += Indices()[Indices()];
+		v->PrintLine();
+	}
+}

@@ -1,0 +1,24 @@
+# EXPECT_COMPILE_ERROR: (21,3): Undefined function/method call: 'Keep(..)'
+# EXPECT_ERROR_COUNT: 2
+#~
+An array is not boxed, and one value is not an array of holders. Neither call
+fits its function, and each is reported once, as the call it is: no holder
+constructor is tried on the array ('IntRef->New(Int[])' was reported for line
+21), and the Int is not passed as the IntRef[] (line 22 compiled, and the
+program failed the load-time verifier: "an object used as an array").
+~#
+class BadBoxingArrayForHolder {
+	function : Keep(value : IntRef) ~ Int {
+		return value->Get();
+	}
+
+	function : KeepAll(values : IntRef[]) ~ Int {
+		return values->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		values := Int->New[3];
+		Keep(values)->PrintLine();
+		KeepAll(5)->PrintLine();
+	}
+}

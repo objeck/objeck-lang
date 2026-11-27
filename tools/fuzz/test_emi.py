@@ -187,6 +187,24 @@ def _res(stdout, code=0, timed_out=False):
 
 
 class ClassifyTest(unittest.TestCase):
+    def test_own_source_position_is_not_a_difference(self):
+        # a failed 'assert' names its file and line; each variant is another file with other lines
+        work = os.path.join(tempfile.gettempdir(), "emi_scrub")
+        ref_obe, var_obe = os.path.join(work, "orig_s0.obe"), os.path.join(work, "v0_c_s3.obe")
+        ref_src, var_src = os.path.join(work, "orig.obs"), os.path.join(work, "v0_c.obs")
+        self.assertEqual(emi.source_of(ref_obe), os.path.abspath(ref_src))
+        self.assertEqual(emi.source_of(var_obe), os.path.abspath(var_src))
+        tail = ": assert r->Size() = 99 : meant to fail\nPASS\n"
+        ref = emi.scrub_own_position(fuzzlib.Result(0, "FAIL: %s:155%s" % (os.path.abspath(ref_src), tail), "", 0.1), ref_src)
+        var = emi.scrub_own_position(fuzzlib.Result(0, "FAIL: %s:171%s" % (os.path.abspath(var_src), tail), "", 0.1), var_src)
+        self.assertEqual(fuzzlib.outcome_key(ref), fuzzlib.outcome_key(var))
+        self.assertEqual(emi.classify(ref, {"s0/off": var}, ["s0/off"])[0], "pass")
+        # what the program computed is still compared, and so is a position in some other file
+        wrong = emi.scrub_own_position(fuzzlib.Result(0, "FAIL: %s:171: assert r->Size() = 98\nPASS\n" % os.path.abspath(var_src), "", 0.1), var_src)
+        self.assertNotEqual(fuzzlib.outcome_key(ref), fuzzlib.outcome_key(wrong))
+        other = emi.scrub_own_position(fuzzlib.Result(0, "see lib.obs:12\n", "", 0.1), var_src)
+        self.assertEqual(other.stdout, "see lib.obs:12\n")
+
     def test_synthetic_miscompile_is_a_divergence(self):
         ref = _res("PASS\n")
         results = {"s0/off": _res("PASS\n"), "s3/off": _res("EMI-DEAD 910001\n", 97),

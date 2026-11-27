@@ -1,0 +1,237 @@
+#~
+A postfix update in an 'if' condition runs once, whichever branch is taken.
+
+`if(i++ = 5) { .. } else { .. }` queued the increment while the condition was
+emitted and left it queued across the conditional jump; the first statement of
+the 'if' block then emitted it. So it ran only when the condition held: on the
+'else' side, and with no 'else' at all, i was unchanged, and after
+`if(i++ = 5) { } else if(i++ = 2) { }` i had been tested twice and incremented
+never. With an empty 'if' block the update ran after the whole statement, on
+both sides, by accident.
+
+The update is now emitted between the test and the jump. The block sees the
+updated value from its first statement on (it used to see the old value in its
+first statement and the new one in its second). An operand of '&' or '|' that
+is short-circuited does not run its update. 'while' and 'for' conditions are
+unchanged: their updates still run in the loop body. Exits 1 on a mismatch.
+~#
+class PostfixUpdateIfCondition {
+	@fails : Int;
+	@field : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := PostfixUpdateIfCondition->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@field := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# which branch ran (1, 2, 3 or 0), and the variable afterwards
+	function : Chain(start : Int, after : IntRef) ~ Int {
+		i := start;
+		taken := 0;
+		if(i++ = 5) {
+			taken := 1;
+		}
+		else if(i++ = 2) {
+			taken := 2;
+		}
+		else if(i-- = 9) {
+			taken := 3;
+		};
+		after->Set(i);
+		return taken;
+	}
+
+	function : NoElse(start : Int, after : IntRef) ~ Int {
+		i := start;
+		taken := 0;
+		if(i++ = 5) {
+			taken := 1;
+		};
+		after->Set(i);
+		return taken;
+	}
+
+	function : WithElse(start : Int, after : IntRef) ~ Int {
+		i := start;
+		taken := 0;
+		if(i-- = 5) {
+			taken := 1;
+		}
+		else {
+			taken := 2;
+		};
+		after->Set(i);
+		return taken;
+	}
+
+	# the block reads the variable: updated, in every statement
+	function : BlockReads(start : Int) ~ Int {
+		i := start;
+		first := -1;
+		second := -1;
+		if(i++ = 5) {
+			first := i;
+			second := i;
+		}
+		else {
+			first := i * 10;
+			second := i * 10;
+		};
+		return first * 1000 + second;
+	}
+
+	function : And(first : Bool, start : Int, after : IntRef) ~ Int {
+		i := start;
+		taken := 0;
+		if(first & i++ = 5) {
+			taken := 1;
+		}
+		else {
+			taken := 2;
+		};
+		after->Set(i);
+		return taken;
+	}
+
+	function : Or(first : Bool, start : Int, after : IntRef) ~ Int {
+		i := start;
+		taken := 0;
+		if(first | i++ = 5) {
+			taken := 1;
+		}
+		else {
+			taken := 2;
+		};
+		after->Set(i);
+		return taken;
+	}
+
+	function : EmptyBlock(start : Int) ~ Int {
+		i := start;
+		if(i++ = 5) {
+		};
+		return i;
+	}
+
+	function : Returns(start : Int, after : IntRef) ~ Int {
+		i := start;
+		after->Set(-1);
+		if(i++ = 5) {
+			after->Set(i);
+			return 1;
+		};
+		after->Set(i);
+		return 2;
+	}
+
+	method : FieldTest(want : Int) ~ Int {
+		if(@field++ = want) {
+			return 1;
+		}
+		else {
+			return 2;
+		};
+	}
+
+	method : Run() ~ Nil {
+		after := IntRef->New(0);
+
+		k := NoElse(5, after);
+		Check("no else, true: branch", k, 1);
+		Check("no else, true: update", after->Get(), 6);
+		k := NoElse(1, after);
+		Check("no else, false: branch", k, 0);
+		Check("no else, false: update", after->Get(), 2);
+
+		k := WithElse(5, after);
+		Check("else, true: branch", k, 1);
+		Check("else, true: update", after->Get(), 4);
+		k := WithElse(1, after);
+		Check("else, false: branch", k, 2);
+		Check("else, false: update", after->Get(), 0);
+
+		# 5: the first test holds. One update.
+		k := Chain(5, after);
+		Check("chain, first: branch", k, 1);
+		Check("chain, first: update", after->Get(), 6);
+		# 1: 1 = 5 fails, then 2 = 2 holds. Two updates.
+		k := Chain(1, after);
+		Check("chain, second: branch", k, 2);
+		Check("chain, second: updates", after->Get(), 3);
+		# 7: 7 = 5 fails, 8 = 2 fails, 9 = 9 holds. Two up, one down.
+		k := Chain(7, after);
+		Check("chain, third: branch", k, 3);
+		Check("chain, third: updates", after->Get(), 8);
+		# 20: none holds. Two up, one down.
+		k := Chain(20, after);
+		Check("chain, none: branch", k, 0);
+		Check("chain, none: updates", after->Get(), 21);
+
+		Check("block reads, true", BlockReads(5), 6006);
+		Check("block reads, false", BlockReads(1), 20020);
+
+		k := And(true, 5, after);
+		Check("&, both: branch", k, 1);
+		Check("&, both: update", after->Get(), 6);
+		k := And(true, 1, after);
+		Check("&, second fails: branch", k, 2);
+		Check("&, second fails: update", after->Get(), 2);
+		k := And(false, 5, after);
+		Check("&, short-circuited: branch", k, 2);
+		Check("&, short-circuited: no update", after->Get(), 5);
+
+		k := Or(true, 5, after);
+		Check("|, short-circuited: branch", k, 1);
+		Check("|, short-circuited: no update", after->Get(), 5);
+		k := Or(false, 5, after);
+		Check("|, second holds: branch", k, 1);
+		Check("|, second holds: update", after->Get(), 6);
+		k := Or(false, 1, after);
+		Check("|, neither: branch", k, 2);
+		Check("|, neither: update", after->Get(), 2);
+
+		Check("empty block, true", EmptyBlock(5), 6);
+		Check("empty block, false", EmptyBlock(1), 2);
+
+		k := Returns(5, after);
+		Check("return in the block: branch", k, 1);
+		Check("return in the block: update", after->Get(), 6);
+		k := Returns(1, after);
+		Check("return after the if: branch", k, 2);
+		Check("return after the if: update", after->Get(), 2);
+
+		k := FieldTest(0);
+		Check("field, true: branch", k, 1);
+		Check("field, true: update", @field, 1);
+		k := FieldTest(7);
+		Check("field, false: branch", k, 2);
+		Check("field, false: update", @field, 2);
+
+		# in a loop, so the JIT compiles the functions. Per start value 0..7 the
+		# branch and the variable afterwards are 0/1, 2/3, 0/3, 0/4, 0/5, 1/6, 0/7, 3/8.
+		total := 0;
+		for(n := 0; n < 3000; n += 1;) {
+			k := Chain(n % 8, after);
+			total += k * 10 + after->Get();
+		};
+		Check("loop", total, 375 * (1 + 23 + 3 + 4 + 5 + 16 + 7 + 38));
+
+		if(@fails > 0) {
+			"FAIL: {$@fails} check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a postfix update in an 'if' condition runs on every branch"->PrintLine();
+	}
+}
