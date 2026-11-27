@@ -4470,35 +4470,48 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
 
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, unconditional_continue));
   
-  // conditional
+  // conditional: back to the top while it holds
   //
-  // A post statement (`n--` inside the condition) runs between the test and the
-  // jump, so the tested value has to wait on the stack while the post statement
-  // executes -- which is what this non-branching form does.
-  //
-  // This used to take EmitBranch's fused test-and-jump when `post_statements`
-  // was empty. The queue is filled while the CONDITION is emitted, though, so at
-  // this point it is always empty and the fast path was always taken: the post
-  // statement was then queued by EmitBranch and emitted by the enclosing scope
-  // AFTER the loop's break label, outside the loop. `do { } while(n-- > 0)`
-  // decremented once, on the way out, so `n` never changed between iterations
-  // and the loop never terminated. Emitting the condition first and testing
-  // afterwards would not help: EmitBranch fuses the compare and the jump, and a
-  // post statement has to run on BOTH the taken and the untaken path, which that
-  // shape cannot express.
-  //
-  // EmitWhile is unaffected -- it drains the queue after the body, once the
-  // condition has already been emitted.
-  EmitExpression(do_while_stmt->GetExpression());
-  EmitPostStatements();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
-  // the jump consumed the condition's string literal (see EmitBranch)
-  new_char_str_count = 0;
-  
+  // A postfix update in the condition ('while(n-- > 0)') runs between the test
+  // and the jump, on the way round and on the way out (EmitConditionBranch).
+  // v2026.9.1 emitted it after the loop's break label instead, outside the
+  // loop: 'n' never changed between rounds and the loop never ended
+  // (core_do_while_post_op.obs).
+  EmitConditionBranch(do_while_stmt->GetExpression(), conditional, true);
+
   std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
   break_critical_depth.pop();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, (long)break_continue_label.first));
+}
+
+/****************************
+ * Emits the test of an 'if', 'while', 'for' or 'do/while': a jump to
+ * 'target_label' taken when 'expression' is 'jump_if_true'.
+ *
+ * A postfix update in such a condition ('while(i++ < n)') takes effect every
+ * time the condition is tested, between the test and the jump. So the block
+ * or loop body reads the updated value, the update has also been made when a
+ * loop's test fails and the loop is left, an operand that '&' or '|' skips
+ * makes none, and the second operand of '&' or '|' reads what the first one
+ * updated (EmitBranch emits each operand's updates before that operand's own
+ * jump).
+ *
+ * Until v2026.11.4 a 'while' or 'for' left its updates queued across the jump
+ * and the body's first statement emitted them (the end of an empty body). The
+ * first statement of the body read the value from before the update, leaving
+ * the loop skipped the update, and an operand that was skipped made it anyway.
+ * A 'do/while' evaluated its condition as a value, which made every update
+ * after the whole condition: the second operand of '&' read the old value.
+ ****************************/
+void IntermediateEmitter::EmitConditionBranch(Expression* expression, long target_label, bool jump_if_true)
+{
+  // restored, not cleared: a condition can hold another statement's condition
+  // (a lambda's body)
+  const bool outer_branch_emits = branch_emits_post_statements;
+  branch_emits_post_statements = true;
+  EmitBranch(expression, target_label, jump_if_true);
+  branch_emits_post_statements = outer_branch_emits;
 }
 
 /****************************
@@ -4515,13 +4528,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   const int break_label = ++conditional_label;
   break_labels.push(std::pair<int, int>(break_label, unconditional));
   break_critical_depth.push(active_criticals.size());
-  // a 'while' keeps its updates queued until the body has run (see
-  // EmitBranch), also when it is written inside an 'if' condition's lambda
-  const bool outer_branch_emits = branch_emits_post_statements;
-  branch_emits_post_statements = false;
-  EmitBranch(while_stmt->GetExpression(), break_label, false);
-  branch_emits_post_statements = outer_branch_emits;
-  
+  EmitConditionBranch(while_stmt->GetExpression(), break_label, false);
 
   // statements
   std::vector<Statement*> while_statements = while_stmt->GetStatements()->GetStatements();
@@ -4529,8 +4536,6 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
     EmitStatement(while_statements[i]);
   }
 
-  EmitPostStatements();
-  
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, unconditional, -1));
   
   std::pair<int, int> break_continue_label = break_labels.top();
@@ -4699,10 +4704,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     const long unconditional_continue = ++unconditional_label;
     break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
     break_critical_depth.push(active_criticals.size());
-    const bool outer_branch_emits = branch_emits_post_statements;
-    branch_emits_post_statements = false;
-    EmitBranch(for_stmt->GetExpression(), break_label, false);
-    branch_emits_post_statements = outer_branch_emits;
+    EmitConditionBranch(for_stmt->GetExpression(), break_label, false);
 
     // statements
     std::vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
@@ -4753,15 +4755,12 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
     // held: 'if(i++ = 5) { .. } else { .. }' left i unchanged on the 'else'
     // side, and after an 'else if' that tested 'i++' again.
     long conditional = ++conditional_label;
-    const bool outer_branch_emits = branch_emits_post_statements;
-    branch_emits_post_statements = true;
     if(if_stmt->GetNext() || if_stmt->GetElseStatements()) {
-      EmitBranch(if_stmt->GetExpression(), conditional, false);
+      EmitConditionBranch(if_stmt->GetExpression(), conditional, false);
     }
     else {
-      EmitBranch(if_stmt->GetExpression(), end_label, false);
+      EmitConditionBranch(if_stmt->GetExpression(), end_label, false);
     }
-    branch_emits_post_statements = outer_branch_emits;
     
     // statements
     std::vector<Statement*> if_statements = if_stmt->GetIfStatements()->GetStatements();
@@ -7073,17 +7072,13 @@ void IntermediateEmitter::EmitBranch(Expression* expression, long target_label, 
   }
   // anything else: evaluate, then jump on the value
   EmitExpression(expression);
-  // An 'if' condition's postfix updates run here, between the test and the
-  // jump, so both sides of the branch have them -- and, for an operand of
-  // '&'/'|', only when that operand was evaluated. The tested value waits on
-  // the stack, as it does in EmitDoWhile.
+  // The postfix updates of a statement's condition (EmitConditionBranch) run
+  // here, between the test and the jump, so both sides of the branch have
+  // them -- and, for an operand of '&'/'|', only when that operand was
+  // evaluated. They are assignments: the tested value waits on the stack.
   //
-  // A 'while' and a 'for' do not: their updates stay queued and are emitted in
-  // the body (after its first statement, or at its end), so the body's first
-  // statement reads the value from before the update and leaving the loop
-  // skips it. Programs are written to that (core_do_while_post_op.obs pins the
-  // iteration count; 'while(i-- <> 0 & (c[i] % n) = 0);' in the examples reads
-  // c[i] before the decrement), so it is left as it is.
+  // The test of '?:' is the exception (the flag is off): it is always
+  // evaluated, so its updates stay the enclosing statement's.
   if(branch_emits_post_statements) {
     EmitPostStatements();
   }
