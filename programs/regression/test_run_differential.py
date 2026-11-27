@@ -327,10 +327,44 @@ class RunnerTests(Harness):
 
     def test_compile_error_tests_are_skipped(self):
         self.add_test("bad", "# EXPECT_COMPILE_ERROR: undefined\n")
+        self.add_test("good")
         rc, res = self.run_diff()
-        self.assertEqual(rc, 0)
+        self.assertEqual(rc, 0, self.output)
         self.assertEqual(res["bad"]["status"], "skip")
+        self.assertNotIn("bad.obs", [os.path.basename(c[c.index("-src") + 1]) for c in self.calls("obc")])
+
+    def test_only_compile_error_tests_is_zero_comparisons_and_fails(self):
+        self.add_test("bad", "# EXPECT_COMPILE_ERROR: undefined\n")
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1, self.output)
+        self.assertIn("ZERO comparisons", self.output)
         self.assertEqual(self.calls("obc"), [])
+
+    def test_empty_suite_exits_non_zero_without_a_result_file(self):
+        spec_path = os.path.join(self.tmp, "spec.json")
+        with open(spec_path, "w") as fh:
+            json.dump(self.spec, fh)
+        p = subprocess.run([sys.executable, RUNNER, self.bin, "--regression-dir", self.reg,
+                            "--work", os.path.join(self.tmp, "work")],
+                           env=dict(os.environ, FAKE_SPEC=spec_path), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("empty suite", p.stdout.decode())
+
+    def test_tests_that_print_skip_are_not_comparisons(self):
+        self.add_test("skipper")
+        self.spec["run"]["skipper"] = {"*": {"out": "SKIP: no gpu\n"}}
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 1, self.output)  # the only test agreed with itself about nothing
+        self.assertIn("0 compared, 1 reported SKIP", self.output)
+        self.assertIn("ZERO comparisons", self.output)
+
+    def test_a_skipper_beside_a_real_comparison_is_counted_apart(self):
+        self.add_test("skipper")
+        self.add_test("good")
+        self.spec["run"]["skipper"] = {"*": {"out": "SKIP: no gpu\n"}}
+        rc, res = self.run_diff()
+        self.assertEqual(rc, 0, self.output)
+        self.assertIn("1 compared, 1 reported SKIP", self.output)
 
     def test_jit_optout_runs_interpreter_only(self):
         self.add_test("optout", "# JIT_DISABLE\n# reason: arm64 bug\n")

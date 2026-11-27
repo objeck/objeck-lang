@@ -95,6 +95,13 @@ def may_skip(tests_dir):
 def lint_skips(tests_dir):
     """Problems with the skip declarations in the sources themselves."""
     problems = []
+    # A lint over nothing passes by construction: a mistyped or missing directory used to exit 0.
+    if not os.path.isdir(tests_dir):
+        return ["tests directory %s does not exist" % tests_dir]
+    if not os.listdir(tests_dir):
+        return ["tests directory %s is empty" % tests_dir]
+    if not glob.glob(os.path.join(tests_dir, "*.obs")):
+        return ["tests directory %s holds no .obs files" % tests_dir]
     for path in sorted(glob.glob(os.path.join(tests_dir, "*.obs"))):
         name = os.path.basename(path)
         reason, prints = skip_declaration(path)

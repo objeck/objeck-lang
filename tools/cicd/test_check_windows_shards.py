@@ -121,6 +121,30 @@ class Shards(unittest.TestCase):
             r = subprocess.run([sys.executable, "-I", SCRIPT, "--lint-skips", "--tests-dir", tests], capture_output=True, text=True)
             return r.returncode, r.stdout
 
+    def lint_dir(self, path):
+        r = subprocess.run([sys.executable, "-I", SCRIPT, "--lint-skips", "--tests-dir", path], capture_output=True, text=True)
+        return r.returncode, r.stdout + r.stderr
+
+    def test_lint_fails_on_a_nonexistent_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, out = self.lint_dir(os.path.join(tmp, "no_such_dir"))
+        self.assertEqual(rc, 1, out)
+        self.assertIn("does not exist", out)
+
+    def test_lint_fails_on_an_empty_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, out = self.lint_dir(tmp)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("is empty", out)
+
+    def test_lint_fails_on_a_directory_with_no_obs_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "notes.txt"), "w") as f:
+                f.write("x")
+            rc, out = self.lint_dir(tmp)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("no .obs files", out)
+
     def test_lint_accepts_a_declared_skip(self):
         self.assertEqual(self.lint(T0_SOURCE)[0], 0)
 

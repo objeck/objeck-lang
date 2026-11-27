@@ -62,6 +62,8 @@ grep -qi microsoft /proc/version 2>/dev/null && HOST="$HOST (WSL2)"
 OUT="$ROOT/rc-results/$VERSION"
 RES="$OUT/$PLATFORM.txt"
 LOG="$OUT/$PLATFORM.log"
+MANIFEST="$OUT/$PLATFORM.manifest.json"   # one file, a section per regression mode (gate_manifest.py)
+rm -f "$MANIFEST"
 mkdir -p "$OUT"
 : > "$LOG"
 
@@ -83,6 +85,7 @@ write_result() {
 		echo "version=$VERSION"
 		echo "commit=$COMMIT"
 		echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		[ -f "$MANIFEST" ] && echo "manifest=${MANIFEST#$ROOT/}"
 		printf '%s\n' "${LINES[@]}"
 		echo "verdict=$VERDICT"
 	} > "$RES"
@@ -184,23 +187,31 @@ run_step() {   # key label command...
 	return $rc
 }
 
-# The regression runners print a "N passed, N skipped, N failed" style summary;
-# keep the count line next to the verdict so the result file is self-describing.
+# The regression runner prints "Results: N passed, N skipped, N failed". A pass is only a PASS
+# when that line is there (the suite ran to its summary), the log names every test it ran, and
+# the per-test manifest (tools/cicd/gate_manifest.py) agrees: every skip is on the allowlist and,
+# when a baseline manifest for this platform is checked in (tools/cicd/gate_baselines/), no test of
+# the previous gate is missing or lost its PASS. "counts not found" on exit 0 used to read PASS.
+BASELINE="$ROOT/tools/cicd/gate_baselines/$PLATFORM.json"
+REVIEWED="${GATE_REVIEWED_ADDITIONS:-$ROOT/tools/cicd/gate_baselines/$PLATFORM.reviewed_additions.txt}"
 regression() {   # key label [env assignments...]
 	local key="$1" label="$2"; shift 2
+	local mode=default; [ "$key" = regression_jit1 ] && mode=jit1
 	local tmp; tmp=$(mktemp)
 	echo "---- $label" >> "$LOG"
 	local start=$SECONDS
 	( cd programs/regression && env "$@" ./run_regression.sh "$ARCH" ) > "$tmp" 2>&1
 	local rc=$?
 	cat "$tmp" >> "$LOG"
-	local counts
-	counts=$(grep -E -i '^(passed|failed|skipped|total)[: ]' "$tmp" | tr -s ' ' | tr '\n' ' ' | sed 's/ $//')
-	[ -n "$counts" ] || counts=$(grep -E -i '[0-9]+ passed' "$tmp" | tail -1)
-	if [ $rc -eq 0 ]; then
-		record "$key" "PASS (${counts:-counts not found}, $((SECONDS - start))s)"
+	local verdict vrc
+	verdict=$(python3 "$ROOT/tools/cicd/gate_manifest.py" judge --log "$tmp" --exit-code "$rc" --platform "$PLATFORM" \
+	          --mode "$mode" --out "$MANIFEST" --baseline "$BASELINE" --reviewed-additions "$REVIEWED" 2>&1)
+	vrc=$?
+	echo "$verdict" >> "$LOG"
+	if [ $vrc -eq 0 ]; then
+		record "$key" "PASS (${verdict#PASS: }, $((SECONDS - start))s)"
 	else
-		record "$key" "FAIL (exit $rc; ${counts:-counts not found})"
+		record "$key" "FAIL (${verdict#FAIL: })"
 		sed -n '/Failed tests:/,$p' "$tmp" | head -30 | sed 's/^/      /'
 	fi
 	rm -f "$tmp"

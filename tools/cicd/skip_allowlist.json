@@ -1,0 +1,472 @@
+{
+ "format": 1,
+ "comment": "Skips a release gate accepts, per platform glob and mode glob. Derived from the '# SKIP_ALLOWED:' headers and the VERIFY_SKIP / GC_STRESS_SKIP markers in programs/regression (gate_manifest.py lint keeps it in step). Modes: default, jit1, verify, gc_stress, verify_gc_stress. A skip not listed here fails the gate.",
+ "entries": [
+  {
+   "test": "api_gemini_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "No Gemini API key"
+  },
+  {
+   "test": "api_ollama_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "Ollama not running"
+  },
+  {
+   "test": "api_openai_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "No OpenAI API key"
+  },
+  {
+   "test": "discarded_call_result_pop",
+   "class": "gc_stress_skip",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "gc_stress",
+    "verify_gc_stress"
+   ],
+   "reason": "millions of iterations to overflow the operand stack; with --gc-threshold=64k that took 598 s measured without the verifier (2.4 s unforced), 112-182 s on the POSIX legs of nightly run 35027973357 and over that step's 300 s limit on both Windows legs there. It tests operand-stack balance, not the heap, and still runs under the verifier in the minor-stress step."
+  },
+  {
+   "test": "gl_context_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no OpenGL 3.3 core context available on this platform"
+  },
+  {
+   "test": "http_thread_reap",
+   "class": "skip_allowed",
+   "platforms": [
+    "windows-*",
+    "macos-*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no /proc/self/maps on this platform"
+  },
+  {
+   "test": "io_write_error_devfull",
+   "class": "skip_allowed",
+   "platforms": [
+    "windows-*",
+    "macos-*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "needs Linux /dev/full"
+  },
+  {
+   "test": "jit_call_overhead",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "call timing below timer resolution"
+  },
+  {
+   "test": "jit_float_compare_store",
+   "class": "gc_stress_skip",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "gc_stress",
+    "verify_gc_stress"
+   ],
+   "reason": "a long JIT float loop; with --gc-threshold=64k that took 637 s measured without the verifier (3 s unforced), 163-268 s on the POSIX legs of nightly run 35027973357 and over that step's 300 s limit on both Windows legs there. It tests register allocation, not the heap, and still runs under the verifier in the minor-stress step."
+  },
+  {
+   "test": "lame_encode_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_lame is not deployed"
+  },
+  {
+   "test": "ml_clip_encoder",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx or libobjk_opencv is not deployed"
+  },
+  {
+   "test": "ml_clip_preprocess",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_opencv is not deployed"
+  },
+  {
+   "test": "ml_cnn_cuda",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no CUDA device"
+  },
+  {
+   "test": "ml_cnn_cuda_fallback",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "a CUDA device is present, so the fallback is not exercised (see ml_cnn_cuda.obs)"
+  },
+  {
+   "test": "ml_cnn_cuda_parity",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no CUDA device"
+  },
+  {
+   "test": "native_gc_barrier_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_crypto is not deployed"
+  },
+  {
+   "test": "native_gc_leak_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_crypto is not deployed"
+  },
+  {
+   "test": "nlp_onnx_embedder",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "nlp_onnx_layers",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed (model checks not run)"
+  },
+  {
+   "test": "nlp_onnx_text_classifier",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "odbc_prepared_reuse",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no objeck_sqlite_test data source"
+  },
+  {
+   "test": "odbc_sqlite_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no objeck_sqlite_test data source"
+  },
+  {
+   "test": "odbc_whole_values",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no objeck_sqlite_test data source"
+  },
+  {
+   "test": "onnx_concurrency",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_concurrency_gpu",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_failed_session",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_float16",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_generic_run",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_gpu_options",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_iobinding",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_iobinding_gpu",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_provider_select",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_runtime_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_session_options",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "onnx_tiny_bert_model",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "libobjk_onnx is not deployed"
+  },
+  {
+   "test": "plot_sdl",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "SDL video could not start with the dummy driver"
+  },
+  {
+   "test": "query_source_odbc",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "no objeck_sqlite_test data source"
+  },
+  {
+   "test": "sdl2_bindings",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "SDL video could not start with the dummy driver"
+  },
+  {
+   "test": "sdl_game_sprite_clips",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "SDL video could not start with the dummy driver"
+  },
+  {
+   "test": "thread_join_handles",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "runtime.process.handles is not available here"
+  },
+  {
+   "test": "trap_array_barrier_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "could not list the working directory"
+  },
+  {
+   "test": "trap_array_mt_barrier_test",
+   "class": "skip_allowed",
+   "platforms": [
+    "*"
+   ],
+   "modes": [
+    "*"
+   ],
+   "reason": "could not list the working directory"
+  }
+ ]
+}
