@@ -173,7 +173,7 @@ Command* Parser::Parse(const std::wstring &line)
 /****************************
  * Parses a file.
  ****************************/
-Command* Parser::ParseLine(const std::wstring &line)
+Command* Parser::ParseLine([[maybe_unused]] const std::wstring &line)
 {
   Command* command = ParseStatement(0);
   if(!Match(TOKEN_END_OF_STREAM)) {
@@ -350,7 +350,7 @@ Command* Parser::ParseStatement(int depth)
   return command;
 }
 
-Command* Parser::ParseList(int depth) {
+Command* Parser::ParseList([[maybe_unused]] int depth) {
 #ifdef _DEBUG
   Show(L"List", depth);
 #endif
@@ -397,7 +397,7 @@ Command* Parser::ParseList(int depth) {
   return TreeFactory::Instance()->MakeFilePostion(LIST_COMMAND, file_name, line_num);
 }
 
-Command* Parser::ParseLoad(CommandType type, int depth) {
+Command* Parser::ParseLoad(CommandType type, [[maybe_unused]] int depth) {
 #ifdef _DEBUG
   Show(L"Load", depth);
 #endif
@@ -497,7 +497,7 @@ Command* Parser::ParsePrint(int depth) {
   return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
 }
 
-Command* Parser::ParseInfo(int depth) {
+Command* Parser::ParseInfo([[maybe_unused]] int depth) {
   std::wstring cls_name;
   std::wstring mthd_name;
 
@@ -550,7 +550,7 @@ Command* Parser::ParseInfo(int depth) {
   return TreeFactory::Instance()->MakeInfo(cls_name, mthd_name);
 }
 
-Command* Parser::ParseFrame(int depth) {
+Command* Parser::ParseFrame([[maybe_unused]] int depth) {
   NextToken();
 
   // optional frame number: frame N
@@ -595,7 +595,7 @@ Command* Parser::ParseSet(int depth) {
   return TreeFactory::Instance()->MakeSet(reference, value);
 }
 
-Command* Parser::ParseNumCommand(CommandType type, int depth) {
+Command* Parser::ParseNumCommand(CommandType type, [[maybe_unused]] int depth) {
   NextToken();
 
   int id = -1;
@@ -614,7 +614,7 @@ Command* Parser::ParseNumCommand(CommandType type, int depth) {
   return TreeFactory::Instance()->MakeNumCommand(type, id, count);
 }
 
-Command* Parser::ParseUntil(int depth) {
+Command* Parser::ParseUntil([[maybe_unused]] int depth) {
   NextToken();
 
   std::wstring file_name;
@@ -641,7 +641,7 @@ Command* Parser::ParseWatch(int depth) {
   return TreeFactory::Instance()->MakeWatch(WATCH_COMMAND, expression, L"");
 }
 
-Command* Parser::ParseUnwatch(int depth) {
+Command* Parser::ParseUnwatch([[maybe_unused]] int depth) {
   NextToken();
 
   int id = -1;

@@ -3274,7 +3274,7 @@ void MemoryManager::MarkChildren(size_t* mem, StackClass* cls)
   }
 }
 
-void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
+void MemoryManager::CheckObject(size_t* mem, bool is_obj, [[maybe_unused]] long depth)
 {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&allocated_lock);

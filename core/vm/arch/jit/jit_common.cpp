@@ -352,7 +352,7 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
  * The compiled-to-compiled path (see the header). The direct path used to be
  * inline in JitStackCallback; it is the same code with the callee handed in.
  */
-bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const long cls_id, const long mthd_id,
+bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, [[maybe_unused]] const long cls_id, [[maybe_unused]] const long mthd_id,
                                size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos,
                                int64_t& status)
 {

@@ -3115,7 +3115,7 @@ bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<
   long depth = 0;
   for(std::deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend() && depth < keep; ++iter, ++depth) {
     RegInstr* pending = *iter;
-    const uint8_t kind = mapped ? ref_map->Kind(ref_map_ip, (int)depth) : RK_UNKNOWN;
+    const uint8_t kind = mapped ? ref_map->Kind(ref_map_ip, (int)depth) : static_cast<uint8_t>(RK_UNKNOWN);
     if(pending->GetType() == REG_INT) {
       const Register r = pending->GetRegister()->GetRegister();
       if(kind == RK_INT) {
@@ -3163,7 +3163,7 @@ bool JitAmd64::SpillPending(long popped, long keep, long xmm_first, std::vector<
   // above `keep` are still in theirs), so it travels through the machine
   // stack: push [rbp+andor] / pop [rbp+slot], and the reverse on reload.
   if(gc_point && method->HasAndOr()) {
-    const uint8_t kind = mapped ? ref_map->andor[ref_map_ip] : RK_UNKNOWN;
+    const uint8_t kind = mapped ? ref_map->andor[ref_map_ip] : static_cast<uint8_t>(RK_UNKNOWN);
     if(kind != RK_INT && kind != RK_FLOAT && kind != RK_LIT) {
       if(ref_offset < TMP_REF_9) {
         CompileFailed(std::wstring(L"more live references across ") + what + L" than reference slots");

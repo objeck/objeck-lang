@@ -970,7 +970,7 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
   SendResponse(request_seq, "setBreakpoints", body);
 }
 
-void DapAdapter::HandleConfigurationDone(int request_seq, const json& args)
+void DapAdapter::HandleConfigurationDone(int request_seq, [[maybe_unused]] const json& args)
 {
   SendResponse(request_seq, "configurationDone");
 
@@ -1909,14 +1909,14 @@ void DapAdapter::Resume(bool into, bool over, bool out)
   cv.notify_all();
 }
 
-void DapAdapter::HandleContinue(int request_seq, const json& args)
+void DapAdapter::HandleContinue(int request_seq, [[maybe_unused]] const json& args)
 {
   SendResponse(request_seq, "continue", {{"allThreadsContinued", true}});
 
   Resume(false, false, false);
 }
 
-void DapAdapter::HandleNext(int request_seq, const json& args)
+void DapAdapter::HandleNext(int request_seq, [[maybe_unused]] const json& args)
 {
   SendResponse(request_seq, "next");
 
@@ -2068,7 +2068,7 @@ void DapAdapter::HandleGoto(int request_seq, const json& args)
 
 // The main loop has already marked what the request names (the reader thread did
 // it the moment the 'cancel' arrived); there is nothing left to do but say so.
-void DapAdapter::HandleCancel(int request_seq, const json& args)
+void DapAdapter::HandleCancel(int request_seq, [[maybe_unused]] const json& args)
 {
   SendResponse(request_seq, "cancel");
 }
@@ -2354,14 +2354,14 @@ void DapAdapter::SendInvalidated()
   SendEvent("invalidated", body);
 }
 
-void DapAdapter::HandleStepOut(int request_seq, const json& args)
+void DapAdapter::HandleStepOut(int request_seq, [[maybe_unused]] const json& args)
 {
   SendResponse(request_seq, "stepOut");
 
   Resume(false, false, true);
 }
 
-void DapAdapter::HandlePause(int request_seq, const json& args)
+void DapAdapter::HandlePause(int request_seq, [[maybe_unused]] const json& args)
 {
   // This used to answer an error ("Pause is not supported") because nothing in
   // the VM could be interrupted from outside. Every thread now passes through the
@@ -2414,7 +2414,7 @@ void DapAdapter::HaltProgramAndWatch()
   }).detach();
 }
 
-void DapAdapter::HandleDisconnect(int request_seq, const json& args)
+void DapAdapter::HandleDisconnect(int request_seq, [[maybe_unused]] const json& args)
 {
   disconnect_requested = true;
 
@@ -2600,7 +2600,7 @@ void DapAdapter::HandleCompletions(int request_seq, const json& args)
   SendResponse(request_seq, "completions", body);
 }
 
-void DapAdapter::HandleModules(int request_seq, const json& args)
+void DapAdapter::HandleModules(int request_seq, [[maybe_unused]] const json& args)
 {
   json modules = json::array();
 
@@ -2628,7 +2628,7 @@ void DapAdapter::HandleModules(int request_seq, const json& args)
   SendResponse(request_seq, "modules", body);
 }
 
-void DapAdapter::HandleLoadedSources(int request_seq, const json& args)
+void DapAdapter::HandleLoadedSources(int request_seq, [[maybe_unused]] const json& args)
 {
   json sources = json::array();
 
@@ -2706,7 +2706,7 @@ void DapAdapter::HandleSetDataBreakpoints(int request_seq, const json& args)
   SendResponse(request_seq, "setDataBreakpoints", body);
 }
 
-void DapAdapter::HandleTerminate(int request_seq, const json& args)
+void DapAdapter::HandleTerminate(int request_seq, [[maybe_unused]] const json& args)
 {
   SendResponse(request_seq, "terminate");
 
@@ -2770,7 +2770,7 @@ void DapAdapter::HandleBreakpointLocations(int request_seq, const json& args)
   SendResponse(request_seq, "breakpointLocations", body);
 }
 
-void DapAdapter::HandleExceptionInfo(int request_seq, const json& args)
+void DapAdapter::HandleExceptionInfo(int request_seq, [[maybe_unused]] const json& args)
 {
   std::lock_guard<std::mutex> lock(mtx);
 
@@ -2964,7 +2964,7 @@ void DapAdapter::HandleSetExceptionBreakpoints(int request_seq, const json& args
   SendResponse(request_seq, "setExceptionBreakpoints");
 }
 
-void DapAdapter::HandleRestart(int request_seq, const json& args)
+void DapAdapter::HandleRestart(int request_seq, [[maybe_unused]] const json& args)
 {
   // Ask the VM worker thread to end the current run and loop back into DapRun.
   // We set restart_requested (NOT disconnect_requested) so the parked run halts
