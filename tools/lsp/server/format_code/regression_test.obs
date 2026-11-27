@@ -33,6 +33,7 @@ class FormatterRegressionTest {
 		TestOperatorSpacing();
 		TestNilSafeOperators();
 		TestNestedBlocks();
+		TestAfterClosingBrace();
 		TestLineDepths();
 
 		p := @passed;
@@ -248,6 +249,50 @@ class FormatterRegressionTest {
 		};
 		Check("Nested: brace balance", open_count = close_count);
 		Check("Nested: has 4 brace pairs", open_count = 4);
+	}
+
+	# A constructor, field, comment or statement that follows a closing brace with
+	# no blank line between them. The formatter joins the next token to a '}' so
+	# that "};" and "})" stay together, and these were joined too: "}New() {",
+	# "}@y : Int;", "}# note". A constructor's line also lost one character of its
+	# indentation, and an empty block kept a line of indentation in it. (A class,
+	# method, enum or other declaration keyword after a brace is a separate case,
+	# with its own tests.)
+	function : TestAfterClosingBrace() ~ Nil {
+		"\n>> A constructor, field, comment or statement after a closing brace..."->PrintLine();
+
+		src := "class A {\n@x : Int;\nNew() {\n@x := 1;\n}\nNew(x : Int) {\n@x := x;\n}\n@y : Int;\nmethod : public : F() ~ Nil {\nif(@x > 1) {\n@x := 2;\n}\n# note\nb := A->New();\ndo {\n@x += 1;\n}\nwhile(@x > 5);\nc := [1, 2];\neach(i : c) {\n@x += c[i];\n};\n}\n\nmethod : public : G() ~ Nil {\n}\n}\n";
+
+		options := Map->New()<String, String>;
+		options->Insert("function-space", "false");
+		options->Insert("ident-space", "2");
+		options->Insert("trim-trailing", "true");
+
+		result := CodeFormatter->New(options)->Format(src);
+		Check("After '}': result not nil", result <> Nil);
+		if(result = Nil) {
+			return;
+		};
+
+		Check("After '}': a constructor after a field keeps its indentation", result->Find("@x : Int;\n  New() {") > -1);
+		Check("After '}': a constructor starts its own line, set apart", result->Find("}New") < 0 & result->Find("  }\n\n  New(x : Int) {") > -1);
+		Check("After '}': a field starts its own line", result->Find("  }\n  @y : Int;") > -1);
+		Check("After '}': a comment starts its own line", result->Find("    }\n    # note\n") > -1);
+		Check("After '}': the statement after that comment is unchanged", result->Find("    # note\n    b := A->New();") > -1);
+		Check("After '}': a do-while's while stays on the brace's line", result->Find("    }while(@x") > -1);
+		Check("After '}': a semi-colon stays on the brace's line", result->Find("    };\n  }") > -1);
+		Check("After '}': an empty block has no line of indentation in it", result->Find("G() ~ Nil {\n  }") > -1);
+		Check("After '}': the last brace ends the source", result->EndsWith("  }\n}"));
+
+		again := CodeFormatter->New(options)->Format(result);
+		Check("After '}': formatting the result again changes nothing", again <> Nil & again->Equals(result));
+
+		# with the blank line already there, it is kept once
+		spaced := CodeFormatter->New(options)->Format("class A {\n@x : Int;\nNew() {\n@x := 1;\n}\n\nNew(x : Int) {\n@x := x;\n}\n}\n");
+		Check("After '}': a blank line before a constructor is kept, once", spaced <> Nil & spaced->Find("  }\n\n  New(x : Int) {") > -1 & spaced->Find("\n\n\n") < 0);
+
+		# "->New" still joins the arrow
+		Check("After '}': '->New' has no space after the arrow", result->Find("A->New();") > -1);
 	}
 
 	function : TestLineDepths() ~ Nil {
