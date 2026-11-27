@@ -4354,13 +4354,6 @@ void IntermediateEmitter::BeginConditionalOperand(PostUpdateQueue &outer_post_st
   open_conditional_operands++;
 }
 
-void IntermediateEmitter::EndConditionalOperand(PostUpdateQueue &outer_post_statements)
-{
-  EmitPostStatements();
-  // nothing is deferred: an empty queue only closes the operand
-  DeferConditionalOperand(outer_post_statements, 0);
-}
-
 void IntermediateEmitter::DeferConditionalOperand(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark)
 {
   open_conditional_operands--;
@@ -6477,7 +6470,19 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     // subscript on the call result: 'provider?->Items()[0]'. The chain loops in
     // EmitExpression emit it; this one did not, so the array itself was left
     // where its element was expected.
-    EmitCallIndices(method_call);
+    //
+    // The subscript is evaluated only when the call before it returned, so its
+    // postfix updates are the guarded path's, like the arguments' above. The
+    // arguments' bracket is closed by now, and the updates went to the
+    // statement's queue: `none?->Items()[i++] ?? -1` incremented i though
+    // neither the call nor the subscript ran. The flag is set once the
+    // subscript is on the stack, before the element is read: a subscript that
+    // is out of bounds (an error, recovered below) keeps its updates, as a
+    // call that raises keeps its arguments'.
+    BeginConditionalOperand(outer_post_statements);
+    size_t subscript_mark = END_OF_OPERAND;
+    EmitCallIndices(method_call, &subscript_mark);
+    DeferConditionalOperand(outer_post_statements, region_mark, subscript_mark);
     EmitCast(method_call);
     if(CastsCallResult(method_call)) {
       EmitClassCast(method_call);
@@ -8766,8 +8771,11 @@ void IntermediateEmitter::EmitCallArgument(MethodCall* method_call, const size_t
  *
  * Only a single dimension is supported; the context analyzer rejects anything
  * else, so reaching here with more is a compiler bug rather than user error.
+ *
+ * 'subscript_mark', when given, receives the instruction count after the
+ * subscript and before the element is read (see EmitTryIntrinsic).
  ****************************/
-void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
+void IntermediateEmitter::EmitCallIndices(MethodCall* method_call, size_t* subscript_mark)
 {
   ExpressionList* indices = method_call->GetCallIndices();
   if(!indices) {
@@ -8780,6 +8788,9 @@ void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
   }
 
   EmitExpression(index_exprs[0]);
+  if(subscript_mark) {
+    *subscript_mark = imm_block->GetSize();
+  }
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, SWAP_INT));
 
   Type* type = static_cast<Expression*>(method_call)->GetEvalType();

@@ -100,7 +100,6 @@ class IntermediateEmitter {
   // "at the end of the operand": where DeferConditionalOperand sets the flag by default
   static const size_t END_OF_OPERAND = (size_t)-1;
   void BeginConditionalOperand(PostUpdateQueue &outer_post_statements);
-  void EndConditionalOperand(PostUpdateQueue &outer_post_statements);
   void DeferConditionalOperand(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark = END_OF_OPERAND);
   void DeferPostStatements(PostUpdateQueue &outer_post_statements, size_t split_mark, size_t evaluated_mark);
   // Locals the emitter adds to the method it is emitting, after the declared
@@ -185,7 +184,7 @@ class IntermediateEmitter {
   void EmitCallArgument(MethodCall* method_call, const size_t i);
   void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false, bool is_closure = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
-  void EmitCallIndices(MethodCall* method_call);
+  void EmitCallIndices(MethodCall* method_call, size_t* subscript_mark = nullptr);
   void EmitMethodCallStatement(MethodCall* method_call);
   void EmitSimpleStatement(SimpleStatement* simple);
   void EmitSystemDirective(SystemStatement* statement);
