@@ -114,6 +114,7 @@ class IntermediateEmitter {
   void EmitCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitAppendCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitConditional(Cond* conditional);
+  void EmitSequence(SequenceExpression* sequence);
   bool IsFloatConditional(Cond* conditional);
   // What the and/or temporary holds, for the inliner (ClassifyAndOrTemp)
   static const int AND_OR_STORE_NIL = -2;

@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (24,11): 'is' tests a type only as the whole condition of an 'if': 'if(value is Type name) { ... }'
+# EXPECT_ERROR_COUNT: 1
+#~
+'is' tests a type only as the condition of an 'if'.
+~#
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part {
+	New() {
+		Parent();
+	}
+
+	method : public : Size() ~ Int {
+		return 4;
+	}
+}
+
+class BadTypeTestOutsideIf {
+	function : Main(args : String[]) ~ Nil {
+		p : Part := TextPart->New();
+		while(p is TextPart t) {
+			t->Size()->PrintLine();
+		};
+	}
+}

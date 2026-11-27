@@ -1,0 +1,315 @@
+#~
+The binding type test: `if(value is Type name) { ... }` runs the block when the
+value is a `Type` (or a subclass, or implements it), with `name` bound to the
+value as that type for the block. It is
+`if(value->TypeOf(Type)) { name := value->As(Type); ... }`, so this test holds it
+to the long form's results: else-if chains, subclasses and interfaces, Nil, a
+value that is a call (evaluated once, and only when its test is reached), the
+name's scope (the block alone, so every branch can reuse it), fields, loops,
+lambdas, and that `is` is still an ordinary name.
+~#
+use Collection;
+
+interface Named {
+	method : virtual : public : Name() ~ String;
+}
+
+class Part {
+	New() {
+	}
+
+	method : public : Kind() ~ String {
+		return "part";
+	}
+}
+
+class TextPart from Part implements Named {
+	@text : String;
+
+	New(text : String) {
+		Parent();
+		@text := text;
+	}
+
+	method : public : GetText() ~ String {
+		return @text;
+	}
+
+	method : public : Name() ~ String {
+		return "text";
+	}
+}
+
+class LongTextPart from TextPart {
+	New(text : String) {
+		Parent(text);
+	}
+
+	method : public : Words() ~ Int {
+		return GetText()->Split(" ")->Size();
+	}
+}
+
+class ImagePart from Part implements Named {
+	@width : Int;
+	@height : Int;
+
+	New(width : Int, height : Int) {
+		Parent();
+		@width := width;
+		@height := height;
+	}
+
+	method : public : Pixels() ~ Int {
+		return @width * @height;
+	}
+
+	method : public : Name() ~ String {
+		return "image";
+	}
+}
+
+class Source {
+	@parts : Vector<Part>;
+	@reads : Int;
+
+	New() {
+		@parts := Vector->New()<Part>;
+		@reads := 0;
+	}
+
+	method : public : Add(part : Part) ~ Nil {
+		@parts->AddBack(part);
+	}
+
+	method : public : Get(i : Int) ~ Part {
+		@reads += 1;
+		return @parts->Get(i);
+	}
+
+	method : public : Reads() ~ Int {
+		return @reads;
+	}
+}
+
+class TypeTestBinding {
+	@fails : Int;
+	@held : Part;
+
+	function : Main(args : String[]) ~ Nil {
+		test := TypeTestBinding->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+		@held := ImagePart->New(4, 5);
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	# the chain this replaces
+	function : DescribeLong(part : Part) ~ String {
+		if(part->TypeOf(LongTextPart)) {
+			long_part := part->As(LongTextPart);
+			return "long:{$long_part->Words()}";
+		}
+		else if(part->TypeOf(TextPart)) {
+			text_part := part->As(TextPart);
+			return "text:{$text_part->GetText()}";
+		}
+		else if(part->TypeOf(ImagePart)) {
+			image_part := part->As(ImagePart);
+			return "image:{$image_part->Pixels()}";
+		}
+		else {
+			return "part";
+		};
+	}
+
+	function : Describe(part : Part) ~ String {
+		if(part is LongTextPart p) {
+			return "long:{$p->Words()}";
+		}
+		else if(part is TextPart p) {
+			return "text:{$p->GetText()}";
+		}
+		else if(part is ImagePart p) {
+			return "image:{$p->Pixels()}";
+		}
+		else {
+			return "part";
+		};
+	}
+
+	function : NameOf(value : Base) ~ String {
+		if(value is Named named) {
+			return named->Name();
+		};
+
+		return "unnamed";
+	}
+
+	# a field as the value, in an instance method
+	method : HeldPixels() ~ Int {
+		if(@held is ImagePart image) {
+			return image->Pixels();
+		};
+
+		return -1;
+	}
+
+	method : Run() ~ Nil {
+		parts := Vector->New()<Part>;
+		parts->AddBack(TextPart->New("hello"));
+		parts->AddBack(ImagePart->New(3, 4));
+		parts->AddBack(LongTextPart->New("one two three"));
+		parts->AddBack(Part->New());
+
+		# the same answers as the long form, for every kind
+		same := true;
+		each(i : parts->Size()) {
+			if(<>Describe(parts->Get(i))->Equals(DescribeLong(parts->Get(i)))) {
+				same := false;
+			};
+		};
+		Check("same as the long form", same);
+		Check("chain", Describe(parts->Get(0))->Equals("text:hello") & Describe(parts->Get(1))->Equals("image:12") &
+			Describe(parts->Get(2))->Equals("long:3") & Describe(parts->Get(3))->Equals("part"));
+
+		# a subclass passes its parent's test; an interface is tested as a class is
+		sub := 0;
+		long_part : Part := LongTextPart->New("a b");
+		if(long_part is TextPart text) {
+			sub := text->GetText()->Size();
+		};
+		Check("subclass", sub = 3);
+		Check("interface", NameOf(parts->Get(0))->Equals("text") & NameOf(parts->Get(1))->Equals("image") & NameOf("plain")->Equals("unnamed"));
+
+		# the bound value is the object itself
+		first := parts->Get(0);
+		if(first is TextPart same_part) {
+			Check("identity", same_part = first);
+		}
+		else {
+			Check("identity taken", false);
+		};
+
+		# Nil is no type
+		nothing : Part;
+		reached := false;
+		if(nothing is TextPart never) {
+			reached := never <> Nil;
+		}
+		else {
+			reached := false;
+		};
+		Check("nil", <>reached);
+
+		# a call as the value: evaluated once per test, and not at all for a branch never reached
+		source := Source->New();
+		source->Add(ImagePart->New(2, 2));
+		source->Add(TextPart->New("t"));
+		area := 0;
+		if(source->Get(0) is ImagePart image) {
+			area := image->Pixels();
+		}
+		else if(source->Get(1) is TextPart text) {
+			area := -1;
+		};
+		Check("call once", area = 4 & source->Reads() = 1);
+
+		letters := 0;
+		if(source->Get(1) is ImagePart image) {
+			letters := -1;
+		}
+		else if(source->Get(1) is TextPart text) {
+			letters := text->GetText()->Size();
+		};
+		Check("call per test", letters = 1 & source->Reads() = 3);
+
+		# an element, a chain of calls and a conditional as the value
+		array := Part->New[2];
+		array[0] := TextPart->New("ab");
+		array[1] := ImagePart->New(1, 7);
+		total := 0;
+		each(i : array->Size()) {
+			if(array[i] is TextPart text) {
+				total += text->GetText()->Size();
+			}
+			else if(array[i] is ImagePart image) {
+				total += image->Pixels();
+			};
+		};
+		Check("element", total = 9);
+
+		chained := 0;
+		if(parts->Get(2)->As(Part) is LongTextPart long_text) {
+			chained := long_text->Words();
+		};
+		Check("chained value", chained = 3);
+
+		picked := 0;
+		if((total > 0 ? parts->Get(1) : parts->Get(0)) is ImagePart image) {
+			picked := image->Pixels();
+		};
+		Check("conditional value", picked = 12);
+
+		# a field
+		Check("field", HeldPixels() = 20);
+
+		# the name can be assigned and belongs to its block: later blocks reuse it
+		count := 0;
+		each(i : parts->Size()) {
+			part := parts->Get(i);
+			if(part is TextPart item) {
+				item := TextPart->New("replaced");
+				count += item->GetText()->Size();
+			};
+			if(part is ImagePart item) {
+				count += item->Pixels();
+			};
+		};
+		Check("name per block", count = 8 + 12 + 8);
+
+		# nested, and in a loop within a loop
+		pairs := 0;
+		each(i : parts->Size()) {
+			each(j : parts->Size()) {
+				if(parts->Get(i) is TextPart left) {
+					if(parts->Get(j) is ImagePart right) {
+						pairs += left->GetText()->Size() + right->Pixels();
+					};
+				};
+			};
+		};
+		Check("nested", pairs = (5 + 12) + (13 + 12));
+
+		# in a lambda
+		measure := \(Part) ~ Int : (p) => {
+			if(p is ImagePart image) {
+				return image->Pixels();
+			};
+			return 0;
+		};
+		Check("lambda", measure(parts->Get(1)) = 12 & measure(parts->Get(0)) = 0);
+
+		# 'is' is still an ordinary name
+		is := 3;
+		is += 1;
+		Check("name", is = 4);
+
+		if(@fails = 0) {
+			"PASS: type test binding"->PrintLine();
+		}
+		else {
+			"FAIL: type test binding"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

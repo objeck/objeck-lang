@@ -157,6 +157,10 @@ class Parser {
   // the copies back after a statement with 'ref' arguments (#1243)
   std::vector<Statement*> trailing_statements;
   int hidden_local_id = 0;
+  // above zero while the condition of an 'if' is read: 'is' ends a name there
+  int in_if_condition = 0;
+  // true while the type of 'value is Type name' is read: its name ends before 'name'
+  bool in_type_test_type = false;
   // set once the scanner has rejected a token: the parse is skipped ahead to
   // the next ';', and what it reports at the end of the file after that is
   // the same mistake again (a skipped '{' or '}' leaves a block unbalanced)
@@ -344,6 +348,8 @@ class Parser {
   Statement* ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth);
   Statement* ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth);
   void TakePendingStatements(StatementList* statements);
+  // the hidden local a SequenceExpression leaves its value in
+  SymbolEntry* AddHiddenLocal(const std::wstring& what, std::wstring& ident, int line_num, int line_pos);
   void TakeTrailingStatements(StatementList* statements, Statement* statement);
   Expression* ParseReferenceArgument(Expression* expression);
   void CheckStatementSeparator(Statement* statement);
@@ -356,6 +362,8 @@ class Parser {
   Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
   If* ParseIf(int depth);
+  // 'if(value is Type name) { ... }': the test, and the declaration of 'name' its block starts with
+  Expression* ParseTypeTest(Expression* subject, SymbolEntry*& bind_entry, Assignment*& bind_assign, int depth);
   DoWhile* ParseDoWhile(int depth);
   While* ParseWhile(int depth);
   Select* ParseSelect(int depth);

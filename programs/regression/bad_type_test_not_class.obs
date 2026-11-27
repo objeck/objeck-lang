@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (24,15): Expected a class name after 'is': 'if(value is Type name)'
+# EXPECT_ERROR_COUNT: 1
+#~
+Only a class (or an interface) can be tested for.
+~#
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part {
+	New() {
+		Parent();
+	}
+
+	method : public : Size() ~ Int {
+		return 4;
+	}
+}
+
+class BadTypeTestNotClass {
+	function : Main(args : String[]) ~ Nil {
+		p : Part := TextPart->New();
+		if(p is Int n) {
+			n->PrintLine();
+		};
+	}
+}

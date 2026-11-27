@@ -532,7 +532,8 @@ namespace frontend {
     CHAR_STR_EXPR,
     STAT_ARY_EXPR,
     STR_CONCAT_EXPR,
-    LAMBDA_EXPR
+    LAMBDA_EXPR,
+    STMT_SEQ_EXPR
   };
 
   /****************************
@@ -1499,6 +1500,56 @@ namespace frontend {
 
     void SetFuncTemp(SymbolEntry* t) {
       func_temp = t;
+    }
+  };
+
+  /****************************
+   * SequenceExpression class: statements that run where the expression is
+   * evaluated, followed by the value they leave behind (a hidden local the
+   * parser declared). It is how a construct that needs statements -- a value
+   * 'match', a literal that is built with Insert calls -- stays an expression:
+   * the statements are emitted in place, so they run exactly when and only if
+   * the expression is evaluated (inside a short-circuit, a '?' branch, a loop
+   * condition). The statements hold no blocks of their own, so they open no
+   * scope, and the node is analyzed once.
+   ****************************/
+  class SequenceExpression : public Expression {
+    friend class TreeFactory;
+    std::vector<Statement*> statements;
+    Expression* value;
+    bool analyzed;
+
+    SequenceExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* v) : Expression(file_name, line_num, line_pos) {
+      value = v;
+      analyzed = false;
+    }
+
+    ~SequenceExpression() {
+    }
+
+  public:
+    ExpressionType GetExpressionType() {
+      return STMT_SEQ_EXPR;
+    }
+
+    void AddStatement(Statement* s) {
+      statements.push_back(s);
+    }
+
+    const std::vector<Statement*>& GetStatements() {
+      return statements;
+    }
+
+    Expression* GetValue() {
+      return value;
+    }
+
+    bool IsAnalyzed() {
+      return analyzed;
+    }
+
+    void SetAnalyzed() {
+      analyzed = true;
     }
   };
 
@@ -3967,6 +4018,12 @@ namespace frontend {
 
     Cond* MakeCond(const std::wstring &file_name, const int line_num, const int line_pos, Expression* c, Expression* s, Expression* e) {
       Cond* tmp = new Cond(file_name, line_num, line_pos, c, s, e);
+      expressions.push_back(tmp);
+      return tmp;
+    }
+
+    SequenceExpression* MakeSequenceExpression(const std::wstring &file_name, const int line_num, const int line_pos, Expression* value) {
+      SequenceExpression* tmp = new SequenceExpression(file_name, line_num, line_pos, value);
       expressions.push_back(tmp);
       return tmp;
     }

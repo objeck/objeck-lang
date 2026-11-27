@@ -184,6 +184,37 @@ function : Sum(rows : Int[][]) ~ Int { ... }
 ```
 See [JAGGED_ARRAYS_DESIGN.md](JAGGED_ARRAYS_DESIGN.md).
 
+### The binding type test
+
+`if(value is Type name) { ... }` runs the block when the value is a `Type` (or a
+subclass, or a class that implements it), with `name` bound to the value as that type:
+```ruby
+# before
+if(part->TypeOf(TextPart)) {
+  text_part := part->As(TextPart);
+  json->Insert("text", text_part->GetText());
+}
+else if(part->TypeOf(ImagePart)) {
+  image_part := part->As(ImagePart);
+  json->Insert("pixels", image_part->Pixels());
+};
+
+# after
+if(part is TextPart p) {
+  json->Insert("text", p->GetText());
+}
+else if(part is ImagePart p) {
+  json->Insert("pixels", p->Pixels());
+};
+```
+The name belongs to the block (each branch can reuse it; it is not visible in `else` or
+after the `if`) and is declared as `name : Type` is. The test is the whole condition of
+the `if`. A value that is more than a variable (`items->Get(i) is TextPart t`) is
+evaluated once. Nil is of no type: the test is false, where a bare `Nil->TypeOf(T)` is a
+runtime error. It compiles to `if(value <> Nil & value->TypeOf(Type)) { name :=
+value->As(Type); ... }`. `is` is a keyword only in this position. Tests:
+`type_test_binding`, `bad_type_test_*`.
+
 ### Type Inference
 ```ruby
 value := "Hello World!";
@@ -725,7 +756,7 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 `self`, `parent` and `value` are **not** reserved as identifiers. The capitalized
 `Byte`, `Int`, `Float`, `Char`, `Bool`, `Nil`, `New`, `Parent`, `As` and `TypeOf` are
 keywords of the scanner too (`ident_map` in `scanner.cpp`), so they cannot name a
-variable either. `ref`, `try`, `on`, `finally` and `out` are **contextual**: a keyword
+variable either. `ref`, `try`, `on`, `finally`, `out` and `is` are **contextual**: a keyword
 only where the grammar expects it, so they remain usable as names.
 
 ---

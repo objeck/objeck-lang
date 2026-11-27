@@ -3375,6 +3375,10 @@ void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
         AnalyzeConditional(static_cast<Cond*>(expression), depth);
         break;
 
+      case STMT_SEQ_EXPR:
+        AnalyzeSequence(static_cast<SequenceExpression*>(expression), depth);
+        break;
+
       case METHOD_CALL_EXPR:
         AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
 #ifdef _DIAG_LIB
@@ -3702,6 +3706,51 @@ static int FirstFreeHiddenIndex(SymbolTable* table, const std::wstring& prefix)
   }
 
   return high;
+}
+
+/****************************
+ * Analyzes statements that run where
+ * an expression is evaluated, and the
+ * value they leave in a hidden local
+ ****************************/
+void ContextAnalyzer::AnalyzeSequence(SequenceExpression* sequence, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"sequence expression", sequence->GetLineNumber(), depth);
+#endif
+
+  // once: the statements declare and assign, which a second visit would repeat
+  if(sequence->IsAnalyzed()) {
+    return;
+  }
+  sequence->SetAnalyzed();
+
+  // The statements are analyzed from inside the enclosing statement (an
+  // assignment, a return, a call argument). Left set, its flags would make
+  // RogueReturn() treat a standalone call among them as a used value, and the
+  // result would stay on the operand stack (as for a lambda body).
+  const bool outer_in_assignment = in_assignment;
+  const bool outer_in_return = in_return;
+  const int outer_expression_depth = expression_depth;
+  const int outer_nested_call_depth = nested_call_depth;
+  in_assignment = in_return = false;
+  expression_depth = nested_call_depth = 0;
+
+  const std::vector<Statement*>& statements = sequence->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    AnalyzeStatement(statements[i], depth + 1);
+  }
+
+  in_assignment = outer_in_assignment;
+  in_return = outer_in_return;
+  expression_depth = outer_expression_depth;
+  nested_call_depth = outer_nested_call_depth;
+
+  Expression* value = sequence->GetValue();
+  AnalyzeExpression(value, depth + 1);
+  if(value->GetEvalType()) {
+    sequence->SetEvalType(value->GetEvalType(), false);
+  }
 }
 
 /****************************

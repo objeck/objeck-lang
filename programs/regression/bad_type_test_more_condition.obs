@@ -1,0 +1,28 @@
+# EXPECT_COMPILE_ERROR: (24,22): 'value is Type name' is the whole condition of an 'if'; test anything further inside its block
+# EXPECT_ERROR_COUNT: 1
+#~
+The test is the whole condition: the name it binds exists only in the block, so nothing after it in the condition could use it.
+~#
+class Part {
+	New() {
+	}
+}
+
+class TextPart from Part {
+	New() {
+		Parent();
+	}
+
+	method : public : Size() ~ Int {
+		return 4;
+	}
+}
+
+class BadTypeTestMoreCondition {
+	function : Main(args : String[]) ~ Nil {
+		p : Part := TextPart->New();
+		if(p is TextPart t & t->Size() > 2) {
+			t->Size()->PrintLine();
+		};
+	}
+}
