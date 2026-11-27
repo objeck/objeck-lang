@@ -4178,7 +4178,9 @@ static inline bool IsUtf8Continuation(int byte)
 template<typename NextContinuation>
 static size_t ReadUtf8Tail(char* buf, size_t len, NextContinuation next_continuation)
 {
-  const size_t missing = Utf8TailMissing(buf, len);
+  // never more than the room the caller left after 'len' (a lead byte lacks three bytes at most)
+  const size_t lacking = Utf8TailMissing(buf, len);
+  const size_t missing = lacking < UTF8_TAIL_MAX ? lacking : UTF8_TAIL_MAX;
   size_t added = 0;
   while(added < missing && next_continuation(buf[len + added])) {
     ++added;
