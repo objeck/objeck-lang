@@ -1,0 +1,39 @@
+#~
+# compile: obc -src sugar_flow.obs
+# run:     obr sugar_flow.obe
+#
+# Collections written as literals, and a lookup that bails out when it finds nothing.
+~#
+use Collection;
+
+class SugarFlow {
+	function : Find(v : Vector<IntRef>, i : Int) ~ IntRef {
+		if(i < v->Size()) {
+			return v->Get(i);
+		};
+		return Nil;
+	}
+
+	function : Describe(v : Vector<IntRef>, i : Int) ~ String {
+		x := Find(v, i) ?? return "no item {$i}";
+		return "item {$i} is {$(x->Get())}";
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# literals typed by the variable they are assigned to
+		v : Vector<IntRef> := [IntRef->New(10), IntRef->New(20)];
+		nums : IntVector := [4, 5, 6, 7];
+		names : Vector<String> := ["ada", "grace"];
+		"{$(v->Size())} refs, {$(nums->Size())} ints, first name {$(names->Get(0))}"->PrintLine();
+
+		Describe(v, 1)->PrintLine();
+		Describe(v, 5)->PrintLine();
+
+		# the block form runs a block, which must leave
+		y := Find(v, 0) ?? {
+			"never printed"->PrintLine();
+			return;
+		};
+		"found {$(y->Get())}"->PrintLine();
+	}
+}

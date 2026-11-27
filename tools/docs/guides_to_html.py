@@ -56,6 +56,8 @@ GUIDES = {
                                      "Parse JSON, XML and regular expressions, and what they do with missing or malformed input."),
     "docs/guides/collections.md": ("guide_collections.html", "Collections Guide",
                                    "Hash, Map, Vector, Set and MultiHash in one short program."),
+    "docs/guides/language_sugar.md": ("guide_language_sugar.html", "Less Ceremony: Six Small Language Additions",
+                                      "A function by name, lambdas that use their object, field accessors, constructor promotion, collection literals and the nil guard."),
     "docs/guides/ai.md": ("guide_ai.html", "Game AI Guide",
                           "Minimax and Monte Carlo tree search with System.AI, on tic-tac-toe, and the checkers example."),
     "docs/guides/language_server.md": ("guide_editors.html", "Editor and Language Server Guide",

@@ -14,6 +14,7 @@ every release.
 | [Query.Structured](query.md) | `query` and friends | tables, SQL, joins, prepared statements, saving to disk |
 | [HTTP client and web server](http.md) | `net`, `net_server` | a server, a client, connection reuse |
 | [JSON, XML and regular expressions](data_and_text.md) | `json`, `xml`, `regex` | parsing, and what happens on bad input |
+| [Less ceremony: six small language additions](language_sugar.md) | none | a function by name, lambdas with fields, accessors, constructor promotion, literals, the nil guard |
 | [Collections](collections.md) | none | the five collections you reach for most |
 | [Game AI with System.AI](ai.md) | `ai` | minimax and Monte Carlo tree search |
 | [Editor setup and the language server](language_server.md) | | VS Code and the other editors, debugging |
@@ -29,6 +30,9 @@ every release.
 | [`data_basics.obs`](../../programs/examples/guides/data_basics.obs) | `json,xml,regex` |
 | [`data_bad_input.obs`](../../programs/examples/guides/data_bad_input.obs) | `json,xml,regex` |
 | [`collections_tour.obs`](../../programs/examples/guides/collections_tour.obs) | none |
+| [`sugar_functions.obs`](../../programs/examples/guides/sugar_functions.obs) | none |
+| [`sugar_classes.obs`](../../programs/examples/guides/sugar_classes.obs) | none |
+| [`sugar_flow.obs`](../../programs/examples/guides/sugar_flow.obs) | none |
 | [`ai_tictactoe.obs`](../../programs/examples/guides/ai_tictactoe.obs) | `ai` |
 | [`mcp_tool.obs`](../../programs/examples/guides/mcp_tool.obs) | `gen_collect,json,net,net_server,cipher,misc,mcp` |
 | [`agent_local.obs`](../../programs/examples/guides/agent_local.obs) | `gen_collect,json,net,net_server,cipher,misc,mcp,agent,mcp_agent` (needs a local Ollama server) |

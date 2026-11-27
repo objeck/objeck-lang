@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Less ceremony: six small language additions — Objeck Language</title>
+  <meta name="description" content="A function by name, lambdas that use their object, field accessors, constructor promotion, collection literals and the nil guard.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="style/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style/site.css">
+  <script>document.documentElement.className = "js";</script>
+ </head>
+ <body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+   <div class="bar">
+    <a class="brand" href="index.html" aria-label="Objeck home"><img src="style/objeck-logo-sm.png" alt="Objeck" width="94" height="36"></a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+     <ul>
+     <li><a href="start.html">Get started</a></li>
+     <li><a href="learn.html" aria-current="page">Learn</a></li>
+     <li><a href="docs.html">Docs</a></li>
+     <li><a href="libraries.html">Libraries</a></li>
+     <li><a href="community.html">Community</a></li>
+     </ul>
+    </nav>
+    <div class="bar-actions">
+     <a class="link" href="https://github.com/objeck/objeck-lang">GitHub</a>
+     <a class="btn btn-primary btn-small" href="https://playground.objeck.org">Playground</a>
+    </div>
+   </div>
+  </header>
+  <main id="main" tabindex="-1">
+   <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="index.html">Home</a></li><li><a href="learn.html">Learn</a></li><li><a href="guides.html">Guides</a></li><li aria-current="page">Less ceremony: six small language additions</li></ol></nav>
+  <div class="layout has-side has-toc">
+   <nav class="sidebar" aria-label="Learn sections">
+    <p class="nav-title">Start</p><ul><li><a href="start.html">Get started</a></li><li><a href="learn.html">Learn overview</a></li><li><a href="getting_started.html">Quick start tour</a></li></ul>
+    <p class="nav-title">Guides</p><ul><li><a href="guides.html">All guides</a></li><li><a href="guide_whats_new_11_4.html">What is new in v2026.11.4</a></li><li><a href="guide_whats_new.html">What is new in v2026.10.3</a></li><li><a href="guide_query.html">Query.Structured</a></li><li><a href="guide_http.html">HTTP Client and Web Server</a></li><li><a href="guide_data.html">JSON, XML and RegEx</a></li><li><a href="guide_collections.html">Collections</a></li><li><a href="guide_language_sugar.html" aria-current="page">Less Ceremony: Six Small Language Additions</a></li><li><a href="guide_ai.html">Game AI</a></li><li><a href="guide_editors.html">Editor and Language Server</a></li></ul>
+    <p class="nav-title">AI and ML</p><ul><li><a href="ai_guide.html">AI &amp; ML developer guide</a></li><li><a href="doc_models.html">Which models run</a></li><li><a href="doc_ai.html">AI examples</a></li></ul>
+   </nav>
+   <div class="content">
+<!-- content:start -->
+    <h1 class="page-title">Less ceremony: six small language additions</h1>
+    <p class="page-lead">Six additions in v2026.11.4 remove boilerplate without adding a new concept. Each one is a spelling of code you could already write, and the compiler turns it into exactly that code, so nothing runs differently and a program that does not use them compiles to the same bytes as before. The three programs below were compiled and run; the output printed is what they printed.</p>
+
+<pre class="cmd">obc -src sugar_functions.obs
+obr sugar_functions.obe</pre>
+    <h2 id="functions-a-function-by-name-and-a-lambda-that-uses-its-object">Functions: a function by name, and a lambda that uses its object</h2>
+    <p>Where a function value is wanted (<code>FuncRef</code>, <code>Func2Ref</code>, <code>Func3Ref</code>, <code>Func4Ref</code>), a static function can be named by itself. Before, you wrote its whole signature; now the compiler reads it from the function:</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com"># before</span>
+<span class="t-type">Func2Ref</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-cls">SugarFunctions</span><span class="t-op">-&gt;</span>Double(<span class="t-type">IntRef</span>) <span class="t-op">~</span> <span class="t-type">IntRef</span>)&lt;<span class="t-type">IntRef</span>, <span class="t-type">IntRef</span>&gt;
+<span class="t-com"># after</span>
+<span class="t-cls">SugarFunctions</span><span class="t-op">-&gt;</span>Double
+</code></pre>
+    <p>A lambda written in an instance method may now read and write the object's <code>@fields</code> and name <code>@self</code>. The lambda keeps the object it was made in, and a field is read and written <strong>through that object</strong>, not copied: a write inside the lambda is a write to the field, and the method sees it.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com">#~
+# compile: obc -src sugar_functions.obs
+# run:     obr sugar_functions.obe
+#
+# Two ways to pass behavior around with less ceremony: a function named by itself
+# where a FuncRef is expected, and a lambda that uses the fields of the object it
+# was made in.
+~#</span>
+<span class="t-kw">class</span> <span class="t-cls">SugarFunctions</span> {
+	@count : <span class="t-type">Int</span>;
+
+	<span class="t-kw">New</span>() {
+		@count <span class="t-op">:=</span> <span class="t-num">0</span>;
+	}
+
+	<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Bump</span>() <span class="t-op">~</span> <span class="t-type">IntRef</span> {
+		@count += <span class="t-num">10</span>;
+		<span class="t-kw">return</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(@count);
+	}
+
+	<span class="t-com"># a lambda in an instance method: @count is the object's field, read and written live</span>
+	<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">Counter</span>() <span class="t-op">~</span> <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; {
+		<span class="t-kw">return</span> \() <span class="t-op">=&gt;</span> { @count += <span class="t-num">1</span>; <span class="t-kw">return</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(@count); };
+	}
+
+	<span class="t-com"># @self names the object, so an instance method is called through it</span>
+	<span class="t-kw">method</span> : <span class="t-mod">public</span> : <span class="t-fn">BumpLater</span>() <span class="t-op">~</span> <span class="t-type">FuncRef</span>&lt;<span class="t-type">IntRef</span>&gt; {
+		<span class="t-kw">return</span> \() <span class="t-op">=&gt;</span> @self<span class="t-op">-&gt;</span>Bump();
+	}
+
+	<span class="t-kw">function</span> : <span class="t-fn">Double</span>(x : <span class="t-type">IntRef</span>) <span class="t-op">~</span> <span class="t-type">IntRef</span> {
+		<span class="t-kw">return</span> <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(x<span class="t-op">-&gt;</span>Get() * <span class="t-num">2</span>);
+	}
+
+	<span class="t-kw">function</span> : <span class="t-fn">Apply</span>(f : <span class="t-type">Func2Ref</span>&lt;<span class="t-type">IntRef</span>, <span class="t-type">IntRef</span>&gt;, n : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">Int</span> {
+		<span class="t-kw">return</span> f<span class="t-op">-&gt;</span>Get()(<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(n))<span class="t-op">-&gt;</span>Get();
+	}
+
+	<span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		<span class="t-com"># a function by name: no Func2Ref-&gt;New(.. ~ ..)&lt;..&gt; around it</span>
+		<span class="t-str">"Apply(Double, 21) = {$(Apply(SugarFunctions-&gt;Double, 21))}"</span><span class="t-op">-&gt;</span>PrintLine();
+
+		s <span class="t-op">:=</span> <span class="t-cls">SugarFunctions</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>();
+		next <span class="t-op">:=</span> s<span class="t-op">-&gt;</span>Counter();
+		<span class="t-str">"counter: {$(next()-&gt;Get())} {$(next()-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
+
+		later <span class="t-op">:=</span> s<span class="t-op">-&gt;</span>BumpLater();
+		<span class="t-str">"bump through @self: {$(later()-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
+	}
+}
+</code></pre>
+<pre class="cmd">Apply(Double, 21) = 42
+counter: 1 2
+bump through @self: 12</pre>
+    <p><code>bump through @self</code> prints 12 because the counter lambda had already taken the field to 2, and <code>Bump</code> adds 10. Limits: a lambda directly in an instance method (not inside another lambda, and not in a function), an instance method is called as <code>@self-&gt;Bump()</code> and never as a bare <code>Bump()</code>, and the function named by itself must be a single non-virtual static function over plain classes (an overloaded name, <code>Int</code>, arrays and generics need the full signature, as before).</p>
+    <h2 id="classes-accessors-and-constructors-written-by-a-modifier">Classes: accessors and constructors written by a modifier</h2>
+    <p><code>@x : get : T</code> writes the getter, <code>@x : get set : T</code> the getter and the setter. The names follow what the libraries already do: <code>Get</code> plus the field in PascalCase (<code>input_tokens</code> is <code>GetInputTokens</code>), <code>Is</code> plus the name for a <code>Bool</code> (a leading <code>is_</code> or <code>has_</code> is the prefix itself), and <code>Set</code> plus the name for the setter. A doc comment before the field documents its accessors.</p>
+    <p>In a constructor, a parameter written <code>@name</code> where the class has already declared the field <code>@name</code> fills it, so <code>New(@a : Int, @b : Int) {}</code> is the whole constructor. Defaults and named arguments work as for any parameter. Before this, such a parameter shadowed the field and the field stayed 0.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com">#~
+# compile: obc -src sugar_classes.obs
+# run:     obr sugar_classes.obe
+#
+# Less boilerplate in a class: accessors written by a modifier, and constructor
+# parameters that fill the fields they are named for.
+~#</span>
+<span class="t-kw">class</span> <span class="t-cls">Usage</span> {
+	@input_tokens : get : <span class="t-type">Int</span>;
+	@model : get set : <span class="t-type">String</span>;
+	@is_error : get set : <span class="t-type">Bool</span>;
+
+	<span class="t-kw">New</span>(@input_tokens : <span class="t-type">Int</span>, @model : <span class="t-type">String</span>, @is_error : <span class="t-type">Bool</span> <span class="t-op">:=</span> <span class="t-const">false</span>) {}
+
+	<span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		u <span class="t-op">:=</span> <span class="t-cls">Usage</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">120</span>, <span class="t-str">"small"</span>);
+		<span class="t-str">"{$(u-&gt;GetModel())}: {$(u-&gt;GetInputTokens())} tokens, error={$(u-&gt;IsError())}"</span><span class="t-op">-&gt;</span>PrintLine();
+
+		u<span class="t-op">-&gt;</span>SetModel(<span class="t-str">"large"</span>);
+		u<span class="t-op">-&gt;</span>SetError(<span class="t-const">true</span>);
+		<span class="t-str">"{$(u-&gt;GetModel())}: error={$(u-&gt;IsError())}"</span><span class="t-op">-&gt;</span>PrintLine();
+
+		<span class="t-com"># named arguments reach the promoted parameters</span>
+		v <span class="t-op">:=</span> <span class="t-cls">Usage</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(is_error: <span class="t-const">true</span>, model: <span class="t-str">"tiny"</span>, input_tokens: <span class="t-num">3</span>);
+		<span class="t-str">"{$(v-&gt;GetModel())}: {$(v-&gt;GetInputTokens())} tokens, error={$(v-&gt;IsError())}"</span><span class="t-op">-&gt;</span>PrintLine();
+	}
+}
+</code></pre>
+<pre class="cmd">small: 120 tokens, error=false
+large: error=true
+tiny: 3 tokens, error=true</pre>
+    <h2 id="flow-collection-literals-and-the-nil-guard">Flow: collection literals and the nil guard</h2>
+    <p>An array literal takes the type of the variable it is assigned to when that is a <code>Vector</code>, <code>CompareVector</code>, <code>IntVector</code> or <code>FloatVector</code>: <code>v : Vector&lt;IntRef&gt; := [a, b]</code> is <code>Vector-&gt;New([a, b])&lt;IntRef&gt;</code>. It does not type a call argument, and there is no map literal.</p>
+    <p><code>x := E ?? return V;</code> (also <code>?? break;</code> and <code>?? continue;</code>) leaves when <code>E</code> is <code>Nil</code> and otherwise binds <code>x</code>. It is <code>x := E;</code> followed by <code>if(x = Nil) { return V; }</code>. A block form, <code>x := E ?? { ...; return };</code>, runs a block that must end in <code>return</code>, <code>break</code>, <code>continue</code> or <code>Runtime-&gt;Exit(..)</code>. The value form <code>a ?? b</code> is unchanged.</p>
+<pre class="line-numbers"><code class="language-objeck"><span class="t-com">#~
+# compile: obc -src sugar_flow.obs
+# run:     obr sugar_flow.obe
+#
+# Collections written as literals, and a lookup that bails out when it finds nothing.
+~#</span>
+<span class="t-kw">use</span> Collection;
+
+<span class="t-kw">class</span> <span class="t-cls">SugarFlow</span> {
+	<span class="t-kw">function</span> : <span class="t-fn">Find</span>(v : Vector&lt;<span class="t-type">IntRef</span>&gt;, i : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">IntRef</span> {
+		<span class="t-kw">if</span>(i &lt; v<span class="t-op">-&gt;</span>Size()) {
+			<span class="t-kw">return</span> v<span class="t-op">-&gt;</span>Get(i);
+		};
+		<span class="t-kw">return</span> <span class="t-const">Nil</span>;
+	}
+
+	<span class="t-kw">function</span> : <span class="t-fn">Describe</span>(v : Vector&lt;<span class="t-type">IntRef</span>&gt;, i : <span class="t-type">Int</span>) <span class="t-op">~</span> <span class="t-type">String</span> {
+		x <span class="t-op">:=</span> Find(v, i) ?? <span class="t-kw">return</span> <span class="t-str">"no item {$i}"</span>;
+		<span class="t-kw">return</span> <span class="t-str">"item {$i} is {$(x-&gt;Get())}"</span>;
+	}
+
+	<span class="t-kw">function</span> : <span class="t-fn">Main</span>(args : <span class="t-type">String</span>[]) <span class="t-op">~</span> <span class="t-const">Nil</span> {
+		<span class="t-com"># literals typed by the variable they are assigned to</span>
+		v : Vector&lt;<span class="t-type">IntRef</span>&gt; <span class="t-op">:=</span> [<span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">10</span>), <span class="t-type">IntRef</span><span class="t-op">-&gt;</span><span class="t-kw">New</span>(<span class="t-num">20</span>)];
+		nums : IntVector <span class="t-op">:=</span> [<span class="t-num">4</span>, <span class="t-num">5</span>, <span class="t-num">6</span>, <span class="t-num">7</span>];
+		names : Vector&lt;<span class="t-type">String</span>&gt; <span class="t-op">:=</span> [<span class="t-str">"ada"</span>, <span class="t-str">"grace"</span>];
+		<span class="t-str">"{$(v-&gt;Size())} refs, {$(nums-&gt;Size())} ints, first name {$(names-&gt;Get(0))}"</span><span class="t-op">-&gt;</span>PrintLine();
+
+		Describe(v, <span class="t-num">1</span>)<span class="t-op">-&gt;</span>PrintLine();
+		Describe(v, <span class="t-num">5</span>)<span class="t-op">-&gt;</span>PrintLine();
+
+		<span class="t-com"># the block form runs a block, which must leave</span>
+		y <span class="t-op">:=</span> Find(v, <span class="t-num">0</span>) ?? {
+			<span class="t-str">"never printed"</span><span class="t-op">-&gt;</span>PrintLine();
+			<span class="t-kw">return</span>;
+		};
+		<span class="t-str">"found {$(y-&gt;Get())}"</span><span class="t-op">-&gt;</span>PrintLine();
+	}
+}
+</code></pre>
+<pre class="cmd">2 refs, 4 ints, first name ada
+item 1 is 20
+no item 5
+found 10</pre>
+    <h2 id="more">More</h2>
+    <ul>
+     <li><a href="doc_features.html"><code>docs/FEATURES.md</code></a>: each feature with its rules and the test that covers it.</li>
+     <li><a href="doc_changelog.html"><code>CHANGELOG.md</code></a>: the v2026.11.4 entries.</li>
+    </ul>
+<!-- content:end -->
+   </div>
+   <nav class="toc" aria-label="On this page">
+    <p class="nav-title">On this page</p>
+    <ul><li><a href="#functions-a-function-by-name-and-a-lambda-that-uses-its-object">Functions: a function by name, and a lambda that uses its object</a></li><li><a href="#classes-accessors-and-constructors-written-by-a-modifier">Classes: accessors and constructors written by a modifier</a></li><li><a href="#flow-collection-literals-and-the-nil-guard">Flow: collection literals and the nil guard</a></li><li><a href="#more">More</a></li></ul>
+   </nav>
+  </div>
+  </main>
+  <footer class="site-footer">
+   <div class="wrap">
+    <nav aria-label="Footer"><ul class="footer-links">
+     <li><a href="https://playground.objeck.org">Playground</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/releases/latest">Download</a></li>
+     <li><a href="https://www.objeck.org/api/latest/index.html">API reference</a></li>
+     <li><a href="ai_guide.html">AI &amp; ML guide</a></li>
+     <li><a href="readme.html">Changelog</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang">GitHub</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/discussions">Discussions</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/issues">Issues</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+     <li><a href="https://github.com/objeck/objeck-lang/blob/master/LICENSE">License</a></li>
+    </ul></nav>
+    <div class="footer-base">
+     <p>&copy; 2026 Randy Hollines. All Rights Reserved.</p>
+     <a class="powered" href="https://github.com/objeck/objeck-lang" title="This site is served by Objeck's own web server">Powered by <img src="style/objeck-logo-sm.png" alt="Objeck" width="52" height="20"></a>
+    </div>
+   </div>
+  </footer>
+  <script src="style/site.js"></script>
+ </body>
+</html>
