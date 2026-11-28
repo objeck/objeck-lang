@@ -850,6 +850,7 @@ def main():
     check_fifo_line_ack(obc, obr, env, bin_dir)
     check_tls_byte_read_eof(obc, obr, env, bin_dir)
     check_tls_read_order(obc, obr, env, bin_dir)
+    check_tls_select_read(obc, obr, env, bin_dir)
     check_dtls_accept_handoff(obc, obr, env, bin_dir)
     check_tls_listen_close_race(obc, obr, env, bin_dir)
     check_vm_exit_flush(obc, obr, env, bin_dir)
@@ -3924,6 +3925,46 @@ def check_tls_read_order(obc, obr, env, bin_dir):
             rc, out, err = run([obr, jit, dest, cert, key], env=paused, cwd=SCRIPT_DIR)
             check(f"TLS reads from two threads {jit}: the byte one read gives back is the next read's, before the byte after it",
                   rc == 0 and b"PASS: tls_read_order run" in out,
+                  f"rc={rc} out={out[-300:]!r} err={err[-300:]!r}")
+
+
+def check_tls_select_read(obc, obr, env, bin_dir):
+    # ---- Select on a TLS socket while another thread reads it --------------------------
+    # tls_select_read.obs. The readiness check read the session's read state (the bytes
+    # mbedTLS holds, the byte a Char[] read gives back) with no lock while a read on
+    # another thread wrote it; it now takes the session's read lock if it is free and
+    # answers "not ready" when a read is in progress. Two parts:
+    #   held:   a Char[] read is held (OBJECK_NATIVE_TEST_PAUSE) after it has taken the
+    #           byte that follows an incomplete character and before it gives it back.
+    #           Nothing is readable then, and Select must say so; once the read has
+    #           returned, Select must report the byte it gave back, and the next read gets
+    #           it.
+    #   stream: one thread reads characters, another polls Select the whole time, and the
+    #           peer sends groups cut in the middle of a three-byte character and followed
+    #           by a lead byte nothing completes, so a byte is given back in every group.
+    #           Every character must arrive, in order, and Select must be "not ready" when
+    #           all has been read.
+    # The unsynchronized read itself is what a ThreadSanitizer build of obr reports in
+    # the stream part before the change.
+    dest = compile_fixture(obc, "tls_select_read", env, bin_dir)
+    if not dest:
+        return
+    with tempfile.TemporaryDirectory() as scratch:
+        made = make_loopback_tls_cert(scratch)
+        if not made:
+            print("  [SKIP] TLS Select while reading: no openssl command to make a certificate")
+            return
+        cert, key = made
+        paused = dict(env)
+        paused["OBJECK_NATIVE_TEST_PAUSE"] = "tls-char-before-pushback=600"
+        for jit in ("--jit=off", "--jit=1"):
+            rc, out, err = run([obr, jit, dest, "held", cert, key], env=paused, cwd=SCRIPT_DIR)
+            check(f"TLS Select {jit}: not ready while a read holds the byte it will give back, ready once it has",
+                  rc == 0 and b"PASS: tls_select_read run" in out,
+                  f"rc={rc} out={out[-300:]!r} err={err[-300:]!r}")
+            rc, out, err = run([obr, jit, dest, "stream", cert, key], env=env, cwd=SCRIPT_DIR)
+            check(f"TLS Select {jit}: polled throughout a read of characters split across writes, nothing is lost or out of order",
+                  rc == 0 and b"PASS: tls_select_read run" in out,
                   f"rc={rc} out={out[-300:]!r} err={err[-300:]!r}")
 
 

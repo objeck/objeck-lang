@@ -1,0 +1,218 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+Abandoned workers are joined when no agent ever runs again (API.Agent), against a scripted fake model (no
+key, no network).
+
+A bounded worker that the loop stops waiting for is handed to a reaper, and was joined when some agent
+next started a worker or ended a run. The last workers of a program had nobody: when they finished after
+the last agent had done its last work, their threads kept their stacks (POSIX) or handles (Windows)
+until the process ended. The reaper now has a thread of its own, started when a worker is handed over,
+that joins what has finished and ends when nothing is left.
+
+Every run here is made by an agent of its own whose tool takes 60 ms on a worker; a trace sink cancels
+the run as the tool starts and raises on the halt event, so the worker is abandoned while it runs. Twenty
+such runs are made one straight after another, and then sixteen at the same moment on sixteen threads,
+and after each batch NOTHING runs an agent: the test only waits. Every worker that was handed over must
+be joined within three seconds (Agent->ReaperTest, a hidden test hook, counts both), and on Linux the
+memory mappings of the process must be back near where they were (read from /proc/self/maps; skipped
+elsewhere).
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency, System.IO.Filesystem;
+
+# takes a little while, as a tool on a worker does
+class SlowHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(60);
+    return "ok";
+  }
+}
+
+# cancels the token when the tool is about to start, and raises on the halt event that follows
+class RaisingSink implements AgentTraceSink {
+  @token : AgentCancel;
+
+  New(token : AgentCancel) {
+    @token := token;
+  }
+
+  method : public : OnEvent(event : AgentEvent) ~ Nil {
+    if(event->GetKind()->Equals("tool_start")) {
+      @token->Cancel("stopped by the sink");
+    }
+    else if(event->GetKind()->Equals("halt")) {
+      Runtime->Raise(Error->New("the sink raised on halt"));
+    };
+  }
+}
+
+# one run by an agent of its own, on a thread of its own
+class OneShotThread from Thread {
+  New() {
+    Parent("one_shot");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    AgentReaperIdleTest->OneShot();
+  }
+}
+
+class AgentReaperIdleTest {
+  @failures : static : Int;
+  @raised : static : Int;
+  @lock : static : ThreadMutex;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  # memory mappings of this process, or 0 where there is no /proc/self/maps
+  function : Mappings() ~ Int {
+    lines := 0;
+    reader := FileReader->New("/proc/self/maps");
+    if(reader->IsOpen()) {
+      line := reader->ReadLine();
+      while(line <> Nil) {
+        lines += 1;
+        line := reader->ReadLine();
+      };
+      reader->Close();
+    };
+    return lines;
+  }
+
+  # a new agent makes one run that leaves its worker behind, and is never used again
+  function : OneShot() ~ Nil {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("slow", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), SlowHandler->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "slow", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    token := AgentCancel->New();
+    agent->SetCancel(token);
+    agent->SetTrace(RaisingSink->New(token));
+    try {
+      agent->Run("go");
+    }
+    on(e : Error) {
+      if(e->GetMessage() <> Nil & e->GetMessage()->Has("the sink raised on halt")) {
+        critical(@lock) {
+          @raised += 1;
+        };
+      };
+    };
+  }
+
+  # waits, without running any agent, until every worker handed to the reaper was joined; returns the
+  # milliseconds that took, or -1 when three seconds were not enough
+  function : Settle() ~ Int {
+    waited := 0;
+    while(waited < 3000) {
+      if(Agent->ReaperTest(3, 0) = Agent->ReaperTest(2, 0)) {
+        return waited;
+      };
+      Thread->Sleep(20);
+      waited += 20;
+    };
+    return -1;
+  }
+
+  function : Batch(what : String, count : Int, together : Bool) ~ Nil {
+    "{$what}, then no agent runs again:"->PrintLine();
+    before_maps := Mappings();
+    before_queued := Agent->ReaperTest(2, 0);
+    @raised := 0;
+
+    if(together) {
+      threads := Vector->New()<OneShotThread>;
+      for(i := 0; i < count; i += 1;) {
+        threads->AddBack(OneShotThread->New());
+      };
+      each(thread in threads) {
+        thread->Execute(Nil);
+      };
+      each(thread in threads) {
+        thread->Join();
+      };
+    }
+    else {
+      for(i := 0; i < count; i += 1;) {
+        OneShot();
+      };
+    };
+
+    queued := Agent->ReaperTest(2, 0) - before_queued;
+    # a worker whose thread starts and ends before the run gives it up (a fast start, as on macOS CI) is joined on
+    # the spot and never reaches the reaper, so no run need hand one over (on Linux nearly all do)
+    Check("every run ended with the sink's error and left its worker to the reaper (a worker that had already ended was joined on the spot)", @raised = count & queued <= count);
+
+    took := Settle();
+    joined := Agent->ReaperTest(3, 0);
+    total := Agent->ReaperTest(2, 0);
+    if(took < 0) {
+      "  after three seconds {$joined} of {$total} workers were joined"->PrintLine();
+    };
+    Check("every worker was joined within three seconds, with no agent running", took >= 0 & joined = total);
+
+    after_maps := Mappings();
+    if(before_maps = 0) {
+      "  SKIP: no /proc/self/maps on this platform, the threads are not counted"->PrintLine();
+    }
+    else {
+      # the reaper's own last thread has ended and waits to be joined by the next one: a few mappings
+      Thread->Sleep(300);
+      after_maps := Mappings();
+      grown := after_maps - before_maps;
+      if(grown >= count) {
+        "  the process has {$grown} more memory mappings after {$count} runs"->PrintLine();
+      };
+      Check("the mappings are back near where they were", grown < count);
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    @lock := ThreadMutex->New("reaper_idle_test");
+    Agent->ReaperTest(0, 0);
+
+    # A warm-up of both shapes, so that what the first runs map is not counted: compiled code, the heap,
+    # a first reaper thread, and the allocator's arenas for sixteen threads at once
+    for(i := 0; i < 20; i += 1;) {
+      OneShot();
+    };
+    Settle();
+    warm := Vector->New()<OneShotThread>;
+    for(i := 0; i < 16; i += 1;) {
+      warm->AddBack(OneShotThread->New());
+    };
+    each(thread in warm) {
+      thread->Execute(Nil);
+    };
+    each(thread in warm) {
+      thread->Join();
+    };
+    Settle();
+    Thread->Sleep(300);
+
+    Batch("twenty one-shot agents, one straight after another", 20, false);
+    Batch("sixteen one-shot agents at the same moment", 16, true);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

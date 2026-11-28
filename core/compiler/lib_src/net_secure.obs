@@ -1727,7 +1727,10 @@ if(client->Connect()) {
 
 					socket->WriteString(oper);
 
-					status_line := socket->ReadLine();
+					# The status line goes through the same reader as the header lines: the
+					# socket's ReadLine() takes whatever byte follows a CR as its LF.
+					bare_cr := Bool->New[1];
+					status_line := ReadReplyLine(socket, bare_cr);
 					@status_code := Web.HTTP.WebSocketHandshake->StatusCode(status_line);
 					@status_msg := Nil;
 
@@ -1742,7 +1745,7 @@ if(client->Connect()) {
 					header_end := false;
 					if(@status_code = 101) {
 						do {
-							line := ReadReplyLine(socket);
+							line := ReadReplyLine(socket, bare_cr);
 							if(line <> Nil & line->Size() = 0) {
 								header_end := true;
 							};
@@ -1771,7 +1774,10 @@ if(client->Connect()) {
 					# is a 101 that upgrades to websocket and its Sec-WebSocket-Accept is the
 					# value derived from the key sent above. Why it was refused is left in
 					# GetStatusMessage().
-					if(@status_code = 101 & header_end = false & header_count < header_max) {
+					if(bare_cr[0]) {
+						@status_msg := "WebSocket handshake refused: a carriage return in the reply is not followed by a line feed";
+					}
+					else if(@status_code = 101 & header_end = false & header_count < header_max) {
 						@status_msg := "WebSocket handshake refused: the reply ended before the blank line that ends its headers";
 					}
 					else if(header_count < header_max) {
@@ -1949,7 +1955,12 @@ if(client->Connect()) {
 		# answers "" for a closed connection exactly as for a blank line, so a reply
 		# cut off after its last header read as a complete one. A line longer than
 		# the buffer comes back in pieces, as ReadLine() gives it.
-		method : ReadReplyLine(socket : TCPSecureSocket) ~ String {
+		#
+		# A line ends with CR LF, or with LF alone, which this accepts as ReadLine()
+		# does. A CR followed by anything else is not a line ending (RFC 9112
+		# section 2.2 has a recipient treat a bare CR as invalid): bare_cr[0] is set
+		# and the answer is Nil, so the handshake is refused for it.
+		method : ReadReplyLine(socket : TCPSecureSocket, bare_cr : Bool[]) ~ String {
 			one := Byte->New[1];
 			text := Byte->New[8192];
 			size := 0;
@@ -1963,9 +1974,15 @@ if(client->Connect()) {
 					return Nil;
 				};
 
-				# CR is taken with the byte after it (LF), which must arrive too
+				# CR is taken with the byte after it, which must arrive and must be LF.
+				# Any byte was taken for the LF, so "\rX" in place of the blank line
+				# ended the header block and the X was dropped.
 				if(value = 13) {
 					if(socket->ReadBuffer(0, 1, one) <> 1) {
+						return Nil;
+					};
+					if(one[0]->As(Int) <> 10) {
+						bare_cr[0] := true;
 						return Nil;
 					};
 					value := 10;
@@ -2001,6 +2018,47 @@ if(client->Connect()) {
 			return false;
 		}
 
+		# Reads the payload of the Ping or Pong whose header is in @header, and answers a
+		# Ping. False, with the connection closed and the reason in @status_msg, for a
+		# frame a server must not send or one that is cut short.
+		method : ReadControlPayload(is_ping : Bool) ~ Bool {
+			payload_length : Int := @header[1];
+			# masked by the server, see ReadFrame
+			if((payload_length and 0x80) <> 0) {
+				@status_msg := "WebSocket frame refused: masked by the server";
+				@socket->Close();
+				return false;
+			};
+			# a control frame carries at most 125 bytes (RFC 6455 section 5.5), so
+			# 126 and 127 are not the extended-length markers here
+			if(payload_length > 125) {
+				@status_msg := "WebSocket frame refused: a control frame longer than 125 bytes";
+				@socket->Close();
+				return false;
+			};
+			buffer := Byte->New[payload_length];
+			if(payload_length > 0) {
+				if(<>ReadExact(payload_length, buffer)) {
+					return false;
+				};
+			};
+
+			if(@is_debug){
+				System.IO.Console->Print("control - payload: ")->PrintLine(buffer->ToHexString());
+			};
+
+			# The Pong is a frame like any other a client sends (section 5.5.3):
+			# FIN and opcode 0xA, the mask bit and the length, a masking key, and
+			# the Ping's payload masked with it. This wrote the opcode byte and
+			# then the payload bare, so the payload's first bytes were read by
+			# the server as an unmasked length and whatever followed as a frame.
+			if(is_ping) {
+				WriteFrame(buffer, 0, payload_length, 0xa, false);
+			};
+
+			return true;
+		}
+
 		method : ReadFrame() ~ Byte[] {
 			if(@socket <> Nil) {
 				# read header
@@ -2013,39 +2071,15 @@ if(client->Connect()) {
 					System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 				};
 
-				# ping
-				if(opcode = 0x89) {
-					payload_length : Int := @header[1];
-					# masked by the server, see below
-					if((payload_length and 0x80) <> 0) {
-						@status_msg := "WebSocket frame refused: masked by the server";
-						@socket->Close();
+				# Pings and Pongs may arrive in any number between two messages (RFC 6455
+				# section 5.5): each is read whole, a Ping is answered, and the frame after
+				# it is looked at again. One Ping was allowed for: after a second one its
+				# header fell through to the cases below, nothing was returned, and the
+				# next read began inside that Ping's payload.
+				while(opcode = 0x89 | opcode = 0x8a) {
+					if(<>ReadControlPayload(opcode = 0x89)) {
 						return Nil;
 					};
-					# a control frame carries at most 125 bytes (RFC 6455 section 5.5), so
-					# 126 and 127 are not the extended-length markers here
-					if(payload_length > 125) {
-						@status_msg := "WebSocket frame refused: a control frame longer than 125 bytes";
-						@socket->Close();
-						return Nil;
-					};
-					buffer := Byte->New[payload_length];
-					if(payload_length > 0) {
-						if(<>ReadExact(payload_length, buffer)) {
-							return Nil;
-						};
-					};
-
-					if(@is_debug){
-						System.IO.Console->Print("ping - payload: ")->PrintLine(buffer->ToHexString());
-					};
-
-					# The Pong is a frame like any other a client sends (section 5.5.3):
-					# FIN and opcode 0xA, the mask bit and the length, a masking key, and
-					# the Ping's payload masked with it. This wrote the opcode byte and
-					# then the payload bare, so the payload's first bytes were read by
-					# the server as an unmasked length and whatever followed as a frame.
-					WriteFrame(buffer, 0, payload_length, 0xa, false);
 
 					# read header
 					if(<>ReadExact(2, @header)) {
@@ -2058,6 +2092,14 @@ if(client->Connect()) {
 					};
 				};
 
+				# a control frame is never split into fragments (section 5.5): a Close,
+				# Ping or Pong opcode without the FIN bit is not a frame to wait on
+				if(opcode = 0x08 | opcode = 0x09 | opcode = 0x0a) {
+					@status_msg := "WebSocket frame refused: a fragmented control frame";
+					@socket->Close();
+					return Nil;
+				};
+
 				if(opcode = 0x81 | opcode = 0x82 | opcode = 0x88) {
 					payload_length : Int := @header[1];
 					# A server never masks (RFC 6455 section 5.1: the client fails the
@@ -2066,6 +2108,13 @@ if(client->Connect()) {
 					# allocation below.
 					if((payload_length and 0x80) <> 0) {
 						@status_msg := "WebSocket frame refused: masked by the server";
+						@socket->Close();
+						return Nil;
+					};
+
+					# a Close is a control frame: 126 and 127 are not extended lengths for it
+					if(opcode = 0x88 & payload_length > 125) {
+						@status_msg := "WebSocket frame refused: a control frame longer than 125 bytes";
 						@socket->Close();
 						return Nil;
 					};
@@ -2363,10 +2412,28 @@ if(client->Connect()) {
 				opcode := (@header[0] and 0xff)->As(Byte);
 				# System.IO.Console->Print("read - opt+len: ")->PrintLine(@header->ToHexString());
 
+				# the server may send Pings of its own before it answers this one: each
+				# is answered here, as ReadFrame does, and the Pong is the frame after them
+				while(opcode = 0x89) {
+					if(<>ReadControlPayload(true)) {
+						return false;
+					};
+					if(<>ReadExact(2, @header)) {
+						return false;
+					};
+					opcode := (@header[0] and 0xff)->As(Byte);
+				};
+
 				payload_length : Int := @header[1];
 				# masked by the server, see ReadFrame
 				if((payload_length and 0x80) <> 0) {
 					@status_msg := "WebSocket frame refused: masked by the server";
+					@socket->Close();
+					return false;
+				};
+				# the Pong is a control frame, at most 125 bytes
+				if(opcode = 0x8a & payload_length > 125) {
+					@status_msg := "WebSocket frame refused: a control frame longer than 125 bytes";
 					@socket->Close();
 					return false;
 				};

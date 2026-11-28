@@ -153,6 +153,7 @@ read 4: ...abcd</pre>
     <p><code>Console-&gt;ReadLine</code> returns <code>Nil</code> at the end of input; a blank line is still <code>""</code>. <code>eof_lines.obs</code> fed <code>a</code>, a blank line and <code>b</code> (no line ending):</p>
 <pre class="cmd">$ printf 'a\n\nb' | obr eof_lines.obe
 3 lines, 1 blank</pre>
+    <p><code>ReadLine</code> on a socket (<code>TCPSocket</code>, <code>TCPSecureSocket</code>, <code>DTLSSocket</code>) or a <code>Pipe</code> ends a line at a line feed, at a carriage return, or at a carriage return followed by a line feed, which is one line end. A carriage return on its own still ends the line, and the byte after it is now the first byte of the next line: it used to be thrown away whatever it was, so a peer that sent <code>abc</code>, CR, <code>Xyz</code> had its second line read as <code>yz</code>. The HTTP clients read status and header lines this way. (<code>FileReader-&gt;ReadLine</code> is a different reader: a line there ends at a line feed, and a carriage return before it is dropped.)</p>
     <p>The other items (HTTP timeouts, thread-fault isolation, AES-256-GCM, ONNX on the GPU, gradient boosting, forecasting) are in the <a href="doc_changelog.html">CHANGELOG</a> and the <a href="doc_ai.html">AI guide</a>.</p>
 <!-- content:end -->
    </div>

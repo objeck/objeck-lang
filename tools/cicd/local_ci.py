@@ -54,6 +54,8 @@ CHECKS = [
      lambda: py("tools/cicd/gen_trap_signatures.py", "--check")),
     ("The trap table generator writes nothing from an unusable corpus, and its check can still fail",
      lambda: py("tools/cicd/test_gen_trap_signatures.py")),
+    ("The JSON integer reference test agrees with its generator",
+     lambda: py("programs/regression/gen_json_int_reference.py", "--check")),
     ("The instruction table agrees with every site that restates it (advisory)",
      lambda: py("tools/cicd/check_instr_table.py")),
     ("The instruction table check can still detect a broken site",

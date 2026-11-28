@@ -6224,10 +6224,14 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       while(!end_line && index < capacity - 1);
       buffer[index] = '\0';
 
-      // assume LF
-      if(value == '\r') {
-        IPSocket::ReadByte(sock, status, read_error, limits.deadline_ms, limits.read_ms);
-        if(status < 0 && error == 0) {
+      // The line's end: a CR ends the line, and an LF right after it belongs to the same line end and is
+      // taken with it. The byte after a CR used to be taken whatever it was ("assume LF"), so of
+      // "abc", CR, "X" the X was lost: the next line began after it. It is now looked at first
+      // (MSG_PEEK) and taken only when it is an LF; any other byte is the next read's first.
+      if(value == '\r' && status > 0) {
+        char line_feed;
+        IPSocket::ReadByteInRange(line_feed, sock, '\n', '\n', read_error, limits.deadline_ms, limits.read_ms);
+        if(read_error != 0 && error == 0) {
           error = read_error;
         }
       }
@@ -7054,9 +7058,14 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
         while(!end_line && index + 1 < capacity);
         buffer[index] = '\0';
 
-        // assume LF
-        if(value == '\r') {
-          IPSecureSocket::ReadByte(sctx, status);
+        // The line's end, as in SockTcpInString: after a CR only an LF is part of the line end. TLS cannot
+        // look at a byte without taking it, so a byte that is not an LF is given back to the session
+        // (pushback, under the read lock held here) and is the next read's first.
+        if(value == '\r' && status > 0) {
+          const char next = IPSecureSocket::ReadByte(sctx, status);
+          if(status > 0 && next != '\n') {
+            sctx->pushback = (unsigned char)next;
+          }
         }
       }
       MemoryManager::EndBlocking();
@@ -7230,6 +7239,7 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
     const bool hello = ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1;
     if(hello) {
       // test point: a ClientHello has been seen and nothing has been done about it yet
+      // coverity[sleep] sleeps only when a test names this point in OBJECK_NATIVE_TEST_PAUSE, and inside accept_turn on purpose: that is the interleaving the test forces (CID 1689715)
       NativeTestPause("dtls-accept-hello-seen");
     }
 
@@ -11328,6 +11338,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
       read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
       // never stop inside a character, after a whole read (see SockTcpInCharAry)
       if(read > 0 && read == num) {
+        // coverity[sleep] read_lock is held across the wait by design: one read of a session at a time, to the byte it gives back; Close() ends the wait by shutdown and never takes this lock (CID 1689714)
         read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest, unsigned char lo, unsigned char hi) {
           // TLS has no way to look at a byte without reading it: one that does not continue the
           // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
@@ -12870,21 +12881,30 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
       // it, then re-read after the wait.
       PushInt((size_t)array, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      do {
-        value = IPDtlsSocket::ReadByte(sctx, status);
-        if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
-          buffer[index++] = value;
+      {
+        // one read of the session at a time, for the whole line (see DtlsSocketCtx::read_lock)
+        std::lock_guard<std::mutex> reading(sctx->read_lock);
+        do {
+          value = IPDtlsSocket::ReadByte(sctx, status);
+          if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
+            buffer[index++] = value;
+          }
+          else {
+            end_line = true;
+          }
         }
-        else {
-          end_line = true;
-        }
-      }
-      while(!end_line && index + 1 < capacity);
-      buffer[index] = '\0';
+        while(!end_line && index + 1 < capacity);
+        buffer[index] = '\0';
 
-      // assume LF
-      if(value == '\r') {
-        IPDtlsSocket::ReadByte(sctx, status);
+        // The line's end, as in SockTcpSslInString: after a CR only an LF is part of the line end, and any
+        // other byte is given back to the session. Only within the datagram the CR came in: a CR
+        // that ends its datagram ends the line, and the next datagram is not waited for.
+        if(value == '\r' && status > 0 && mbedtls_ssl_get_bytes_avail(&sctx->ssl) > 0) {
+          const char next = IPDtlsSocket::ReadByte(sctx, status);
+          if(status > 0 && next != '\n') {
+            sctx->pushback = (unsigned char)next;
+          }
+        }
       }
       MemoryManager::EndBlocking();
       array = (size_t*)PopInt(op_stack, stack_pos);
@@ -13290,8 +13310,13 @@ bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* 
     ClearDtlsError();
     int status;
     // blocking read; park so a stop-the-world collection elsewhere can proceed
+    char value;
     MemoryManager::BeginBlocking();
-    const char value = IPDtlsSocket::ReadByte(sctx, status);
+    {
+      // one read of the session at a time (see DtlsSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      value = IPDtlsSocket::ReadByte(sctx, status);
+    }
     MemoryManager::EndBlocking();
     PushInt(value, op_stack, stack_pos);
   }
@@ -13319,8 +13344,13 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
     // array ref is re-rooted on the op_stack so fixup relocates it.
     char* temp = new char[num > 0 ? num : 1];
     PushInt((size_t)array, op_stack, stack_pos);
+    int read;
     MemoryManager::BeginBlocking();
-    const int read = IPDtlsSocket::ReadBytes(temp, static_cast<int>(num), sctx);
+    {
+      // one read of the session at a time (see DtlsSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      read = IPDtlsSocket::ReadBytes(temp, static_cast<int>(num), sctx);
+    }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read > 0) {
@@ -13353,8 +13383,13 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
     // Blocking read: park for the duration, with the array ref re-rooted on the
     // op_stack so GC promotion fixup relocates it while we wait.
     PushInt((size_t)array, op_stack, stack_pos);
+    int read;
     MemoryManager::BeginBlocking();
-    int read = IPDtlsSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+    {
+      // one read of the session at a time (see DtlsSocketCtx::read_lock)
+      std::lock_guard<std::mutex> reading(sctx->read_lock);
+      read = IPDtlsSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+    }
     MemoryManager::EndBlocking();
     array = (size_t*)PopInt(op_stack, stack_pos);
     if(read > -1) {

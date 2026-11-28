@@ -1,0 +1,195 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+A bounded model call hands back no reply after a cancel, however fast the reply was (API.Agent), against a
+scripted fake model (no key, no network).
+
+Under SetBoundedModelCalls the model call runs on a worker and the loop waits for it, and the rule is
+that after a cancel or the deadline the call hands back no reply at all. The wait looked at the token
+only between its 10 ms slices and only while the reply was still missing. When the reply was already
+there the first time the loop looked, because the call was quick or because the loop's thread had been
+held up for as long as the call took, a cancel that had come before the reply, even before the call
+began, was never seen: the reply was kept, and a final answer ended the run as completed. Nothing was
+halted and no halt event was traced.
+
+That is what failed agent_worker_release_test once on a slow three-core macOS runner: its model call
+takes 60 ms and its sink cancels as the call starts, and in one run of sixty the loop's thread was held
+up longer than that. Here the outcome does not depend on the machine: the model answers at once, so the
+reply is always there before the loop's first look. A trace sink cancels the run's token on the
+model_start event, before the worker exists.
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+# cancels the token when a model call is about to start; raises on the halt event when asked to
+class CancelAtModelStart implements AgentTraceSink {
+  @token : AgentCancel;
+  @raise : Bool;
+  @halts : Int;
+  @kinds : String;
+
+  New(token : AgentCancel, raise : Bool) {
+    @token := token;
+    @raise := raise;
+    @kinds := "";
+  }
+
+  method : public : GetHalts() ~ Int {
+    return @halts;
+  }
+
+  method : public : GetKinds() ~ String {
+    return @kinds;
+  }
+
+  method : public : OnEvent(event : AgentEvent) ~ Nil {
+    @kinds += event->GetKind();
+    @kinds += " ";
+    if(event->GetKind()->Equals("model_start")) {
+      @token->Cancel("stopped as the model call started");
+    }
+    else if(event->GetKind()->Equals("halt")) {
+      @halts += 1;
+      if(@raise) {
+        Runtime->Raise(Error->New("the sink raised on halt"));
+      };
+    };
+  }
+}
+
+class AgentBoundedModelCancelTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & b <> Nil & a->Equals(b);
+  }
+
+  # an agent whose model answers at once, with a final answer
+  function : NewAgent(bounded : Bool) ~ Agent {
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Say("the answer"));
+    script->AddBack(AgentReply->Say("a second answer"));
+    agent := Agent->New(ScriptedBackend->New(script), ToolRegistry->New());
+    agent->SetBoundedModelCalls(bounded);
+    return agent;
+  }
+
+  function : TestDropped(runs : Int) ~ Nil {
+    "a cancel as a bounded model call starts, and a reply that is there at once ({$runs} runs):"->PrintLine();
+    cancelled := 0;
+    halted := 0;
+    empty := 0;
+    odd : String;
+    for(i := 0; i < runs; i += 1;) {
+      agent := NewAgent(true);
+      token := AgentCancel->New();
+      agent->SetCancel(token);
+      sink := CancelAtModelStart->New(token, false);
+      agent->SetTrace(sink);
+      result := agent->Run("go");
+      if(Same(result->GetStopReason(), "cancelled")) {
+        cancelled += 1;
+      }
+      else if(odd = Nil) {
+        odd := "run {$i} ended {$result->GetStopReason()} with the text '{$result->GetText()}'; events: {$sink->GetKinds()}";
+      };
+      if(sink->GetHalts() = 1) {
+        halted += 1;
+      };
+      if(result->GetText() = Nil | result->GetText()->IsEmpty()) {
+        empty += 1;
+      };
+    };
+    if(odd <> Nil) {
+      "  {$cancelled} of {$runs} runs ended cancelled; {$odd}"->PrintLine();
+    };
+    Check("every run ends cancelled", cancelled = runs);
+    Check("the reply is not handed back: the result has no text", empty = runs);
+    Check("and the halt is traced, once a run", halted = runs);
+  }
+
+  function : TestRaised(runs : Int) ~ Nil {
+    "the same with a sink that raises on the halt ({$runs} runs):"->PrintLine();
+    raised := 0;
+    odd : String;
+    for(i := 0; i < runs; i += 1;) {
+      agent := NewAgent(true);
+      token := AgentCancel->New();
+      agent->SetCancel(token);
+      agent->SetTrace(CancelAtModelStart->New(token, true));
+      try {
+        result := agent->Run("go");
+        if(odd = Nil) {
+          odd := "run {$i} returned {$result->GetStopReason()} with the text '{$result->GetText()}'";
+        };
+      }
+      on(e : Error) {
+        if(e->GetMessage() <> Nil & e->GetMessage()->Has("the sink raised on halt")) {
+          raised += 1;
+        }
+        else if(odd = Nil) {
+          odd := "run {$i} raised '{$e->GetMessage()}'";
+        };
+      };
+    };
+    if(odd <> Nil) {
+      "  {$raised} of {$runs} runs ended with the sink's error; {$odd}"->PrintLine();
+    };
+    Check("every run ends with the sink's error", raised = runs);
+  }
+
+  function : TestUnchanged() ~ Nil {
+    "what does not change:"->PrintLine();
+    # nobody cancels: the reply is the answer
+    agent := NewAgent(true);
+    result := agent->Run("go");
+    Check("a bounded model call that nobody cancels completes with its answer", result->IsCompleted() & Same(result->GetText(), "the answer"));
+
+    # a call on the loop's own thread keeps a final answer that a cancel overtook, as documented
+    agent := NewAgent(false);
+    token := AgentCancel->New();
+    agent->SetCancel(token);
+    agent->SetTrace(CancelAtModelStart->New(token, false));
+    result := agent->Run("go");
+    Check("a model call on the loop's thread still keeps its final answer", result->IsCompleted() & Same(result->GetText(), "the answer"));
+
+    # after a dropped reply the same agent runs again with a new token
+    agent := NewAgent(true);
+    token := AgentCancel->New();
+    agent->SetCancel(token);
+    agent->SetTrace(CancelAtModelStart->New(token, false));
+    first := agent->Run("go");
+    agent->SetCancel(Nil);
+    agent->SetTrace(Nil);
+    second := agent->Run("again");
+    Check("after a dropped reply the same agent runs again", Same(first->GetStopReason(), "cancelled") & second->IsCompleted());
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    runs := 50;
+    if(args->Size() > 0) {
+      runs := args[0]->ToInt();
+    };
+
+    TestDropped(runs);
+    TestRaised(runs);
+    TestUnchanged();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

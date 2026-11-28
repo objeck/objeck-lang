@@ -47,6 +47,45 @@ void IPSocket::Startup() {
 // One connect attempt to one resolved address; INVALID_SOCKET with the reason
 // in error when it fails. The reason is taken before the closesocket() that
 // cleans up, which resets WSAGetLastError() to 0.
+//
+// An ephemeral port the system would not give, for the moment
+//
+// Windows picks the local port of a socket that asks for "any" (a bind to port 0, or the bind a connect
+// makes for itself) and now and then fails that with WSAENOBUFS, "the system lacked sufficient buffer
+// space or a queue was full", though ports are free: it happens when several processes are asking at
+// once. Measured here with plain UDP sockets and no Objeck code: 0 of 4,000 with one process, about 1
+// in 10,000 with six. Nothing is wrong with the socket's request and the next attempt gets a port, so
+// the call is made again, a few times, a little later each time, before the failure is reported.
+// (This is what made dtls_close_races.obs fail one round in a busy regression run: a DTLS client's
+// connect, or a server's bind, of a brand new socket.)
+//
+static const int EPHEMERAL_PORT_TRIES = 5;
+
+// whether attempt number 'tried' (from 1) that failed with 'error' is worth making again; waits first
+static bool RetryEphemeralPort(int error, int tried) {
+  if(error != WSAENOBUFS || tried >= EPHEMERAL_PORT_TRIES) {
+    return false;
+  }
+  // 5, 10, 20, 40 ms: 75 ms in all before the failure is reported
+  Sleep(5 << (tried - 1));
+  return true;
+}
+
+// bind(), made again when the system would not give an ephemeral port for the moment (port 0 only: a
+// named port that cannot be bound is the caller's answer). Leaves the failure in WSAGetLastError().
+static int BindEphemeralRetrying(SOCKET sock, const struct sockaddr* addr, int addr_len, int port) {
+  for(int tried = 1; ; ++tried) {
+    if(::bind(sock, addr, addr_len) != SOCKET_ERROR) {
+      return 0;
+    }
+    const int error = WSAGetLastError();
+    if(port != 0 || !RetryEphemeralPort(error, tried)) {
+      WSASetLastError(error);
+      return SOCKET_ERROR;
+    }
+  }
+}
+
 static SOCKET ConnectAttempt(const struct addrinfo* addr, int timeout_ms, int& error) {
   SOCKET sock = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
   if(sock == INVALID_SOCKET) {
@@ -216,7 +255,13 @@ SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms
         attempt_ms = left > INT_MAX ? INT_MAX : (int)left;
       }
     }
-    sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
+    // (made again when the system would not give the socket a local port: see RetryEphemeralPort)
+    for(int tried = 1; ; ++tried) {
+      sock = ConnectAttempt(ptr, attempt_ms, attempt_error);
+      if(sock != INVALID_SOCKET || !RetryEphemeralPort(attempt_error, tried)) {
+        break;
+      }
+    }
     if(sock != INVALID_SOCKET && ConnectedToItself(sock)) {
       // connect again while the first socket still holds that port, so the system
       // must pick another: this one reaches the peer, or hears that there is none
@@ -334,7 +379,7 @@ SOCKET IPSocket::BindAny(int port, int type, bool reuse_address) {
     sin6.sin6_family = AF_INET6;
     sin6.sin6_addr = in6addr_any;
     sin6.sin6_port = htons(port);
-    if(::bind(server, (SOCKADDR*)&sin6, sizeof(sin6)) == SOCKET_ERROR) {
+    if(BindEphemeralRetrying(server, (SOCKADDR*)&sin6, sizeof(sin6), port) == SOCKET_ERROR) {
       CloseKeepingError(server);
       return INVALID_SOCKET;
     }
@@ -357,7 +402,7 @@ SOCKET IPSocket::BindAny(int port, int type, bool reuse_address) {
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons(port);
-  if(::bind(server, (SOCKADDR*)&sin, sizeof(sin)) == SOCKET_ERROR) {
+  if(BindEphemeralRetrying(server, (SOCKADDR*)&sin, sizeof(sin), port) == SOCKET_ERROR) {
     CloseKeepingError(server);
     return INVALID_SOCKET;
   }
@@ -424,7 +469,7 @@ SOCKET IPSocket::BindAddress(const char* host, int port, int type, SocketError& 
         WSASetLastError(0);
       }
 
-      if(::bind(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
+      if(BindEphemeralRetrying(sock, ptr->ai_addr, (int)ptr->ai_addrlen, port) == SOCKET_ERROR) {
         last_error = WSAGetLastError();
         closesocket(sock);
         continue;

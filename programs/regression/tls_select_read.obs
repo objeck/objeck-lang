@@ -1,0 +1,256 @@
+#~
+Select on a TLS socket while another thread is reading it.
+
+Driven by run_vm_flag_tests.py (check_tls_select_read), which makes the certificate.
+
+TCPSecureSocket->Select(false) asks whether a read would find something. It looked at the
+session's read state -- the bytes mbedTLS has decrypted and not handed out, and the byte a
+Char[] read gives back when it has looked one byte past an incomplete character -- with no
+lock, while a read on another thread wrote both (Codex delta review of round 3, slice E,
+finding 3). It now takes the session's read lock if the lock is free, and answers 0, "not
+ready", when a read is in progress: that read owns what has arrived.
+
+  held <cert> <key>     with OBJECK_NATIVE_TEST_PAUSE=tls-char-before-pushback=600. The peer
+      sends F0 41. A thread reads one character: it takes F0, then 41 while looking for the
+      rest of the character, and is held before it gives 41 back. At that moment nothing is
+      readable: the socket is empty and the byte is in the reader's hands. Select must
+      answer 0 then; 1 once the read has returned (the byte it gave back); and 0 again
+      when ReadByte has taken that byte, which must be 41.
+
+  stream <cert> <key>   The peer sends E2 82 | AC F0 41 forty times, with a pause at each
+      cut: the euro sign in two pieces, then a lead byte that nothing completes, then 'A'.
+      That is three characters a group (the euro sign, U+FFFD, 'A'), and reading the second
+      takes the 'A' and gives it back each time, so the push back slot is written and
+      cleared throughout. One thread reads the hundred and twenty characters one at a time
+      while another calls Select the whole time. Every character must arrive in order, and
+      when all have been read Select must answer 0. (A ThreadSanitizer build of the VM
+      reports the unsynchronized read of the slot here before the change.)
+
+  (no argument)         print PASS, so the regression runner can run this file
+~#
+use System.Concurrency, System.IO.Net;
+
+# accepts one connection, writes what it is asked to, then waits to be told to close
+class SplitSender from Thread {
+  @server : TCPSecureSocketServer;
+  @groups : Int;
+  @release : Bool;
+  @sent : Bool;
+
+  New(server : TCPSecureSocketServer, groups : Int) {
+    Parent("split-sender");
+    @server := server;
+    @groups := groups;
+  }
+
+  method : public : Release() ~ Nil { @release := true; }
+  method : public : HasSent() ~ Bool { return @sent; }
+
+  method : public : Run(param : Base) ~ Nil {
+    client := @server->Accept();
+    if(client <> Nil) {
+      if(@groups = 0) {
+        # the "held" part: a lead byte and a byte that does not continue it
+        bytes := Byte->New[2];
+        bytes[0] := 0xF0; bytes[1] := 0x41;
+        client->WriteBuffer(0, 2, bytes);
+      }
+      else {
+        head := Byte->New[2];
+        head[0] := 0xE2; head[1] := 0x82;
+        tail := Byte->New[3];
+        tail[0] := 0xAC; tail[1] := 0xF0; tail[2] := 0x41;
+        for(i := 0; i < @groups; i += 1;) {
+          client->WriteBuffer(0, 2, head);
+          Thread->Sleep(3);
+          client->WriteBuffer(0, 3, tail);
+        };
+      };
+      @sent := true;
+      waited := 0;
+      while(<>@release & waited < 30000) {
+        Thread->Sleep(10);
+        waited += 10;
+      };
+      client->Close();
+    };
+  }
+}
+
+# reads 'count' characters, one ReadBuffer(.., 1, Char[]) each
+class CharsReader from Thread {
+  @socket : TCPSecureSocket;
+  @chars : Char[];
+  @count : Int;
+  @read : Int;
+  @finished : Bool;
+
+  New(socket : TCPSecureSocket, count : Int) {
+    Parent("chars-reader");
+    @socket := socket;
+    @count := count;
+    @chars := Char->New[count + 1];
+  }
+
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : GetRead() ~ Int { return @read; }
+  method : public : GetChar(i : Int) ~ Int { return @chars[i]->As(Int); }
+
+  method : public : Run(param : Base) ~ Nil {
+    failed := false;
+    while(@read < @count & <>failed) {
+      got := @socket->ReadBuffer(@read, 1, @chars);
+      if(got = 1) {
+        @read += 1;
+      }
+      else {
+        failed := true;
+      };
+    };
+    @finished := true;
+  }
+}
+
+# calls Select(false) until it is told to stop
+class Poller from Thread {
+  @socket : TCPSecureSocket;
+  @stop : Bool;
+  @polls : Int;
+  @errors : Int;
+  @finished : Bool;
+
+  New(socket : TCPSecureSocket) {
+    Parent("poller");
+    @socket := socket;
+  }
+
+  method : public : Stop() ~ Nil { @stop := true; }
+  method : public : IsFinished() ~ Bool { return @finished; }
+  method : public : GetPolls() ~ Int { return @polls; }
+  method : public : GetErrors() ~ Int { return @errors; }
+
+  method : public : Run(param : Base) ~ Nil {
+    while(<>@stop) {
+      ready := @socket->Select(false);
+      @polls += 1;
+      if(ready < 0) {
+        @errors += 1;
+      };
+    };
+    @finished := true;
+  }
+}
+
+class TlsSelectRead {
+  function : Main(args : String[]) ~ Nil {
+    if(args->Size() < 3) {
+      "PASS: tls_select_read"->PrintLine();
+      return;
+    };
+
+    ok := false;
+    if(args[0]->Equals("held")) {
+      ok := Held(args[1], args[2]);
+    }
+    else {
+      ok := Stream(args[1], args[2]);
+    };
+
+    if(ok) {
+      "PASS: tls_select_read run"->PrintLine();
+    }
+    else {
+      "FAIL: tls_select_read {$(args[0])}"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Connect(server : TCPSecureSocketServer, cert : String) ~ TCPSecureSocket {
+    client := TCPSecureSocket->New("127.0.0.1", server->GetPort(), cert);
+    if(<>client->IsOpen()) {
+      "the TLS client did not connect: {$(TCPSecureSocket->GetLastError())}"->PrintLine();
+      return Nil;
+    };
+    client->SetRecvTimeout(15000);
+    return client;
+  }
+
+  function : Held(cert : String, key : String) ~ Bool {
+    server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+    if(<>server->Listen()) {
+      "the TLS server does not listen"->PrintLine();
+      return false;
+    };
+    sender := SplitSender->New(server, 0);
+    sender->Execute(Nil);
+    client := Connect(server, cert);
+    if(client = Nil) {
+      return false;
+    };
+
+    reader := CharsReader->New(client, 1);
+    reader->Execute(Nil);
+    # the read has taken both bytes and is held before it gives the second one back
+    Thread->Sleep(250);
+    during := client->Select(false);
+
+    for(waited := 0; <>reader->IsFinished() & waited < 5000; waited += 5;) {
+      Thread->Sleep(5);
+    };
+    after := client->Select(false);
+    next := client->ReadByte()->As(Int);
+    drained := client->Select(false);
+
+    sender->Release();
+    client->Close();
+    sender->Join();
+    server->Close();
+
+    "held: character={$(reader->GetChar(0))} select during the read={$during} after it={$after} next byte={$next} select when read={$drained}"->PrintLine();
+    return reader->IsFinished() & reader->GetRead() = 1 & reader->GetChar(0) = 0xFFFD &
+      during = 0 & after = 1 & next = 0x41 & drained = 0;
+  }
+
+  function : Stream(cert : String, key : String) ~ Bool {
+    groups := 40;
+    server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+    if(<>server->Listen()) {
+      "the TLS server does not listen"->PrintLine();
+      return false;
+    };
+    sender := SplitSender->New(server, groups);
+    sender->Execute(Nil);
+    client := Connect(server, cert);
+    if(client = Nil) {
+      return false;
+    };
+
+    reader := CharsReader->New(client, groups * 3);
+    poller := Poller->New(client);
+    poller->Execute(Nil);
+    reader->Execute(Nil);
+
+    for(waited := 0; <>reader->IsFinished() & waited < 20000; waited += 5;) {
+      Thread->Sleep(5);
+    };
+    poller->Stop();
+    for(waited := 0; <>poller->IsFinished() & waited < 5000; waited += 5;) {
+      Thread->Sleep(5);
+    };
+
+    in_order := reader->GetRead() = groups * 3;
+    for(i := 0; in_order & i < groups; i += 1;) {
+      in_order := reader->GetChar(i * 3) = 0x20AC & reader->GetChar(i * 3 + 1) = 0xFFFD & reader->GetChar(i * 3 + 2) = 0x41;
+    };
+    # everything sent has been read: nothing is readable
+    drained := client->Select(false);
+
+    sender->Release();
+    client->Close();
+    sender->Join();
+    server->Close();
+
+    "stream: read {$(reader->GetRead())} of {$(groups * 3)} characters, in order={$in_order}, polls={$(poller->GetPolls())} errors={$(poller->GetErrors())}, select when read={$drained}"->PrintLine();
+    return reader->IsFinished() & poller->IsFinished() & in_order & poller->GetErrors() = 0 & poller->GetPolls() > 0 & drained = 0;
+  }
+}
