@@ -1,0 +1,334 @@
+#~
+A postfix update written in an operand that only one path evaluates takes
+effect at the END of its statement, like any other, and only if that operand
+was evaluated.
+
+postfix_update_conditional_operand.obs pins the second half (a skipped operand
+makes no update). The first fix for it emitted the update with the operand,
+which moved it ahead of the rest of the statement:
+
+  - `i := take ? i++ : 0;` with i = 5 made the update (6) and then assigned
+    the branch's value (5) over it: the increment was lost. `i := i++;` ends
+    with 6, and so must this.
+  - `Probe(t ? @n++ : 0)` ran Probe with @n already updated; `Probe(@n++)`
+    runs it with the old value.
+
+Also: the second operand of '&' or '|' in the TEST of '?:' is skipped like any
+other, and `(a & (i++ > 0)) ? 1 : 2` incremented i for a false a.
+
+Checked for '?:', '??', '&' and '|', nested, in a loop (the flag that records
+which path ran is reset on every pass), as the value of 'return', in an 'if'
+and a 'while' condition, for a local, a field, a Float and an array element,
+and in a method with more such statements than a frame has room for flags
+(the flags are reused). Exits 1 on a mismatch.
+~#
+class Holder {
+	@n : Int;
+
+	New(n : Int) {
+		@n := n;
+	}
+
+	method : public : Get() ~ Int {
+		return @n;
+	}
+
+	# the value an argument had, and what the field was when the call ran
+	method : public : Probe(arg : Int) ~ Int {
+		return arg * 100 + @n;
+	}
+
+	method : public : ProbeBool(arg : Bool) ~ Int {
+		return (arg ? 100 : 0) + @n;
+	}
+
+	method : public : ProbeArm(t : Bool) ~ Int {
+		return Probe(t ? @n++ : 0);
+	}
+
+	method : public : ProbePlain() ~ Int {
+		return Probe(@n++);
+	}
+
+	method : public : ProbeAnd(t : Bool) ~ Int {
+		return ProbeBool(t & (@n++ > 0));
+	}
+
+	method : public : ProbeOr(t : Bool) ~ Int {
+		return ProbeBool(t | (@n++ > 0));
+	}
+
+	method : public : ProbeDefault(peer : Holder) ~ Int {
+		return Probe(peer?->Get() ?? @n++);
+	}
+
+	method : public : ReturnArm(t : Bool) ~ Int {
+		return t ? @n++ : -1;
+	}
+}
+
+class PostfixUpdateConditionalStatementEnd {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := PostfixUpdateConditionalStatementEnd->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# called often enough to be compiled by the JIT at its default threshold
+	function : Mixed(t : Bool, u : Bool, after : IntRef) ~ Int {
+		i := 1;
+		j := 10;
+		n := 100;
+		k := t ? (u ? i++ : j++) : n++;
+		k += (t & (i++ > 0)) ? 1000 : 2000;
+		after->Set(i * 10000 + j * 100 + n);
+		return k;
+	}
+
+	# 100 statements, each with a branch that holds an update: a frame has room
+	# for 96 locals, so the flags must be reused from statement to statement
+	function : Many(t : Bool) ~ Int {
+		i := 0; k := 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0; k += t ? i++ : 0;
+		return k * 1000 + i;
+	}
+
+	method : Run() ~ Nil {
+		# the assignment's own target: the update is made after the assignment
+		i := 5;
+		take := true;
+		i := take ? i++ : 0;
+		Check("i := take ? i++ : 0, taken", i, 6);
+		i := 5;
+		i := i++;
+		Check("i := i++ (the rule it follows)", i, 6);
+		i := 5;
+		take := false;
+		i := take ? i++ : 0;
+		Check("i := take ? i++ : 0, skipped", i, 0);
+		i := 5;
+		i := take ? 0 : i--;
+		Check("i := take ? 0 : i--, taken", i, 4);
+
+		# the rest of the statement reads the value from before the update
+		i := 5;
+		take := true;
+		k := (take ? i++ : 0) + i;
+		Check("(take ? i++ : 0) + i, value", k, 10);
+		Check("(take ? i++ : 0) + i, update", i, 6);
+		i := 5;
+		k := i++ + i;
+		Check("i++ + i (the rule it follows)", k, 10);
+
+		values := Int->New[3];
+		i := 0;
+		values[take ? i++ : 2] := i + 7;
+		Check("index in a branch: element", values[0], 7);
+		Check("index in a branch: update", i, 1);
+
+		# what a callee sees of a field the argument updates
+		holder := Holder->New(5);
+		Check("Probe(@n++): the callee's view", holder->ProbePlain(), 505);
+		Check("Probe(@n++): after", holder->Get(), 6);
+		holder := Holder->New(5);
+		Check("Probe(t ? @n++ : 0), taken: the callee's view", holder->ProbeArm(true), 505);
+		Check("Probe(t ? @n++ : 0), taken: after", holder->Get(), 6);
+		Check("Probe(t ? @n++ : 0), skipped: the callee's view", holder->ProbeArm(false), 6);
+		Check("Probe(t ? @n++ : 0), skipped: after", holder->Get(), 6);
+
+		holder := Holder->New(5);
+		Check("ProbeBool(t & (@n++ > 0)), evaluated: view", holder->ProbeAnd(true), 105);
+		Check("ProbeBool(t & (@n++ > 0)), evaluated: after", holder->Get(), 6);
+		Check("ProbeBool(t & (@n++ > 0)), skipped: view", holder->ProbeAnd(false), 6);
+		Check("ProbeBool(t & (@n++ > 0)), skipped: after", holder->Get(), 6);
+		Check("ProbeBool(t | (@n++ > 0)), evaluated: view", holder->ProbeOr(false), 106);
+		Check("ProbeBool(t | (@n++ > 0)), evaluated: after", holder->Get(), 7);
+		Check("ProbeBool(t | (@n++ > 0)), skipped: view", holder->ProbeOr(true), 107);
+		Check("ProbeBool(t | (@n++ > 0)), skipped: after", holder->Get(), 7);
+
+		holder := Holder->New(5);
+		none : Holder;
+		Check("Probe(none?->Get() ?? @n++): view", holder->ProbeDefault(none), 505);
+		Check("Probe(none?->Get() ?? @n++): after", holder->Get(), 6);
+		Check("Probe(other?->Get() ?? @n++): view", holder->ProbeDefault(Holder->New(3)), 306);
+		Check("Probe(other?->Get() ?? @n++): after", holder->Get(), 6);
+
+		# the value of 'return'
+		holder := Holder->New(5);
+		Check("return t ? @n++ : -1, taken: value", holder->ReturnArm(true), 5);
+		Check("return t ? @n++ : -1, taken: after", holder->Get(), 6);
+		Check("return t ? @n++ : -1, skipped: value", holder->ReturnArm(false), -1);
+		Check("return t ? @n++ : -1, skipped: after", holder->Get(), 6);
+
+		# the default of '??'
+		i := 5;
+		i := none?->Probe(1) ?? i++;
+		Check("i := none?->Probe(1) ?? i++, default taken", i, 6);
+		i := 5;
+		i := holder?->Probe(1) ?? i++;
+		Check("i := holder?->Probe(1) ?? i++, default skipped", i, 106);
+		current : IntRef;
+		i := 5;
+		chosen := current ?? IntRef->New(i++);
+		Check("current ?? IntRef->New(i++), taken: value", chosen->Get(), 5);
+		Check("current ?? IntRef->New(i++), taken: update", i, 6);
+		chosen := chosen ?? IntRef->New(i++);
+		Check("current ?? IntRef->New(i++), skipped: update", i, 6);
+
+		# an operand '&' or '|' skips in the TEST of '?:'
+		i := 1;
+		a := false;
+		k := (a & (i++ > 0)) ? 1 : 2;
+		Check("(a & (i++ > 0)) ? 1 : 2, skipped: value", k, 2);
+		Check("(a & (i++ > 0)) ? 1 : 2, skipped: update", i, 1);
+		a := true;
+		k := (a & (i++ > 0)) ? 1 : 2;
+		Check("(a & (i++ > 0)) ? 1 : 2, evaluated: value", k, 1);
+		Check("(a & (i++ > 0)) ? 1 : 2, evaluated: update", i, 2);
+		k := (a | (i++ > 0)) ? 1 : 2;
+		Check("(a | (i++ > 0)) ? 1 : 2, skipped: value", k, 1);
+		Check("(a | (i++ > 0)) ? 1 : 2, skipped: update", i, 2);
+		a := false;
+		k := (a | (i++ > 5)) ? 1 : 2;
+		Check("(a | (i++ > 5)) ? 1 : 2, evaluated: value", k, 2);
+		Check("(a | (i++ > 5)) ? 1 : 2, evaluated: update", i, 3);
+		b := true;
+		i := 1;
+		j := 1;
+		k := (a | (b & (i++ > 0) & (j++ > 5))) ? 1 : 2;
+		Check("nested test, value", k, 2);
+		Check("nested test, updates", i * 10 + j, 22);
+		k := (b | (a & (i++ > 0) & (j++ > 5))) ? 1 : 2;
+		Check("nested test skipped, updates", i * 10 + j, 22);
+
+		# the second operand of '&' in a test, around a 'match' whose subject has a
+		# branch update of its own: the subject's flag is given back inside the
+		# operand, and the operand must not take it for itself
+		i := 0;
+		j := 0;
+		a := true;
+		t := false;
+		k := (a & ((match (t ? i++ : 5) { 5 => 1, other => 0 }) + j++ > 0)) ? 1 : 2;
+		Check("match in a test operand, branch skipped: value", k, 1);
+		Check("match in a test operand, branch skipped: updates", i * 10 + j, 1);
+		t := true;
+		k := (a & ((match (t ? i++ : 5) { 5 => 1, other => 0 }) + j++ > 0)) ? 1 : 2;
+		Check("match in a test operand, branch taken: value", k, 1);
+		Check("match in a test operand, branch taken: updates", i * 10 + j, 12);
+		a := false;
+		k := (a & ((match (t ? i++ : 5) { 5 => 1, other => 0 }) + j++ > 0)) ? 1 : 2;
+		Check("match in a test operand, operand skipped: value", k, 2);
+		Check("match in a test operand, operand skipped: updates", i * 10 + j, 12);
+
+		# nested branches, and an update of the statement's own beside them
+		i := 1;
+		j := 1;
+		n := 1;
+		t := true;
+		f := false;
+		k := n++ + (t ? (f ? i++ : j++ + (f ? 100 : i++)) : -1);
+		Check("nested ?:, value", k, 3);
+		Check("nested ?:, updates", i * 100 + j * 10 + n, 222);
+		k := n++ + (f ? (f ? i++ : j++ + (f ? 100 : i++)) : -1);
+		Check("nested ?: skipped, value", k, 1);
+		Check("nested ?: skipped, updates", i * 100 + j * 10 + n, 223);
+
+		# a loop: which branch ran is recorded anew on every pass
+		i := 0;
+		j := 0;
+		sum := 0;
+		for(pass := 0; pass < 10; pass += 1;) {
+			sum += (pass % 3 = 0) ? i++ : j++;
+		};
+		Check("loop, value", sum, 6 + 15);
+		Check("loop, updates", i * 100 + j, 406);
+
+		# in a condition: after the test, for the branch that ran
+		i := 1;
+		j := 1;
+		t := true;
+		if((t ? i++ : j++) = 1) {
+			Check("if condition, block reads", i * 10 + j, 21);
+		}
+		else {
+			Check("if condition, wrong side", 0, 1);
+		};
+		i := 0;
+		j := 0;
+		rounds := 0;
+		while(((rounds % 2 = 0) ? i++ : j++) < 2) {
+			rounds += 1;
+		};
+		Check("while condition, rounds", rounds, 4);
+		Check("while condition, updates", i * 10 + j, 32);
+
+		# a Float, and an array element: the skipped branch does not even
+		# evaluate what it would update
+		x := 1.5;
+		t := true;
+		y := t ? x++ : 0.0;
+		Check("Float, value", (y * 10.0)->As(Int), 15);
+		Check("Float, update", (x * 10.0)->As(Int), 25);
+		counts : Int[];
+		k := counts <> Nil ? counts[0]++ : -1;
+		Check("element of a Nil array, branch skipped", k, -1);
+		counts := Int->New[2];
+		k := counts <> Nil ? counts[1]++ : -1;
+		Check("element, value", k, 0);
+		Check("element, update", counts[1], 1);
+
+		# compiled by the JIT, and more statements than a frame has flags for
+		after := IntRef->New(0);
+		total := 0;
+		for(pass := 0; pass < 20000; pass += 1;) {
+			total += Mixed(pass % 2 = 0, pass % 4 = 0, after);
+			total += after->Get() % 7;
+		};
+		Check("hot: Mixed(true, true)", Mixed(true, true, after), 1001);
+		Check("hot: Mixed(true, true) updates", after->Get(), 31000 + 100);
+		Check("hot: Mixed(true, false)", Mixed(true, false, after), 1010);
+		Check("hot: Mixed(true, false) updates", after->Get(), 21100 + 100);
+		Check("hot: Mixed(false, true)", Mixed(false, true, after), 2100);
+		Check("hot: Mixed(false, true) updates", after->Get(), 11000 + 101);
+		Check("many, taken", Many(true), 4950 * 1000 + 100);
+		Check("many, skipped", Many(false), 0);
+
+		if(@fails = 0) {
+			"PASS: a postfix update in a conditional operand waits for the end of its statement"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -21,7 +21,10 @@ the same short name. This builds two libraries and checks, against them:
     (by its bundle) is the one that is built, and its type argument is the
     argument's own class, not a class of the same short name elsewhere
   - two constructors that take as many arguments, when the arguments can be
-    passed to one of them only: that one settles the type argument
+    passed to one of them only: that one settles the type argument. An
+    argument's own type arguments count: a Vector<String> cannot be passed
+    for a Vector<IntRef>, nor a Map<String, Vector<IntRef>> for a
+    Map<String, Vector<String>>
   - a library class used without type arguments where nothing settles them,
     a conflict, a broken bound and two constructors that can both be called
     and disagree are still refused, each on its line
@@ -109,6 +112,30 @@ bundle InferOne {
 
     New(left : IntRef, right : T) {
       @which := 2;
+    }
+
+    method : public : Which() ~ Int {
+      return @which;
+    }
+  }
+
+  class Sorted<T> {
+    @which : Int;
+
+    New(a : T, b : Vector<String>, c : Vector<IntRef>) {
+      @which := 1;
+    }
+
+    New(a : String, b : Vector<IntRef>, c : Vector<T>) {
+      @which := 2;
+    }
+
+    New(a : T, table : Map<String, Vector<String>>) {
+      @which := 3;
+    }
+
+    New(a : String, table : Map<String, Vector<T>>) {
+      @which := 4;
     }
 
     method : public : Which() ~ Int {
@@ -217,11 +244,26 @@ class User {
 
     right := InferOne.Tagged->New(7, "right");
     right->Which()->PrintLine();
+
+    # ... by the type arguments of a generic argument alone
+    counts := Vector->New()<IntRef>;
+    sorted := InferOne.Sorted->New("left", words, counts);
+    sorted->Which()->PrintLine();
+    sorted := InferOne.Sorted->New("left", counts, words);
+    sorted->Which()->PrintLine();
+
+    by_name := Map->New()<String, Vector<IntRef>>;
+    nested := InferOne.Sorted->New("key", by_name);
+    nested->Which()->PrintLine();
+    names := Map->New()<String, Vector<String>>;
+    flat := InferOne.Sorted->New(IntRef->New(3), names);
+    flat->Which()->PrintLine();
   }
 }
 """
 
-EXPECTED = ["text", "42", "9", "first", "5", "6", "one", "item one", "two", "22", "one", "33", "1", "2"]
+EXPECTED = ["text", "42", "9", "first", "5", "6", "one", "item one", "two", "22", "one", "33", "1", "2",
+            "1", "2", "4", "3"]
 
 # (name, source, the line and message the compiler must report)
 BAD = [

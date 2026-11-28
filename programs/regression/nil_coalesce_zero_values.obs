@@ -1,0 +1,298 @@
+#~
+The default of '??' replaces a '?->' call that was skipped or raised an error,
+never a value the call returned: 0, 0.0, false, the NUL character and an enum's
+item 0 are values.
+
+`provider?->Floats()[0] ?? -1.0` gave -1.0 for an element of 0.0, and so did a
+call returning the Float 0.0, an enum element and an enum result whose value is
+0: the emitter kept the value apart from "missing" only for Bool, Byte, Char
+and Int, and sent the rest through the test for Nil, an integer 0. A Float
+also crossed the region's labels as an integer word.
+
+Every scalar kind is checked as a call result and as an element of a call
+result, with the value zero and with a non-zero one, for a Nil receiver, for a
+call that raises an error, without '??' (a Float is 0.0 for a Nil receiver,
+also under '->As(..)'), with a call chained on the result, and in methods
+the JIT compiles. Exits 1 on a mismatch.
+~#
+enum Level := -1 {
+	Low,
+	Mid,
+	High
+}
+
+consts Mask {
+	None := 0,
+	Read := 4
+}
+
+class Source {
+	@floats : Float[];
+	@bytes : Byte[];
+	@chars : Char[];
+	@flags : Bool[];
+	@ints : Int[];
+	@levels : Level[];
+	@ratios : Int;
+
+	New() {
+		@ratios := 0;
+		@floats := Float->New[2];
+		@floats[1] := 2.5;
+		@bytes := Byte->New[2];
+		@bytes[1] := 7;
+		@chars := Char->New[2];
+		@chars[1] := 'c';
+		@flags := Bool->New[2];
+		@flags[1] := true;
+		@ints := Int->New[2];
+		@ints[1] := 9;
+		@levels := Level->New[2];
+		@levels[0] := Level->Mid;
+		@levels[1] := Level->High;
+	}
+
+	method : public : Floats() ~ Float[] {
+		return @floats;
+	}
+
+	method : public : Bytes() ~ Byte[] {
+		return @bytes;
+	}
+
+	method : public : Chars() ~ Char[] {
+		return @chars;
+	}
+
+	method : public : Flags() ~ Bool[] {
+		return @flags;
+	}
+
+	method : public : Ints() ~ Int[] {
+		return @ints;
+	}
+
+	method : public : Levels() ~ Level[] {
+		return @levels;
+	}
+
+	method : public : Ratio(n : Float) ~ Float {
+		@ratios += 1;
+		return n;
+	}
+
+	method : public : Ratios() ~ Int {
+		return @ratios;
+	}
+
+	method : public : Divide(n : Float, d : Int) ~ Float {
+		return n * (10 / d)->As(Float);
+	}
+
+	method : public : Count(n : Int) ~ Int {
+		return n;
+	}
+
+	method : public : Flag(b : Bool) ~ Bool {
+		return b;
+	}
+
+	method : public : Letter(c : Char) ~ Char {
+		return c;
+	}
+
+	method : public : Small(b : Byte) ~ Byte {
+		return b;
+	}
+
+	method : public : LevelOf(n : Int) ~ Level {
+		return n = 0 ? Level->Mid : Level->High;
+	}
+
+	method : public : MaskOf(n : Int) ~ Mask {
+		return n = 0 ? Mask->None : Mask->Read;
+	}
+}
+
+class NilCoalesceZeroValues {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := NilCoalesceZeroValues->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	method : CheckFloat(name : String, got : Float, want : Float) ~ Nil {
+		if(got <> want) {
+			@fails += 1;
+			"FAIL {$name}: {$got} (expected {$want})"->PrintLine();
+		};
+	}
+
+	# compiled by the JIT at its default threshold
+	function : HotElement(source : Source, i : Int) ~ Float {
+		return source?->Floats()[i] ?? -1.0;
+	}
+
+	function : HotCall(source : Source, n : Float) ~ Float {
+		return source?->Ratio(n) ?? -1.0;
+	}
+
+	function : HotNoDefault(source : Source, n : Float) ~ Float {
+		x := source?->Ratio(n);
+		return x + 1.0;
+	}
+
+	function : HotLevel(source : Source, n : Int) ~ Int {
+		level := source?->LevelOf(n) ?? Level->Low;
+		return level->As(Int);
+	}
+
+	method : Run() ~ Nil {
+		source := Source->New();
+		none : Source;
+
+		# Float
+		CheckFloat("Float element 0.0", source?->Floats()[0] ?? -1.0, 0.0);
+		CheckFloat("Float element", source?->Floats()[1] ?? -1.0, 2.5);
+		CheckFloat("Float element, Nil receiver", none?->Floats()[1] ?? -1.0, -1.0);
+		CheckFloat("Float element, out of bounds", source?->Floats()[5] ?? -1.0, -1.0);
+		CheckFloat("Float call 0.0", source?->Ratio(0.0) ?? -1.0, 0.0);
+		CheckFloat("Float call", source?->Ratio(1.5) ?? -1.0, 1.5);
+		CheckFloat("Float call, Nil receiver", none?->Ratio(1.5) ?? -1.0, -1.0);
+		CheckFloat("Float call, error", source?->Divide(1.5, 0) ?? -1.0, -1.0);
+		CheckFloat("Float call, no error", source?->Divide(1.5, 5) ?? -1.0, 3.0);
+
+		# a Float without a default: 0.0 where an object would be Nil
+		x := source?->Ratio(1.5);
+		CheckFloat("Float, no default", x, 1.5);
+		x := none?->Ratio(1.5);
+		CheckFloat("Float, no default, Nil receiver", x, 0.0);
+		x := source?->Floats()[1];
+		CheckFloat("Float element, no default", x, 2.5);
+		x := none?->Floats()[1];
+		CheckFloat("Float element, no default, Nil receiver", x, 0.0);
+
+		# as a statement: the Float is dropped
+		asked := source->Ratios();
+		source?->Ratio(1.5);
+		none?->Ratio(1.5);
+		source?->Floats()[1];
+		(source?->Ratio(0.0) ?? -1.0)->ToString();
+		Check("Float call as a statement", source->Ratios() - asked, 2);
+
+		# the default is an expression of its own, and the result takes part in one
+		i := 0;
+		x := 0.5 + (source?->Ratio(0.0) ?? i++->As(Float));
+		CheckFloat("Float in a sum, value", x, 0.5);
+		Check("Float in a sum, default skipped", i, 0);
+		x := 0.5 + (none?->Ratio(0.0) ?? i++->As(Float) + 4.0);
+		CheckFloat("Float in a sum, default", x, 4.5);
+		Check("Float in a sum, default taken", i, 1);
+		Check("Float result, chained call", (source?->Ratio(0.0) ?? -1.0)->ToString()->Equals("0.000000") ? 1 : 0, 1);
+
+		# a cast on the call converts the word the region yields
+		n := source?->Ratio(3.75)->As(Int);
+		Check("Float call as Int", n, 3);
+		n := none?->Ratio(3.75)->As(Int);
+		Check("Float call as Int, Nil receiver", n, 0);
+		x := source?->Count(3)->As(Float);
+		CheckFloat("Int call as Float", x, 3.0);
+		x := none?->Count(3)->As(Float);
+		CheckFloat("Int call as Float, Nil receiver", x, 0.0);
+
+		# Int, Byte, Char, Bool
+		Check("Int element 0", source?->Ints()[0] ?? -1, 0);
+		Check("Int element", source?->Ints()[1] ?? -1, 9);
+		Check("Int element, Nil receiver", none?->Ints()[0] ?? -1, -1);
+		Check("Int call 0", source?->Count(0) ?? -1, 0);
+		Check("Int call, Nil receiver", none?->Count(0) ?? -1, -1);
+
+		nine := 9->As(Byte);
+		small := source?->Bytes()[0] ?? nine;
+		Check("Byte element 0", small->As(Int), 0);
+		small := source?->Bytes()[1] ?? nine;
+		Check("Byte element", small->As(Int), 7);
+		small := none?->Bytes()[0] ?? nine;
+		Check("Byte element, Nil receiver", small->As(Int), 9);
+		small := source?->Small(0) ?? nine;
+		Check("Byte call 0", small->As(Int), 0);
+		small := none?->Small(0) ?? nine;
+		Check("Byte call, Nil receiver", small->As(Int), 9);
+
+		letter := source?->Chars()[0] ?? 'z';
+		Check("Char element NUL", letter->As(Int), 0);
+		letter := source?->Chars()[1] ?? 'z';
+		Check("Char element", letter->As(Int), 'c'->As(Int));
+		letter := none?->Chars()[0] ?? 'z';
+		Check("Char element, Nil receiver", letter->As(Int), 'z'->As(Int));
+		letter := source?->Letter(0->As(Char)) ?? 'z';
+		Check("Char call NUL", letter->As(Int), 0);
+		letter := none?->Letter(0->As(Char)) ?? 'z';
+		Check("Char call, Nil receiver", letter->As(Int), 'z'->As(Int));
+
+		flag := source?->Flags()[0] ?? true;
+		Check("Bool element false", flag ? 1 : 0, 0);
+		flag := source?->Flags()[1] ?? false;
+		Check("Bool element true", flag ? 1 : 0, 1);
+		flag := none?->Flags()[0] ?? true;
+		Check("Bool element, Nil receiver", flag ? 1 : 0, 1);
+		flag := source?->Flag(false) ?? true;
+		Check("Bool call false", flag ? 1 : 0, 0);
+		flag := none?->Flag(false) ?? true;
+		Check("Bool call, Nil receiver", flag ? 1 : 0, 1);
+
+		# an enum and a consts group: item 0 is a value
+		level := source?->Levels()[0] ?? Level->Low;
+		Check("enum element 0", level->As(Int), 0);
+		level := source?->Levels()[1] ?? Level->Low;
+		Check("enum element", level->As(Int), 1);
+		level := none?->Levels()[0] ?? Level->High;
+		Check("enum element, Nil receiver", level->As(Int), 1);
+		level := source?->LevelOf(0) ?? Level->Low;
+		Check("enum call 0", level->As(Int), 0);
+		level := source?->LevelOf(1) ?? Level->Low;
+		Check("enum call", level->As(Int), 1);
+		level := none?->LevelOf(0) ?? Level->High;
+		Check("enum call, Nil receiver", level->As(Int), 1);
+		mask := source?->MaskOf(0) ?? Mask->Read;
+		Check("consts call 0", mask->As(Int), 0);
+		mask := source?->MaskOf(1) ?? Mask->None;
+		Check("consts call", mask->As(Int), 4);
+		mask := none?->MaskOf(0) ?? Mask->Read;
+		Check("consts call, Nil receiver", mask->As(Int), 4);
+
+		# hot
+		sum := 0.0;
+		levels := 0;
+		for(pass := 0; pass < 20000; pass += 1;) {
+			which := pass % 2 = 0 ? source : none;
+			sum += HotElement(which, pass % 2);
+			sum += HotCall(which, 0.0);
+			sum += HotNoDefault(which, 0.0);
+			levels += HotLevel(which, 0);
+		};
+		# even passes: 0.0 + 0.0 + 1.0; odd passes: -1.0 + -1.0 + 1.0
+		CheckFloat("hot: Floats", sum, 10000.0 * 1.0 + 10000.0 * -1.0);
+		# even passes: Mid (0); odd passes: Low (-1)
+		Check("hot: enum", levels, -10000);
+
+		if(@fails = 0) {
+			"PASS: '??' keeps a zero that a '?->' call returned"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

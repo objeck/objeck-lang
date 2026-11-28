@@ -54,7 +54,10 @@
 // or '@prompt' functions, and a program's record also says whether the method
 // is a function (a library's already did): 'obr --mcp' picks what to start from
 // these, where it used to go by the shape of a method's name (Loader::
-// SelectMcpEntry). The record layouts are in docs/ARCHITECTURE_MAP.md.
+// SelectMcpEntry). Since 0xffbb a library's enum record also says whether it
+// is an 'enum' or a 'consts' group, one byte after its offset: the linker
+// used to guess from the items' values (LibraryEnum::IsConsts). The record
+// layouts are in docs/ARCHITECTURE_MAP.md.
 #define MAGIC_NUM_EXE 0xffc0
 #define MAGIC_NUM_LIB 0xffbb
 // Every layout a program or a library has had since the magics above began is

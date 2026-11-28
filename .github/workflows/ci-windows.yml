@@ -1124,6 +1124,19 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_loop_condition_postfix.py "%BIN%"
 
+    # Outside a condition a postfix update is made when its statement ends, and
+    # one written in a branch of '?:', a default of '??', a second operand of '&'
+    # or '|' or the arguments or subscript of a '?->' call only when that operand
+    # was evaluated. Runs 3,200 generated statements against the rule written in
+    # Python, at -opt s0..s3 under the interpreter and the JIT.
+    - name: a postfix update in a conditional operand waits for the end of its statement (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_conditional_operand_postfix.py "%BIN%"
+
     - name: a library's generic methods infer their type arguments (Windows)
       working-directory: ./programs/regression
       shell: cmd
@@ -1163,6 +1176,19 @@ jobs:
         set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_generic_inference.py "%BIN%"
+
+    # A 'match' takes an enum's items as arms and a consts group's numbers, and
+    # needs 'other' for the second. A library's enum record says which of the two
+    # it is; this builds a library with both (a consts group of -1 and 0 among
+    # them, which used to read back as an enum) and holds every program to the
+    # same result and the same messages against the library and beside its source.
+    - name: an enum and a consts group read the same from a library and from source (Windows)
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ env.ARCH }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_enum_consts.py "%BIN%"
 
     # 'spawn { ... }' is written out as an anonymous Thread class and a lambda, named
     # for the class, file and position it is written at. A library stores them in

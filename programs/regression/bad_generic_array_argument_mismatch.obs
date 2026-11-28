@@ -1,0 +1,29 @@
+# EXTRA_LIBS: gen_collect
+# EXPECT_COMPILE_ERROR: (25,3): Undefined function/method call: 'Only(..)'
+# EXPECT_ERROR_COUNT: 3
+#~
+An array of a generic is passed and assigned only where its type arguments
+fit: a Vector[]<IntRef> is not a Vector[]<String>, as an argument (no method
+takes it; the call used to pick the method and then report the mismatch) or
+in an assignment (reported twice, by the type argument and by the whole
+type). What does fit: generic_array_argument_overloads.obs.
+~#
+use Collection;
+
+class BadGenericArrayArgumentMismatch {
+	function : Only(rows : Vector[]<String>) ~ Int {
+		return rows->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		string_rows := Vector->New[1]<String>;
+		int_rows := Vector->New[1]<IntRef>;
+
+		total := Only(string_rows);
+		same : Vector[]<String> := string_rows;
+		total += same->Size();
+		Only(int_rows);
+		wrong : Vector[]<String> := int_rows;
+		total->PrintLine();
+	}
+}

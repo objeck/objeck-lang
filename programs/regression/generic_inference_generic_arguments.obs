@@ -1,0 +1,167 @@
+# EXTRA_LIBS: gen_collect
+#~
+A constructor is set aside, while a generic class's type arguments are
+inferred, when an argument's own type arguments rule it out.
+
+With `New(a : T, b : Vector<String>, c : Vector<IntRef>)` and
+`New(a : String, b : Vector<IntRef>, c : Vector<T>)`,
+`Trio->New("left", strings, ints)` was refused: "its constructors make type
+parameter 'T' both 'System.String' and 'System.IntRef'". The check that sets a
+constructor aside (generic_inference_viable_constructors.obs) compared the
+classes of the arguments and the parameters, and for a generic only the outer
+one: a Vector<String> passed for the second constructor's Vector<IntRef>, so
+that constructor said T is IntRef. Type arguments are now compared too, by the
+rule the call is resolved by, at every depth.
+
+Each constructor is selected in turn by the type arguments alone: of a Vector,
+and of a Map's value that is itself a Vector, also beside a parameter that is
+an array of Vectors (constructors that differ in the array's own type
+arguments: generic_array_argument_overloads.obs). Two constructors that can
+both be called and disagree are still refused:
+bad_generic_infer_generic_conflict.obs. Exits 1 on a mismatch.
+~#
+use Collection;
+
+class Trio<T> {
+	@which : Int;
+	@value : T;
+
+	New(a : T, b : Vector<String>, c : Vector<IntRef>) {
+		@which := 1;
+		@value := a;
+	}
+
+	New(a : String, b : Vector<IntRef>, c : Vector<T>) {
+		@which := 2;
+		@value := c->Get(0);
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+}
+
+# the difference is one level down: the Vector inside the Map
+class Table<T> {
+	@which : Int;
+	@value : T;
+
+	New(key : T, table : Map<String, Vector<String>>) {
+		@which := 1;
+		@value := key;
+	}
+
+	New(key : String, table : Map<String, Vector<T>>) {
+		@which := 2;
+		@value := table->Find(key)->Get(0);
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+}
+
+# beside an array of a generic: the last parameter decides
+class Rows<T> {
+	@which : Int;
+	@value : T;
+
+	New(a : T, rows : Vector[]<String>, c : Vector<String>) {
+		@which := 1;
+		@value := a;
+	}
+
+	New(a : T, rows : Vector[]<String>, c : Vector<IntRef>) {
+		@which := 2;
+		@value := a;
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+}
+
+class GenericInferenceGenericArguments {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := GenericInferenceGenericArguments->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	method : Run() ~ Nil {
+		strings := Vector->New()<String>;
+		strings->AddBack("s");
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(IntRef->New(7));
+
+		# the finding: a Vector<String> is no Vector<IntRef>, so only the first
+		# constructor can be called
+		first := Trio->New("left", strings, ints);
+		Check("String, Vector<String>, Vector<IntRef>: first constructor", first->Which() = 1);
+		Check("String, Vector<String>, Vector<IntRef>: T is String", first->Value()->Equals("left"));
+
+		# and only the second with the Vectors the other way round
+		second := Trio->New("left", ints, strings);
+		Check("String, Vector<IntRef>, Vector<String>: second constructor", second->Which() = 2);
+		Check("String, Vector<IntRef>, Vector<String>: T is String", second->Value()->Equals("s"));
+
+		# the second again, where its T is not the first one's
+		third := Trio->New("left", ints, ints);
+		Check("String, Vector<IntRef>, Vector<IntRef>: second constructor", third->Which() = 2);
+		Check("String, Vector<IntRef>, Vector<IntRef>: T is IntRef", third->Value()->Get() = 7);
+
+		# one level down
+		by_name := Map->New()<String, Vector<IntRef>>;
+		by_name->Insert("key", ints);
+		nested := Table->New("key", by_name);
+		Check("Map<String, Vector<IntRef>>: second constructor", nested->Which() = 2);
+		Check("Map<String, Vector<IntRef>>: T is IntRef", nested->Value()->Get() = 7);
+
+		names := Map->New()<String, Vector<String>>;
+		names->Insert("key", strings);
+		flat := Table->New(IntRef->New(3), names);
+		Check("IntRef, Map<String, Vector<String>>: first constructor", flat->Which() = 1);
+		Check("IntRef, Map<String, Vector<String>>: T is IntRef", flat->Value()->Get() = 3);
+
+		# beside an array of a generic
+		string_rows := Vector->New[1]<String>;
+		string_rows[0] := strings;
+		rows := Rows->New("left", string_rows, strings);
+		Check("Vector[]<String>, Vector<String>: first constructor", rows->Which() = 1);
+		Check("Vector[]<String>, Vector<String>: T is String", rows->Value()->Equals("left"));
+		rows := Rows->New("left", string_rows, ints);
+		Check("Vector[]<String>, Vector<IntRef>: second constructor", rows->Which() = 2);
+		Check("Vector[]<String>, Vector<IntRef>: T is String", rows->Value()->Equals("left"));
+
+		if(@fails = 0) {
+			"PASS: type arguments are inferred past a constructor whose generic parameters do not fit"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

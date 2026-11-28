@@ -7317,7 +7317,16 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
   // type cast
   else {
-    ParseCastTypeOf(expression, depth + 1);
+    // An expression that already has a call chain here was closed by a ')':
+    // `(source?->Bytes()[0] ?? nine)->As(Int)`. The cast is of its value, what
+    // the last call of the chain yields. Set on the head, as it is for a plain
+    // variable, it retyped the receiver: 'source' became an Int, and the call
+    // after it was refused ("$Int has no method named 'Bytes'").
+    Expression* cast_target = expression;
+    while(cast_target && cast_target->GetMethodCall()) {
+      cast_target = cast_target->GetMethodCall();
+    }
+    ParseCastTypeOf(cast_target, depth + 1);
   }
 
   return expression;

@@ -1,0 +1,151 @@
+# EXTRA_LIBS: gen_collect
+#~
+Methods and constructors that differ only in the type arguments of an array of
+a generic are told apart, and type arguments are inferred past the one that
+does not fit.
+
+With `Rows(v : Vector[]<String>)` and `Rows(v : Vector[]<IntRef>)`, a call
+with an array of Vector<IntRef> was refused: "Incompatible generic type
+arguments: 'Collection.Vector<System.String>[]' and
+'Collection.Vector<System.IntRef>[]'". An array of a class matched a parameter
+by the class alone, so both methods matched, the first was taken and the check
+that follows refused it. One value of a generic was always matched by its type
+arguments; an array of them now is too.
+
+Each overload is selected in turn, for a function, a method and a constructor,
+with one and with two such parameters; a generic class's constructors that
+differ only there settle its type argument (generic_inference_generic_arguments.obs
+has the forms without an array). What still does not fit is refused:
+bad_generic_array_argument_mismatch.obs. Exits 1 on a mismatch.
+~#
+use Collection;
+
+class Grid<T> {
+	@which : Int;
+	@value : T;
+
+	New(a : T, rows : Vector[]<String>, more : Vector[]<IntRef>) {
+		@which := 1;
+		@value := a;
+	}
+
+	New(a : String, rows : Vector[]<IntRef>, more : Vector[]<T>) {
+		@which := 2;
+		@value := more[0]->Get(0);
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Value() ~ T {
+		return @value;
+	}
+}
+
+class Sorter {
+	@which : Int;
+
+	New(rows : Vector[]<String>) {
+		@which := 1;
+	}
+
+	New(rows : Vector[]<IntRef>) {
+		@which := 2;
+	}
+
+	method : public : Which() ~ Int {
+		return @which;
+	}
+
+	method : public : Width(rows : Vector[]<String>) ~ Int {
+		return rows[0]->Get(0)->Size();
+	}
+
+	method : public : Width(rows : Vector[]<IntRef>) ~ Int {
+		return rows[0]->Get(0)->Get();
+	}
+}
+
+class GenericArrayArgumentOverloads {
+	@fails : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := GenericArrayArgumentOverloads->New();
+		test->Run();
+	}
+
+	New() {
+		@fails := 0;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@fails += 1;
+			"FAIL {$name}"->PrintLine();
+		};
+	}
+
+	function : Rows(rows : Vector[]<String>) ~ Int {
+		return 1;
+	}
+
+	function : Rows(rows : Vector[]<IntRef>) ~ Int {
+		return 2;
+	}
+
+	function : Pair(left : Vector[]<String>, right : Vector[]<IntRef>) ~ Int {
+		return 12;
+	}
+
+	function : Pair(left : Vector[]<IntRef>, right : Vector[]<String>) ~ Int {
+		return 21;
+	}
+
+	function : Only(rows : Vector[]<String>) ~ Int {
+		return rows->Size();
+	}
+
+	method : Run() ~ Nil {
+		strings := Vector->New()<String>;
+		strings->AddBack("seven");
+		ints := Vector->New()<IntRef>;
+		ints->AddBack(IntRef->New(7));
+		string_rows := Vector->New[1]<String>;
+		string_rows[0] := strings;
+		int_rows := Vector->New[1]<IntRef>;
+		int_rows[0] := ints;
+
+		# a function
+		Check("Rows(Vector[]<String>)", Rows(string_rows) = 1);
+		Check("Rows(Vector[]<IntRef>)", Rows(int_rows) = 2);
+		Check("Pair(String rows, IntRef rows)", Pair(string_rows, int_rows) = 12);
+		Check("Pair(IntRef rows, String rows)", Pair(int_rows, string_rows) = 21);
+		Check("one method, its own type", Only(string_rows) = 1);
+
+		# a method and a constructor
+		sorter := Sorter->New(string_rows);
+		Check("New(Vector[]<String>)", sorter->Which() = 1);
+		Check("Width(Vector[]<String>)", sorter->Width(string_rows) = 5);
+		sorter := Sorter->New(int_rows);
+		Check("New(Vector[]<IntRef>)", sorter->Which() = 2);
+		Check("Width(Vector[]<IntRef>)", sorter->Width(int_rows) = 7);
+
+		# a generic class: the type argument is inferred from the constructor that fits
+		first := Grid->New("left", string_rows, int_rows);
+		Check("Grid: first constructor", first->Which() = 1);
+		Check("Grid: T is String", first->Value()->Equals("left"));
+		second := Grid->New("left", int_rows, string_rows);
+		Check("Grid: second constructor", second->Which() = 2);
+		Check("Grid: T is String, from the array", second->Value()->Equals("seven"));
+		third := Grid->New("left", int_rows, int_rows);
+		Check("Grid: second constructor, T is IntRef", third->Which() = 2 & third->Value()->Get() = 7);
+
+		if(@fails = 0) {
+			"PASS: overloads are told apart by the type arguments of an array of a generic"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

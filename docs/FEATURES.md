@@ -434,9 +434,11 @@ A chain that ends in a value type needs `??` to supply the result, since an
 size := maybe?->ToUpper()->Size() ?? -1;
 ```
 
-For a guarded value -- `Bool`, `Byte`, `Char` or `Int` -- the default replaces
-only a failure: `size` above is `-1` when `maybe` is `Nil` and `0` when it is
-`""`. For a guarded object, `??` takes the default when the chain failed or
+For a guarded value -- `Bool`, `Byte`, `Char`, `Int`, `Float`, an enum or a
+`consts` value, or such an element of a call's result (`p?->Items()[0]`) -- the
+default replaces only a failure: `size` above is `-1` when `maybe` is `Nil` and
+`0` when it is `""`, and `p?->Ratio() ?? -1.0` is `0.0` when `Ratio()` returns
+`0.0`. For a guarded object, `??` takes the default when the chain failed or
 yielded `Nil`.
 
 Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
@@ -1098,7 +1100,7 @@ Int->ToByte(300)->PrintLine();                # 44
 | Where `i++` is written | When `i` changes |
 |---|---|
 | Anywhere not listed below | At the end of the statement, after everything in it has been evaluated: `k := i++ + i;` with `i` at 5 gives 10, then `i` is 6. `a[i++] := i;` stores the old `i` at the old index. Every update of a statement has run when the statement ends. |
-| An operand only one path evaluates: the default of `??`, a branch of `?:`, the second operand of `&` or <code>&#124;</code> in a value, an argument of a `?->` call | When that operand has been evaluated, and not at all when it is skipped. |
+| An operand only one path evaluates: the default of `??`, a branch of `?:`, the second operand of `&` or <code>&#124;</code> in a value, an argument or a subscript of a `?->` call | At the end of the statement too, and only if that operand was evaluated: `i := take ? i++ : 0;` with `i` at 5 leaves 6 for a true `take` (the 5 is assigned, then the update is made, as in `i := i++;`) and 0 for a false one. A skipped operand changes nothing. |
 | The subject of `match` or `select` | Before the arm is chosen, so every arm sees the new value; the arm is chosen by the old one. |
 | The condition of `if`, `else if`, `while`, `for` or `do { } while(..)` | Every time the condition is tested, between the test and the branch. The test uses the old value; the block or loop body, and the code after it, see the new one. An operand that `&` or <code>&#124;</code> skips does not change it, and the second operand reads what the first one changed. |
 

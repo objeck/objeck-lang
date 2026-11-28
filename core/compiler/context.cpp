@@ -5684,7 +5684,12 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, std::w
   Type* type;
   // process cast
   if(expression->GetCastType()) {
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable()) {
+    // 'x->As(T)->M()' is a call that carries its variable, and the calls after
+    // it are resolved here. An Otherwise() written on a variable carries one
+    // too, but `(x ?? y)->As(T)->M()` is not that form: its cast is of the
+    // value '??' yields, and M() is looked up in T like any call after a cast.
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable() &&
+       !static_cast<MethodCall*>(expression)->IsOtherwiseIntrinsic()) {
       while(expression->GetMethodCall()) {
         AnalyzeExpressionMethodCall(expression->GetMethodCall(), 0);
         expression = expression->GetMethodCall();
@@ -6373,6 +6378,15 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
         if(calling_type->GetType() == CLASS_TYPE &&
            IsClassEnumParameterMatch(calling_type, method_type) &&
            calling_type->GetDimension() == method_type->GetDimension()) {
+          // An array of a generic is matched by its type arguments too, as one
+          // value of it is below. Without this a Vector[]<String> matched a
+          // Vector[]<IntRef> parameter: two methods that differ only there
+          // could not be told apart, and the one picked was then refused for
+          // the mismatch ("Incompatible generic type arguments").
+          if((calling_type->HasGenerics() || method_type->HasGenerics()) &&
+             !CheckGenericEqualTypes(calling_type, method_type, calling_param, true, false)) {
+            return -1;
+          }
           return 0;
         }
         // basic arrays
@@ -7154,12 +7168,112 @@ Type* ContextAnalyzer::SubstituteClassGenerics(Type* param, Class* klass, Librar
 }
 
 /****************************
+ * False when two type arguments of one generic class cannot stand for each
+ * other: the parameter's ('IntRef' in 'Vector<IntRef>', after a candidate's
+ * bindings were put in) and the argument's ('String' in 'Vector<String>').
+ *
+ * The rule is the one a call is resolved by (CheckGenericEqualTypes): the same
+ * class, or, for a type parameter declared 'out' or 'in', a class that derives
+ * from the other in that direction. It is applied to their own type arguments
+ * in turn ('Map<String, Vector<IntRef>>'). Anything that is not two classes
+ * this finds -- a type parameter of the class the call stands in, a class with
+ * a generic interface, which the resolver compares by that interface -- counts
+ * as fitting.
+ ****************************/
+bool ContextAnalyzer::GenericArgumentMayFit(Type* param_argument, Type* argument_argument, GenericVariance variance, Class* context)
+{
+  if(!param_argument || !argument_argument || param_argument->GetType() != CLASS_TYPE ||
+     argument_argument->GetType() != CLASS_TYPE) {
+    return true;
+  }
+
+  // resolved on copies (resolving renames a type in place)
+  Type* param_type = TypeFactory::Instance()->MakeType(param_argument);
+  Type* argument_type = TypeFactory::Instance()->MakeType(argument_argument);
+  Class* param_klass = nullptr; LibraryClass* param_lib_klass = nullptr;
+  Class* argument_klass = nullptr; LibraryClass* argument_lib_klass = nullptr;
+  // 'context' is the program class whose constructor declares the parameter
+  if(!(context ? ResolveClassEnumType(param_type, context) : ResolveClassEnumType(param_type)) ||
+     !GetProgramOrLibraryClass(param_type, param_klass, param_lib_klass) ||
+     !ResolveClassEnumType(argument_type) || !GetProgramOrLibraryClass(argument_type, argument_klass, argument_lib_klass)) {
+    return true;
+  }
+
+  if((param_klass && param_klass->HasGenericInterface()) || (param_lib_klass && param_lib_klass->HasGenericInterface()) ||
+     (argument_klass && argument_klass->HasGenericInterface()) || (argument_lib_klass && argument_lib_klass->HasGenericInterface())) {
+    return true;
+  }
+
+  const std::wstring param_class_name = param_klass ? param_klass->GetName() : param_lib_klass->GetName();
+  const std::wstring argument_class_name = argument_klass ? argument_klass->GetName() : argument_lib_klass->GetName();
+  if(param_class_name != argument_class_name) {
+    switch(variance) {
+    case GENERIC_COVARIANT:
+      // 'out': the argument's may derive from the parameter's
+      return ValidDownCast(param_class_name, argument_klass, argument_lib_klass);
+
+    case GENERIC_CONTRAVARIANT:
+      // 'in': the parameter's may derive from the argument's
+      return ValidDownCast(argument_class_name, param_klass, param_lib_klass);
+
+    default:
+      return false;
+    }
+  }
+
+  return GenericArgumentsMayFit(param_type, argument_type, param_klass, param_lib_klass, context);
+}
+
+/****************************
+ * False when a parameter and an argument of the same generic class name type
+ * arguments that cannot stand for each other (GenericArgumentMayFit). One
+ * that names none, or a different number of them, is left to the resolver.
+ ****************************/
+bool ContextAnalyzer::GenericArgumentsMayFit(Type* param, Type* arg, Class* klass, LibraryClass* lib_klass, Class* context)
+{
+  if(!param->HasGenerics() || !arg->HasGenerics()) {
+    return true;
+  }
+
+  const std::vector<Type*> param_arguments = param->GetGenerics();
+  const std::vector<Type*> argument_arguments = arg->GetGenerics();
+  if(param_arguments.size() != argument_arguments.size()) {
+    return true;
+  }
+
+  for(size_t i = 0; i < param_arguments.size(); ++i) {
+    GenericVariance variance = GENERIC_INVARIANT;
+    if(klass && i < klass->GetGenericClasses().size()) {
+      variance = klass->GetGenericClasses()[i]->GetVariance();
+    }
+    else if(lib_klass && i < lib_klass->GetGenericClasses().size()) {
+      variance = lib_klass->GetGenericClasses()[i]->GetVariance();
+    }
+
+    if(!GenericArgumentMayFit(param_arguments[i], argument_arguments[i], variance, context)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
  * False when an argument of this type cannot be passed for a parameter of
  * this type, whatever conversion, boxing, unboxing or widening the call is
- * allowed: a String for an IntRef, an Int[] for an Int, a Widget for a Float.
+ * allowed: a String for an IntRef, an Int[] for an Int, a Widget for a Float,
+ * a Vector<String> for a Vector<IntRef>.
  * Anything this cannot tell -- a function type, a class it does not find (a
- * type parameter of the class the call stands in), the type arguments of a
- * generic -- counts as passable, so the answer errs towards the candidate.
+ * type parameter of the class the call stands in), the classes of two arrays
+ * that are not one generic class -- counts as passable, so the answer errs
+ * towards the candidate.
+ *
+ * The type arguments of a generic used to count as passable too. With
+ * 'New(a : T, b : Vector<String>, c : Vector<IntRef>)' and
+ * 'New(a : String, b : Vector<IntRef>, c : Vector<T>)', a call with a String, a
+ * Vector<String> and a Vector<IntRef> kept the second constructor -- only the
+ * outer Vector was compared -- and its T, IntRef, was reported as a conflict
+ * with the first one's String.
  *
  * Used only to set aside constructors while a generic class's type arguments
  * are inferred (InferNewTypeArguments); the call itself is resolved by
@@ -7189,12 +7303,12 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
   const bool param_class = param->GetType() == CLASS_TYPE;
   const bool arg_class = arg->GetType() == CLASS_TYPE;
 
-  // arrays: of the same primitive, or of classes (which this does not compare)
-  if(arg_dimension > 0) {
-    if(param_class || arg_class) {
-      return param_class && arg_class;
-    }
-    return param->GetType() == arg->GetType();
+  // arrays: of the same primitive, or of classes. Of two class arrays only
+  // the type arguments of one generic class are compared (below), as the
+  // resolver compares them (MatchCallingParameter).
+  const bool is_array = arg_dimension > 0;
+  if(is_array && !(param_class && arg_class)) {
+    return !param_class && !arg_class && param->GetType() == arg->GetType();
   }
 
   // the classes, resolved on copies (resolving renames a type in place)
@@ -7231,6 +7345,11 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
     }
   }
 
+  if(is_array) {
+    const bool same_class = (param_klass || param_lib_klass) && param_klass == arg_klass && param_lib_klass == arg_lib_klass;
+    return !same_class || GenericArgumentsMayFit(param_type, arg_type, param_klass, param_lib_klass, klass);
+  }
+
   EntryType held;
   if(!param_class) {
     // a primitive parameter: a primitive that converts, an enum item, or a
@@ -7261,7 +7380,12 @@ bool ContextAnalyzer::ArgumentMayFit(Type* param, Type* arg, int arg_dimension, 
 
   const std::wstring param_class_name = param_klass ? param_klass->GetName() : param_lib_klass->GetName();
   const std::wstring arg_class_name = arg_klass ? arg_klass->GetName() : arg_lib_klass->GetName();
-  return param_class_name == arg_class_name || ValidDownCast(param_class_name, arg_klass, arg_lib_klass);
+  if(param_class_name == arg_class_name) {
+    // one generic class: its type arguments, as the resolver compares them
+    return GenericArgumentsMayFit(param_type, arg_type, param_klass, param_lib_klass, klass);
+  }
+
+  return ValidDownCast(param_class_name, arg_klass, arg_lib_klass);
 }
 
 /****************************
@@ -9703,7 +9827,8 @@ void ContextAnalyzer::AnalyzeSelectSubjectEnum(Expression* expression, Enum*& ee
       // Not 'GetOffset() < 0': that set aside every enum numbered from a
       // negative value along with the consts groups (Number->Format := -20,
       // Runtime->Signal := -40), so a 'match' that named all of its items was
-      // still told to add an 'other' arm.
+      // still told to add an 'other' arm. The library's record says which of
+      // the two it is.
       if(lib_eenum && lib_eenum->IsConsts()) {
         lib_eenum = nullptr;
       }
@@ -13050,6 +13175,24 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             }
             ProcessError(expression, L"Incompatible generic type arguments: '" + FormatGenericType(left) + L"' and '" + FormatGenericType(right) + L"'");
           }
+          else {
+            // The mapping gives the right side the left side's own type
+            // arguments, for a right side that still names type parameters
+            // ('Vector<T>'). It made any two sets of them equal, written out
+            // or not: a Map<String, Vector<String>> was passed for, assigned
+            // to and returned as a Map<String, Vector<IntRef>>, and the
+            // IntRef read out of it was a String. Two type arguments that are
+            // both classes are therefore compared, at every depth
+            // (GenericArgumentMayFit); a type parameter still fits anything.
+            Type* target_arg = left_is_target ? left_generic_type : right_generic_type;
+            Type* source_arg = left_is_target ? right_generic_type : left_generic_type;
+            if(!GenericArgumentMayFit(target_arg, source_arg, variance, nullptr)) {
+              if(check_only) {
+                return false;
+              }
+              ProcessError(expression, L"Incompatible generic type arguments: '" + FormatGenericType(left) + L"' and '" + FormatGenericType(right) + L"'");
+            }
+          }
         }
       }
     }
@@ -13384,9 +13527,14 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
 
 /****************************
  * True for an expression whose value is a whole array: a variable or a call's
- * result that has a dimension and no subscript, a jagged array's row, or an
- * array literal. An element ('a[i]', 'Items()[i]') and anything computed from
- * one are a single value, although their type still carries the dimension.
+ * result that has a dimension and no subscript, a jagged array's row, an
+ * array literal, or a '?:' or a 'match'/'select' value that yields one of
+ * these. An element ('a[i]', 'Items()[i]') and anything computed from one are
+ * a single value, although their type still carries the dimension.
+ *
+ * Every kind of expression that can yield an array has to be named here: one
+ * that is not is taken for a value, and `values[t ? left : right]` with two
+ * Int[] compiled, the chosen array's address used as the index.
  ****************************/
 bool ContextAnalyzer::IsWholeArray(Expression* expression)
 {
@@ -13405,6 +13553,17 @@ bool ContextAnalyzer::IsWholeArray(Expression* expression)
 
   case STAT_ARY_EXPR:
     return true;
+
+  case COND_EXPR: {
+    // AnalyzeConditional gives the conditional the dimension of the value its
+    // branches yield: none for 't ? a[0] : b[1]', the arrays' for 't ? a : b'
+    Type* eval_type = expression->GetEvalType();
+    return eval_type && eval_type->GetDimension() > 0;
+  }
+
+  case STMT_SEQ_EXPR:
+    // a 'match' or 'select' used as a value: what its arms left
+    return IsWholeArray(static_cast<SequenceExpression*>(expression)->GetValue());
 
   default:
     return false;

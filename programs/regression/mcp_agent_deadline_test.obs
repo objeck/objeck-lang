@@ -104,7 +104,7 @@ class McpAgentDeadlineTest {
 		timer := System.Time.Timer->New(true);
 		result := agent->Run("go");
 		elapsed := (timer->GetElapsedTime() * 1000.0)->As(Int);
-		"  {$what}: back after {$elapsed} ms, {$result->GetStopReason()}"->PrintLine();
+		"  {$what}: back after {$elapsed} ms, {$result->GetStopReason()}"->ErrorLine();
 		Check(elapsed >= 900 & elapsed < 5000, "{$what}: the run is back about when its deadline passes, not at the handler's own limit ({$elapsed} ms)");
 		Check(Same(result->GetStopReason(), "deadline"), "{$what}: the stop reason is deadline");
 		Check(result->GetSteps()->Size() = 1 & result->GetModelCalls() = 1, "{$what}: the model is not asked again");
@@ -138,7 +138,7 @@ class McpAgentDeadlineTest {
 		timer := System.Time.Timer->New(true);
 		result := agent->Run("go");
 		elapsed := (timer->GetElapsedTime() * 1000.0)->As(Int);
-		"  a scope's wall limit: back after {$elapsed} ms, {$result->GetStopReason()}"->PrintLine();
+		"  a scope's wall limit: back after {$elapsed} ms, {$result->GetStopReason()}"->ErrorLine();
 		Check(elapsed >= 250 & elapsed < 5000, "a scope's wall limit is a deadline the token knows as well ({$elapsed} ms)");
 		Check(Same(result->GetStopReason(), "deadline"), "and the stop reason is deadline");
 	}
