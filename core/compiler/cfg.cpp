@@ -198,7 +198,7 @@ namespace backend {
       for(size_t k = i; k < j; ++k) {
         block_of[k] = b.id;
       }
-      blocks.push_back(b);
+      blocks.push_back(std::move(b));
       i = j;
     }
 
