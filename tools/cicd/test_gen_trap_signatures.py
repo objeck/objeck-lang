@@ -160,12 +160,25 @@ def corpus_with(contexts):
 
 library = gen.library_traps(set(shapes))
 whole = committed_contexts()
-check("the library sources hold SYS_TIME in both Date constructors",
-      sorted(where for where, _ in library.get("SYS_TIME", [])) == ["System.Time.Date:New", "System.Time.Date:New"], library.get("SYS_TIME"))
-check("the committed row of SYS_TIME names both", sorted(whole.get("SYS_TIME", [])) == ["System.Time.Date:New:", "System.Time.Date:New:l,"],
-      whole.get("SYS_TIME"))
-check("the library sources and the committed rows name the same methods, for all %d frame-reading traps" % len(whole),
-      all(not gen.context_problems(trap, whole[trap], library) for trap in whole) and set(whole) == set(t for t in frames if t in shapes))
+SYS_TIME_METHODS = ["System.Time.Date:New:", "System.Time.Date:New:l,"]
+check("the library sources hold SYS_TIME in both Date constructors, parameters and all",
+      sorted(where for where, _ in library.get("SYS_TIME", [])) == SYS_TIME_METHODS, library.get("SYS_TIME"))
+check("the committed row of SYS_TIME names both", sorted(whole.get("SYS_TIME", [])) == SYS_TIME_METHODS, whole.get("SYS_TIME"))
+# The sources are read independently of the table: every context of every frame-reading
+# trap is the whole name the source declaration spells, and none could not be read.
+derived = dict((trap, sorted(where for where, _ in library.get(trap, []))) for trap in whole)
+check("the library sources spell every context of the committed table, signature for signature, for all %d frame-reading traps" % len(whole),
+      all(derived[trap] == sorted(whole[trap]) for trap in whole) and set(whole) == set(t for t in frames if t in shapes),
+      [(trap, derived[trap], sorted(whole[trap])) for trap in whole if derived[trap] != sorted(whole[trap])][:2])
+check("no frame-reading trap's method has parameters the source reader gave up on",
+      not any(where.endswith(":" + gen.UNREAD_SIGNATURE) for trap in whole for where in derived[trap]))
+check("the signatures read include arrays and classes of another bundle's spelling",
+      derived.get("HTTP2_REQUEST_HDRS") == ["System.IO.Net.Http2Session:Request:o.System.String,o.System.String,b*,o.System.String,o.System.String*,"]
+      and "System.IO.Serializer:Write:o.System.Base*," in derived.get("SERL_OBJ_ARY", []), (derived.get("HTTP2_REQUEST_HDRS"), derived.get("SERL_OBJ_ARY")))
+check("a type the reader does not know is unread, not guessed",
+      gen.parameter_signature(["v", ":", "Vector", "<", "String", ">"], "System", {}) == gen.UNREAD_SIGNATURE
+      and gen.parameter_signature(["a", ":", "Thing"], "System", {"Thing": {"One", "Two"}}) == gen.UNREAD_SIGNATURE
+      and gen.parameter_signature(["a", ":", "Int", "[", ",", "]", ",", "b", ":", "Thing"], "One", {"Thing": {"One", "Two"}}) == "i**,o.One.Thing,")
 
 rows, notes, errors = gen.build_rows(corpus_with(whole), shapes, ids)
 check("a corpus with every context: no error", not errors, errors[:3])
@@ -174,6 +187,24 @@ partial = dict(whole, SYS_TIME=["System.Time.Date:New:"])
 rows, notes, errors = gen.build_rows(corpus_with(partial), shapes, ids)
 check("a corpus without System.Time.Date:New(Bool): an error for SYS_TIME, and only for it",
       len(errors) == 1 and errors[0].startswith("SYS_TIME:") and "System.Time.Date:New" in errors[0], errors[:3])
+
+# Class and method are not the method: overloads share them. These two lists have the
+# right number of 'System.Time.Date:New' and passed when names alone were compared.
+substituted = dict(whole, SYS_TIME=["System.Time.Date:New:", "System.Time.Date:New:i,o.System.String,"])
+rows, notes, errors = gen.build_rows(corpus_with(substituted), shapes, ids)
+check("another overload of Date:New in place of Date:New(Bool): an error that names both",
+      len(errors) == 1 and errors[0].startswith("SYS_TIME:") and "System.Time.Date:New:l," in errors[0]
+      and "System.Time.Date:New:i,o.System.String," in errors[0], errors[:3])
+
+extra = dict(whole, SYS_TIME=SYS_TIME_METHODS + ["System.Time.Date:New:i,"])
+rows, notes, errors = gen.build_rows(corpus_with(extra), shapes, ids)
+check("an overload of Date:New beside the two that hold the directive: an error",
+      len(errors) == 1 and errors[0].startswith("SYS_TIME:") and "System.Time.Date:New:i," in errors[0], errors[:3])
+
+swapped = dict(whole, GMT_TIME=["System.Time.Date:New:"])
+rows, notes, errors = gen.build_rows(corpus_with(swapped), shapes, ids)
+check("GMT_TIME in Date:New(), where SYS_TIME is and it is not: an error",
+      len(errors) == 1 and errors[0].startswith("GMT_TIME:"), errors[:3])
 
 stray = dict(whole, GMT_TIME=whole["GMT_TIME"] + ["Stray.Class:Method:"])
 rows, notes, errors = gen.build_rows(corpus_with(stray), shapes, ids)
@@ -242,6 +273,15 @@ cases = [
     # not empty, and one valid caller short: what a partial corpus wrote
     ("SYS_TIME without Date->New(Bool)",
      row_edit("SYS_TIME", ', L"System.Time.Date:New:|System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:", false },'), "SYS_TIME"),
+    # the same class and method, other parameters: passed while names alone were compared
+    ("SYS_TIME with another overload of Date:New in place of Date->New(Bool)",
+     row_edit("SYS_TIME", ', L"System.Time.Date:New:|System.Time.Date:New:l,", false },',
+              ', L"System.Time.Date:New:|System.Time.Date:New:i,o.System.String,", false },'), "SYS_TIME"),
+    ("SYS_TIME with an overload of Date:New beside its two",
+     row_edit("SYS_TIME", ', L"System.Time.Date:New:|System.Time.Date:New:l,", false },',
+              ', L"System.Time.Date:New:|System.Time.Date:New:i,|System.Time.Date:New:l,", false },'), "SYS_TIME"),
+    ("GMT_TIME in Date:New(), the other constructor",
+     row_edit("GMT_TIME", ', L"System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:", false },'), "GMT_TIME"),
     ("GMT_TIME in a method the library does not write it in",
      row_edit("GMT_TIME", ', L"System.Time.Date:New:l,", false },', ', L"System.Time.Date:New:l,|Stray.Class:Method:", false },'), "GMT_TIME"),
 ]
