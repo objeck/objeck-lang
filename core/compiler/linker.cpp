@@ -475,30 +475,6 @@ std::vector<LibraryEnum*> Linker::GetAllEnums()
   return all_enums;
 }
 
-LibraryAlias* Linker::SearchAliasLibraries(const std::wstring& name, const std::vector<std::wstring>& uses)
-{
-  const std::unordered_map<std::wstring, LibraryAlias*>& alias_map = GetAllAliasesMap();
-  std::unordered_map<std::wstring, LibraryAlias*>::const_iterator hit = alias_map.find(name);
-  LibraryAlias* alias = hit != alias_map.end() ? hit->second : nullptr;
-  if(alias) {
-    return alias;
-  }
-
-  std::wstring qualified; // one buffer for every "use.Name" probe: a miss used to allocate a string per use
-  for(size_t i = 0; i < uses.size(); ++i) {
-    qualified.assign(uses[i]);
-    qualified += L'.';
-    qualified += name;
-    hit = alias_map.find(qualified);
-    alias = hit != alias_map.end() ? hit->second : nullptr;
-    if(alias) {
-      return alias;
-    }
-  }
-
-  return nullptr;
-}
-
 LibraryClass* Linker::SearchClassLibraries(const std::wstring& name, const std::vector<std::wstring>& uses)
 {
   const std::unordered_map<std::wstring, LibraryClass*>& klass_map = GetAllClassesMap();

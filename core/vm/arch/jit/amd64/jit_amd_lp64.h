@@ -1161,7 +1161,6 @@ namespace Runtime {
 
     // math instructions
     void math_imm_reg(int64_t imm, Register reg, InstructionType type);
-    void math_imm_xreg(RegInstr* instr, Register reg, InstructionType type);
     void math_reg_reg(Register src, Register dest, InstructionType type);
     void math_xreg_xreg(Register src, Register dest, InstructionType type);
     void math_mem_reg(long offset, Register reg, InstructionType type);
@@ -1184,13 +1183,11 @@ namespace Runtime {
     void xor_mem_reg(long offset, Register src, Register dest);
 
     // float functions
-    void fld_mem(int32_t offset, Register src);
     void fstp_mem(int32_t offset, Register src);
     void fsin();
     void fcos();
     void ftan();
     void fsqrt();
-    void fround();
     void flog();
     void flog10();
 
@@ -1232,7 +1229,6 @@ namespace Runtime {
     void lea_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
     // mov dest, [base + index*scale + disp] and its movsd twin: one load where
     // the operand-stack code used to shift, add and then load
-    void move_base_index_reg(long disp, Register base, Register index, int scale, Register dest);
     void move_base_index_xreg(long disp, Register base, Register index, int scale, Register dest);
     // mov [base + index*scale + disp], src
     void move_reg_base_index(Register src, long disp, Register base, Register index, int scale);

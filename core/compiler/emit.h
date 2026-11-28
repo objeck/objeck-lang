@@ -1017,7 +1017,6 @@ namespace backend {
     std::vector<frontend::IntStringHolder*> int_strings;
     std::vector<frontend::FloatStringHolder*> float_strings;
     std::vector<std::wstring> bundle_names;
-    std::wstring aliases_str;
     int num_src_classes;
     int num_lib_classes;
     int string_cls_id;

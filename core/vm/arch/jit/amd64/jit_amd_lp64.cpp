@@ -5027,45 +5027,6 @@ void JitAmd64::math_mem_reg(long offset, Register reg, InstructionType type) {
   }
 }
 
-void JitAmd64::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type) {
-  switch(type) {
-  case ADD_FLOAT:
-    add_imm_xreg(instr, reg);
-    break;
-
-  case SUB_FLOAT:
-    sub_imm_xreg(instr, reg);
-    break;
-
-  case MUL_FLOAT:
-    mul_imm_xreg(instr, reg);
-    break;
-
-  case DIV_FLOAT:
-    div_imm_xreg(instr, reg);
-    break;
-    
-  case LES_FLOAT:
-  case LES_EQL_FLOAT:
-  case GTR_FLOAT:
-  case EQL_FLOAT:
-  case NEQL_FLOAT:
-  case GTR_EQL_FLOAT:
-#ifdef _WIN64
-    cmp_imm_xreg(instr->GetOperand2(), reg);
-#else
-    cmp_imm_xreg(instr->GetOperand(), reg);
-#endif
-    // See the note in math_xreg_xreg: cmov_reg must never be handed an XMM
-    // register. The caller materialises the bool into a general-purpose one.
-    cond_jmp(type);
-    break;
-    
-  default:
-    break;
-  }
-}
-
 void JitAmd64::math_mem_xreg(long offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, RBP, holder->GetRegister());
@@ -5749,48 +5710,6 @@ void JitAmd64::lea_base_index_reg(long disp, Register base, Register index, int 
   }
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [leaq " << disp << L"(%" << GetRegisterName(base) << L", %"
-        << GetRegisterName(index) << L", " << scale << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
-#endif
-}
-
-// RDX:RAX = RAX * qword [base + offset]   (F7 /5; the same shape as the idiv memory form)
-void JitAmd64::move_base_index_reg(long disp, Register base, Register index, int scale, Register dest) {
-  // mov dest, [base + index*scale + disp]: lea_base_index_reg's addressing with
-  // opcode 8B
-  unsigned char rex = 0x48;
-  if(dest > RSP && dest < XMM0) {
-    rex |= 0x04;   // REX.R
-  }
-  if(index > RSP && index < XMM0) {
-    rex |= 0x02;   // REX.X
-  }
-  if(base > RSP && base < XMM0) {
-    rex |= 0x01;   // REX.B
-  }
-  AddMachineCode(rex);
-  AddMachineCode(0x8b);
-  const bool disp8 = (disp >= -128 && disp <= 127);
-  unsigned char modrm = disp8 ? 0x44 : 0x84;   // mod=01|10, rm=100 (SIB follows)
-  RegisterEncode3(modrm, 2, dest);
-  AddMachineCode(modrm);
-  unsigned char sib;
-  switch(scale) {
-  case 1: sib = 0x00; break;
-  case 2: sib = 0x40; break;
-  case 4: sib = 0x80; break;
-  default: sib = 0xc0; break;
-  }
-  RegisterEncode3(sib, 2, index);
-  RegisterEncode3(sib, 5, base);
-  AddMachineCode(sib);
-  if(disp8) {
-    AddMachineCode((unsigned char)(int8_t)disp);
-  }
-  else {
-    AddImm((int32_t)disp);
-  }
-#ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [movq " << disp << L"(%" << GetRegisterName(base) << L", %"
         << GetRegisterName(index) << L", " << scale << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
 }
@@ -7606,16 +7525,6 @@ void JitAmd64::xor_mem_reg(long offset, Register src, Register dest) {
 
 // --- x87 ---
 
-void JitAmd64::fld_mem(int32_t offset, Register src) {
-#ifdef _DEBUG_JIT
-  std::wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%"
-    << GetRegisterName(src) << L")]" << std::endl;
-#endif
-  // encode
-  AddMachineCode(0xdd);
-  EmitModRMDisp(ModRM(src, RAX), offset);
-}
-
 void JitAmd64::fstp_mem(int32_t offset, Register src) {
 #ifdef _DEBUG_JIT
   std::wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%"
@@ -7646,11 +7555,6 @@ void JitAmd64::ftan() {
 void JitAmd64::fsqrt() {
   AddMachineCode(0xd9);
   AddMachineCode(0xfa);
-}
-
-void JitAmd64::fround() {
-  AddMachineCode(0xd9);
-  AddMachineCode(0xfc);
 }
 
 void JitAmd64::flog() {

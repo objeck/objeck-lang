@@ -523,16 +523,6 @@ bool StackProgram::AddSignalHandler(long signal_id, StackMethod* mthd)
   return true;
 }
 
-StackMethod* StackProgram::GetSignalHandler(long key)
-{
- std::unordered_map<long, StackMethod*>::iterator found = signal_handler_func.find(key);
-  if(found != signal_handler_func.end()) {
-    return found->second;
-  }
-
-  return nullptr;
-}
-
 void StackProgram::SignalHandler(int signal)
 {
   // SIGINT and SIGTERM from outside: record and return (see "Signal delivery" above)
@@ -2255,10 +2245,6 @@ void TrapProcessor::ProcessSetTime2(size_t* &op_stack, size_t* &stack_pos)
 /********************************
  * Set a time instance
  ********************************/
-void TrapProcessor::ProcessSetTime3(size_t* &op_stack, size_t* &stack_pos)
-{
-}
-
 void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &stack_pos)
 {
   INT64_VALUE value = (INT64_VALUE)PopInt(op_stack, stack_pos);
@@ -9052,10 +9038,6 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
   }
 
   return true;
-}
-
-bool TrapProcessor::SockUdpError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
-  return false;
 }
 
 bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)

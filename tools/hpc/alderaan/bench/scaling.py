@@ -26,7 +26,6 @@ from __future__ import print_function
 
 import argparse
 import csv
-import glob
 import json
 import os
 import platform

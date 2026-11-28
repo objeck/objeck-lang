@@ -24,7 +24,7 @@ usage: cfg_oracle.py <bin_dir> [-j N] [--opts s0,s1,s2,s3] [--timeout S] [--work
 <bin_dir> holds obc and an obr built with -DOBJECK_CFG_TRACE; tests are names in
 programs/regression (none: every one), or paths to .obs files (clbg, perf).
 """
-import argparse, glob, os, subprocess, sys, tempfile, shutil, concurrent.futures, threading
+import argparse, glob, os, sys, tempfile, shutil, concurrent.futures, threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REG = os.path.abspath(os.path.join(HERE, "..", "..", "programs", "regression"))

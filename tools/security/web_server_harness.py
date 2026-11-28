@@ -162,13 +162,6 @@ def c_dup_cl():
     return "PASS", "refused: %s" % (status(r) or "closed")
 
 
-def c_cl_longer_than_body():
-    r, closed, secs = raw(b"POST /data HTTP/1.1\r\nHost: x\r\nContent-Length: 100\r\n\r\nshort", 8)
-    if secs >= 7.5 and not r:
-        return "NOTE", "server waits for the missing body past 8 s (idle timeout is 30 s; one thread held per slow client)"
-    return "PASS", "%s after %.1fs" % (status(r) or "closed", secs)
-
-
 def c_big_body():
     d = b"POST /data HTTP/1.1\r\nHost: x\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % (17 * 1048576)
     r, closed, _ = raw(d, 3)
@@ -178,31 +171,6 @@ def c_big_body():
 def c_neg_cl():
     r, closed, _ = raw(b"POST /data HTTP/1.1\r\nHost: x\r\nContent-Length: -5\r\nConnection: close\r\n\r\n", 3)
     return ("PASS", status(r) or "closed") if code(r) in (0, 400, 413) else ("FINDING", "negative Content-Length: " + status(r))
-
-
-def c_long_header_name_flood():
-    hdrs = b"".join(b"X-%d: v\r\n" % i for i in range(20000))
-    r, closed, secs = raw(b"GET /data HTTP/1.1\r\nHost: x\r\nConnection: close\r\n" + hdrs + b"\r\n", 8)
-    c = code(r)
-    if 200 <= c < 300:
-        return "NOTE", "20,000 headers accepted (no header-count limit)"
-    return "PASS", status(r) or "closed"
-
-
-def c_huge_header_value():
-    r, closed, secs = raw(get("/data", b"X-Big: " + b"A" * (2 << 20) + b"\r\n"), 10)
-    c = code(r)
-    if 200 <= c < 300:
-        return "NOTE", "2 MB header value accepted (no header size limit)"
-    return "PASS", status(r) or "closed"
-
-
-def c_huge_request_line():
-    r, closed, secs = raw(b"GET /" + b"A" * (1 << 20) + b" HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", 10)
-    c = code(r)
-    if 200 <= c < 300:
-        return "NOTE", "1 MB request line accepted (no request-line limit; should be 414)"
-    return "PASS", status(r) or "closed"
 
 
 def c_reflect_inject():
@@ -217,14 +185,6 @@ def c_reflect_lf():
     if header(r, "Injected"):
         return "FINDING", "header injection via bare LF reflected into the response"
     return "PASS", "no injected header (%s)" % (status(r) or "closed")
-
-
-def c_echo_path(path, label):
-    def f():
-        r, closed, _ = raw(get(path), 3)
-        b = body(r).decode("latin-1")
-        return "NOTE", "handler saw: %s [%s]" % (b.strip()[:90], status(r) or "closed")
-    return f
 
 
 def c_range(spec, expect_codes):
@@ -249,20 +209,6 @@ def c_slowloris():
         t0 = time.time()
         ok = probe()
         return ("PASS", "300 stalled partial requests held; a normal request still answered") if ok else ("FINDING", "300 stalled partial requests starve new clients")
-    finally:
-        for s in socks:
-            s.close()
-
-
-def c_many_idle():
-    socks = []
-    try:
-        for _ in range(1500):
-            socks.append(socket.create_connection((HOST, PORT), 5))
-        ok = probe()
-        return ("PASS", "1500 idle connections open; a normal request still answered") if ok else ("FINDING", "1500 idle connections starve new clients")
-    except OSError as e:
-        return "NOTE", "could only open %d idle connections: %s" % (len(socks), e)
     finally:
         for s in socks:
             s.close()

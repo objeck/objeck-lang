@@ -369,9 +369,6 @@ def check_enum_vs_table(enum_names, rows, info_h, rep):
             rep.err("a:slot:" + r.name, "(a) %s carries a slot but operand2 is not its context" % r.name)
 
 
-READ_KIND = {"Int": "Int", "Int64": "Int64", "Char": "Char", "Double": "Double"}
-
-
 def not_in_file(row):
     return row.has("VM_ONLY") or row.has("PSEUDO")
 

@@ -47,10 +47,6 @@
 
 // basic VM tuning parameters
 
-/* FOR DEBUGGING ONLY
-#define MEM_MAX 4096 * 2
-*/
-
 #define MEM_START_MAX 4096 * 2048
 
 // after a major collection the next one waits until the heap reaches this many
@@ -114,13 +110,6 @@ struct StackFrameMonitor {
 struct CollectionInfo {
   size_t* op_stack;
   size_t stack_pos;
-};
-
-struct ClassMethodId {
-  size_t* self;
-  size_t* mem;
-  long cls_id;
-  long mthd_id;
 };
 
 class RefMap;

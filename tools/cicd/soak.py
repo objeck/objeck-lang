@@ -22,7 +22,6 @@ the run ends inside --minutes. Python standard library only.
 """
 
 import argparse
-import hashlib
 import http.client
 import json
 import os

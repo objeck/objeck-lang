@@ -1,6 +1,6 @@
 """Blind mutation fuzz of a compiled .obe against obr. Usage: obe_mutfuzz.py <obr> <seed.obe> <count> <seed> <jobs> <outdir>
 Classes: refused (exit 1 + message), ran (exit 0), error (other small exit), crash (signal / NTSTATUS), hang (timeout)."""
-import os, random, struct, subprocess, sys, zlib, hashlib, collections
+import os, random, struct, subprocess, sys, zlib, collections
 from concurrent.futures import ThreadPoolExecutor
 
 obr, seed_obe, count, seed, jobs, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), sys.argv[6]

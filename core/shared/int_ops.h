@@ -67,10 +67,6 @@ namespace objeck_int {
     return a >> (n & 63);
   }
 
-  // logical (zero-filling) shift, Objeck's '>>>'
-  inline int64_t Shr(int64_t a, int64_t n) {
-    return (int64_t)((uint64_t)a >> (n & 63));
-  }
 
   // b must not be 0
   inline int64_t Div(int64_t a, int64_t b) {

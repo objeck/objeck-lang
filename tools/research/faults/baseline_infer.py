@@ -8,7 +8,7 @@ close_inflight has no equivalent primitive: onnxruntime's Python session has no 
 used here drops the harness's reference and runs the garbage collector while workers use theirs, which
 tests that nothing is freed under them (CPython reference counting makes that so).
 """
-import gc, os, resource, sys, threading, time
+import gc, os, sys, threading, time
 import numpy as np
 import onnxruntime as ort
 

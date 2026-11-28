@@ -11270,7 +11270,6 @@ void Parser::GenerateMcpTools(Class* klass, std::vector<McpCandidate>& tools, bo
 
     // the return type decides how the result is sent
     Type* rtrn = method->GetReturn();
-    McpTy rty;
     int rkind = -1;  // 0 nil, 1 text from a value, 2 a String, 3 a JsonElement, 4 a McpToolResult
     if(rtrn->GetDimension() == 0) {
       switch(rtrn->GetType()) {

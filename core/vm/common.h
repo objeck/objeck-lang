@@ -2359,7 +2359,6 @@ class StackProgram {
   // the VM, in that order around halting the other threads, before the program is freed.
   static void StopSignalDispatch();
   static bool WaitSignalDispatchIdle(int timeout_ms);
-  StackMethod* GetSignalHandler(long key);
 
   static void InitializeProprieties();
   
@@ -2575,17 +2574,6 @@ class StackProgram {
     return class_num;
   }
 
-#ifdef _DEBUGGER
-  bool HasFile(const std::wstring &fn) {
-    for(int i = 0; i < class_num; ++i) {
-      if(classes[i]->GetFileName() == fn) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-#endif
 
   public:
 		//
@@ -3493,7 +3481,6 @@ class TrapProcessor {
   static bool SockUdpOutByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpInString(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpOutString(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
-  static bool SockUdpError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SerlInt(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SerlFloat(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
@@ -3711,7 +3698,6 @@ class TrapProcessor {
   static inline void ProcessCurrentTime(StackFrame* frame, bool is_gmt);
   static inline void ProcessSetTime1(size_t* &op_stack, size_t* &stack_pos);
   static inline void ProcessSetTime2(size_t* &op_stack, size_t* &stack_pos);
-  static inline void ProcessSetTime3(size_t* &op_stack, size_t* &stack_pos);
   static inline void ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &stack_pos);
   static inline void ProcessTimerStart(size_t* &op_stack, size_t* &stack_pos);
   static inline void ProcessTimerEnd(size_t* &op_stack, size_t* &stack_pos);

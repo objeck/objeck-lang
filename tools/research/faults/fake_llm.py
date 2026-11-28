@@ -19,7 +19,7 @@ Fault modes (--mode):
   rst        send a TCP RST (SO_LINGER 0) instead of an answer
   slowloris  the correct answer, one byte every --trickle seconds
 """
-import argparse, json, os, socket, struct, sys, threading, time
+import argparse, json, os, socket, struct, sys, time
 from socketserver import ThreadingMixIn, TCPServer, BaseRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
