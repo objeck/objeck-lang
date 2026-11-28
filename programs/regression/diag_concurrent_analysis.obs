@@ -129,6 +129,21 @@ class AnalyzeWorker from Thread {
 
 class DiagConcurrentAnalysis {
   function : Main(args : String[]) ~ Nil {
+    # One call from this thread before any worker exists. The library makes its lock
+    # (and under it its native proxy and entry-point names) on the first call, and that
+    # one step cannot itself be locked: see Proxy->Lock in diags.obs. An LSP server
+    # should do the same before it accepts connections. Everything the workers then
+    # share is made, and read, under that lock.
+    warm := String->New[1, 2];
+    warm[0, 0] := "file:///warm.obs";
+    warm[0, 1] := "class Warm {\r\n}\r\n";
+    first := Analyzer->ParseText(warm);
+    if(first = Nil) {
+      "  FAIL: the first analysis, before any thread, is Nil"->PrintLine();
+      Runtime->Exit(1);
+    };
+    first->Release();
+
     workers := AnalyzeWorker->New[8];
     for(t := 0; t < 8; t += 1;) {
       workers[t] := AnalyzeWorker->New(t);

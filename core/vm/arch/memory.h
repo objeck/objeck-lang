@@ -221,6 +221,14 @@ class MemoryManager {
   // points (dispatch loop + allocation) and park while a collection runs, so the
   // marker sees a complete, stable root set. Single-threaded programs never park.
   static std::atomic<long> mutator_count;   // registered mutator threads (incl. main)
+  // Threads the program has spawned that have not finished: counted by the parent
+  // before the native thread exists and given back as the child's last act, after
+  // it has released everything it owns (StackInterpreter::ThreadSpawned /
+  // ThreadFinished). Wider than mutator_count at both ends: a child is not a
+  // mutator until it registers, and it stops being one (UnregisterMutator) before
+  // it removes its roots from the collector's tables. Exit() and the drain at the
+  // end of Main read it.
+  static std::atomic<long> spawned_threads;
   static std::atomic<long> parked_count;    // mutators currently parked at a safepoint
   static std::atomic<bool> stw_active;      // a collection is in progress
 #ifdef _WIN32
@@ -241,6 +249,34 @@ class MemoryManager {
   static void WaitForMutatorsToPark();
   static void ReportUnparkedMutators(long waited_ms);
 
+  // LOCK ORDER. A thread that holds one of these and takes another takes them in
+  // this order, outermost first; no path takes them the other way round:
+  //
+  //   marked_sweep_lock            one collector at a time (CollectAllMemory, CollectMinor)
+  //   pda_monitor_lock             the root sets: every thread's monitor,
+  //   pda_frame_lock                 the registered frames,
+  //   pending_thread_root_lock       the mid-spawn and raised-error roots
+  //   jit_frame_lock               the compiled frames gathered by the mark phase
+  //   allocated_lock               old_generation and the allocation counters
+  //   instance_ids_lock,           leaves: nothing is taken inside them
+  //   free_memory_cache_lock
+  //
+  // stw_lock (the park handshake) is released before any lock below
+  // marked_sweep_lock is taken -- the stall watchdog only TRIES pda_monitor_lock
+  // inside it -- and gc_stats_lock is a leaf. Who nests what:
+  //   - the mark threads hold a root-set lock while they walk it and take
+  //     jit_frame_lock (CheckPdaRoots) or allocated_lock (IsAllocated, in
+  //     CheckPdaRoots, CheckPendingThreadRoots and CheckObject) inside it;
+  //     CheckJitRoots holds jit_frame_lock and takes allocated_lock inside it;
+  //   - the sweep in CollectMemory takes the three root-set locks, in the order
+  //     above, and then allocated_lock, and holds all four across the promotion,
+  //     the sweep and FixupRoots, which therefore takes none itself;
+  //   - a mutator takes one at a time (Add/RemovePdaMethodRoot,
+  //     Add/RemovePendingThreadRoot, an allocation's allocated_lock).
+  // The sweep once took allocated_lock first and the root-set locks inside it. That
+  // could not deadlock only because marking and sweeping never overlap, which
+  // ThreadSanitizer and Coverity (CID 1677214) cannot know and a later change could
+  // break; one order needs no such argument. A new nested acquisition must fit it.
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
@@ -403,6 +439,22 @@ class MemoryManager {
 
   static inline bool IsOldGen(size_t* mem) {
     return mem && (mem[MARKED_FLAG] & GC_OLD_BIT);
+  }
+
+  // An object's flag word, read while another thread may be storing into it: the
+  // mark threads set GC_MARK_BIT and GC_TRACED_BIT in the same objects with a
+  // compare-and-swap (MarkMemory, MarkClosureCaptures). A relaxed atomic load is
+  // the one instruction a plain read is, and says what the read is: the value is
+  // either the word before a concurrent store or after it, and every caller
+  // re-checks under its compare-and-swap. As a plain read it was a data race by
+  // the C++ rules (ThreadSanitizer, v2026.11.4 soak). _MSC_VER, not _WIN32: see
+  // WriteBarrier.
+  static inline size_t LoadFlags(const size_t* mem) {
+#if defined(_MSC_VER)
+    return (size_t)ReadNoFence64((const volatile LONG64*)&mem[MARKED_FLAG]);
+#else
+    return __atomic_load_n(&mem[MARKED_FLAG], __ATOMIC_RELAXED);
+#endif
   }
 
   // Generational GC fixup helper. Given a slot value, returns the relocated old-gen
@@ -579,6 +631,18 @@ class MemoryManager {
   static void Initialize(StackProgram* p, size_t m);
   // VmExit (common.h): end the process with 'status' from any VM thread.
   [[noreturn]] static void Exit(int status);
+
+  static void ThreadSpawned() {
+    spawned_threads.fetch_add(1, std::memory_order_acq_rel);
+  }
+
+  static void ThreadFinished() {
+    spawned_threads.fetch_sub(1, std::memory_order_acq_rel);
+  }
+
+  static long SpawnedThreads() {
+    return spawned_threads.load(std::memory_order_acquire);
+  }
   // test hook: the collector's fatal out-of-memory exit (see memory.cpp)
   [[noreturn]] static void TestCollectorOutOfMemory();
   // The one place the process ends (see memory.cpp): flushes every stream, then exit()

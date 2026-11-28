@@ -192,7 +192,7 @@ Stated plainly so that absence is not read as coverage:
 - **No code-coverage measurement** of the compiler, VM or libraries (no gcov, llvm-cov or similar in any workflow or Makefile), so which lines the suites execute is unknown.
 - **No cross-implementation oracle.** Every differential comparison is between configurations of the same toolchain; there is no second Objeck implementation, and no semantic specification the outputs are checked against beyond the tests' own assertions.
 - **No formal verification** of the verifier, the collector or the JIT, and no model checking of the stop-the-world protocol.
-- **Sanitizers** run only on the loader fuzz targets; the VM, JIT and compiler are not run under ASan, UBSan or TSan in CI.
+- **Sanitizers** run only on the loader fuzz targets; the VM, JIT and compiler are not run under ASan, UBSan or TSan in CI. `tools/tsan/run_tsan.sh` runs the thread tests under a ThreadSanitizer build of the VM by hand (it was clean on 2026-11-27, with the suppressions and the left-out tests its README explains); nothing schedules it.
 - **Hardware and platform spread:** the JIT backends are AMD64 and ARM64; per-push CI runs both on native runners, but nothing runs other CPUs, other GPU or ONNX execution providers, or the optional MSYS2 build.
 - **Operand-stack safety of the loader** is listed as unchecked in [SECURITY_MODEL.md](SECURITY_MODEL.md); the loader fuzzer therefore cannot show it safe.
 - **Library behaviour against real services** (HTTP/2 and HTTP/3 against live servers, cloud AI APIs): the network tests are non-gating and the API tests skip without a key.

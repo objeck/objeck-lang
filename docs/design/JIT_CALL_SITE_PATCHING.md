@@ -52,6 +52,19 @@ Point 4 is the ARM64 question. x64 shows other cores a thread's stores in the or
 
 The same holds for the stores `ProcessIndices` makes: the interpreter reads `operand3` only for call instructions and for `JMP_TABLE` (its default target, written by the loader), never for a variable access, and a method is compiled by one thread (`StackMethod::ClaimJitCompile`).
 
+## The inline caches of virtual and func-ref sites
+
+A compiled `virtual` or func-ref call does not go through an instruction at all: its site has a `JitVirtualSite` (`core/vm/common.h`), up to four records of key (receiver class or func-ref word), native entry and target. This is a second reader/writer pair, separate from the one above, and it has no accepted race:
+
+| Reader | Reads | Ordered after the writer by |
+|---|---|---|
+| compiled code, on a hit | `current`, then that record's key and entry | the release store of `current`, made after the record's three words; a record is never written twice |
+| `JitResolveVirtualSite`, on a miss, without the site's lock | `used`, then `records[0, used)` | the release store of `used`, made after the record it admits is complete, and the acquire load before the scan |
+| the same miss | `declaration`, `decl_cls_id`, `decl_mthd_id` (set once, by the constructor) | the constructor's final release store of `used` and the same acquire load |
+| `FillSiteRecord` | everything | the site's `filling` flag, a spin lock |
+
+Until 2026-11-27 `used` was a plain `int` and the miss scanned the records while a fill on another thread could be adding one. ThreadSanitizer reported it in the release soak. It could not dispatch to the wrong method, because the scan only decides whether to resolve again and the fill looks the key up a second time under the lock, but it was an unsynchronised read of a word being written. The third row matters because a thread can arrive in a method's compiled code without ever loading its `native_code` in C++: a compiled caller loads `native_entry` itself.
+
 ## What a compiler could do with the formal race
 
 A compiler may assume a plain field does not change between two reads with nothing in between that could write it. The interpreter reads a site's `type` once to dispatch, and the handlers that read it again (`ProcessMethodCall`) accept either value at each read, as point 3 says, with calls into other translation units between the reads. No code path computes something from one read and relies on a second read matching it. GCC, Clang and MSVC, at the optimisation levels the VM is built with, load the word where the source reads it.

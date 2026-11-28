@@ -84,12 +84,14 @@ namespace Runtime {
     // program
     static StackProgram* program;
     static std::set<StackInterpreter*> intpr_threads;
-    // Threads the program has spawned that have not finished: counted by the
-    // PARENT before the native thread exists (ProcessAsyncMethodCall) and given
-    // back as the child's last act (AsyncMethodCall). intpr_threads alone cannot
-    // answer "has every thread stopped" at exit: a child is absent from it until
-    // it has started and registered, and again while it frees its interpreter.
-    static std::atomic<long> spawned_threads;
+    // Threads the program has spawned that have not finished are counted by
+    // MemoryManager::spawned_threads (ThreadSpawned / ThreadFinished below): by
+    // the PARENT before the native thread exists (ProcessAsyncMethodCall) and
+    // given back as the child's last act (AsyncMethodCall). intpr_threads alone
+    // cannot answer "has every thread stopped" at exit: a child is absent from it
+    // until it has started and registered, and again while it frees its
+    // interpreter. The count lives with the collector because the process's exit
+    // path (MemoryManager::Exit) asks the same question.
     // Set by HaltAllExcept, under the intpr_threads lock: a thread that registers
     // after the halt went out is halted as it registers. Cleared when a program
     // starts (Initialize): obd runs one program after another in a process, and
@@ -982,11 +984,11 @@ namespace Runtime {
     // A spawned thread, from before it exists until it has released everything
     // it owns. See spawned_threads.
     static void ThreadSpawned() {
-      ++spawned_threads;
+      MemoryManager::ThreadSpawned();
     }
 
     static void ThreadFinished() {
-      --spawned_threads;
+      MemoryManager::ThreadFinished();
     }
 
     // Halt every registered interpreter EXCEPT `self`. Used at program teardown
@@ -1043,7 +1045,7 @@ namespace Runtime {
         remaining = intpr_threads.size();
         // self stays registered during Release teardown (RemoveThread is only in
         // the _SANITIZE path), so <= 1 means no other threads remain.
-        const bool only_self = (remaining <= 1) && spawned_threads.load() == 0;
+        const bool only_self = (remaining <= 1) && MemoryManager::SpawnedThreads() == 0;
         (void)self;
 #ifdef _WIN32
         LeaveCriticalSection(&intpr_threads_cs);

@@ -1,0 +1,83 @@
+# ThreadSanitizer suppressions for the Objeck VM, used by tools/tsan/run_tsan.sh
+# (TSAN_OPTIONS=suppressions=<this file>).
+#
+# An entry belongs here only when the report is understood and the VM is right.
+# Each one says what is reported, why it is not a fault, and what would make the
+# entry wrong. A report that is only unexplained does not get an entry: fix it,
+# or leave it failing.
+#
+# How a line matches: "race:NAME" hides a data race when NAME is a function in
+# EITHER of the report's two stacks, so a name here must be narrow. "thread:NAME"
+# hides a thread-leak report for a thread created under NAME.
+
+# --- 1. A call site patched while another thread interprets it ------------------
+# JitCompiler::PatchCallSites and StackInterpreter::CheckAutoJit store a call
+# instruction's opcode and operand3 (StackInstr::SetType, SetOperand3) while other
+# threads' interpreters read them (GetType, GetOperand3). The two fields are plain
+# words on purpose: docs/design/JIT_CALL_SITE_PATCHING.md has the protocol that
+# makes every interleaving correct, the ARM64 argument, and the measurement that
+# ruled out std::atomic (+1.5% on the interpreter).
+# Wrong if: a reader ever needs two fields of an instruction to agree, a patch
+# writes more than one word that must be seen together, or anything else starts
+# storing through these two setters.
+race:StackInstr::SetType
+race:StackInstr::SetOperand3
+
+# --- 2. A program thread that was never joined ----------------------------------
+# "thread leak": a Thread the program started (ProcessAsyncMethodCall) and did not
+# Join before the process ended. Joining is the program's decision: the native
+# handle belongs to the Thread object, Thread->Join is what calls pthread_join,
+# and the language lets Main return, or a server run for good, without it. At exit
+# the VM waits for such threads to finish (StackInterpreter::WaitForThreadsToDrain)
+# but cannot join a handle the program may still join. The HTTP and socket
+# servers, the actors and the MCP server in the libraries start threads this way,
+# and thread_exit_before_start and thread_raise_exit leave theirs unjoined as
+# their subject.
+# The collector's own threads are created in MemoryManager::CollectMemory and
+# CheckPdaRoots and are always joined; this entry does not match them.
+# Wrong if: the VM starts creating threads of its own under ProcessAsyncMethodCall.
+thread:Runtime::StackInterpreter::ProcessAsyncMethodCall
+
+# --- 3. glibc's time-zone state --------------------------------------------------
+# mktime (TrapProcessor::ProcessSetTime2 and the other date traps) calls tzset
+# inside glibc, which serializes it with its own lock. glibc is not built with the
+# sanitizer, so that lock is invisible and its guarded stores look unguarded.
+# Wrong if: the VM itself calls tzset() or writes the TZ variable while threads run.
+race:tzset_internal
+
+# --- 4. ONNX Runtime -------------------------------------------------------------
+# libonnxruntime.so is a prebuilt third-party library, not instrumented: the tool
+# sees its memory accesses through the interceptors but none of its locks, so its
+# internal thread pool reports against itself (onnx_concurrency). Nothing in these
+# reports is VM or Objeck library code.
+# Wrong if: a report names an Objeck frame as well; look at it without this entry.
+called_from_lib:libonnxruntime.so
+
+# --- 5. A descriptor closed under a thread that is using it ----------------------
+# The tool keeps a shadow word for every file descriptor: recv(), accept() and the
+# like read it, close() writes it. Closing a plain TCP socket from one thread is
+# how another thread's blocked Accept() or read is ended (TCPSocketServer and
+# TCPSocket have no other way), so IPSocket::Close on one thread against a call on
+# the same descriptor on another is that mechanism, reported
+# (socket_close_races, the HTTP server's Stop). The object's handle word is
+# atomic and Close() takes the descriptor exactly once (SocketWord,
+# TakeSocketHandle in common.cpp); what is left is that a thread which has
+# already loaded the descriptor can make its call after the number has been
+# released, and reused. The TLS and DTLS classes close that with a counted
+# context (ListenerUse, SocketCtxUse); a plain socket's word is only a number.
+# IPSocket::Close touches nothing else shared, so this hides nothing else.
+# Wrong if: plain sockets get a counted context too. Then remove this entry: a
+# report here would mean the count failed.
+race:IPSocket::Close
+
+# --- 6. libobjk_diags, when it is not built with the sanitizer -------------------
+# run_tsan.sh instruments obr only. The diagnostics library (the compiler's front
+# end as a shared library) keeps inflated .obl files in a cache of
+# std::shared_ptr: a thread compares against an entry it holds a reference to
+# (Library::LoadFileBuffer) and the last holder's release frees it. The reference
+# counts are atomics inside the uninstrumented library, so the tool sees the read
+# and the delete and nothing ordering them (diag_concurrent_analysis, now and
+# then).
+# Wrong if: run_tsan.sh starts building the native libraries with the sanitizer.
+# Then remove this entry and read what it reports.
+called_from_lib:libobjk_diags.so
