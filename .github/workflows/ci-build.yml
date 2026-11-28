@@ -1969,6 +1969,13 @@ jobs:
       - name: "Skip declarations in programs/regression agree with the tests that print SKIP:"
         run: python3 tools/cicd/check_windows_shards.py --lint-skips --tests-dir programs/regression
 
+      # An invalid workflow file starts no run at all and reports only "workflow file issue".
+      - name: Every workflow file is valid YAML
+        run: python3 tools/cicd/check_workflow_yaml.py
+
+      - name: The workflow YAML check can still detect a broken file
+        run: python3 tools/cicd/check_workflow_yaml.py --self-test
+
       - name: The Windows shard verdict can still detect a bad run
         run: python3 tools/cicd/test_check_windows_shards.py
 
