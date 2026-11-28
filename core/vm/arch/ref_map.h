@@ -111,7 +111,9 @@
       // or one that cannot be told from a generic's parameter (an unqualified name)
       std::vector<long> param_class;
       long return_class = -1;
-      // "m.(i,)~i" for both words of a function-typed parameter, empty otherwise
+      // "m.(i,)~i" for both words of a function-typed parameter, empty otherwise.
+      // The table itself is empty for a method with no such parameter, which is
+      // nearly every method (it was a string per parameter of every signature).
       std::vector<std::wstring> param_function;
     };
     std::unordered_map<StackMethod*, Signature> signatures;
@@ -122,11 +124,56 @@
     // loads a field through it, stores, passes or returns it, hands it to a trap
     // or to a method that does one of those ('hands_self_to', met once every
     // method has been walked).
+    // Kept in one table for the whole program, a row per method, found by the
+    // method's class and id (MethodRow): a map from the method's address and a
+    // vector per method were an allocation or two for every method of every
+    // program loaded, most of the cost of the class rules. 'hands_self_to' is the
+    // rows [hands_first, hands_end) of 'handed'.
     struct MethodFacts {
       bool reads_self = false;
-      std::vector<StackMethod*> hands_self_to;
+      uint32_t hands_first = 0;
+      uint32_t hands_end = 0;
     };
-    std::unordered_map<StackMethod*, MethodFacts> methods;
+    std::vector<MethodFacts> methods;
+    std::vector<long> handed;
+    // the rows of the methods that do not read their instance themselves and hand
+    // it on: the only ones whose answer can still change (Loader::Verify)
+    std::vector<long> hands_on;
+    // by class id: the row of the class's method 0 (filled on first use)
+    std::vector<long> first_row;
+
+    // the row of a method's facts, -1 for a method that has none (no class, or an
+    // id outside its class's methods: the loader refuses those before any is asked)
+    long MethodRow(StackProgram* prgm, StackMethod* mthd) {
+      if(first_row.empty()) {
+        const long num = prgm->GetClassNumber();
+        first_row.assign(num > 0 ? num + 1 : 1, 0);
+        long rows = 0;
+        for(long i = 0; i < num; ++i) {
+          first_row[i] = rows;
+          StackClass* each = prgm->GetClass(i);
+          rows += each && each->GetMethodCount() > 0 ? each->GetMethodCount() : 0;
+        }
+        first_row[num > 0 ? num : 0] = rows;
+        methods.assign(rows, MethodFacts());
+      }
+      StackClass* cls = mthd ? mthd->GetClass() : nullptr;
+      if(!cls) {
+        return -1;
+      }
+      const long id = cls->GetId();
+      if(id < 0 || id + 1 >= (long)first_row.size() || mthd->GetId() < 0 ||
+         first_row[id] + mthd->GetId() >= first_row[id + 1]) {
+        return -1;
+      }
+      return first_row[id] + mthd->GetId();
+    }
+
+    // Related(have, want), remembered: the same few pairs are asked for at every
+    // call of a function from a method of another class, and each answer walked
+    // the class hierarchy with two vectors of its own
+    struct RelatedEntry { long have = -1; long want = -1; bool related = false; };
+    RelatedEntry related_cache[256];
     // a call whose receiver is known to be an instance of 'cls', which is not the
     // callee's class nor one that inherits from it
     struct ReceiverCheck { StackMethod* caller; long ip; StackMethod* callee; long cls; };
@@ -404,15 +451,42 @@
       return false;
     }
 
-    // Two families of rules are written, pass the valid-program corpus with no
-    // refusal, and are switched off: on the 30,000-change campaign neither refused
-    // a program that went on to crash (docs/design/OBE_TYPE_VERIFIER.md has the
-    // numbers), and a rule that buys nothing is only a chance to refuse a valid
-    // program. CLASS_RULES: a reference's class where an image spells one, the
-    // receiver, argument, return and trap-object checks on it, and the kind of an
-    // instance variable. ARRAY_KIND_RULES: Byte, Char, Float and word arrays told
-    // apart. They become worth their cost when declarations carry a class.
-    static const bool CLASS_RULES = false;
+    // Two families of rules that can be switched off on their own, because a rule
+    // that buys nothing is only a chance to refuse a valid program, and a valid
+    // program that is refused has no way round it.
+    //
+    // CLASS_RULES: a reference's class where an image spells one, the receiver,
+    // argument, return and trap-object checks on it, and the kind of an instance
+    // variable. ON since the campaign of 2026-11-27 (30,000 changes of 344
+    // programs): it refuses 3 of the 19 changed programs that crashed the VM (a
+    // method's own instance used as an unrelated class), and none of the valid
+    // images of the corpus gate (tools/fuzz/adhoc/obe_corpus_gate.py). On the
+    // campaign before it, with other seeds, it refused none of the crashes, which
+    // is why it was written and left off.
+    //
+    // What it protects: a program file changed so that an object is used as a
+    // class it is not is refused at load, where the VM read or wrote the wrong
+    // object's memory. What it costs: load time only, nothing once a program
+    // runs. Measured on Linux x64 against the same tree with the constant false
+    // and the code as it was before the rules were made cheaper: loading takes
+    // under 1% more instructions (callgrind: 'hello' start to finish 24.34
+    // against 24.56 million, the largest image of the corpus, load only, 192.6
+    // against 194.1 million) and about 2.6% more time ('hello' 4.18 against 4.29
+    // ms, the largest image 30.2 against 31.0 ms). The rules' own work is 2.3 to
+    // 2.9% of a load's instructions; the rest was won back from the parsing of
+    // signatures the verifier does with or without them. As first written the
+    // rules cost 7 to 8% (CheckClasses made three vectors and a map entry for
+    // every method and walked each method's values twice).
+    //
+    // To turn it off again set this to false: nothing else depends on it
+    // (run_vm_flag_tests.py section 34 then fails its three class cases, which
+    // is the reminder to take them out).
+    //
+    // ARRAY_KIND_RULES: Byte, Char, Float and word arrays told apart. OFF: it
+    // refuses none of those 19 and no valid image, so it would only be a risk. It
+    // becomes worth having when declarations carry a class
+    // (docs/design/OBE_TYPE_VERIFIER.md).
+    static const bool CLASS_RULES = true;
     static const bool ARRAY_KIND_RULES = false;
 
     class Builder {
@@ -475,10 +549,17 @@
         // the class NEW_OBJ_INST made it an instance of: NO_CLASS for none, MANY_CLASSES
         // where two meet
         long cls_made = NO_CLASS;
-        // the method's own instance (LOAD_INST_MEM), and whether anything took the
-        // value off the stack other than a call to a method that is not virtual
+        // the method's own instance (LOAD_INST_MEM): passed on when values meet
         bool from_self = false;
+        // Whether anything took the value off the stack other than a call to a
+        // method that is not virtual, and the local it is a load of (-1 for none,
+        // -2 for one that is no local's id). These two are THIS value's alone,
+        // not its root's: Pop writes the first for every word every instruction
+        // takes, so it is one store there and no Find, and Union does not pass
+        // them on. CheckClasses reads them through the ring of the values that
+        // met, for the few values it asks about.
         bool consumed = false;
+        long load_id = -1;
         // where the value was first used as a function value's id word, -1 for never
         long func_ip = -1;
         // the arrays it was made as (ArrayKind bits), those every use of it allows,
@@ -543,9 +624,23 @@
       struct ClassReq { int value; long cls; const wchar_t* any_of; long ip; uint8_t kind; };
       std::vector<ClassReq> class_reqs;
       std::unordered_map<long, std::vector<SlotType> > layouts;
+      long layout_cls = -1;
+      const std::vector<SlotType>* layout_last = nullptr;
       bool frame_trap = false;
       std::vector<long> param_slot_class;
-      bool param_slots_read = false;
+      // the values LOAD_INST_MEM made, and the tables CheckClasses works in: kept
+      // from one method to the next like every other table of the builder
+      // set as soon as a field is read or written through the instance: the
+      // method reads its instance, and CheckClasses has nothing to work out
+      bool reads_self_seen = false;
+      // Pop notes what it takes only while that can still matter: under the class
+      // rules, until the method is known to read its instance
+      bool track_consumed = false;
+      std::vector<int> self_values;
+      std::vector<int> self_roots;
+      std::vector<char> scratch_holds_self;
+      std::vector<char> scratch_is_self;
+      std::vector<long> scratch_stored;
 
       // Load-time verification of function values. One is two words: its id (the tag,
       // a class id and a method id packed in a literal) and its closure. Nothing at
@@ -664,18 +759,31 @@
         }
       }
 
+      // the same for a value NewValue just made, which nothing has met yet
+      void ClaimNew(int v, long cls) {
+        if(CLASS_RULES && cls >= 0) {
+          claims[v].Add(cls);
+        }
+      }
+
       // an instance's fields as its class declares them, by word
       const std::vector<SlotType>& LayoutOf(long cls_id) {
+        // a method's field accesses are nearly all through its own instance: the
+        // class asked for last is kept (a map's entry does not move)
+        if(cls_id == layout_cls) {
+          return *layout_last;
+        }
         std::unordered_map<long, std::vector<SlotType> >::iterator found = layouts.find(cls_id);
-        if(found != layouts.end()) {
-          return found->second;
+        if(found == layouts.end()) {
+          found = layouts.insert(std::make_pair(cls_id, std::vector<SlotType>())).first;
+          StackClass* cls = prgm->GetClass(cls_id);
+          if(cls) {
+            DclrLayout(cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), found->second);
+          }
         }
-        std::vector<SlotType>& layout = layouts[cls_id];
-        StackClass* cls = prgm->GetClass(cls_id);
-        if(cls) {
-          DclrLayout(cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), layout);
-        }
-        return layout;
+        layout_cls = cls_id;
+        layout_last = &found->second;
+        return found->second;
       }
 
       void ClassesOf(int v, ClassSet& out) {
@@ -684,23 +792,22 @@
 
       // the class a parameter's slot is declared with (its name spells it), -1 for
       // any other local
+      // (Asked at every load and store of a local, so it only reads the table: Run
+      // fills it while it makes the parameters' values, where the method's
+      // signature is in hand anyway.)
       long ParamSlotClass(long id) {
-        if(!param_slots_read) {
-          // once per method: this is asked at every load and store of a local
-          param_slots_read = true;
-          if(context) {
-            const VerifyContext::Signature& own = SignatureOf(method);
-            const size_t first = method->HasAndOr() ? 1 : 0;
-            const size_t words = method->GetParamCount() > 0 ? (size_t)method->GetParamCount() : 0;
-            for(size_t word = 0; word < words && word < own.param_class.size(); ++word) {
-              if(own.param_class[word] >= 0) {
-                param_slot_class.resize(first + word + 1, -1);
-                param_slot_class[first + word] = own.param_class[word];
-              }
-            }
+        return id >= 0 && id < (long)param_slot_class.size() ? param_slot_class[id] : -1;
+      }
+
+      void ReadParamSlotClasses(const VerifyContext::Signature& own) {
+        const size_t first = method->HasAndOr() ? 1 : 0;
+        const size_t words = method->GetParamCount() > 0 ? (size_t)method->GetParamCount() : 0;
+        for(size_t word = 0; CLASS_RULES && word < words && word < own.param_class.size(); ++word) {
+          if(own.param_class[word] >= 0) {
+            param_slot_class.resize(first + word + 1, -1);
+            param_slot_class[first + word] = own.param_class[word];
           }
         }
-        return id >= 0 && id < (long)param_slot_class.size() ? param_slot_class[id] : -1;
       }
 
       bool IsInterface(long cls) {
@@ -752,7 +859,16 @@
         if(have == want || IsInterface(have) || IsInterface(want)) {
           return true;
         }
-        return IsA(have, want) || IsA(want, have);
+        if(!context) {
+          return IsA(have, want) || IsA(want, have);
+        }
+        VerifyContext::RelatedEntry& entry = context->related_cache[((size_t)have * 37 + (size_t)want) & 255];
+        if(entry.have != have || entry.want != want) {
+          entry.have = have;
+          entry.want = want;
+          entry.related = IsA(have, want) || IsA(want, have);
+        }
+        return entry.related;
       }
 
       bool CheckClasses();      
@@ -951,7 +1067,6 @@
           if(fa.float_ip < 0) fa.float_ip = fb.float_ip;
           if(fa.word_ip < 0) fa.word_ip = fb.word_ip;
           fa.from_self = fa.from_self || fb.from_self;
-          fa.consumed = fa.consumed || fb.consumed;
           if(fa.func_ip < 0) fa.func_ip = fb.func_ip;
           fa.ary_made |= fb.ary_made;
           fa.ary_used &= fb.ary_used;
@@ -1080,8 +1195,8 @@
         }
         v = stack.back();
         stack.pop_back();
-        if(CLASS_RULES && verify && consume) {
-          facts[Find(v)].consumed = true;
+        if(track_consumed && consume) {
+          facts[v].consumed = true;
         }
         if(stack.size() < min_height) {
           min_height = stack.size();
@@ -1149,6 +1264,12 @@
         }
         MarkRef(receiver);
         if(verify) {
+          // (this value's own flag: set on what LOAD_INST_MEM made and on a root
+          // one of those met, so true only for a value that is the instance)
+          if(facts[receiver].from_self) {
+            reads_self_seen = true;
+            track_consumed = false;
+          }
           const StackInstr& in = instrs[ip];
           const long width = (in.GetType() == LOAD_FUNC_VAR || in.GetType() == STOR_FUNC_VAR) ? 2 : 1;
           receivers.push_back({ receiver, context, ip, in.GetOperand() + width });
@@ -1189,6 +1310,90 @@
         return cls ? cls->GetId() : -1;
       }
 
+      // What a type's name says (NamesObject, QualifiedClass), kept by the name. A
+      // program spells a few dozen types thousands of times ("o.System.String" in
+      // most signatures), and each answer cut the name out of the signature and
+      // looked a class up by name. Found by a hash of the characters and compared
+      // in full; two names with one hash are answered without being kept.
+      struct TypeFacts {
+        std::wstring type;
+        bool names_object = false;
+        long qualified_class = -1;
+      };
+      std::unordered_map<size_t, TypeFacts> type_facts;
+      TypeFacts unkept_type;
+
+      const TypeFacts& FactsOfType(const wchar_t* at, size_t size) {
+        size_t hash = 1469598103934665603ULL;
+        for(size_t i = 0; i < size; ++i) {
+          hash = (hash ^ (size_t)at[i]) * 1099511628211ULL;
+        }
+        std::unordered_map<size_t, TypeFacts>::iterator found = type_facts.find(hash);
+        if(found != type_facts.end() && found->second.type.size() == size &&
+           (size == 0 || wmemcmp(found->second.type.data(), at, size) == 0)) {
+          return found->second;
+        }
+        TypeFacts& facts_of = found == type_facts.end() ? type_facts[hash] : unkept_type;
+        facts_of.type.assign(at, size);
+        facts_of.names_object = NamesObject(facts_of.type);
+        facts_of.qualified_class = QualifiedClass(facts_of.type);
+        return facts_of;
+      }
+
+      // A callee's parameter and return words and its signature, by the row of its
+      // facts (VerifyContext::MethodRow). Each call parsed the callee's name for the
+      // words and looked its signature up in a map; a library method is called
+      // from hundreds of places.
+      struct CalleeWords {
+        bool read = false;
+        std::vector<SlotType> params;
+        std::vector<SlotType> rtrn;
+        const VerifyContext::Signature* sig = nullptr;
+      };
+      std::vector<CalleeWords> callee_words;
+
+      // The words the method being walked returns, read from its return type once
+      // for the method: every RTRN of it, and the check of their heights, parsed
+      // the type's name again.
+      std::vector<SlotType> own_rtrn;
+      bool own_rtrn_read = false;
+      // and its signature, which every RTRN of it looked up in the map again
+      const VerifyContext::Signature* own_signature_read = nullptr;
+
+      const VerifyContext::Signature& OwnSignature() {
+        if(!own_signature_read) {
+          own_signature_read = &SignatureOf(method);
+        }
+        return *own_signature_read;
+      }
+
+      const std::vector<SlotType>& OwnReturnWords() {
+        if(!own_rtrn_read) {
+          own_rtrn_read = true;
+          ReturnWords(method->GetReturnName(), method->GetReturn(), own_rtrn);
+        }
+        return own_rtrn;
+      }
+
+      // nullptr for a callee with no row
+      const CalleeWords* WordsOf(StackMethod* callee) {
+        const long row = context->MethodRow(prgm, callee);
+        if(row < 0) {
+          return nullptr;
+        }
+        if(callee_words.size() < context->methods.size()) {
+          callee_words.resize(context->methods.size());
+        }
+        CalleeWords& words = callee_words[row];
+        if(!words.read) {
+          words.read = true;
+          ParamWords(callee, words.params);
+          ReturnWords(callee->GetReturnName(), callee->GetReturn(), words.rtrn);
+          words.sig = &SignatureOf(callee);
+        }
+        return &words;
+      }
+
       // which of a method's parameter words and whether its return hold objects,
       // read once from its name ("Class:Method:o.System.String*,i,m.(i,)~i,")
       const VerifyContext::Signature& SignatureOf(StackMethod* m) {
@@ -1212,28 +1417,31 @@
               --depth;
             }
             else if(c == L',' && depth == 0) {
-              const std::wstring type = name.substr(start, i - start);
-              if(type.size() > 1 && type[0] == L'm' && type[1] == L'.') {
+              if(i - start > 1 && name[start] == L'm' && name[start + 1] == L'.') {
                 // a function value: its closure, then its id
+                const std::wstring type = name.substr(start, i - start);
                 sig.object_param.push_back(0);
                 sig.object_param.push_back(0);
                 sig.param_class.push_back(-1);
                 sig.param_class.push_back(-1);
+                // (the words before it, which are not function values)
+                sig.param_function.resize(sig.param_class.size() - 2);
                 sig.param_function.push_back(type);
                 sig.param_function.push_back(type);
               }
               else {
-                sig.object_param.push_back(NamesObject(type) ? 1 : 0);
-                sig.param_class.push_back(QualifiedClass(type));
-                sig.param_function.push_back(std::wstring());
+                const TypeFacts& type = FactsOfType(name.data() + start, i - start);
+                sig.object_param.push_back(type.names_object ? 1 : 0);
+                sig.param_class.push_back(type.qualified_class);
               }
               start = i + 1;
             }
           }
         }
         const std::wstring& rtrn = m->GetReturnName();
-        sig.object_return = !(rtrn.size() > 1 && rtrn[0] == L'm' && rtrn[1] == L'.') && NamesObject(rtrn);
-        sig.return_class = QualifiedClass(rtrn);
+        const TypeFacts& returned = FactsOfType(rtrn.data(), rtrn.size());
+        sig.object_return = !(rtrn.size() > 1 && rtrn[0] == L'm' && rtrn[1] == L'.') && returned.names_object;
+        sig.return_class = returned.qualified_class;
         return sig;
       }
 
@@ -1443,6 +1651,7 @@
         // library method the directive was written in, and by no other
         if(row->instance) {
           frame_trap = true;
+          track_consumed = false;
         }
         if(row->contexts && !ListHolds(row->contexts, method->GetName())) {
           return Fail(ip, std::wstring(L"trap ") + row->name + L" outside the library method whose frame it reads", true);
@@ -1558,6 +1767,8 @@
         prgm(p), method(m), verify(v), context(c), map(r) {
         instrs = m->GetInstructions();
         count = m->GetInstructionCount();
+        // (as Reset sets it: the first method of a program is walked without one)
+        track_consumed = CLASS_RULES && verify;
       }
 
       // The same builder for another method: every table emptied, its storage kept.
@@ -1570,7 +1781,12 @@
         count = m->GetInstructionCount();
         cur_ip = 0;
         frame_trap = false;
-        param_slots_read = false;
+        reads_self_seen = false;
+        own_rtrn_read = false;
+        own_signature_read = nullptr;
+        track_consumed = CLASS_RULES && verify;
+        layout_cls = -1;
+        self_values.clear();
         min_height = 0;
         parent.clear();
         kind.clear();
@@ -1685,7 +1901,10 @@
             }
             local_loads.push_back({ op1, value, ip });
             if(CLASS_RULES) {
-              Claim(value, ParamSlotClass(op1));
+              facts[value].load_id = op1 >= 0 ? op1 : -2;
+              if(!param_slot_class.empty()) {
+                Claim(value, ParamSlotClass(op1));
+              }
             }
             // A word of the frame no declaration covers is not a root: the collector
             // never marks or moves what it holds, so it is not read through
@@ -1717,7 +1936,7 @@
           UseArrayKind(v, slot.ary);
           if(verify) {
             local_stores.push_back({ op1, v, ip });
-            const long declared = CLASS_RULES ? ParamSlotClass(op1) : -1;
+            const long declared = (CLASS_RULES && !param_slot_class.empty()) ? ParamSlotClass(op1) : -1;
             if(declared >= 0) {
               if(CLASS_RULES) class_reqs.push_back({ v, declared, nullptr, ip, REQ_STORE });
             }
@@ -1814,9 +2033,10 @@
         if(verify) {
           tag[v] = TAG_SELF;
           facts[v].from_self = true;
+          self_values.push_back(v);
           // (a lambda's instance is its closure)
           if(!method->IsLambda() && method->GetClass()) {
-            Claim(v, method->GetClass()->GetId());
+            ClaimNew(v, method->GetClass()->GetId());
           }
         }
         stack.push_back(v);
@@ -1957,9 +2177,15 @@
           // array as its receiver word, 'values->Size()' before it is inlined)
           calls.push_back({ receiver_value, op1, ip, callee });
         }
-        std::vector<SlotType>& params = scratch_params;
-        ParamWords(callee, params);
-        const VerifyContext::Signature* sig = (verify && context) ? &SignatureOf(callee) : nullptr;
+        // what the callee takes and returns, read from its name once for the
+        // program, not at every call of it
+        const CalleeWords* words = (verify && context) ? WordsOf(callee) : nullptr;
+        if(!words) {
+          ParamWords(callee, scratch_params);
+          ReturnWords(callee->GetReturnName(), callee->GetReturn(), scratch_rtrn);
+        }
+        const std::vector<SlotType>& params = words ? words->params : scratch_params;
+        const VerifyContext::Signature* sig = words ? words->sig : ((verify && context) ? &SignatureOf(callee) : nullptr);
         int function_id = -1;
         for(size_t i = params.size(); i > 0; --i) {
           if(!Pop(stack, ip, v)) return false;
@@ -1985,8 +2211,7 @@
             if(CLASS_RULES) class_reqs.push_back({ v, sig->param_class[i - 1], nullptr, ip, REQ_ARGUMENT });
           }
         }
-        std::vector<SlotType>& rtrn = scratch_rtrn;
-        ReturnWords(callee->GetReturnName(), callee->GetReturn(), rtrn);
+        const std::vector<SlotType>& rtrn = words ? words->rtrn : scratch_rtrn;
         // a placeholder body returns without the value its type names, and the
         // caller would go on to read a word nobody pushed
         if(verify && !rtrn.empty() && callee->GetInstructionCount() == 1 && callee->GetInstruction(0)->GetType() == RTRN) {
@@ -1994,7 +2219,7 @@
         }
         PushWords(stack, rtrn);
         if(sig && rtrn.size() == 1 && sig->return_class >= 0) {
-          Claim(stack.back(), sig->return_class);
+          ClaimNew(stack.back(), sig->return_class);
         }
         if(verify && rtrn.size() == 2 && rtrn[1].part == 1) {
           spelled[stack.back()] = &callee->GetReturnName();
@@ -2042,8 +2267,7 @@
         break;
 
       case RTRN: {
-        std::vector<SlotType>& rtrn = scratch_rtrn;
-        ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
+        const std::vector<SlotType>& rtrn = OwnReturnWords();
         if(verify) {
           returns.push_back({ ip, (long)stack.size() });
         }
@@ -2051,16 +2275,16 @@
           for(size_t i = 0; i < rtrn.size(); ++i) {
             ConstrainSlot(stack[stack.size() - rtrn.size() + i], rtrn[i]);
           }
-          if(verify) {
+          if(track_consumed) {
             for(size_t i = 0; i < rtrn.size(); ++i) {
-              facts[Find(stack[stack.size() - rtrn.size() + i])].consumed = true;
+              facts[stack[stack.size() - rtrn.size() + i]].consumed = true;
             }
           }
           if(verify && rtrn.size() == 2 && rtrn[1].part == 1) {
             UseFunctionAs(stack[stack.size() - 1], stack[stack.size() - 2], ip, method->GetReturnName());
           }
           if(verify && context && rtrn.size() == 1) {
-            const VerifyContext::Signature& own = SignatureOf(method);
+            const VerifyContext::Signature& own = OwnSignature();
             // the caller reads a class-typed or array result through
             if(own.object_return) {
               MarkRef(stack.back());
@@ -2179,8 +2403,7 @@
         // nothing to return. The census of the suite's traps (#1457) found every
         // value-pushing TRAP in this position and none elsewhere.
         if(ip + 1 < count && instrs[ip + 1].GetType() == RTRN) {
-          std::vector<SlotType>& rtrn = scratch_rtrn;
-          ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
+          const std::vector<SlotType>& rtrn = OwnReturnWords();
           while(stack.size() < rtrn.size()) {
             stack.push_back(NewValue(RK_UNKNOWN));
           }
@@ -2376,8 +2599,7 @@
       // System.Base:Try -- which nothing calls: MTHD_CALL refuses a call to one,
       // and a virtual call cannot resolve to one, StackInterpreter::ResolveVirtualTarget.)
       if(count > 1) {
-        std::vector<SlotType> rtrn;
-        ReturnWords(method->GetReturnName(), method->GetReturn(), rtrn);
+        const std::vector<SlotType>& rtrn = OwnReturnWords();
         for(size_t i = 0; i < returns.size(); ++i) {
           if(returns[i].height != (long)rtrn.size()) {
             return Fail(returns[i].ip, L"a return with " + std::to_wstring(returns[i].height) +
@@ -2454,9 +2676,10 @@
             const bool as_float = access == LOAD_FLOAT_VAR || access == STOR_FLOAT_VAR || access == COPY_FLOAT_VAR;
             const bool as_func = access == LOAD_FUNC_VAR || access == STOR_FUNC_VAR;
             const long index = instrs[receivers[i].ip].GetOperand();
-            const std::vector<SlotType>& layout = LayoutOf(cls);
-            if(CLASS_RULES && index >= 0 && index < (long)layout.size()) {
-              if(as_float != (layout[index].kind == RK_FLOAT) || (as_func && layout[index].part != 1)) {
+            if(CLASS_RULES) {
+              const std::vector<SlotType>& layout = LayoutOf(cls);
+              if(index >= 0 && index < (long)layout.size() &&
+                 (as_float != (layout[index].kind == RK_FLOAT) || (as_func && layout[index].part != 1))) {
                 return Fail(receivers[i].ip, L"an instance variable read as another kind than its class declares", true);
               }
             }
@@ -2741,81 +2964,169 @@
         // and may use that local again for an object it does read: a local with
         // any other store is not taken for the instance, which only means fewer
         // callers are held to the callee's class.)
-        size_t slots = locals.size();
-        for(size_t i = 0; i < local_stores.size(); ++i) {
-          if(local_stores[i].id >= (long)slots) {
-            slots = (size_t)local_stores[i].id + 1;
+        //
+        // This runs for every method of every program loaded. A method that read
+        // a field through its instance reads its instance, which is all its
+        // callers ask: that is most methods, and nothing is worked out for them.
+        // For the rest it works in the builder's own tables and visits only what
+        // can be the instance: the values LOAD_INST_MEM made (self_values) and
+        // the loads and stores of locals. It used to make three vectors per
+        // method and walk every value of the method twice. (Counts and tables are
+        // taken into locals: the tables of bytes are written through, and the
+        // compiler must otherwise read every vector's bounds again after each
+        // such store.)
+        const bool settled = frame_trap || reads_self_seen;
+        std::vector<int>& roots = self_roots;
+        char* is_self = nullptr;
+        bool reads_self = settled;
+        if(!settled) {
+          scratch_is_self.assign(parent.size(), 0);
+          is_self = scratch_is_self.data();
+          roots.clear();
+          // (a value's root carries 'from_self' exactly when a LOAD_INST_MEM value
+          // was joined into it: Union passes the flag on)
+          const size_t num_self = self_values.size();
+          for(size_t i = 0; i < num_self; ++i) {
+            const int v = Find(self_values[i]);
+            if(!is_self[v]) {
+              is_self[v] = 1;
+              roots.push_back(v);
+            }
           }
-        }
-        std::vector<char> holds_self(slots, 0);
-        std::vector<char> is_self(parent.size(), 0);
-        for(size_t v = 0; v < parent.size(); ++v) {
-          if(Find(static_cast<int>(v)) == static_cast<int>(v) && facts[v].from_self) {
-            is_self[v] = 1;
-          }
-        }
-        // the one local a value is a load of: -1 for none, -2 for more than one
-        std::vector<long> loaded_from(parent.size(), -1);
-        for(size_t i = 0; i < local_loads.size(); ++i) {
-          const int v = Find(local_loads[i].value);
-          const long id = local_loads[i].id;
-          if(id < 0 || id >= (long)slots) {
-            loaded_from[v] = -2;
-          }
-          else if(loaded_from[v] == -1) {
-            loaded_from[v] = id;
-          }
-          else if(loaded_from[v] != id) {
-            loaded_from[v] = -2;
-          }
-        }
-        for(size_t i = 0; i < local_stores.size(); ++i) {
-          if(local_stores[i].id >= 0) {
-            holds_self[local_stores[i].id] = 1;
-          }
-        }
-        for(bool changed = true; changed; ) {
-          changed = false;
-          // a local with a store of anything else no longer holds the instance
-          for(size_t i = 0; i < local_stores.size(); ++i) {
-            const LocalUse& st = local_stores[i];
-            if(st.id >= 0 && holds_self[st.id]) {
+          // A local with no store holds nothing, so without stores no load is the
+          // instance and the rest is skipped.
+          const size_t num_stores = local_stores.size();
+          if(num_stores > 0) {
+            const LocalUse* stores = local_stores.data();
+            size_t slots = locals.size();
+            for(size_t i = 0; i < num_stores; ++i) {
+              if(stores[i].id >= (long)slots) {
+                slots = (size_t)stores[i].id + 1;
+              }
+            }
+            // What each store stores: STORES_SELF for the instance, the one local the
+            // value is a load of, or STORES_OTHER (no load, loads of two locals, or
+            // of a slot that is no local). A local with a store of STORES_OTHER does
+            // not hold the instance, and in most methods that is every local (a
+            // parameter's store is one), so this pass usually settles it.
+            // holds_self is 0 for a local with no store, 1 while every store could
+            // be the instance, 2 once one could not.
+            static const long STORES_SELF = -3;
+            static const long STORES_OTHER = -1;
+            scratch_holds_self.assign(slots, 0);
+            char* holds_self = scratch_holds_self.data();
+            scratch_stored.resize(num_stores);
+            long* stored = scratch_stored.data();
+            const Facts* fact = facts.data();
+            const int* next = ring.data();
+            size_t candidates = 0;
+            for(size_t i = 0; i < num_stores; ++i) {
+              const LocalUse& st = stores[i];
+              stored[i] = STORES_OTHER;
+              if(st.id < 0 || holds_self[st.id] == 2) {
+                continue;
+              }
               const int v = Find(st.value);
-              const bool self = facts[v].from_self || (loaded_from[v] >= 0 && holds_self[loaded_from[v]]);
-              if(!self) {
-                holds_self[st.id] = 0;
-                changed = true;
+              if(fact[v].from_self) {
+                stored[i] = STORES_SELF;
+              }
+              else {
+                // the one local the values that met here are loads of
+                long from = -1;
+                int member = v;
+                do {
+                  const long id = fact[member].load_id;
+                  if(id != -1) {
+                    from = (id < 0 || id >= (long)slots || (from != -1 && from != id)) ? -2 : id;
+                  }
+                  member = next[member];
+                }
+                while(member != v && from != -2);
+                if(from >= 0) {
+                  stored[i] = from;
+                }
+              }
+              if(stored[i] == STORES_OTHER) {
+                candidates -= holds_self[st.id] == 1 ? 1 : 0;
+                holds_self[st.id] = 2;
+              }
+              else if(holds_self[st.id] == 0) {
+                holds_self[st.id] = 1;
+                ++candidates;
+              }
+            }
+            // a local with a store of a load of a local that does not hold the
+            // instance no longer holds it either, until nothing changes
+            for(bool changed = candidates > 0; changed; ) {
+              changed = false;
+              for(size_t i = 0; i < num_stores; ++i) {
+                const LocalUse& st = stores[i];
+                if(st.id >= 0 && holds_self[st.id] == 1 && stored[i] != STORES_SELF &&
+                   (stored[i] < 0 || holds_self[stored[i]] != 1)) {
+                  holds_self[st.id] = 2;
+                  --candidates;
+                  changed = true;
+                }
+              }
+            }
+            // (the loads are looked at only when a local does hold the instance)
+            if(candidates > 0) {
+              const size_t num_loads = local_loads.size();
+              const LocalUse* loads = local_loads.data();
+              for(size_t i = 0; i < num_loads; ++i) {
+                const LocalUse& ld = loads[i];
+                if(ld.id >= 0 && ld.id < (long)slots && holds_self[ld.id] == 1) {
+                  const int v = Find(ld.value);
+                  if(!is_self[v]) {
+                    is_self[v] = 1;
+                    roots.push_back(v);
+                  }
+                }
               }
             }
           }
-        }
-        for(size_t i = 0; i < local_loads.size(); ++i) {
-          const LocalUse& ld = local_loads[i];
-          if(ld.id >= 0 && ld.id < (long)slots && holds_self[ld.id]) {
-            is_self[Find(ld.value)] = 1;
+          // the method reads its instance when any value that met one is consumed
+          const size_t num_roots = roots.size();
+          for(size_t i = 0; i < num_roots && !reads_self; ++i) {
+            int member = roots[i];
+            do {
+              reads_self = facts[member].consumed;
+              member = ring[member];
+            }
+            while(member != roots[i] && !reads_self);
           }
         }
-        VerifyContext::MethodFacts& own = context->methods[method];
-        own.reads_self = frame_trap;
-        for(size_t v = 0; v < parent.size() && !own.reads_self; ++v) {
-          if(is_self[v] && facts[v].consumed) {
-            own.reads_self = true;
-          }
-        }
-        for(size_t i = 0; i < calls.size(); ++i) {
-          StackMethod* callee = calls[i].callee;
+        const long row = context->MethodRow(prgm, method);
+        const size_t hands_first = context->handed.size();
+        // (what a method that reads its instance hands it to changes nothing)
+        const bool hands = !reads_self && row >= 0;
+        const size_t num_calls = calls.size();
+        const CallUse* call = calls.data();
+        for(size_t i = 0; i < num_calls; ++i) {
+          StackMethod* callee = call[i].callee;
           if(!callee || callee->IsVirtual() || !callee->GetClass()) {
             continue;
           }
-          if(is_self[Find(calls[i].receiver)]) {
-            own.hands_self_to.push_back(callee);
+          if(hands && is_self[Find(call[i].receiver)]) {
+            context->handed.push_back(context->MethodRow(prgm, callee));
           }
-          ClassSet known;
-          ClassesOf(calls[i].receiver, known);
-          for(uint8_t k = 0; k < known.n; ++k) {
-            if(!Related(known.ids[k], callee->GetClass()->GetId())) {
-              context->receiver_checks.push_back({ method, calls[i].ip, callee, known.ids[k] });
+          const ClassSet& known = claims[ClassFind(call[i].receiver)];
+          if(known.n == 1) {
+            const long callee_class = callee->GetClass()->GetId();
+            // (a method of the receiver's own class, the usual call, is settled by
+            // one compare)
+            if(known.ids[0] != callee_class && !Related(known.ids[0], callee_class)) {
+              context->receiver_checks.push_back({ method, call[i].ip, callee, known.ids[0] });
             }
+          }
+        }
+        if(row >= 0) {
+          VerifyContext::MethodFacts& own = context->methods[row];
+          own.reads_self = reads_self;
+          own.hands_first = static_cast<uint32_t>(hands_first);
+          own.hands_end = static_cast<uint32_t>(context->handed.size());
+          if(!reads_self && own.hands_end > own.hands_first) {
+            context->hands_on.push_back(row);
           }
         }
       }
@@ -2895,6 +3206,12 @@
       entry.clear();
       std::vector<SlotType>& params = scratch_params;
       ParamWords(method, params);
+      // the method's own signature, looked up once for all its parameters
+      const VerifyContext::Signature* own_signature = nullptr;
+      if(verify && context && (!params.empty() || method->GetParamCount() > 0)) {
+        own_signature = &OwnSignature();
+        ReadParamSlotClasses(*own_signature);
+      }
       for(size_t i = 0; i < params.size(); ++i) {
         entry.push_back(NewValue(RK_UNKNOWN));
         // the callers were held to the declarations (MTHD_CALL)
@@ -2907,8 +3224,8 @@
           else if(params[i].part == 2) {
             tag[entry.back()] = TAG_FUNC_WORD;
           }
-          if(context) {
-            const VerifyContext::Signature& own = SignatureOf(method);
+          if(own_signature) {
+            const VerifyContext::Signature& own = *own_signature;
             if(i < own.param_class.size()) {
               Claim(entry.back(), own.param_class[i]);
             }

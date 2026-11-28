@@ -1,0 +1,204 @@
+#~
+A library method whose body is a trap, called on Nil, is the Nil runtime error:
+a ?-> region and a try block recover from it as a NilError.
+
+These methods are not virtual, so the call does not look at the receiver, and
+each handler read through it unchecked: 'select' on a Nil String (String->HashID,
+inlined), Serializer->Write, Deserializer->Read*, Timer->Start and End,
+FileReader->ReadByte, TCPSecureSocket->Close and DllProxy->Unload and
+CallFunction ended the VM with a segmentation fault, interpreted and compiled,
+handler or no handler. vm_flag_fixtures/nil_trap_receiver.obs has the same calls
+with nothing guarding them (status 1 and the message); check_nil_trap_probe.py
+calls every trap-bodied method of the library this way.
+
+Caller->Call is run 60 times on real objects first, so it is compiled at the
+default threshold as well as under OBJECK_JIT_THRESHOLD=1, and is the
+interpreter's under --jit=off: the three must agree. Kinds 10 to 12 have no
+real object to warm up with (a TLS connection, a native library), so they only
+ever see Nil.
+
+Three library functions crashed on a Nil ARGUMENT instead: File->GetFullName,
+TCPSocket->Resolve and Runtime->CommandOutput. Each returns Nil, as its
+neighbours (File->Owner, Runtime->Command) always did for a Nil name.
+~#
+use System.IO;
+use System.IO.Filesystem;
+use System.IO.Net;
+use System.Time;
+use System.API;
+
+class Caller {
+	New() {
+	}
+
+	method : public : Call(kind : Int, s : String, w : Serializer, r : Deserializer, t : Timer,
+			f : FileReader, c : TCPSecureSocket, p : DllProxy) ~ IntRef {
+		select(kind) {
+			label 0: {
+				s->HashID();
+			}
+
+			label 1: {
+				select(s) {
+					label "abc": {
+						return IntRef->New(100);
+					}
+				};
+			}
+
+			label 2: {
+				w->Write(7);
+			}
+
+			label 3: {
+				w->Write("text"->As(Base));
+			}
+
+			label 4: {
+				w->Write(Int->New[2]);
+			}
+
+			label 5: {
+				r->ReadInt();
+			}
+
+			label 6: {
+				r->ReadIntArray();
+			}
+
+			label 7: {
+				t->Start();
+			}
+
+			label 8: {
+				t->End();
+			}
+
+			label 9: {
+				f->ReadByte();
+			}
+
+			label 10: {
+				c->Close();
+			}
+
+			label 11: {
+				p->Unload();
+			}
+
+			label 12: {
+				p->CallFunction("nothing", Nil);
+			}
+		};
+
+		return IntRef->New(kind);
+	}
+
+	# a Deserializer with enough in it for every warm-up read
+	function : Stream() ~ Deserializer {
+		w := Serializer->New();
+		for(i := 0; i < 200; i += 1;) {
+			w->Write(i);
+			w->Write(Int->New[2]);
+		};
+		return Deserializer->New(w->Serialize());
+	}
+
+	function : Warm(caller : Caller) ~ Nil {
+		w := Serializer->New();
+		r := Stream();
+		t := Timer->New();
+		f := FileReader->New("nil_trap_receiver_recovery.missing");
+		for(i := 0; i < 60; i += 1;) {
+			# kinds 5 and 6 alternate, as the stream does
+			for(kind := 0; kind < 10; kind += 1;) {
+				caller->Call(kind, "abc", w, r, t, f, Nil, Nil);
+			};
+		};
+		f->Close();
+	}
+}
+
+class NilTrapReceiverRecovery {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NilTrapReceiverRecovery->New()->Run();
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# 1 when a try block caught the call's NilError, 0 when the call returned, -1 for another error
+	method : Tried(caller : Caller, kind : Int) ~ Int {
+		s : String; w : Serializer; r : Deserializer; t : Timer; f : FileReader;
+		try {
+			caller->Call(kind, s, w, r, t, f, Nil, Nil);
+		}
+		on(e : NilError) {
+			return 1;
+		}
+		on(e : Error) {
+			return -1;
+		};
+
+		return 0;
+	}
+
+	method : Run() ~ Nil {
+		caller := Caller->New();
+		Caller->Warm(caller);
+
+		# the same calls on real objects still work
+		w := Serializer->New();
+		r := Caller->Stream();
+		t := Timer->New();
+		Check("select on a real String takes its label", caller->Call(1, "abc", w, r, t, Nil, Nil, Nil)->Get() = 100);
+		Check("a real Serializer and Deserializer round-trip", caller->Call(2, "abc", w, r, t, Nil, Nil, Nil)->Get() = 2
+			& Deserializer->New(w->Serialize())->ReadInt() = 7);
+
+		# a Nil receiver is recovered from under ?->, every kind, twice over
+		ns : String; nw : Serializer; nr : Deserializer; nt : Timer; nf : FileReader;
+		for(round := 0; round < 2; round += 1;) {
+			for(kind := 0; kind < 13; kind += 1;) {
+				result := caller?->Call(kind, ns, nw, nr, nt, nf, Nil, Nil);
+				Check("round {$round} kind {$kind}: recovered as a NilError",
+					result = Nil & Runtime->GetLastError() <> Nil & Runtime->GetLastError()->TypeOf(NilError));
+			};
+		};
+
+		# and caught by a try block
+		for(kind := 0; kind < 13; kind += 1;) {
+			Check("kind {$kind}: a try block catches the NilError", Tried(caller, kind) = 1);
+		};
+
+		# the method runs on afterwards
+		after := caller?->Call(0, "abc", w, r, t, Nil, Nil, Nil);
+		Check("the method runs on after the recoveries", after <> Nil & after->Get() = 0);
+
+		# a Nil argument is the function's failure value
+		name : String;
+		Check("File->GetFullName(Nil) is Nil", File->GetFullName(name) = Nil);
+		Check("TCPSocket->Resolve(Nil) is Nil", TCPSocket->Resolve(name) = Nil);
+		Check("Runtime->CommandOutput(Nil) is Nil", Runtime->CommandOutput(name) = Nil);
+		Check("Runtime->CommandOutput(Nil, env) is Nil", Runtime->CommandOutput(name, String->New[1]) = Nil);
+
+		if(@failures > 0) {
+			failures := @failures;
+			"{$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"nil_trap_receiver_recovery: all checks passed"->PrintLine();
+	}
+}

@@ -1,10 +1,11 @@
 # Completing the `.obe` verifier: what is still trusted, and how to stop trusting it
 
 **Status (2026-11): sections 2, 3 and 5 are built as far as an image allows.
-Section 1 was built for the classes an image spells, measured, and switched
-off: it refused no valid program and none of the changed programs that crash.
-What would make it worth having is a format change that is designed here and
-not made.** This page says which
+Section 1 is built for the classes an image spells and, since 2026-11-27, on:
+it refuses no valid program and 3 of the 19 changed programs that crashed in
+the campaign of that day (it had been switched off, having refused none of the
+crashes of the campaign before, on other seeds). What would close most of the
+rest is a format change that is designed here and not made.** This page says which
 changes to a compiled program the loader still accepts and the VM cannot
 survive, why each one cannot be refused with what an `.obe` holds today, and
 what would close it. What the loader does check is in
@@ -42,7 +43,10 @@ compiled by the earlier compiler, holds the valueless return after a `try`
 that the later rows refuse, so its changes are all refused there.) The class
 rule and the array kinds bought nothing measurable here, and a rule that buys
 nothing is only a chance to refuse a valid program: both are in the builder
-behind `CLASS_RULES` and `ARRAY_KIND_RULES` (`core/vm/arch/ref_map.h`), off. No valid program
+behind `CLASS_RULES` and `ARRAY_KIND_RULES` (`core/vm/arch/ref_map.h`), and
+both were off when this table was made. `CLASS_RULES` is on since the later
+campaign, where it does buy something ("What still crashes"); the last row of
+the table is therefore the VM of that time, not today's. No valid program
 is refused by any row: every `.obs` in the repository at `-opt s0` to `s3`, a
 quarter again with `-debug`, and one program per library that names every
 documented class, 5,067 images, load under `OBJECK_VERIFY_ONLY=1`
@@ -52,7 +56,8 @@ programs broke them, and each is recorded where it applies.
 
 ## 1. A reference's class
 
-**Built, measured, switched off (`CLASS_RULES`).** A reference is given the
+**Built and on (`CLASS_RULES`; one constant in `core/vm/arch/ref_map.h` turns
+it off again).** A reference is given the
 static class of the expression that made it, as far as an image says one: `NEW_OBJ_INST`, `OBJ_INST_CAST`, the method's
 own instance, a parameter or a call's result whose name spells a *qualified*
 class (`o.System.String`), a trap's result, and a load of a parameter's local.
@@ -236,19 +241,32 @@ path through `ProcessInstructions` nobody has compiled before; the campaign's
 
 ## What still crashes
 
-Of the 30,000 changes, 11 still crash the VM as shipped:
+Measured again on 2026-11-27 with more seeds, so the changed programs are other
+ones than in the table at the top and the counts do not continue it: 30,000
+changes of 344 compiled regression programs (`obe_campaign.py --seed 2`, each
+run with the default JIT, `--jit=off` and `OBJECK_JIT_THRESHOLD=1`). 19 crashed
+the VM, at 9 faulting sites, in eight classes:
 
-| changed programs | what was changed | where the VM faults | why the loader cannot refuse it |
+| changed programs | what the change does | where the VM faults | what would refuse it |
 |---|---|---|---|
-| 6 | a load repeated or dropped (`repeat ClosureBodyCallResult:#{L3}#:[5] LOAD_INT_VAR`, `repeat Tagged:ViewedSize:[3]`, `repeat MethodGenericsLibrary:Length:o.System.String,[2]`, `repeat ClosureDirectCall:#{L0}#:[1]`, `repeat GcClosureCaptureNurseryEnd:#{L0}#:[1]`, `drop System.Introspection.Method:GetParameters:[1]`) | `LoadClsInstIntVar`, compiled code | the field that follows is read through what the extra load left: a captured value, a field of the instance, a String. Each is an object, of a class nothing declares, read at an index bounded only by the largest object of any class |
-| 1 | `operand Tok:New:o.Tok#Kind,o.System.String,[5] LOAD_INT_VAR 1 -> 0` | compiled code | the load now takes the enum parameter, an `Int` declared `OBJ_PARM`, where the String was |
-| 1 | `operand CollectOrderedHashTest:#{L0}#:...,[2] LOAD_INT_VAR 0 -> 7` (interpreter only) | `Execute` | another object local of the lambda, of a class nothing declares |
-| 2 | `swap SelectStringExpressions:New:o.System.String,[3] STOR_INT_VAR <-> LOAD_INST_MEM`, `operand ...,[0] STOR_INT_VAR 0 -> 1` | `HashStringId` | the string-hash trap is handed a local the parameter was never stored to: a reference of no declared class (the trap's row says String; `CLASS_RULES` cannot see a local's class) |
-| 1 | `opcode Holder:Set:o.T,[2] OBJ_INST_CAST -> OBJ_TYPE_OF` | `ValidObjectCast` | the type test's 0 or 1 is stored to an object field, as an enum's value validly is, and another method reads through it |
+| 1 | a store dropped, so a `Serializer` local stays Nil and `Write` is called on it | `SerializeObject` | **fixed, and not a loader rule:** a trap-bodied library method is not virtual, the call does not look at the receiver, and the handler read through Nil. Valid source did the same (`s : String; select(s) {...}`). The handlers check now; the changed program ends with the Nil runtime error |
+| 3 | the method's own instance used as an unrelated class: `String:Append` called on a `StrBuilder`, `Vector:Get` on another class, a parser returned as a `JsonElement` | `CpyCharAry`, `LoadClsInstIntVar`, compiled code | **refused now** by `CLASS_RULES` (section 1): "a method called on an object of another class", twice; "an object returned where the method returns another class" |
+| 10 | a field read through a reference whose class the image does not record: a closure capture (3), an object field of the instance (2), the result of a generic `Vector:Get` with its cast checked and not written (1), a parameter typed as an interface (1), another object local (1); and a field declared `Int` in a parameter's spelled class, then read through (2) | `LoadClsInstIntVar`, `StorClsInstIntVar`, `ValidObjectCast`, compiled code | declared classes (section 1) for six; "write every cast" as well for the generic and the interface; for the last two a rule that is not written yet: type the value by the declared kind of the field in the spelled class |
+| 1 | a constructor call replaced, so the new `Char[]` it took is left as the receiver of the next `String` method | `CpyCharAry` | the object-or-array rule exempts a call's receiver (a primitive array's helper functions take an array there); keep the exemption only for callees that do not read their instance. Not written |
+| 1 | an element of a local declared `Int[]` read through as an array | `Handle_LOAD_INT_ARY_ELM` | the element type of an array: a candidate rule (an element of an array every maker of which is declared `INT_ARY_PARM` is a number), not yet run over the corpus |
+| 1 | an `Int[]` field returned where a `String[,]` is spelled (JIT only; interpreted, `ArrayIndex` stops it with "more indices than it has dimensions") | compiled code | the compiled array access makes no dimension check, and Int and object arrays are one kind to the verifier |
+| 1 | one word of a function-typed local loaded as an `Int` and used as a reference | `ProcessStoreFunctionVar` | the kind of a local slot that belongs to a function value, read with an Int instruction: a candidate rule, not yet run over the corpus |
+| 1 | a `RTRN` put mid-method; the rest is unreachable and begins with a store on an empty stack (JIT only; interpreted it runs) | `JitAmd64::ProcessStore`, while compiling | the verifier walks reachable paths and the JIT compiles every instruction: skip what the reference map marks unreachable, or fail the compile and stay interpreted |
 
-Every one is section 1: a reference whose class no image records, or a number
-in a slot declared an object because enums are. None is a trap's, a function
-value's or a stack's.
+So 18 crash with the receiver checks and 15 with `CLASS_RULES` on as well,
+which is the VM as shipped. Ten of those 15 are section 1 (a reference whose class no image records);
+the others are an array as a receiver, an array's element, an array's
+dimensions in compiled code, a function value's word, and unreachable code,
+which the sentence that stood here ("every one is section 1") did not foresee.
+
+The earlier campaign (278 seeds) ended with 11 crashes at 5 sites. Two of them
+faulted in `HashStringId` and were listed as a reference of no declared class;
+that site is the missing Nil check of the first row, not a class problem.
 
 ## Order of work
 
