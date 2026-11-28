@@ -249,6 +249,11 @@ echo ---- dead-store operand-stack check >> "%LOG%"
 %PY% check_dead_store_chain.py "%BIN%" > "%STEP_OUT%" 2>&1
 set "RC=%ERRORLEVEL%"
 call :step_result dead_store_chain
+
+echo ---- operand-stack depth check >> "%LOG%"
+%PY% check_stack_depth.py "%BIN%" > "%STEP_OUT%" 2>&1
+set "RC=%ERRORLEVEL%"
+call :step_result stack_depth
 del "%STEP_OUT%" >nul 2>&1
 popd
 set "TESTS_RAN=1"

@@ -263,6 +263,9 @@ run_step dap "DAP tests" bash -c "cd programs/regression && python3 run_dap_test
 # did not would let a platform-specific stack-budget or optimizer regression through.
 run_step nesting_limit "obc deep-nesting check" bash -c "cd programs/regression && python3 check_nesting_limit.py '$BIN_ABS'"
 run_step dead_store_chain "dead-store operand-stack check" bash -c "cd programs/regression && python3 check_dead_store_chain.py '$BIN_ABS'"
+# obc reports an expression over the loader's operand-stack limit in source terms (never a loader
+# refusal at run time): the check compiles at the limit and over it and holds the two counts equal.
+run_step stack_depth "operand-stack depth check" bash -c "cd programs/regression && python3 check_stack_depth.py '$BIN_ABS'"
 
 write_result
 echo "== verdict: $VERDICT  ($RES)"
