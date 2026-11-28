@@ -39,7 +39,10 @@ or `output changed`. Every divergence is re-run twice to confirm, reduced to a
 minimal set of mutations, saved under --out/diverge/<test>/v<index>/ and
 counted in the exit status.
 
-Exit status: 0 no confirmed divergence, 1 divergences, 2 usage error.
+Exit status: 0 no confirmed divergence and at least one effective comparison; 1 divergences;
+2 usage error, or nothing eligible (none of the --tests is eligible; a whole-suite run finds
+fewer than MIN_ELIGIBLE_WHOLE_SUITE eligible tests); 3 no divergence but also no effective
+comparison (every variant invalid, or every baseline failed).
 """
 
 import argparse
@@ -62,6 +65,13 @@ import fuzzlib  # noqa: E402
 
 sys.path.insert(0, REG_DIR)
 import run_differential as rdiff  # noqa: E402
+
+# The fewest tests a whole-suite run may find eligible. Measured at 677 of the programs/regression
+# tests on 2026-11-27 (the others are excluded: EXPECT_* markers, differential opt-outs, network,
+# timing, threads, no Main). A count far below this means the eligibility filter or the tests
+# directory broke and the run "mutated" next to nothing; lower it deliberately, with the
+# reason, when tests are removed or newly excluded.
+MIN_ELIGIBLE_WHOLE_SUITE = 677
 
 GUARD = "EmiGuardZq"
 MARK_BASE = 910000
@@ -1106,6 +1116,9 @@ def main(argv=None):
     ap.add_argument("--obc", default=None, help="compiler override (a .py runs under this Python)")
     ap.add_argument("--obr", default=None, help="VM override")
     ap.add_argument("--list", action="store_true", help="print eligible tests and exit")
+    ap.add_argument("--min-eligible", type=int, default=None,
+                    help="a whole-suite run (no --tests) fails when fewer tests are eligible "
+                         "(default %d, MIN_ELIGIBLE_WHOLE_SUITE; 0 for a fixture directory)" % MIN_ELIGIBLE_WHOLE_SUITE)
     args = ap.parse_args(argv)
     if args.variants < 1 or args.jobs < 1:
         ap.error("--variants and -j must be positive")
@@ -1130,6 +1143,19 @@ def main(argv=None):
         for n in eligible:
             print(n)
         return 0
+
+    # A run that finds nothing to mutate has compared nothing, and "no divergence" would read as a pass.
+    if patterns:
+        if not eligible:
+            print("none of the %d requested test(s) is eligible for EMI: %s" % (
+                len(names), "; ".join("%s (%s)" % kv for kv in sorted(skipped.items())[:10])), file=sys.stderr)
+            return 2
+    else:
+        floor = MIN_ELIGIBLE_WHOLE_SUITE if args.min_eligible is None else args.min_eligible
+        if len(eligible) < floor or not eligible:
+            print("only %d test(s) are eligible for EMI, below the floor of %d (emi.MIN_ELIGIBLE_WHOLE_SUITE): "
+                  "the tests directory or the eligibility rules changed" % (len(eligible), floor), file=sys.stderr)
+            return 2
 
     tools = Tools(args.bin, obc=args.obc, obr=args.obr, timeout=args.timeout)
     lock = threading.Lock()
@@ -1168,10 +1194,20 @@ def main(argv=None):
     log("emi summary: %d tests ran, %s" % (summary["ran"], ", ".join("%s=%d" % kv for kv in summary["stats"].items())))
     for sig, where in sorted(signatures.items()):
         log("  %s  [%s]" % (sig, ", ".join(where)))
+    # An effective comparison is a variant that compiled and was judged (pass or diverge); invalid
+    # variants and tests whose baseline failed compare nothing.
+    effective = summary["stats"]["pass"] + summary["stats"]["diverge"]
+    summary["effective_comparisons"] = effective
+    log("emi: %d effective comparison(s) over %d of %d eligible test(s)" % (effective, summary["ran"], len(eligible)))
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=1)
-    return 1 if signatures else 0
+    if signatures:
+        return 1
+    if effective == 0:
+        log("emi: ZERO effective comparisons: nothing was shown equivalent, which is not a pass")
+        return 3
+    return 0
 
 
 if __name__ == "__main__":

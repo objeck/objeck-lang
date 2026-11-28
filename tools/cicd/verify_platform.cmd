@@ -84,6 +84,11 @@ set "OUT=%ROOT%\rc-results\%VERSION%"
 set "RES=%OUT%\%VP_PLATFORM%.txt"
 set "LOG=%OUT%\%VP_PLATFORM%.log"
 set "BODY=%OUT%\%VP_PLATFORM%.body"
+set "MANIFEST=%OUT%\%VP_PLATFORM%.manifest.json"
+set "BASELINE=%ROOT%\tools\cicd\gate_baselines\%VP_PLATFORM%.json"
+set "REVIEWED=%GATE_REVIEWED_ADDITIONS%"
+if not defined REVIEWED set "REVIEWED=%ROOT%\tools\cicd\gate_baselines\%VP_PLATFORM%.reviewed_additions.txt"
+if exist "%MANIFEST%" del "%MANIFEST%"
 if not exist "%OUT%" mkdir "%OUT%"
 type nul > "%LOG%"
 type nul > "%BODY%"
@@ -209,14 +214,14 @@ del "%REG1_OUT%" "%REG2_OUT%" >nul 2>&1
 echo ---- regression (default JIT) >> "%LOG%"
 call "%ROOT%\programs\regression\run_regression.cmd" %ARCH% > "%REG1_OUT%" 2>&1
 set "RC=%ERRORLEVEL%"
-call :regression_result regression "%REG1_OUT%"
+call :regression_result regression "%REG1_OUT%" default
 
 echo ---- regression (OBJECK_JIT_THRESHOLD=1) >> "%LOG%"
 set "OBJECK_JIT_THRESHOLD=1"
 call "%ROOT%\programs\regression\run_regression.cmd" %ARCH% > "%REG2_OUT%" 2>&1
 set "RC=%ERRORLEVEL%"
 set "OBJECK_JIT_THRESHOLD="
-call :regression_result regression_jit1 "%REG2_OUT%"
+call :regression_result regression_jit1 "%REG2_OUT%" jit1
 
 REM A step that reports it skipped its tests fails here even when it exits 0.
 
@@ -255,6 +260,7 @@ if "%VERDICT%"=="PASS" if not "%TESTS_RAN%"=="1" call :record tests "FAIL (no te
 >> "%RES%" echo host=%COMPUTERNAME%
 >> "%RES%" echo version=%VERSION%
 >> "%RES%" echo commit=%COMMIT%
+if exist "%MANIFEST%" >> "%RES%" echo manifest=rc-results\%VERSION%\%VP_PLATFORM%.manifest.json
 for /f "delims=" %%d in ('%PS% -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')"') do >> "%RES%" echo date=%%d
 type "%BODY%" >> "%RES%"
 >> "%RES%" echo verdict=%VERDICT%
@@ -304,6 +310,18 @@ if not "%RC%"=="0" (
 %SYS32%\findstr.exe /r /c:"Results: [0-9]* passed, [0-9]* skipped, 0 failed" "%~2" >nul
 if errorlevel 1 (
     call :record %~1 "FAIL (Results line reports failures)"
+    exit /b 0
+)
+REM The per-test manifest (tools\cicd\gate_manifest.py judge): the log must reach its Results line and
+REM name every test it ran, every skip must be on the allowlist, and when a baseline for this platform
+REM is checked in no test of the previous gate may be missing or have lost its PASS.
+set "GM=%ROOT%\tools\cicd\gate_manifest.py"
+%PY% "%GM%" judge --log "%~2" --exit-code %RC% --platform %VP_PLATFORM% --mode %~3 --out "%MANIFEST%" --baseline "%BASELINE%" --reviewed-additions "%REVIEWED%" > "%STEP_OUT%" 2>&1
+set "JRC=%ERRORLEVEL%"
+type "%STEP_OUT%" >> "%LOG%"
+if not "%JRC%"=="0" (
+    call :record %~1 "FAIL (see the log: gate_manifest.py judge)"
+    type "%STEP_OUT%"
     exit /b 0
 )
 call :record %~1 PASS

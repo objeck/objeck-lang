@@ -1,0 +1,116 @@
+{
+ "format": 1,
+ "comment": "Crash signatures the loader campaign accepts, derived with obe_campaign.py --replay from the 19 crashing images of the 30,000-mutant run below. Each entry: the faulting function (interpreter frame under --jit=off; '(jit code)' for generated code), the assessment's class numbers, a reason, and the witness mutants. Update when the Nil-receiver trap fix (class 1) or the verifier class-rule change (CLASS_RULES) lands: remove the entries that no longer appear (a run reports them as 'not seen').",
+ "inputs": {
+  "seed": 2,
+  "count": 30000,
+  "seeds": 344,
+  "seeds_sha256": "dc40889cc3f8ad597f242b297c6f5f84bf1136ec4f42178eac8ea77244065549",
+  "modes": "default,off,jit1",
+  "structured": 0.7
+ },
+ "entries": [
+  {
+   "signature": "TrapProcessor::SerializeObject",
+   "classes": [
+    1
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 1: Nil receiver of a trap-bodied library method; fixed by the Nil-receiver trap checks (P1), remove this entry when that lands.",
+   "witnesses": [
+    "gc_bool_array_declaration_2_3755"
+   ]
+  },
+  {
+   "signature": "Runtime::StackInterpreter::LoadClsInstIntVar",
+   "classes": [
+    2,
+    3
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 2 (a method's own instance used as an unrelated class; CLASS_RULES refuses these, P2) and class 3a/3b/3e/3f (field read through a reference whose class the image does not record; needs the declared-class format change).",
+   "witnesses": [
+    "closure_body_call_result_2_26891",
+    "closure_lambda_params_2_23917",
+    "core_boxing_rules_2_9469",
+    "core_collections_perf_2_19752",
+    "core_generic_inference_2_27763",
+    "core_ternary_call_chain_type_2_13096",
+    "func_closure_field_2_27805",
+    "json_nil_string_null_2_17281"
+   ]
+  },
+  {
+   "signature": "Runtime::StackInterpreter::StorClsInstIntVar",
+   "classes": [
+    3
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 3a: store through a closure capture whose class the image does not record.",
+   "witnesses": [
+    "collect_set_algebra_2_22501"
+   ]
+  },
+  {
+   "signature": "MemoryManager::GetClass",
+   "classes": [
+    3
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 3b/3d: a cast applied to a number read through an object field or interface-typed parameter whose class the image does not record.",
+   "witnesses": [
+    "core_array_element_interface_return_2_25347",
+    "core_generic_fbound_2_23821"
+   ]
+  },
+  {
+   "signature": "Runtime::StackInterpreter::CpyCharAry",
+   "classes": [
+    2,
+    4
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 2 (String:Append on the StrBuilder itself, refused by CLASS_RULES) and class 4 (a new array left as the receiver of an instance method).",
+   "witnesses": [
+    "fix534_substring_crash_2_28560",
+    "fix_chained_calls_2_3297"
+   ]
+  },
+  {
+   "signature": "Handle_LOAD_INT_ARY_ELM",
+   "classes": [
+    5
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 5: an Int[] element read through as an array (the assessment lists boxing_before_after under 3b; its measured fault site is this one).",
+   "witnesses": [
+    "array_index_nested_2_17487",
+    "boxing_before_after_2_1989"
+   ]
+  },
+  {
+   "signature": "(jit code)",
+   "classes": [
+    6
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 6: an Int[] returned as String[][] and the compiled array index has no dimension check (JIT only).",
+   "witnesses": [
+    "serializer_multidim_arrays_2_27291"
+   ]
+  },
+  {
+   "signature": "Runtime::StackInterpreter::ProcessStoreFunctionVar",
+   "classes": [
+    7
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 7: a word of a function-typed local loaded as an Int and used as a reference.",
+   "witnesses": [
+    "lambda_capture_after_func_2_24560"
+   ]
+  },
+  {
+   "signature": "Runtime::JitAmd64::ProcessStore",
+   "classes": [
+    8
+   ],
+   "reason": "Residual crash of crafted .obe images, measured at ed24d1edb2 (docs: OBE_RESIDUAL_ASSESSMENT 2026-11-27). Class 8: the JIT compiles instructions no path reaches (null dereference while compiling; interpreter runs).",
+   "witnesses": [
+    "lang_array_copy_2_9993"
+   ]
+  }
+ ]
+}

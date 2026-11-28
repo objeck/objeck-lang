@@ -29,7 +29,9 @@ Usage:
 
 <bin_dir> holds obc and obr (a deploy tree's bin); its ../lib is OBJECK_LIB_PATH.
 Tests are names or .obs paths; none means every programs/regression/*.obs.
-Exit 0 when nothing diverged or failed, 1 otherwise, 2 on a usage error.
+Exit 0 when nothing diverged or failed AND at least one test was really compared (a test that
+printed SKIP: is counted apart, not as a comparison); 1 otherwise, including when no test was
+compared; 2 on a usage error or an empty suite.
 
 Per-test markers, each a whole line at column 0 (like the JIT opt-out marker),
 checked by tools/cicd/check_diff_markers.py:
@@ -414,6 +416,10 @@ def main(argv=None):
         sys.stderr.write("obc/obr not found in %s\n" % runner.bin_dir)
         return 2
     names = list_tests(runner.reg_dir, args.tests)
+    if not names:
+        # an empty suite compares nothing and would otherwise report "0 divergent, 0 failed"
+        sys.stderr.write("no tests to compare in %s: refusing to report success on an empty suite" % runner.reg_dir + chr(10))
+        return 2
     missing = [n for n in names if not os.path.isfile(os.path.join(runner.reg_dir, n + ".obs"))]
     if missing:
         sys.stderr.write("no such test: %s\n" % ", ".join(missing))
@@ -436,19 +442,29 @@ def main(argv=None):
 
     count = lambda s: sum(1 for r in results if r["status"] == s)
     ran = len(results) - count("skip")
-    self_skips = sorted(r["test"] for r in results if r.get("self_skip"))
+    # A test that printed SKIP: ran its configurations but not its checks: it agreed with itself
+    # about nothing. Count it apart from the comparisons that mean something.
+    self_skips = sorted(r["test"] for r in results if r.get("self_skip") and r["status"] != "skip")
+    compared = ran - len(self_skips)
     say("")
-    say("Results: %d test(s), %d compared, %d skipped (compile-error), %d divergent, %d failed; "
-        "wall %.1fs" % (len(results), ran, count("skip"), count("diff"), count("fail"), wall))
+    say("Results: %d test(s), %d compared, %d reported SKIP (not counted), %d skipped (compile-error), "
+        "%d divergent, %d failed; wall %.1fs"
+        % (len(results), compared, len(self_skips), count("skip"), count("diff"), count("fail"), wall))
     if self_skips:
-        say("  reported SKIP (compared, but their checks did not run): %s" % ", ".join(self_skips))
+        say("  reported SKIP (run, but their checks did not run; not comparisons): %s" % ", ".join(self_skips))
     bad = sorted((r for r in results if r["status"] in ("diff", "fail")), key=lambda r: r["test"])
     for r in bad:
         say("  %s %s: %s" % (r["status"].upper(), r["test"], "; ".join(r["details"])))
     if args.json:
         with open(args.json, "w") as fh:
             json.dump({"wall": wall, "configs": configs, "results": results}, fh, indent=1)
-    return 1 if bad else 0
+    if bad:
+        return 1
+    if compared == 0:
+        say("ZERO comparisons were made (every test was a compile-error test or reported SKIP): "
+            "that is not a pass")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
