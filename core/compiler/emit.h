@@ -225,6 +225,15 @@ namespace backend {
       return operand4;
     }
 
+    // a class's name and a method's, in a library's instruction (LIB_MTHD_CALL)
+    const std::wstring& GetOperand5() {
+      return operand5;
+    }
+
+    const std::wstring& GetOperand6() {
+      return operand6;
+    }
+
     void SetOperand(long o1) {
       operand = o1;
     }
@@ -687,6 +696,11 @@ namespace backend {
       return params;
     }
 
+    // the encoded return type ("i", "o.System.String", "m.(i,)~i", "n")
+    const std::wstring& GetReturnName() {
+      return rtrn_name;
+    }
+
     std::vector<IntermediateBlock*> GetBlocks() {
       return blocks;
     }
@@ -826,6 +840,11 @@ namespace backend {
 
     const std::wstring &GetName() {
       return name;
+    }
+
+    // the source file the class was written in (a library's, as it was compiled)
+    const std::wstring &GetFileName() {
+      return file_name;
     }
 
     bool IsLibrary() {

@@ -1051,6 +1051,22 @@ jobs:
         if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
         python3 check_nesting_limit.py "$BIN"
 
+    # An expression that needs more operand stack than a call has (1,000 words above the method's
+    # arguments: 33 nested calls of 32 arguments each) compiled, and the loader then refused the whole
+    # program, naming a method and no line. obc counts the words the way the loader does and reports the
+    # expression. The check is of the boundary, in every place an expression is compiled differently
+    # (a lambda, a 'try' block and its handler, an interpolation, a library): 1,001 words are obc's
+    # error on the expression's line, 1,000 compile, load and run, and obc's count of every method of
+    # the image equals obr's.
+    - name: obc reports an expression the loader would refuse for its operand stack (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_stack_depth.py "$BIN"
+
     # Select statements hand out jump label ids in a fixed order. They used to take three
     # `++conditional_label` from one argument list, whose evaluation order C++ leaves open: g++
     # went right to left, Apple clang left to right, so the same source compiled to different

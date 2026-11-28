@@ -53,7 +53,15 @@ bool ObjeckLang::Compile(std::vector<std::pair<std::wstring, std::wstring>> &fil
   // A fatal compiler error (an unreadable library, an unresolvable class) comes
   // back as an error like any other. It used to end the process, REPL and all.
   try {
-    return CompileSource(file_source, opt_level);
+    // (more than one attempt: backend::StackDepth::Attempts)
+    backend::StackDepth::Attempts attempts;
+    for(;;) {
+      bool again = false;
+      const bool compiled = CompileSource(file_source, opt_level, attempts, again);
+      if(!again) {
+        return compiled;
+      }
+    }
   }
   catch(const CompilerFatal& fatal) {
     // the translator may have left its program behind
@@ -63,7 +71,8 @@ bool ObjeckLang::Compile(std::vector<std::pair<std::wstring, std::wstring>> &fil
   }
 }
 
-bool ObjeckLang::CompileSource(std::vector<std::pair<std::wstring, std::wstring>> &file_source, const std::wstring opt_level)
+bool ObjeckLang::CompileSource(std::vector<std::pair<std::wstring, std::wstring>> &file_source, const std::wstring opt_level,
+                               backend::StackDepth::Attempts& attempts, bool& again)
 {
   const bool is_debug = false;
   const bool is_lib = false;
@@ -74,6 +83,7 @@ bool ObjeckLang::CompileSource(std::vector<std::pair<std::wstring, std::wstring>
   if(parser.Parse()) {
     // analyze parse tree
     ParsedProgram* program = parser.GetProgram();
+    attempts.Apply(program);
     ContextAnalyzer analyzer(program, lib_uses, is_lib);
 
     if(analyzer.Analyze()) {
@@ -84,6 +94,25 @@ bool ObjeckLang::CompileSource(std::vector<std::pair<std::wstring, std::wstring>
       // intermediate optimizer
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), opt_level, is_lib, is_debug);
       optimizer.Optimize();
+
+      // an expression the loader would refuse for its operand-stack depth is an
+      // error here, at its line (compiler/stack_depth.h), once the element form
+      // of the String literals in its method has been tried
+      std::vector<frontend::Diagnostic> depth_errors;
+      std::set<std::wstring> over;
+      if(!backend::StackDepth::Check(optimizer.GetProgram(), program->GetLinker(), is_lib, depth_errors, over)) {
+        if(attempts.Again(over)) {
+          IntermediateProgram::Release();
+          again = true;
+          return false;
+        }
+        errors.clear();
+        for(size_t i = 0; i < depth_errors.size(); ++i) {
+          errors.push_back(depth_errors[i].Format());
+        }
+        IntermediateProgram::Release();
+        return false;
+      }
 
       // emit target code
       const std::wstring target_name = file_source.front().first;

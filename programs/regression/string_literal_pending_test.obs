@@ -31,8 +31,9 @@
 #   Deep31Lit600     31 wait, 600 strings (already built an element at a time)
 #
 # What waits on the stack is still bounded: thirty-three such levels with no
-# literal at all (1,023 Ints) are refused by the loader, as they must be -- the
-# stack has 1,024 words.
+# literal at all (1,023 Ints) need more than a call has, and obc says so at the
+# expression's line where the loader used to refuse the program
+# (check_stack_depth.py).
 ~#
 
 class StringLiteralPendingTest {

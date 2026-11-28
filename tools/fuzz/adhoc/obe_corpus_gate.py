@@ -21,6 +21,14 @@ three (a compile that failed unannounced, a timeout, a missing image), a .obe le
 directory that this run did not write (the directory is deleted first, and only if it carries this
 gate's marker or is empty), an image that was not loaded, and a library with no classes linked.
 It prints attempted and completed counts and writes the whole ledger to <out>/ledger.json.
+
+It is also the measure that obc and obr count the operand stack alike. obc reports an
+expression whose method needs more operand stack than the loader allows
+(core/compiler/stack_depth.h), from its own count of the words; a count that ran
+high would refuse a program the loader accepts. So each image is compiled and
+loaded with OBJECK_STACK_DEPTH_OUT, under which each writes every method's depth,
+and the two lists must be equal: every method, the same number, no method obc
+could not count.
 """
 import argparse
 import collections
@@ -116,6 +124,22 @@ def fresh_out_dir(path, protected):
     stale = [os.path.join(r, f) for r, _, fs in os.walk(path) for f in fs if f.endswith(".obe")]
     if stale:
         raise SystemExit("stale .obe files in a fresh directory: %s" % stale[:3])
+
+
+def obc_env(env, dest):
+    """obc writes its count of each method's operand-stack depth beside the image"""
+    depth = dest + ".cdepth"
+    if os.path.exists(depth):
+        os.remove(depth)
+    return dict(env, OBJECK_STACK_DEPTH_OUT=depth)
+
+
+def depths(path):
+    try:
+        with open(path, "rb") as f:
+            return sorted(f.read().split(b"\n")[:-1])
+    except OSError:
+        return None
 
 
 def variants_of(rel):
@@ -219,7 +243,7 @@ def main():
         for use in (libs, ALL):
             try:
                 p = subprocess.run([obc, "-src", src, "-lib", use] + flags + ["-dest", dest], capture_output=True,
-                                   timeout=300, env=env)
+                                   timeout=300, env=obc_env(env, dest))
             except subprocess.TimeoutExpired:
                 row.update(outcome="unaccounted", detail="the compiler timed out (300 s) with -lib %s" % use[:40])
                 return row
@@ -230,6 +254,8 @@ def main():
                 row.update(outcome="unaccounted", detail="the compiler exited 0 and wrote no image")
                 return row
             last = (p.stdout + p.stderr).decode("utf-8", "replace")
+        if os.path.exists(dest + ".cdepth"):
+            os.remove(dest + ".cdepth")  # no image: nothing to hold its depths against
         cls = refusal_class(last)
         e = expected_refusal(refusals, rel, tag, cls)
         if e:
@@ -278,7 +304,7 @@ def main():
             for opt in OPTS:
                 dest = src[:-4] + "__%s.obe" % opt
                 p = subprocess.run([obc, "-src", src, "-lib", ALL, "-opt", opt, "-dest", dest], capture_output=True,
-                                   env=env, timeout=900)
+                                   env=obc_env(env, dest), timeout=900)
                 ok = ok and p.returncode == 0
                 if p.returncode == 0 and os.path.exists(dest):
                     made[opt] = dest
@@ -334,19 +360,45 @@ def main():
 
     def load(rel):
         path = os.path.join(out, rel)
+        loaded_depth = path + ".rdepth"
+        if os.path.exists(loaded_depth):
+            os.remove(loaded_depth)
         try:
-            p = subprocess.run([obr, path], capture_output=True, timeout=300, env=verify_env, stdin=subprocess.DEVNULL)
+            p = subprocess.run([obr, path], capture_output=True, timeout=300, stdin=subprocess.DEVNULL,
+                               env=dict(verify_env, OBJECK_STACK_DEPTH_OUT=loaded_depth))
         except subprocess.TimeoutExpired:
-            return rel, -1, "TIMEOUT"
-        return rel, p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace").strip()
+            return rel, -1, "TIMEOUT", None
+        # the two counts of the image's methods: (methods, lines that differ, a few of them)
+        compiled, ran = depths(path + ".cdepth"), depths(loaded_depth)
+        count = None
+        if p.returncode == 0:
+            if compiled is None or ran is None:
+                count = (0, 1, ["no depths written by %s" % ("obc" if compiled is None else "obr")])
+            else:
+                differ = sorted(set(compiled) ^ set(ran))
+                unknown = [line for line in compiled if line.endswith(b"\t?")]
+                shown = [line.decode("utf-8", "replace") for line in (differ + unknown)[:4]]
+                count = (len(ran), len(differ) + len(unknown) + abs(len(compiled) - len(ran)), shown)
+        for name in (path + ".cdepth", loaded_depth):
+            if os.path.exists(name):
+                os.remove(name)
+        return rel, p.returncode, (p.stdout + p.stderr).decode("utf-8", "replace").strip(), count
 
     to_load = sorted(expected_images & on_disk)
     loaded = {}
     refused = 0
     rules = collections.Counter()
+    depth_images = depth_methods = depth_differ = 0
     with ThreadPoolExecutor(jobs) as ex:
-        for rel, rc, text in ex.map(load, to_load):
+        for rel, rc, text, count in ex.map(load, to_load):
             loaded[rel] = (rc, text)
+            if count:
+                depth_images += 1
+                depth_methods += count[0]
+                if count[1]:
+                    depth_differ += 1
+                    if depth_differ <= 12:
+                        print("  DEPTH DIFFERS", os.path.basename(rel), "|", " ; ".join(count[2]).encode("ascii", "replace").decode())
             if rc == 0 and not text:
                 continue
             refused += 1
@@ -357,6 +409,8 @@ def main():
     print("images loaded %d, refused or failing %d" % (len(to_load), refused))
     for rule, n in rules.most_common():
         print("%6d  %s" % (n, rule))
+    print("operand-stack depth: %d images, %d methods counted by obc and by obr, %d images where the counts differ" %
+          (depth_images, depth_methods, depth_differ))
 
     # ---- account for every pair ----
     def clean(rel):
@@ -394,7 +448,8 @@ def main():
         print("  STALE images in the output directory that this run did not write: %s" % ", ".join(stale[:5]))
     if missing:
         print("  MISSING images this run recorded and that are not on disk: %s" % ", ".join(missing[:5]))
-    failed = bool(unaccounted or stale or missing or refused or (documented > 0 and linked == 0))
+    failed = bool(unaccounted or stale or missing or refused or depth_differ or not depth_images
+                  or (documented > 0 and linked == 0))
     print("verdict: %s" % ("FAIL" if failed else "PASS"))
     return 1 if failed else 0
 

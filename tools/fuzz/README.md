@@ -282,3 +282,14 @@ carrying its marker), fails on any `.obe` it did not write, any image it did not
 left unaccounted, prints attempted and completed counts and writes `<out>/ledger.json`. It exits 1 on
 a loader refusal and when no library class linked whole (an API index that names no library file
 leaves that half with nothing to load).
+
+The same run holds the two counts of the operand stack equal. `obc` reports an
+expression whose method needs more operand stack than the loader allows
+(`core/compiler/stack_depth.h`), from its own count of the words; a count that ran
+high would refuse a program the loader accepts. Each image is compiled and loaded
+with `OBJECK_STACK_DEPTH_OUT=<file>`, under which `obc` and `obr` each write a line
+for every method (its name, a tab and the most words its stack stands above its
+arguments, `?` where the walk gave no verdict), and the gate exits 1 if the two
+lists of any image differ or `obc` left a method uncounted. A change to an
+instruction's stack effect, to a trap's row or to either walk is checked by
+running it.

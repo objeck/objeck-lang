@@ -52,6 +52,11 @@
 //     element form compiles at every length measured (to 512);
 //   * the element form is 1 to 3 bytes an element larger in the image.
 // At 6 a literal adds at most 8 words to the stack; the element form adds 3.
+//
+// Those few words still matter under some 996 waiting arguments, where they alone
+// took a method past the verifier's 1,000: there, and only there, a literal of any
+// length is built in the element form (the compiler counts the finished method and
+// compiles it again: backend::StackDepth::Attempts, stack_depth.h).
 #define STRING_LITERAL_STACK_MAX 6
 
 using namespace frontend;
