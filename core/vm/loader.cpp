@@ -1922,16 +1922,22 @@ void Loader::Verify()
   // A method that reads its instance is called on an instance of its class. Which
   // methods do is known now: one that only hands the instance on reads it when
   // the method it hands it to does.
+  // (Only a call that failed the class test asks, so a program without one, and
+  // every program when the class rules are off, skips this.)
+  if(context.receiver_checks.empty()) {
+    return;
+  }
   for(bool changed = true; changed; ) {
     changed = false;
-    for(std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator at = context.methods.begin(); at != context.methods.end(); ++at) {
-      if(at->second.reads_self) {
+    for(size_t at = 0; at < context.hands_on.size(); ++at) {
+      VerifyContext::MethodFacts& facts = context.methods[context.hands_on[at]];
+      if(facts.reads_self) {
         continue;
       }
-      for(size_t i = 0; i < at->second.hands_self_to.size(); ++i) {
-        std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator to = context.methods.find(at->second.hands_self_to[i]);
-        if(to != context.methods.end() && to->second.reads_self) {
-          at->second.reads_self = true;
+      for(uint32_t i = facts.hands_first; i < facts.hands_end; ++i) {
+        const long to = context.handed[i];
+        if(to >= 0 && context.methods[to].reads_self) {
+          facts.reads_self = true;
           changed = true;
           break;
         }
@@ -1940,8 +1946,8 @@ void Loader::Verify()
   }
   for(size_t i = 0; i < context.receiver_checks.size(); ++i) {
     const VerifyContext::ReceiverCheck& check = context.receiver_checks[i];
-    std::unordered_map<StackMethod*, VerifyContext::MethodFacts>::iterator callee = context.methods.find(check.callee);
-    if(callee != context.methods.end() && callee->second.reads_self) {
+    const long callee = context.MethodRow(program, check.callee);
+    if(callee >= 0 && context.methods[callee].reads_self) {
       VerifyFailed(nullptr, check.caller, check.ip, L"a method called on an object of another class");
     }
   }
