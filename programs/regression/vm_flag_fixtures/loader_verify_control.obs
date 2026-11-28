@@ -8,7 +8,9 @@ Its code is written to offer each shape the cases look for: instance and
 class variables, a virtual call, a constructor that calls its parent, Int and
 Float arithmetic, array elements and sizes, literal arrays and strings,
 function values (one that captures, two of different types) and a call through
-one, a Byte[], and two parameters of unrelated library classes. Keep a construct when editing: the
+one, a Byte[], two parameters of unrelated library classes, and a method that
+calls another method of its class on itself beside an unrelated class with a
+method of the same shape. Keep a construct when editing: the
 test fails with "the control program has no such instruction" if one goes.
 ~#
 
@@ -48,8 +50,30 @@ class Shape {
 		return @values[3];
 	}
 
+	# Fill is called on the method's own instance: the class rules' receiver case
+	# retargets one of these calls to Tally:Bump, which reads a Tally's field
+	method : public : TwiceFilled(v : Int) ~ Int {
+		return Fill(v) + Fill(v);
+	}
+
 	function : Count() ~ Int {
 		return @count;
+	}
+}
+
+# unrelated to Shape; Bump takes and returns what Shape:Fill does
+class Tally {
+	@sum : Int;
+
+	New() {
+		@sum := 0;
+	}
+
+	method : public : Bump(v : Int) ~ Int {
+		each(i : 2) {
+			@sum += v;
+		};
+		return @sum;
 	}
 }
 
@@ -117,8 +141,8 @@ class LoaderVerifyControl {
 		add_n := AddN(0);
 		join := Join();
 		bytes := Byte->New[2];
-		# every term is 0
-		extra := Twice(add_n, 0) + join(0, 0) + Low(bytes) + Pair("", IntRef->New(0));
+		# every term is 0 (Fill(1) leaves 4 in the last element)
+		extra := Twice(add_n, 0) + join(0, 0) + Low(bytes) + Pair("", IntRef->New(0)) + Tally->New()->Bump(0) + square->TwiceFilled(1) - 8;
 		# 10 + 7 + 7 + 5 + 1 + 6 = 36
 		total := Sum(ints) + Twice(add, 1) + square->GetId() + square->Fill(2) + Shape->Count() + square->GetName()->Size() + extra;
 		# 4.0, 3.0, 2.0 and 20.0

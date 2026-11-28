@@ -1,0 +1,113 @@
+#~
+run_vm_flag_tests.py section 39: a library method whose body is a trap, called on
+Nil, is a runtime error. These methods are not virtual, so the call itself does
+not look at the receiver, and each handler read through it unchecked: 'select' on
+a Nil String (String->HashID(), inlined), Serializer->Write, Deserializer->Read*,
+Timer->Start/End, FileReader->ReadByte, TCPSecureSocket->Close and DllProxy->Unload
+and CallFunction ended the VM with a segmentation fault, interpreted and compiled.
+The first argument picks the case; each prints "before <case>" and must not print
+"not reached".
+
+The three "argument_" cases pass Nil to a function instead. Each returns Nil, as
+the functions beside it do for a Nil name; these three crashed.
+~#
+use System.IO;
+use System.IO.Filesystem;
+use System.IO.Net;
+use System.Time;
+use System.API;
+
+class NilTrapReceiver {
+	function : Main(args : String[]) ~ Nil {
+		which := args[0];
+		"before {$which}"->PrintLine();
+
+		if(which->Equals("select")) {
+			s : String;
+			select(s) {
+				label "abc": { "abc"->PrintLine(); }
+				other: { "other"->PrintLine(); }
+			};
+		}
+		else if(which->Equals("hash")) {
+			s : String;
+			s->HashID()->PrintLine();
+		}
+		else if(which->Equals("serialize")) {
+			w : Serializer;
+			w->Write(7);
+		}
+		else if(which->Equals("serialize_object")) {
+			w : Serializer;
+			w->Write("text"->As(Base));
+		}
+		else if(which->Equals("deserialize")) {
+			r : Deserializer;
+			r->ReadInt()->PrintLine();
+		}
+		else if(which->Equals("deserialize_array")) {
+			r : Deserializer;
+			r->ReadIntArray();
+		}
+		else if(which->Equals("timer")) {
+			t : Timer;
+			t->Start();
+		}
+		else if(which->Equals("file")) {
+			f : FileReader;
+			f->ReadByte()->PrintLine();
+		}
+		else if(which->Equals("tls")) {
+			c : TCPSecureSocket;
+			c->Close();
+		}
+		else if(which->Equals("library_unload")) {
+			p : DllProxy;
+			p->Unload();
+		}
+		else if(which->Equals("library_call")) {
+			p : DllProxy;
+			p->CallFunction("nothing", Nil);
+		}
+		else if(which->Equals("argument_full_name")) {
+			name : String;
+			if(File->GetFullName(name) = Nil) {
+				"returned Nil"->PrintLine();
+			};
+			return;
+		}
+		else if(which->Equals("argument_resolve")) {
+			name : String;
+			if(TCPSocket->Resolve(name) = Nil) {
+				"returned Nil"->PrintLine();
+			};
+			return;
+		}
+		else if(which->Equals("argument_command")) {
+			command : String;
+			if(Runtime->CommandOutput(command) = Nil) {
+				"returned Nil"->PrintLine();
+			};
+			return;
+		}
+		else {
+			# the control: the same operations on real objects
+			s := "abc";
+			select(s) {
+				label "abc": { "abc"->PrintLine(); }
+				other: { "other"->PrintLine(); }
+			};
+			w := Serializer->New();
+			w->Write(7);
+			r := Deserializer->New(w->Serialize());
+			r->ReadInt()->PrintLine();
+			t := Timer->New();
+			t->Start();
+			t->End();
+			"control done"->PrintLine();
+			return;
+		};
+
+		"not reached"->PrintLine();
+	}
+}

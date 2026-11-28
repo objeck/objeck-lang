@@ -3614,13 +3614,38 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #endif
 }
 
+//
+// DllProxy->Unload() or ->CallFunction() on Nil. The two are not virtual, so
+// the call itself never looks at the receiver, and their instruction read the
+// library's handle through it: a valid program ('p : DllProxy; p->Unload();')
+// ended the VM with a segmentation fault. It is the Nil runtime error every
+// other use of Nil gets, recovered under a handler.
+//
+void StackInterpreter::SharedLibraryNilInstance(size_t* &stack_pos)
+{
+  if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
+    return;
+  }
+  std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+#else
+  VmExit(1);
+#endif
+}
+
 typedef void (*ext_unload_def)();
-void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
+void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr, size_t* &stack_pos)
 {
 #ifdef _DEBUG
   std::wcout << L"stack oper: shared library_UNLOAD; call_pos=" << (*call_stack_pos) << std::endl;
 #endif
   size_t* instance = (size_t*)(*stack_frame)->mem[0];
+  if(!instance) {
+    SharedLibraryNilInstance(stack_pos);
+    return;
+  }
   // unload shared library
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
@@ -3865,6 +3890,11 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 {
   size_t* instance = (size_t*)(*stack_frame)->mem[0];
   size_t* str_obj = (size_t*)(*stack_frame)->mem[1];
+  // the receiver, or the function's name: both are read through below
+  if(!instance || !str_obj) {
+    SharedLibraryNilInstance(stack_pos);
+    return;
+  }
   size_t* array = (size_t*)str_obj[0];
   if(!array) {
     std::wcerr << L">>> Runtime error calling function <<<" << std::endl;
