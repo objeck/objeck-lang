@@ -14,7 +14,9 @@ Before the fix it reported 204 of 4300.
 
 The VM keeps the messages of the newest 4096 faulted, unjoined threads (a
 program that never joins must not grow without bound), so the 204 oldest have
-lost theirs by the time they are joined. Their Join says so ("Thread fault
+lost theirs by the time they are joined (which 204 is exact once every worker has
+faulted: the VM drops the earliest-started of those waiting whenever there are
+more than 4096, and the test waits for all 4300 faults before its first Join). Their Join says so ("Thread fault
 record dropped: ..."); the other 4096 report the divide by zero. A Join knows
 its thread faulted from the thread's exit status, not from the record.
 
@@ -51,6 +53,25 @@ class ThreadFaultJoinMany {
 		};
 	}
 
+	# Every one of `faults` workers started since `before` was read has recorded its
+	# fault. runtime.threads.active cannot say so: a worker that has been started but
+	# has not begun to run is not counted in it yet, so it can read "all ended" while
+	# some are still to come. This test joined on that reading: the workers that had
+	# not begun faulted during the Joins, when records were being taken as fast as
+	# they arrived, so nothing more was dropped and a few of the 204 oldest reported
+	# their fault instead of the dropped notice (4102 and 198 with 6 out of place, then
+	# 4097 and 203, on loaded windows-arm64 runners; 33 runs of 210 on Linux x64 with
+	# three copies sharing three CPUs, every failing run one in which fewer than 4300
+	# faults had been recorded when the wait returned). The registry never held more
+	# than 4096 records in any of them. The fault count is raised under the same lock
+	# as the record is made, so it is the one to wait for.
+	function : SettleFaults(before : Int, faults : Int, active : Int) ~ Nil {
+		for(i := 0; i < 60000 & Stat("runtime.threads.faulted") - before < faults; i += 1;) {
+			Thread->Sleep(1);
+		};
+		Settle(active);
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		count := 4300;
 		failures := 0;
@@ -67,7 +88,7 @@ class ThreadFaultJoinMany {
 				Thread->Sleep(1);
 			};
 		};
-		Settle(active);
+		SettleFaults(before, count, active);
 
 		kept := 4096;
 		reported := 0;
@@ -106,6 +127,7 @@ class ThreadFaultJoinMany {
 		};
 
 		# round 2: odd workers fault, joined in reverse order
+		before := Stat("runtime.threads.faulted");
 		for(i := 0; i < count; i += 1;) {
 			workers[i] := Faulty->New(i % 2 = 1 ? 0 : 1);
 			workers[i]->Execute(Nil);
@@ -113,7 +135,7 @@ class ThreadFaultJoinMany {
 				Thread->Sleep(1);
 			};
 		};
-		Settle(active);
+		SettleFaults(before, count / 2, active);
 
 		wrong := 0;
 		for(i := count - 1; i >= 0; i -= 1;) {

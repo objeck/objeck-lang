@@ -4408,6 +4408,24 @@ static std::set<size_t>& ThreadFaultsUnjoined()
   return unjoined;
 }
 static size_t thread_faults_dropped = 0;
+// Test hook (OBJECK_THREAD_FAULT_STATS): the most records that were ever waiting
+// for a Join at once, counted from the entries themselves and not from the set
+// above, so that it can show the cap was exceeded if the bookkeeping were wrong.
+static size_t thread_faults_peak = 0;
+static bool ThreadFaultStatsWanted()
+{
+  // (read as OBJECK_THREAD_FAULTS is: the debugger's build of this file has no JIT helpers)
+  static const bool wanted = [] {
+#ifdef _WIN32
+    char value[8] = { 0 };
+    size_t len = 0;
+    return !getenv_s(&len, value, sizeof(value), "OBJECK_THREAD_FAULT_STATS") && len > 0;
+#else
+    return getenv("OBJECK_THREAD_FAULT_STATS") != nullptr;
+#endif
+  }();
+  return wanted;
+}
 // what the Join of a thread whose record was dropped reports
 static const wchar_t* const THREAD_FAULT_DROPPED =
   L"Thread fault record dropped: the thread ended in an uncaught error, but too many faulted threads were left unjoined to keep its message";
@@ -4539,6 +4557,20 @@ void StackInterpreter::EndThreadFault(size_t key, bool faulted, const std::wstri
                  << L"): Join the threads a program starts, or their fault messages are lost" << std::endl;
     }
   }
+
+  // The record was added and the oldest dropped in this one critical section, so
+  // no thread ever sees more than the cap. The hook checks that the slow way.
+  if(ThreadFaultStatsWanted()) {
+    size_t waiting = 0;
+    for(const auto& each : ThreadFaults()) {
+      if(each.second.ended && each.second.faulted && !each.second.claimed && !each.second.abandoned) {
+        ++waiting;
+      }
+    }
+    if(waiting > thread_faults_peak) {
+      thread_faults_peak = waiting;
+    }
+  }
 }
 
 std::wstring& StackInterpreter::JoinedThreadFault()
@@ -4570,14 +4602,7 @@ void StackInterpreter::TakeThreadFault(size_t key, bool faulted)
 
 void StackInterpreter::ReportThreadFaultRegistry()
 {
-  // (read as OBJECK_THREAD_FAULTS is: the debugger's build of this file has no JIT helpers)
-#ifdef _WIN32
-  char value[8] = { 0 };
-  size_t len = 0;
-  const bool report = !getenv_s(&len, value, sizeof(value), "OBJECK_THREAD_FAULT_STATS") && len > 0;
-#else
-  const bool report = getenv("OBJECK_THREAD_FAULT_STATS") != nullptr;
-#endif
+  const bool report = ThreadFaultStatsWanted();
   std::lock_guard<std::mutex> guard(thread_fault_lock);
   if(thread_faults_dropped) {
     // not a test hook: a program that lost fault messages is told how many
@@ -4587,7 +4612,7 @@ void StackInterpreter::ReportThreadFaultRegistry()
   }
   if(report) {
     std::wcerr << std::dec << L"[thread-faults] records=" << ThreadFaults().size() << L" handles=" << ThreadFaultKeys().size()
-               << L" dropped=" << thread_faults_dropped << std::endl;
+               << L" dropped=" << thread_faults_dropped << L" peak=" << thread_faults_peak << std::endl;
   }
 }
 

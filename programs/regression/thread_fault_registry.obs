@@ -194,6 +194,11 @@ class ThreadFaultRegistry {
 		};
 		clean := Numbered->New(count, false);
 		clean->Execute(Nil);
+		# every worker has faulted (runtime.threads.active does not count a worker that
+		# has been started and has not begun, so it cannot be what says so)
+		for(i := 0; i < 60000 & Stat("runtime.threads.faulted") - before < count; i += 1;) {
+			Thread->Sleep(1);
+		};
 		Settle(active);
 		if(Stat("runtime.threads.faulted") - before <> count) {
 			wrong += 1;
