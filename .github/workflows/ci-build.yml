@@ -1963,6 +1963,13 @@ jobs:
       - name: The portable-release gate refuses a core binary that is not an ELF file for the target
         run: python3 tools/cicd/test_check_docs_deps.py
 
+      # The portable gate has to be about the archive that ships: check_portable_archive.sh unpacks the
+      # .tgz into a fresh tree, runs the portable check on that, and prints the archive's sha256, which
+      # test_portable_linux.sh records. Negative controls: a text placeholder, no archive, no top
+      # directory, a bad architecture, and the smoke running the gate before it unpacks.
+      - name: The portable archive check inspects the archive it names
+        run: python3 tools/cicd/test_check_portable_archive.py
+
       # The Windows verdict allows a skip only for a test that declares "# SKIP_ALLOWED: <reason>";
       # this keeps the declarations and the sources that print SKIP: in step, and the verdict's fixture
       # tests (a comment that names the marker, a helper that prints it, a zero-pass run) honest.
@@ -1992,6 +1999,14 @@ jobs:
       # emi.py exits non-zero when nothing was eligible or nothing was compared; no build.
       - name: EMI cannot pass on zero effective comparisons
         run: python3 tools/fuzz/test_emi.py GateIntegrityTest
+
+      # The loader-assurance gates must account for what they ran. obe_campaign.py accepts a crash only
+      # by signature from obe_accepted_crashes.json, pins its inputs and fails when fewer mutants
+      # completed than were requested; obe_corpus_gate.py ends every (source, configuration) pair as
+      # loaded, an expected refusal or a named exclusion, deletes its output directory first and fails
+      # on a stale image. Fake obc/obr: nothing built.
+      - name: The loader gates cannot pass on unaccounted cases
+        run: python3 tools/fuzz/test_obe_gates.py
 
       # The weekly traffic snapshot (tools/release-stats) merges GitHub's 14-day window into
       # a growing CSV; this checks the parsing and the merge without a network or a token.
