@@ -177,12 +177,18 @@ if "TIMEOUTME" in text:
     time.sleep(30)
 with open(dest, "w") as f:
     f.write(text)
+if os.environ.get("OBJECK_STACK_DEPTH_OUT"):
+    with open(os.environ["OBJECK_STACK_DEPTH_OUT"], "w") as f:
+        f.write("Main" + chr(9) + ("9" if "DEPTHDIFF" in text else "1") + chr(10))
 if "SIDEEFFECT" in text:
     open(dest + ".extra.obe", "w").write("x")
 '''
 FAKE_OBR = r'''#!/usr/bin/env python3
 import os, sys
 text = open(sys.argv[-1], encoding="utf-8", errors="replace").read()
+if os.environ.get("OBJECK_STACK_DEPTH_OUT"):
+    with open(os.environ["OBJECK_STACK_DEPTH_OUT"], "w") as f:
+        f.write("Main" + chr(9) + "1" + chr(10))
 if os.environ.get("OBJECK_VERIFY_ONLY"):
     if "REFUSEME" in text:
         print(">>> Invalid bytecode: M, instruction 3: a number read through as a reference <<<")
@@ -245,6 +251,13 @@ class CorpusGate(unittest.TestCase):
         ledger = json.load(open(os.path.join(self.out, "ledger.json")))
         self.assertEqual(ledger["attempted"], ledger["accounted"])
         self.assertEqual(ledger["counts"]["loaded"], ledger["attempted"])
+
+    def test_a_depth_the_loader_counts_differently_fails(self):
+        self.add_source("programs/deep.obs", "DEPTHDIFF")
+        rc, out = self.run_gate()
+        self.assertEqual(rc, 1, out)
+        self.assertIn("DEPTH DIFFERS", out)
+        self.assertIn("verdict: FAIL", out)
 
     def test_unannounced_compile_refusal_fails(self):
         self.add_source("programs/broken.obs", "FAILME")

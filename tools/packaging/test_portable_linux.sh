@@ -78,7 +78,7 @@ case "$(basename "$TGZ")" in
   objeck-linux-x64_*|objeck-linux-x86_64_*) ARCH=x64 ;;
   *) case "$(uname -m)" in aarch64|arm64) ARCH=arm64 ;; *) ARCH=x64 ;; esac ;;
 esac
-"$REPO/tools/packaging/check_portable_archive.sh" --sha256-out "$WORK/archive.sha256" "$TGZ" "$ARCH" \
+bash "$REPO/tools/packaging/check_portable_archive.sh" --sha256-out "$WORK/archive.sha256" "$TGZ" "$ARCH" \
   || die "the portable archive check failed; not running the distribution smoke on an archive that fails it"
 ARCHIVE_SHA256="$(cat "$WORK/archive.sha256")"
 echo "smoke runs archive sha256 $ARCHIVE_SHA256"
