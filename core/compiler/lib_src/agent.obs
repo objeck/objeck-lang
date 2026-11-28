@@ -4456,6 +4456,19 @@ result->GetText()->PrintLine();
 					how : String;
 					try {
 						how := Await(slot, limit);
+						# A reply that is there when the loop looks does not mean that nobody cancelled.
+						# The wait looks at the token only between its 10 ms slices, and only while the
+						# reply is still missing: when the loop's thread is held up for as long as the
+						# call takes (a busy machine), or the call is quick, a cancel that came before the
+						# reply, even before the call began, was never looked at. The reply was kept and
+						# a final answer ended the run as completed. A bounded model call hands back no
+						# reply after a cancel or the deadline, so the token is looked at once more here
+						if(how->Equals("done")) {
+							stopped := Checkpoint();
+							if(stopped <> Nil) {
+								how := stopped;
+							};
+						};
 					}
 					finally {
 						# The wait can end in an error: a cancel or the deadline is traced as a halt, and a
