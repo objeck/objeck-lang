@@ -569,7 +569,8 @@ struct SecureSocketCtx {
   int pushback;
   // Held by a read of this session from its first byte to its last, the look ahead that completes a
   // character and the push back of a byte that was not part of it included (the TCPSecureSocket read
-  // traps in common.cpp). Two threads reading one session otherwise took bytes in between each
+  // traps in common.cpp), and by Select while it asks whether a read would find anything, if it is
+  // free (ssl_ready_for_io). Two threads reading one session otherwise took bytes in between each
   // other's steps, and 'pushback' was written by one while the other read it. A wait for this lock
   // is made parked. Close() never takes it: it ends a read by shutting the connection down.
   std::mutex read_lock;
@@ -3037,8 +3038,25 @@ class TrapProcessor {
          return -1;
       }
 
-      // For reads, check if mbedTLS has buffered decrypted data.
+      // Whether a read would find something is asked while holding the session's read lock, taken
+      // only if it is free. The answer looks at what a read changes: the bytes mbedTLS has decrypted
+      // and not handed out, and the byte a Char[] read may have given back (pushback). Both were read
+      // here with no lock while another thread's read wrote them.
+      //
+      // If a read is in progress on another thread the answer is 0, "not ready". That read owns
+      // whatever has arrived: a byte it has taken while completing a character is in neither the
+      // socket nor the session until it is given back, and a caller told "ready" would only queue
+      // behind that read for bytes that may all be spoken for. Select is a poll and never waits; the
+      // caller asks again, and once the read has returned the answer counts the byte it gave back.
+      // (A try-lock may also fail with the lock free, rarely: the same answer, and the same remedy.)
+      //
+      // The lock is kept to the end of the poll, so the two halves of the answer are of one moment.
+      // A check for writing takes no part in any of this.
+      std::unique_lock<std::mutex> reading(ctx->read_lock, std::defer_lock);
       if(!is_write) {
+         if(!reading.try_lock()) {
+            return 0;
+         }
          size_t pending = mbedtls_ssl_get_bytes_avail(&ctx->ssl);
          if(pending > 0 || ctx->pushback >= 0) {   // or a read gave a byte back
             return 1;
