@@ -658,33 +658,17 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
     if(line_num > -1) {
       // continue to next line
       if(continue_state == 1 && line_num != cur_line_num && cur_method && frame->method == cur_method) {
-        // std::wcout << L"--- CONTINE_STATE " << is_continue_state << L" --" << std::endl;
         continue_state++;
       }
 
       const bool step_out = is_step_out && call_stack_pos < jump_stack_pos;
-      /*
-      if(step_out) {
-        std::wcout << L"--- STEP_OUT --" << std::endl;
-      }
-      */
 
       const bool step_into = is_step_into && cur_method && (frame->method != cur_method || line_num != cur_line_num);
-      /*
-      if(step_into) {
-        std::wcout << L"--- STEP_INTO --" << std::endl;
-      }
-      */
 
       // Step-over: stop at next line in same method, or at caller if method returned
       const bool found_next_line = is_next_line && cur_method &&
         ((line_num != cur_line_num && frame->method == cur_method) ||
          (frame->method != cur_method && call_stack_pos < cur_call_stack_pos));
-      /*
-      if(found_next_line) {
-        std::wcout << L"--- NEXT_LINE --" << std::endl;
-      }
-      */
 
       // only consider a breakpoint on the first opcode of each line-entry, so a
       // multi-opcode source line counts as a single hit (matters for ignore/temp)
@@ -3200,11 +3184,6 @@ bool Runtime::Debugger::AddMethodBreak(const std::wstring& spec, const std::wstr
     condition = ParseCondition(condition_str);
   }
   return AddBreak(line, file, condition);
-}
-
-bool Runtime::Debugger::AddLogPoint(int line_num, const std::wstring& file_name, const std::wstring& log_message)
-{
-  return AddBreak(line_num, file_name, nullptr, false, log_message);
 }
 
 void Runtime::Debugger::ResolvePendingMethodBreaks()

@@ -1339,7 +1339,6 @@ public:
   bool HasBundleName(const std::wstring &name);
 
   // finds the first alias match; note multiple matches may exist
-  LibraryAlias* SearchAliasLibraries(const std::wstring& name, const std::vector<std::wstring>& uses);
 
   // finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const std::wstring& name, const std::vector<std::wstring>& uses);

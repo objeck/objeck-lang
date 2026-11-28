@@ -91,17 +91,6 @@ def log_result(name, ok, detail=""):
         print(f"  [FAIL] {name}  {detail}")
 
 
-def log_known(method, ok):
-    """Report a known-broken handler without failing the run."""
-    global PASS, FAIL, KNOWN
-    if ok:
-        FAIL += 1
-        print(f"  [FIXED] {method} now works -- remove it from KNOWN_BROKEN")
-    else:
-        KNOWN += 1
-        print(f"  [KNOWN] {method}  {KNOWN_BROKEN[method]}")
-
-
 def make_env(bin_dir):
     """Environment so obr resolves its libraries on every platform."""
     env = dict(os.environ)

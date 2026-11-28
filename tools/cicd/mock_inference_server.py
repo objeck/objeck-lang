@@ -58,7 +58,6 @@ Usage:
 import argparse
 import json
 import re
-import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 

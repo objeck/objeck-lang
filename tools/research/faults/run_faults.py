@@ -10,7 +10,7 @@ repetition. Every child runs under a watchdog and in its own process group, so n
 
 See README.md for the environment variables (paths to obr, the .obe files, the model).
 """
-import argparse, csv, json, os, re, resource, signal, socket, statistics, subprocess, sys, threading, time
+import argparse, csv, json, os, re, resource, signal, statistics, subprocess, sys, threading, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)

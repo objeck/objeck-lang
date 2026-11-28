@@ -1610,13 +1610,6 @@ class System {
     return FALSE;
   }
 
-  static size_t GetTotalSystemMemory()
-  {
-    MEMORYSTATUSEX status;
-    status.dwLength = sizeof(status);
-    GlobalMemoryStatusEx(&status);
-    return status.ullTotalPhys;
-  }
   
   //
   // Chuck Walbourn

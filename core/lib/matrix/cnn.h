@@ -306,7 +306,6 @@ struct Mat {
   typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RM;
   typedef Eigen::Map<RM> Map;
   typedef Eigen::Map<const RM> CMap;
-  typedef Eigen::Map<const Eigen::Matrix<T, 1, Eigen::Dynamic>> CRow;
 };
 
 // weight initializer: bound of the uniform distribution

@@ -789,7 +789,6 @@ namespace Runtime {
     void ResolvePendingMethodBreaks();
 
     // add a breakpoint carrying a logpoint message (for DAP logpoints)
-    bool AddLogPoint(int line_num, const std::wstring& file_name, const std::wstring& log_message);
 
     // searches for a valid breakpoint based upon the line number provided
     UserBreak* FindBreak(int line_num);

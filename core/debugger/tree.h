@@ -128,10 +128,6 @@ namespace frontend {
       int_value2 = i;
     }
 
-    size_t GetIntValue2() {
-      return int_value2;
-    }
-
     void SetFloatValue(double f) {
       float_value = f;
       is_float_eval = true;

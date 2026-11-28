@@ -39,7 +39,6 @@ Usage: serve_onnx_model.py --model <path.onnx> [--name test_model] [--port 0]
 import argparse
 import json
 import re
-import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 

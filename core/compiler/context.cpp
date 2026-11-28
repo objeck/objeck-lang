@@ -11210,7 +11210,6 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   }
   else {
     const std::wstring left_name = ShortTypeName(left);
-    const std::wstring right_name = ShortTypeName(right);
 
     switch(left->GetType()) {
     case VAR_TYPE: {

@@ -769,32 +769,6 @@ extern "C" {
   }
 
   //
-  // get number of results
-  //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void odbc_result_num_columns(VMContext& context)
-  {
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
-    if(!stmt) {
-      free_stmt(stmt);
-      APITools_SetIntValue(context, 0, 0);
-      return;
-    }
-
-    SQLSMALLINT columns;
-    SQLRETURN status = SQLNumResultCols(stmt, &columns);
-    if(SQL_OK) {
-      APITools_SetIntValue(context, 0, columns);
-    }
-    else {
-      free_stmt(stmt);
-      APITools_SetIntValue(context, 0, -1);
-    }
-  }
-
-  //
   // fetches the next row in a resultset
   //
 #ifdef _WIN32

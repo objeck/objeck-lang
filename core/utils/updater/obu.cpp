@@ -748,7 +748,6 @@ namespace minisig {
   static const size_t PUBKEY_BYTES = 42;
   static const size_t SIGNATURE_BYTES = 74;
   static const size_t ED25519_SIG_BYTES = 64;
-  static const size_t ED25519_KEY_BYTES = 32;
   static const size_t KEY_ID_BYTES = 8;
 
   static bool Base64Decode(const std::string& text, std::vector<unsigned char>& out)

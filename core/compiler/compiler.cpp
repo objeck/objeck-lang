@@ -237,7 +237,6 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     }
     // parse file wild card
     else if(frontend::EndsWith(src_files, L"*.obs")) {
-      std::wstring dir_path;
       std::wstring files_paths;
       frontend::RemoveSubString(src_files, L"*.obs");
       if(src_files.empty()) {
