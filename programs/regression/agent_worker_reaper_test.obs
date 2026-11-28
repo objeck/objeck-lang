@@ -135,13 +135,21 @@ class AgentWorkerReaperTest {
       agent->SetCancel(token);
       agent->SetTrace(sink);
       sink->Arm(token);
+      # what the run ended with, said when it is not the sink's error: a failure can then be read
+      ended := "no error: the run returned";
       try {
-        agent->Run("go {$i}");
+        result := agent->Run("go {$i}");
+        ended := "no error: the run returned {$result->GetStopReason()}, text '{$result->GetText()}', error '{$result->GetError()}'";
       }
       on(e : Error) {
+        ended := "the error '{$e->GetMessage()}'";
         if(e->GetMessage() <> Nil & e->GetMessage()->Has("the sink raised on halt")) {
           raised += 1;
+          ended := Nil;
         };
+      };
+      if(ended <> Nil) {
+        "  run {$i} ended with {$ended}"->PrintLine();
       };
       # the worker that was left behind finishes; nothing of this agent runs again
       Thread->Sleep(90);
