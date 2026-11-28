@@ -1362,64 +1362,68 @@ bool Scanner::PeekBlockAhead(int index)
 
   // 0 at the level of tokens[index]; a '{' counts only inside a '(' or '['
   int nesting = 0;
-  bool decided = false;
   bool found = false;
-  auto step = [&](ScannerTokenType type) {
+  // Takes one token; true when it settles the answer, which is then in 'found'.
+  // The loops below end on what this returns. It used to set a flag it captured by
+  // reference, and the loop over the tokens past the buffer tested that flag: a reader
+  // (and Coverity, CID 1689716) sees nothing in that loop's body assign it, takes the loop
+  // for endless and the RestorePeekState after it for dead code. It was reached, on every
+  // call that scanned past the buffer; written this way that is plain.
+  auto settles = [&nesting, &found](ScannerTokenType type) -> bool {
     switch(type) {
     case TOKEN_OPEN_BRACE:
       if(nesting == 0) {
-        decided = found = true;
+        found = true;
+        return true;
       }
-      else {
-        ++nesting;
-      }
-      break;
+      ++nesting;
+      return false;
 
     case TOKEN_OPEN_PAREN:
     case TOKEN_OPEN_BRACKET:
       ++nesting;
-      break;
+      return false;
 
     case TOKEN_CLOSED_PAREN:
     case TOKEN_CLOSED_BRACKET:
     case TOKEN_CLOSED_BRACE:
       if(nesting == 0) {
-        decided = true;
+        return true;
       }
-      else {
-        --nesting;
-      }
-      break;
+      --nesting;
+      return false;
 
     case TOKEN_SEMI_COLON:
     case TOKEN_COMMA:
-      decided = nesting == 0;
-      break;
+      return nesting == 0;
 
     case TOKEN_END_OF_STREAM:
     case TOKEN_NO_INPUT:
-      decided = true;
-      break;
+      return true;
 
     default:
-      break;
+      return false;
     }
   };
 
   // tokens already buffered
-  for(int i = index; i <= last && !decided; ++i) {
-    step(tokens[i]->GetType());
+  for(int i = index; i <= last; ++i) {
+    if(settles(tokens[i]->GetType())) {
+      return found;
+    }
   }
-  if(decided || !buffer || is_first_token) {
+  if(!buffer || is_first_token) {
     return found;
   }
 
-  // tokens past the buffer, scanned into the last slot
+  // tokens past the buffer, scanned into the last slot; the end of the text settles it
+  // if nothing does before, so the scanner is always put back where it was
   PeekState state;
   SavePeekState(state);
-  while(!decided) {
+  bool settled = false;
+  while(!settled) {
     ParseToken(last);
-    step(tokens[last]->GetType());
+    settled = settles(tokens[last]->GetType());
   }
   RestorePeekState(state);
 
