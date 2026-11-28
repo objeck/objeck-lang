@@ -82,6 +82,33 @@ spawned thread a **sentinel handler at the bottom of its handler stack**:
   (no fault), the error text, or the dropped notice. `runtime.threads.faulted` counts every fault, dropped or not.
   Tests: `thread_fault_registry.obs` "capped" with 10,000 faulting unjoined workers (`run_vm_flag_tests.py`
   section 38: `records=4095 handles=4095 dropped=5904`) and `thread_fault_join_many.obs`.
+
+  The contract, exactly:
+  - A record exists from the moment the thread reports its end (`EndThreadFault`), which is before the thread
+    leaves `runtime.threads.active` and before its `Join` can return. `runtime.threads.faulted` is raised under
+    the same lock, in the same step. A thread never counts as ended while its fault is still to be recorded.
+  - Whenever more than 4,096 records are waiting for a `Join`, the record of the thread that was **started**
+    earliest among them is dropped (keys are given out in start order; the order in which threads happen to
+    fault does not matter). A record a `Join` has already claimed is never dropped.
+  - It follows that once N faulting threads have all ended and none has been joined, the records kept are those
+    of the 4,096 started last, whatever order they ended in, and a `Join` of any of the other N - 4,096 reports
+    the dropped notice. If Joins run while threads are still faulting, records leave as fast as they arrive and
+    fewer, or none, are dropped: which ones then depends on timing.
+  - Every `Join` of a faulted thread reports either that thread's own message or the dropped notice, never
+    another thread's and never "no fault".
+
+  A program (or a test) that wants "all of them have ended" must not read it from `runtime.threads.active`
+  alone: a thread that has been started but has not begun to run is not in that count yet (it registers itself
+  when it begins), so the count can return to its old value while threads are still to come. Wait for the
+  thread's own evidence instead: `runtime.threads.faulted` for threads that fault, a `Join`, or a flag the
+  thread sets. `thread_fault_join_many.obs` waited on the active count alone and began joining
+  while a few workers had not started: 33 runs of 210 failed on Linux x64 with three copies sharing three CPUs
+  (twice on loaded windows-arm64 cloud runners; 0 of 102 on Windows x64), reporting for example "4102 reported
+  their fault and 198 a dropped record". More than 4,096 Joins returning a message is not more than 4,096
+  records held: the late workers faulted while the Joins were taking records away, so nothing more needed
+  dropping. The registry's test hook prints `peak=N`, the most records that ever waited at once, counted from
+  the entries after every fault: in 120 further starved runs of the old test, 15 failed and `peak` was 4096 in
+  all 120. With the wait on `runtime.threads.faulted`: 0 failures in 330 starved runs.
   A design that needs no cap would tie a record to the life of its `Thread` object, dropping it when the collector
   finds the object dead. That needs the collector to tell the VM about dead objects (weak references or
   finalizers), which it does not do today; not attempted here.
