@@ -7149,6 +7149,7 @@ static int DtlsAccept(DtlsServerCtx* srv, DtlsSocketCtx* client, unsigned char* 
     const bool hello = ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1;
     if(hello) {
       // test point: a ClientHello has been seen and nothing has been done about it yet
+      // coverity[sleep] sleeps only when a test names this point in OBJECK_NATIVE_TEST_PAUSE, and inside accept_turn on purpose: that is the interleaving the test forces (CID 1689715)
       NativeTestPause("dtls-accept-hello-seen");
     }
 
@@ -11247,6 +11248,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
       read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
       // never stop inside a character, after a whole read (see SockTcpInCharAry)
       if(read > 0 && read == num) {
+        // coverity[sleep] read_lock is held across the wait by design: one read of a session at a time, to the byte it gives back; Close() ends the wait by shutdown and never takes this lock (CID 1689714)
         read = (int)ReadUtf8Tail(byte_buffer, (size_t)read, [sctx](char& dest, unsigned char lo, unsigned char hi) {
           // TLS has no way to look at a byte without reading it: one that does not continue the
           // character is kept in the session (SecureSocketCtx::pushback) and is the next byte any read gets
