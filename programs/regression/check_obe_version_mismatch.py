@@ -41,6 +41,16 @@ a message of the same kind, by obr and by obc's linker:
   print the file's magic and the one this build reads
   say to recompile (a program) or rebuild (a library)
 A magic that was never a program's or a library's is still an unknown file.
+
+The magic has to move with EVERY layout. A library's enum record gained a byte
+(enum or consts) under the magic the method record's flag had just taken
+(0xffbb), so a library built between the two was read as the new layout: the
+byte after an enum's offset -- the first byte of its item count -- was taken
+for the kind, and the linker called the library corrupt. The enum byte now has
+a magic of its own (0xffbc). This builds a library with enums, takes the kind
+bytes out again and gives it the magic before this one -- the file an earlier
+build of this version wrote -- and requires the layout message for it, from
+the linker and from obr, and no word of corruption.
 """
 
 import os
@@ -224,6 +234,61 @@ def main():
         tag, out = link_with("an executable's magic", magic)
         check("%s: the message says it is an executable" % tag, "executable" in out, "out=%r" % out)
         link_with("a magic that is no layout of ours", 0x1234)
+
+        # A library as the build before the enum record's kind byte wrote it: the
+        # records without that byte, under the magic before this one.
+        enum_src = os.path.join(work, "probe_enums.obs")
+        with open(enum_src, "w") as handle:
+            handle.write("bundle Probe {\n\tenum Signal := -3 {\n\t\tA,\n\t\tB,\n\t\tC,\n\t\tD,\n\t\tE,\n\t\tF\n\t}\n\n"
+                         "\tconsts Edge {\n\t\tBelow := -1,\n\t\tAt := 0\n\t}\n\n"
+                         "\tclass Lib {\n\t\tfunction : Answer() ~ Int { return 42; }\n\t}\n}\n")
+        enum_lib = os.path.join(work, "probe_enums.obl")
+        code, out = run([obc, "-src", enum_src, "-tar", "lib", "-dest", enum_lib], env, work)
+        if code != 0 or not os.path.isfile(enum_lib):
+            print("could not compile the probe library with enums (exit %d):\n%s" % (code, out))
+            return 2
+        enum_stream = bytearray(read_obe(enum_lib))
+        removed = 0
+        for name, kind in (("Probe.Signal", 0), ("Probe.Edge", 1)):
+            encoded = name.encode("utf-8")
+            at = bytes(enum_stream).find(struct.pack("<i", len(encoded)) + encoded)
+            kind_at = at + 4 + len(encoded) + 8
+            check("the enum record of %s is found, with kind %d after its offset" % (name, kind),
+                  at > 0 and enum_stream[kind_at] == kind, "at=%d" % at)
+            if at > 0:
+                del enum_stream[kind_at]
+                removed += 1
+        check("both kind bytes were taken out", removed == 2, "removed=%d" % removed)
+        earlier = bytes(enum_stream[:4]) + struct.pack("<i", lib_magic - 1) + bytes(enum_stream[8:])
+
+        def refused_as_a_layout(label, out, code):
+            check("%s: refused, non-zero exit" % label, code != 0, "exit=%d out=%r" % (code, out))
+            check("%s: the message names both layouts" % label,
+                  "0x%x" % (lib_magic - 1) in out and "layout" in out, "out=%r" % out)
+            check("%s: nothing is called corrupt or truncated" % label,
+                  re.search(r"corrupt|truncated", out, re.IGNORECASE) is None, "out=%r" % out)
+
+        write_obe(os.path.join(probe_libs, "probe_lib.obl"), earlier)
+        code, out = run([obc, "-src", user_src, "-lib", "probe_lib", "-dest", os.path.join(work, "probe_user3.obe")], link_env, work)
+        label = "a library without the enum kind byte, under the magic before this one (0x%x)" % (lib_magic - 1)
+        refused_as_a_layout(label + ", linked", out, code)
+        check("%s, linked: the message says to rebuild the library" % label,
+              "probe_lib.obl" in out and re.search(r"rebuild", out, re.IGNORECASE) is not None, "out=%r" % out)
+
+        earlier_as_program = os.path.join(work, "probe_enums_earlier.obe")
+        write_obe(earlier_as_program, earlier)
+        code, out = run([obr, earlier_as_program], env, work)
+        refused_as_a_layout(label + ", given to obr", out, code)
+        check("%s, given to obr: 'File layout mismatch'" % label, "File layout mismatch" in out, "out=%r" % out)
+
+        # The same records under THIS magic are not this layout, and reading them
+        # must end in a refusal, never in a crash or a link: the reader checks the
+        # kind and every length it meets.
+        write_obe(os.path.join(probe_libs, "probe_lib.obl"), bytes(enum_stream))
+        code, out = run([obc, "-src", user_src, "-lib", "probe_lib", "-dest", os.path.join(work, "probe_user4.obe")], link_env, work)
+        check("the same records under this magic: refused by the linker with a message, not a crash",
+              code > 0 and "probe_lib.obl" in out and re.search(r"corrupt|truncated", out, re.IGNORECASE) is not None,
+              "exit=%d out=%r" % (code, out))
 
     print("\n%d failure(s)" % len(failures))
     return 1 if failures else 0

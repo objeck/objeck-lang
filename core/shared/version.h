@@ -54,12 +54,18 @@
 // or '@prompt' functions, and a program's record also says whether the method
 // is a function (a library's already did): 'obr --mcp' picks what to start from
 // these, where it used to go by the shape of a method's name (Loader::
-// SelectMcpEntry). Since 0xffbb a library's enum record also says whether it
+// SelectMcpEntry). Since 0xffbc a library's enum record also says whether it
 // is an 'enum' or a 'consts' group, one byte after its offset: the linker
-// used to guess from the items' values (LibraryEnum::IsConsts). The record
-// layouts are in docs/ARCHITECTURE_MAP.md.
+// used to guess from the items' values (LibraryEnum::IsConsts). That byte
+// first went in under 0xffbb, the magic the method record's flag had just
+// taken, so a 0xffbb library built before it was read with the byte after
+// each offset -- the first byte of the item count -- taken for the kind, and
+// reported as corrupt where it is only another layout. A layout gets a magic
+// of its own even when the last one has not been released: builds of one
+// version exchange files too. A program has no enum records and keeps 0xffc0.
+// The record layouts are in docs/ARCHITECTURE_MAP.md.
 #define MAGIC_NUM_EXE 0xffc0
-#define MAGIC_NUM_LIB 0xffbb
+#define MAGIC_NUM_LIB 0xffbc
 // Every layout a program or a library has had since the magics above began is
 // 0xffXX. A file that carries this toolchain's VER_NUM and such a magic, but not
 // one of the two current ones, was written by another build of the same version
