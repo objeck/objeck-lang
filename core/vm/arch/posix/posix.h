@@ -340,11 +340,13 @@ public:
     char buffer[MID_BUFFER_MAX];
     size_t buffer_index = 0;
 
-    char value;
+    char value = '\0';
     bool done = false;
+    // the pipe ended or failed: there is no byte to look at after the line
+    bool failed = false;
     do {
       if(recv(pipe, &value, 1, 0) != 1) {
-        done = true;
+        done = failed = true;
       }
       else if(value != '\0' && value != '\r' && value != '\n') {
         buffer[buffer_index++] = value;
@@ -356,8 +358,12 @@ public:
     while(!done && buffer_index < MID_BUFFER_MAX - 1);
     buffer[buffer_index] = '\0';
 
-    if(value == '\r') {
-      recv(pipe, &value, 1, 0);
+    // A CR ends the line, and an LF right after it belongs to the same line end. The byte after the
+    // CR used to be taken whatever it was, so "abc", CR, "X" lost the X: it is looked at first and
+    // taken only when it is an LF (as SockTcpInString in common.cpp does).
+    if(!failed && value == '\r') {
+      char line_feed;
+      ReadByteInRange(line_feed, pipe, '\n', '\n');
     }
 
     return buffer;
@@ -1771,6 +1777,13 @@ class IPDtlsSocket {
   static char ReadByte(DtlsSocketCtx* sctx, int &status) {
     TlsLibraryLock library_lock;
     unsigned char value;
+    // a byte a line read gave back comes first (DtlsSocketCtx::pushback)
+    if(sctx->pushback >= 0) {
+      value = (unsigned char)sctx->pushback;
+      sctx->pushback = -1;
+      status = 1;
+      return (char)value;
+    }
     status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
     if(status <= 0) {
       if(status < 0) {
@@ -1787,6 +1800,20 @@ class IPDtlsSocket {
   static int ReadBytes(char* values, int len, DtlsSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     int status;
+    // A byte a line read gave back comes first (DtlsSocketCtx::pushback), with what is left of the
+    // datagram it came from; nothing is waited for, since the caller already has a byte.
+    if(len > 0 && sctx->pushback >= 0) {
+      values[0] = (char)sctx->pushback;
+      sctx->pushback = -1;
+      int total = 1;
+      if(len > 1 && mbedtls_ssl_get_bytes_avail(&sctx->ssl) > 0) {
+        status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + 1, len - 1);
+        if(status > 0) {
+          total += status;
+        }
+      }
+      return total;
+    }
     do {
       status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values, len);
     }

@@ -191,5 +191,12 @@ $ printf 'a\n\nb' | obr eof_lines.obe
 3 lines, 1 blank
 ```
 
+`ReadLine` on a socket (`TCPSocket`, `TCPSecureSocket`, `DTLSSocket`) or a `Pipe` ends a line at a line
+feed, at a carriage return, or at a carriage return followed by a line feed, which is one line end. A
+carriage return on its own still ends the line, and the byte after it is now the first byte of the next
+line: it used to be thrown away whatever it was, so a peer that sent `abc`, CR, `Xyz` had its second
+line read as `yz`. The HTTP clients read status and header lines this way. (`FileReader->ReadLine` is a
+different reader: a line there ends at a line feed, and a carriage return before it is dropped.)
+
 The other items (HTTP timeouts, thread-fault isolation, AES-256-GCM, ONNX on the GPU, gradient boosting,
 forecasting) are in the [CHANGELOG](../../CHANGELOG.md) and the [AI guide](../AI.md).
