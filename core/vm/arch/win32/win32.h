@@ -1438,6 +1438,13 @@ class IPDtlsSocket {
   static char ReadByte(DtlsSocketCtx* sctx, int &status) {
     TlsLibraryLock library_lock;
     unsigned char value;
+    // a byte a line read gave back comes first (DtlsSocketCtx::pushback)
+    if(sctx->pushback >= 0) {
+      value = (unsigned char)sctx->pushback;
+      sctx->pushback = -1;
+      status = 1;
+      return (char)value;
+    }
     status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
     if(status <= 0) {
       if(status < 0) {
@@ -1454,6 +1461,20 @@ class IPDtlsSocket {
   static int ReadBytes(char* values, int len, DtlsSocketCtx* sctx) {
     TlsLibraryLock library_lock;
     int status;
+    // A byte a line read gave back comes first (DtlsSocketCtx::pushback), with what is left of the
+    // datagram it came from; nothing is waited for, since the caller already has a byte.
+    if(len > 0 && sctx->pushback >= 0) {
+      values[0] = (char)sctx->pushback;
+      sctx->pushback = -1;
+      int total = 1;
+      if(len > 1 && mbedtls_ssl_get_bytes_avail(&sctx->ssl) > 0) {
+        status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + 1, len - 1);
+        if(status > 0) {
+          total += status;
+        }
+      }
+      return total;
+    }
     do {
       status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values, len);
     }

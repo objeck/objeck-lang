@@ -685,6 +685,11 @@ struct DtlsSocketCtx {
   // client of the server's one socket
   DtlsPeer* peer;
 #endif
+  // As SecureSocketCtx's: a byte read from the session and given back, or -1 (a line read that
+  // looked at the byte after a CR and found it was not an LF: see SockDtlsInString in common.cpp), and the
+  // lock a read holds from its first byte to the byte it gives back, which Select tries.
+  int pushback;
+  std::mutex read_lock;
 
   void SetError(int error) {
     const SocketError reason = net_reason;
@@ -700,10 +705,11 @@ struct DtlsSocketCtx {
     dtls_socket_error = reason;
   }
 
-  DtlsSocketCtx() : last_error(0), net_reason{ 0, false }, server(nullptr), users(0), closed(false)
+  DtlsSocketCtx() : last_error(0), net_reason{ 0, false }, server(nullptr), users(0), closed(false),
 #ifdef _WIN32
-    , peer(nullptr)
+    peer(nullptr),
 #endif
+    pushback(-1)
   {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
@@ -3130,10 +3136,16 @@ class TrapProcessor {
          return -1;
       }
 
-      // For reads, check if mbedTLS has buffered decrypted data.
+      // For reads, check if mbedTLS has buffered decrypted data, or a line read gave a byte back.
+      // Under the session's read lock, taken only if it is free, and "not ready" while a read is in
+      // progress on another thread, as ssl_ready_for_io: see there.
+      std::unique_lock<std::mutex> reading(ctx->read_lock, std::defer_lock);
       if(!is_write) {
+         if(!reading.try_lock()) {
+            return 0;
+         }
          size_t pending = mbedtls_ssl_get_bytes_avail(&ctx->ssl);
-         if(pending > 0) {
+         if(pending > 0 || ctx->pushback >= 0) {
             return 1;
          }
       }

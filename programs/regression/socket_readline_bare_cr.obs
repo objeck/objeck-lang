@@ -1,0 +1,340 @@
+#~
+# ReadLine on a socket: after a carriage return, only a line feed is part of the line end
+#
+# A line read from a TCP socket, a TLS socket, a DTLS socket or a pipe ends at a CR or an LF. After a CR
+# the natives read one more byte and threw it away, whatever it was ("assume LF"). So of
+#
+#     a b c CR X y z CR LF
+#
+# the first line was "abc" and the second "yz": the X was gone. The HTTP clients read their status and
+# header lines this way, so a peer that ended a line with a bare CR had the first byte of its next
+# line dropped without a word.
+#
+# The byte after a CR is now taken only when it is an LF. Any other byte stays in the stream and is the
+# first byte of the next line: a TCP socket and a pipe look before they read, a TLS or DTLS session
+# gives the byte back for its next read. A bare CR still ends a line, as it did.
+#
+# The peer here sends, in one piece,  abc CR Xyz CR LF def CR LF ghi CR  and closes: the lines are
+# abc, Xyz, def and ghi, and then the end. (A DTLS peer sends datagrams: "abc CR Xyz CR LF", "def CR",
+# "end LF"; a CR that ends its datagram ends the line without waiting for another datagram.)
+#
+# Not here: a pipe on Windows, whose line read takes a whole message and trims it (it never dropped a
+# byte this way); and FileReader->ReadLine, which ends a line at LF only.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.IO.Filesystem;
+
+# sends the bytes to the one TCP connection it accepts and closes it
+class CrSender from Thread {
+	@server : TCPSocketServer;
+	@bytes : Byte[];
+
+	New(server : TCPSocketServer, bytes : Byte[]) {
+		Parent("cr-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil & client->IsOpen()) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			client->CloseGracefully(2000);
+		};
+	}
+}
+
+# the same over TLS
+class TlsCrSender from Thread {
+	@server : TCPSecureSocketServer;
+	@bytes : Byte[];
+
+	New(server : TCPSecureSocketServer, bytes : Byte[]) {
+		Parent("tls-cr-sender");
+		@server := server;
+		@bytes := bytes;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			client->WriteBuffer(0, @bytes->Size(), @bytes);
+			client->CloseGracefully(2000);
+		};
+	}
+}
+
+# accepts one DTLS client and sends it three datagrams
+class DtlsCrSender from Thread {
+	@server : DTLSSocketServer;
+	@release : Bool;
+
+	New(server : DTLSSocketServer) {
+		Parent("dtls-cr-sender");
+		@server := server;
+	}
+
+	method : public : Release() ~ Nil { @release := true; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			first := SocketReadlineBareCr->Bytes("abc\rXyz\r\n");
+			client->WriteBuffer(0, first->Size(), first);
+			second := SocketReadlineBareCr->Bytes("def\r");
+			client->WriteBuffer(0, second->Size(), second);
+			third := SocketReadlineBareCr->Bytes("end\n");
+			client->WriteBuffer(0, third->Size(), third);
+			waited := 0;
+			while(<>@release & waited < 20000) {
+				Thread->Sleep(10);
+				waited += 10;
+			};
+			client->Close();
+		};
+	}
+}
+
+class CrPipeOwner from Thread {
+	@name : String;
+	@pipe : Pipe;
+
+	New(name : String) {
+		Parent("cr-pipe-owner");
+		@name := name;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		@pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+	}
+
+	method : public : GetPipe() ~ Pipe { return @pipe; }
+}
+
+class SocketReadlineBareCr {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		only := "";
+		if(args->Size() > 0) {
+			only := args[0];
+		};
+		if(only->Size() = 0 | only->Equals("tcp")) {
+			"stage: tcp"->ErrorLine();
+			CheckTcp();
+		};
+		if(only->Size() = 0 | only->Equals("pipe")) {
+			"stage: pipe"->ErrorLine();
+			CheckPipe();
+		};
+		if(only->Size() = 0 | only->Equals("tls") | only->Equals("dtls")) {
+			cert := "bare-cr-cert-{$(Runtime->GetProcessId())}.pem";
+			key := "bare-cr-key-{$(Runtime->GetProcessId())}.pem";
+			if(<>MakeServerCert(cert, key, "/CN=localhost", "DNS:localhost,IP:127.0.0.1")) {
+				Check("openssl creates the certificate (is openssl on PATH?)", false);
+			}
+			else {
+				if(<>only->Equals("dtls")) {
+					"stage: tls"->ErrorLine();
+					CheckTls(cert, key);
+				};
+				if(<>only->Equals("tls")) {
+					"stage: dtls"->ErrorLine();
+					CheckDtls(cert, key);
+				};
+			};
+			File->Delete(cert);
+			File->Delete(key);
+		};
+
+		if(@failed > 0) {
+			"FAIL: {$@failed} bare carriage return check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: after a carriage return a line read takes only a line feed"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Bytes(text : String) ~ Byte[] {
+		bytes := Byte->New[text->Size()];
+		each(i : text) {
+			bytes[i] := text->Get(i)->As(Int);
+		};
+		return bytes;
+	}
+
+	# abc CR Xyz CR LF def CR LF ghi CR
+	function : Stream() ~ Byte[] {
+		return Bytes("abc\rXyz\r\ndef\r\nghi\r");
+	}
+
+	function : Shown(line : String) ~ String {
+		if(line = Nil) {
+			return "Nil";
+		};
+		return "'{$line}'";
+	}
+
+	function : CheckLines(what : String, first : String, second : String, third : String, fourth : String) ~ Nil {
+		Check("{$what}: the line before a bare CR is abc (got {$Shown(first)})", first <> Nil & first->Equals("abc"));
+		Check("{$what}: the line after it keeps its first byte, Xyz (got {$Shown(second)})", second <> Nil & second->Equals("Xyz"));
+		Check("{$what}: a CR LF line end is one line end, def (got {$Shown(third)})", third <> Nil & third->Equals("def"));
+		Check("{$what}: the last line is whole (got {$Shown(fourth)})", fourth <> Nil & (fourth->Equals("ghi") | fourth->Equals("end")));
+	}
+
+	function : CheckTcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		if(<>server->Listen(5)) {
+			Check("the TCP server listens", false);
+			return;
+		};
+		sender := CrSender->New(server, Stream());
+		sender->Execute(Nil);
+
+		client := TCPSocket->New("127.0.0.1", server->GetPort());
+		if(<>client->IsOpen()) {
+			Check("the TCP client connects", false);
+			return;
+		};
+		client->SetRecvTimeout(10000);
+		first := client->ReadLine();
+		second := client->ReadLine();
+		third := client->ReadLine();
+		fourth := client->ReadLine();
+		last := client->ReadLine();
+		CheckLines("TCP", first, second, third, fourth);
+		Check("TCP: a CR at the end of the stream ends its line, and nothing follows (got {$Shown(last)})", last = Nil | last->Size() = 0);
+		client->Close();
+		sender->Join();
+		server->Close();
+	}
+
+	function : CheckPipe() ~ Nil {
+		if(Runtime->GetPlatform()->Has("Windows")) {
+			# a Windows pipe's line read takes a message and trims it: another reader, not this one
+			return;
+		};
+
+		name := "objeck-pipe-cr-{$Int->Random(100000, 999999)}";
+		owner := CrPipeOwner->New(name);
+		owner->Execute(Nil);
+
+		writer : Pipe;
+		opened := false;
+		for(tries := 0; <>opened & tries < 250; tries += 1;) {
+			Thread->Sleep(20);
+			writer := Pipe->New(name, Pipe->Mode->OPEN);
+			opened := writer->IsOpen();
+		};
+		owner->Join();
+		reader := owner->GetPipe();
+		if(<>opened | <>reader->IsOpen()) {
+			Check("the pipe connects", false);
+			return;
+		};
+
+		bytes := Stream();
+		writer->WriteBuffer(0, bytes->Size(), bytes);
+		writer->Close();
+		first := reader->ReadLine();
+		second := reader->ReadLine();
+		third := reader->ReadLine();
+		fourth := reader->ReadLine();
+		CheckLines("pipe", first, second, third, fourth);
+		reader->Close();
+	}
+
+	function : CheckTls(cert : String, key : String) ~ Nil {
+		server := TCPSecureSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Check("the TLS server listens", false);
+			return;
+		};
+		sender := TlsCrSender->New(server, Stream());
+		sender->Execute(Nil);
+
+		client := TCPSecureSocket->New("127.0.0.1", server->GetPort(), cert);
+		if(<>client->IsOpen()) {
+			Check("the TLS client connects ('{$(TCPSecureSocket->GetLastError())}')", false);
+			return;
+		};
+		client->SetRecvTimeout(10000);
+		first := client->ReadLine();
+		second := client->ReadLine();
+		third := client->ReadLine();
+		fourth := client->ReadLine();
+		last := client->ReadLine();
+		CheckLines("TLS", first, second, third, fourth);
+		Check("TLS: a CR at the end of the stream ends its line, and nothing follows (got {$Shown(last)})", last = Nil | last->Size() = 0);
+		client->Close();
+		sender->Join();
+		server->Close();
+	}
+
+	function : CheckDtls(cert : String, key : String) ~ Nil {
+		server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
+		if(<>server->Listen()) {
+			Check("the DTLS server listens", false);
+			return;
+		};
+		sender := DtlsCrSender->New(server);
+		sender->Execute(Nil);
+
+		client := DTLSSocket->New("127.0.0.1", server->GetPort(), cert, true);
+		if(<>client->IsOpen()) {
+			Check("the DTLS client connects ('{$(DTLSSocket->GetLastError())}')", false);
+			return;
+		};
+		first := client->ReadLine();
+		second := client->ReadLine();
+		third := client->ReadLine();
+		fourth := client->ReadLine();
+		CheckLines("DTLS", first, second, third, fourth);
+		client->Close();
+		sender->Release();
+		sender->Join();
+		server->Close();
+	}
+
+	# as tls_write_byte_result.obs: a certificate valid from 2025, not from the second it is made
+	function : MakeServerCert(cert : String, key : String, subject : String, san : String) ~ Bool {
+		dir := "{$cert}.ca";
+		Directory->Delete(dir);
+		File->Delete(cert);
+		File->Delete(key);
+		if(<>Directory->Create(dir)) {
+			return false;
+		};
+
+		cnf := FileWriter->New("{$dir}/openssl.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\n[dn]\n[ca]\ndefault_ca = fixture\n");
+		cnf->WriteString("[fixture]\ndatabase = {$dir}/index.txt\nserial = {$dir}/serial\nnew_certs_dir = {$dir}\n");
+		cnf->WriteString("policy = any\ndefault_md = sha256\nunique_subject = no\n[any]\ncommonName = supplied\n");
+		cnf->WriteString("[server]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nsubjectAltName = {$san}\n");
+		cnf->Close();
+		FileWriter->New("{$dir}/index.txt")->Close();
+		serial := FileWriter->New("{$dir}/serial");
+		serial->WriteString("01\n");
+		serial->Close();
+
+		made := Runtime->Command("openssl req -new -newkey rsa:2048 -nodes -config {$dir}/openssl.cnf -subj \"{$subject}\" -keyout {$key} -out {$dir}/request.csr") = 0;
+		if(made) {
+			made := Runtime->Command("openssl ca -batch -selfsign -notext -config {$dir}/openssl.cnf -extensions server -keyfile {$key} -in {$dir}/request.csr -startdate 250101000000Z -enddate 491231235959Z -out {$cert}") = 0;
+		};
+
+		Directory->Delete(dir);
+		return made;
+	}
+}
