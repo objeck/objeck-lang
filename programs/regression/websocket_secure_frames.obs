@@ -10,12 +10,18 @@ count of zero), so the plain test does not cover it.
   * /cut-before-blank     every header of a correct reply, then the connection
                           closes with no blank line: refused
   * /cut-mid-line         closed in the middle of the last header: refused
+  * /bare-cr-blank        a CR and an X in place of the blank line: refused (any
+                          byte after a CR was taken for its LF)
   * /short-header, /short-length-16, /short-payload, /short-ping
                           a frame cut off part way: nothing is delivered
   * /eof-after-message    one whole message, then the end: the message, then Nil
   * /ping-hi, /ping-empty the server reads the client's Pong off the wire: FIN and
                           opcode 0xA, the mask bit and the length, four mask bytes,
                           the Ping's payload masked
+  * /two-pings, /two-pings-125, /pings-around-pong
+                          two Pings with payloads (and a stray Pong) before a text
+                          message: the message is intact and both Pongs are correct
+  * /ping-before-pong     PingSocket sees its Pong behind a Ping from the server
   * /echo                 a text and a binary message come back unchanged
 
 The certificate is self-signed (openssl on PATH, as https_deadlines makes it), so the
@@ -93,6 +99,92 @@ class SecureScriptedServer {
 		return payload;
 	}
 
+	# Reads one client frame off the wire and says what is wrong with it as the Pong for a
+	# Ping that carried 'payload'; an empty string if nothing is. The first two bytes are
+	# judged before any more are read, so a bare payload is not waited on.
+	method : PongFault(client : TCPSecureSocket, payload : Byte[]) ~ String {
+		size := payload->Size();
+		hdr := Byte->New[2];
+		ReadN(client, hdr, 2);
+		first := (hdr[0] and 0xff)->As(Int);
+		second := (hdr[1] and 0xff)->As(Int);
+		expected := 0x80 + size;
+		if(first <> 0x8a) {
+			return "first byte {$first}, expected 138 (FIN + opcode 0xA)";
+		};
+		if(second <> expected) {
+			return "second byte {$second}, expected {$expected} (mask bit + length {$size})";
+		};
+
+		mask := Byte->New[4];
+		ReadN(client, mask, 4);
+		body := Byte->New[size];
+		ReadN(client, body, size);
+		each(i : size) {
+			if((body[i] xor mask[i % 4])->As(Byte) <> payload[i]) {
+				return "the unmasked payload differs from the Ping's at byte {$i}";
+			};
+		};
+
+		return "";
+	}
+
+	method : Filled(size : Int, seed : Int) ~ Byte[] {
+		payload := Byte->New[size];
+		each(i : size) {
+			payload[i] := (seed + i % 23)->As(Byte);
+		};
+		return payload;
+	}
+
+	# Sends two Pings with payloads and then a text message, all before it reads anything,
+	# as a server may. Between the Pings goes a Pong nobody asked for when 'stray_pong' is
+	# set (a client ignores one). Then it reads the client's two Pongs and sends what it
+	# found as a second text message: "pongs ok", or which Pong was wrong and how.
+	method : PingsThenData(client : TCPSecureSocket, first_size : Int, second_size : Int, stray_pong : Bool) ~ Nil {
+		first_ping := Filled(first_size, 0x41);
+		second_ping := Filled(second_size, 0x61);
+		WriteFrame(client, 9, first_ping);
+		if(stray_pong) {
+			WriteFrame(client, 10, Filled(3, 0x30));
+		};
+		WriteFrame(client, 9, second_ping);
+		WriteFrame(client, 1, "data intact"->ToByteArray());
+
+		verdict := "pongs ok";
+		fault := PongFault(client, first_ping);
+		if(fault->IsEmpty()) {
+			fault := PongFault(client, second_ping);
+			if(<>fault->IsEmpty()) {
+				verdict := "second Pong: {$fault}";
+			};
+		}
+		else {
+			verdict := "first Pong: {$fault}";
+		};
+
+		WriteFrame(client, 1, verdict->ToByteArray());
+		# hold the connection until the client has read the verdict
+		client->ReadByte();
+	}
+
+	# Waits for the client's Ping (PingSocket), sends a Ping of its own first and only then
+	# the Pong, and reads the Pong the client owes for the server's Ping.
+	method : PingBeforePong(client : TCPSecureSocket) ~ Nil {
+		ping := Byte->New[6];
+		ReadN(client, ping, 6);
+		server_ping := Filled(4, 0x50);
+		WriteFrame(client, 9, server_ping);
+		WriteFrame(client, 10, Byte->New[0]);
+
+		verdict := PongFault(client, server_ping);
+		if(verdict->IsEmpty()) {
+			verdict := "pong ok";
+		};
+		WriteFrame(client, 1, verdict->ToByteArray());
+		client->ReadByte();
+	}
+
 	# sends a Ping and judges the client's Pong; the verdict goes back as a text frame
 	method : PingPong(client : TCPSecureSocket, size : Int) ~ Nil {
 		payload := Byte->New[size];
@@ -101,28 +193,9 @@ class SecureScriptedServer {
 		};
 		WriteFrame(client, 9, payload);
 
-		verdict := "pong ok";
-		hdr := Byte->New[2];
-		ReadN(client, hdr, 2);
-		first := (hdr[0] and 0xff)->As(Int);
-		second := (hdr[1] and 0xff)->As(Int);
-		expected := 0x80 + size;
-		if(first <> 0x8a) {
-			verdict := "first byte {$first}, expected 138 (FIN + opcode 0xA)";
-		}
-		else if(second <> expected) {
-			verdict := "second byte {$second}, expected {$expected} (mask bit + length {$size})";
-		}
-		else {
-			mask := Byte->New[4];
-			ReadN(client, mask, 4);
-			body := Byte->New[size];
-			ReadN(client, body, size);
-			each(i : size) {
-				if((body[i] xor mask[i % 4])->As(Byte) <> payload[i]) {
-					verdict := "the unmasked payload differs from the Ping's at byte {$i}";
-				};
-			};
+		verdict := PongFault(client, payload);
+		if(verdict->IsEmpty()) {
+			verdict := "pong ok";
 		};
 
 		WriteFrame(client, 1, verdict->ToByteArray());
@@ -180,6 +253,9 @@ class SecureScriptedServer {
 			else if(path->Equals("/cut-mid-line")) {
 				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}");
 			}
+			else if(path->Equals("/bare-cr-blank")) {
+				client->WriteString("{$ok}\rX");
+			}
 			else if(path->Equals("/short-header")) {
 				client->WriteString("{$ok}\r\n");
 				SendOnly(client, [0x82]);
@@ -207,6 +283,23 @@ class SecureScriptedServer {
 			else if(path->Equals("/ping-empty")) {
 				client->WriteString("{$ok}\r\n");
 				PingPong(client, 0);
+			}
+			# Pings in a row before a message, and a Ping ahead of the Pong PingSocket waits for
+			else if(path->Equals("/two-pings")) {
+				client->WriteString("{$ok}\r\n");
+				PingsThenData(client, 2, 5, false);
+			}
+			else if(path->Equals("/two-pings-125")) {
+				client->WriteString("{$ok}\r\n");
+				PingsThenData(client, 125, 125, false);
+			}
+			else if(path->Equals("/pings-around-pong")) {
+				client->WriteString("{$ok}\r\n");
+				PingsThenData(client, 0, 7, true);
+			}
+			else if(path->Equals("/ping-before-pong")) {
+				client->WriteString("{$ok}\r\n");
+				PingBeforePong(client);
 			}
 			else if(path->Equals("/echo")) {
 				client->WriteString("{$ok}\r\n");
@@ -327,6 +420,57 @@ class WebSocketSecureFramesTest {
 		ws->CloseSocket();
 	}
 
+	# Two Pings (and perhaps a stray Pong) arrive before a message: the message is delivered
+	# whole, and the server got a correct Pong for each Ping
+	function : PingsThenData(path : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		data := ws->ReadSocketText();
+		if(data = Nil) {
+			Fail("{$path}: no message after the Pings");
+		}
+		else if(<>data->Equals("data intact")) {
+			Fail("{$path}: the message after the Pings was '{$data}'");
+		};
+
+		verdict := ws->ReadSocketText();
+		if(verdict = Nil) {
+			Fail("{$path}: no verdict on the Pongs");
+		}
+		else if(<>verdict->Equals("pongs ok")) {
+			Fail("{$path}: the server read the Pongs as: {$verdict}");
+		};
+
+		ws->CloseSocket();
+	}
+
+	# PingSocket when the server sends a Ping of its own before the Pong
+	function : PingBeforePong() ~ Nil {
+		ws := Open("/ping-before-pong");
+		if(<>ws->Connect()) {
+			Fail("/ping-before-pong: the handshake was refused");
+			return;
+		};
+
+		if(<>ws->PingSocket()) {
+			Fail("/ping-before-pong: PingSocket did not see the Pong behind the server's Ping");
+		};
+
+		verdict := ws->ReadSocketText();
+		if(verdict = Nil) {
+			Fail("/ping-before-pong: no verdict on the Pong for the server's Ping");
+		}
+		else if(<>verdict->Equals("pong ok")) {
+			Fail("/ping-before-pong: the server read the Pong as: {$verdict}");
+		};
+
+		ws->CloseSocket();
+	}
+
 	function : Pong(path : String) ~ Nil {
 		ws := Open(path);
 		if(<>ws->Connect()) {
@@ -439,6 +583,7 @@ class WebSocketSecureFramesTest {
 		Accepted("/good");
 		Refused("/cut-before-blank", "ended before the blank line");
 		Refused("/cut-mid-line", "ended before the blank line");
+		Refused("/bare-cr-blank", "a carriage return in the reply is not followed by a line feed");
 		Echo();
 		CutFrame("/short-header");
 		CutFrame("/short-length-16");
@@ -447,6 +592,10 @@ class WebSocketSecureFramesTest {
 		EndAfterMessage();
 		Pong("/ping-hi");
 		Pong("/ping-empty");
+		PingsThenData("/two-pings");
+		PingsThenData("/two-pings-125");
+		PingsThenData("/pings-around-pong");
+		PingBeforePong();
 
 		# a correct server still connects after all of the above, and the server stops
 		Accepted("/quit");

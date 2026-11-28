@@ -26,6 +26,13 @@ and 8-byte extended lengths, inside a ping's payload, inside a payload) and
 bytes each read returned, so it delivered the bytes the peer never sent as
 zeros, or read the previous frame's header a second time.
 
+Pings come in any number before a message: the /two-pings* and /pings-around-pong
+cases send two Pings with payloads (and a Pong nobody asked for) ahead of a text
+message, and /ping-before-pong a Ping ahead of the Pong that PingSocket waits for.
+The client answered one Ping and then lost its place in the stream: the second
+Ping's header was taken for a message, nothing was returned, and the next read
+began inside that Ping's payload.
+
 The Pong a client sends for a Ping is a masked frame with the Ping's payload
 (RFC 6455 section 5.5.3): the /ping-* cases have the server send a Ping and
 read the reply off the wire a byte at a time. The client used to write the
@@ -185,6 +192,92 @@ class ScriptedServer {
 		client->ReadByte();
 	}
 
+	# Reads one client frame off the wire and says what is wrong with it as the Pong for a
+	# Ping that carried 'payload'; an empty string if nothing is. The first two bytes are
+	# judged before any more are read, so a bare payload is not waited on.
+	method : PongFault(client : TCPSocket, payload : Byte[]) ~ String {
+		size := payload->Size();
+		hdr := Byte->New[2];
+		ReadN(client, hdr, 2);
+		first := (hdr[0] and 0xff)->As(Int);
+		second := (hdr[1] and 0xff)->As(Int);
+		expected := 0x80 + size;
+		if(first <> 0x8a) {
+			return "first byte {$first}, expected 138 (FIN + opcode 0xA)";
+		};
+		if(second <> expected) {
+			return "second byte {$second}, expected {$expected} (mask bit + length {$size})";
+		};
+
+		mask := Byte->New[4];
+		ReadN(client, mask, 4);
+		body := Byte->New[size];
+		ReadN(client, body, size);
+		each(i : size) {
+			if((body[i] xor mask[i % 4])->As(Byte) <> payload[i]) {
+				return "the unmasked payload differs from the Ping's at byte {$i}";
+			};
+		};
+
+		return "";
+	}
+
+	method : Filled(size : Int, seed : Int) ~ Byte[] {
+		payload := Byte->New[size];
+		each(i : size) {
+			payload[i] := (seed + i % 23)->As(Byte);
+		};
+		return payload;
+	}
+
+	# Sends two Pings with payloads and then a text message, all before it reads anything,
+	# as a server may. Between the Pings goes a Pong nobody asked for when 'stray_pong' is
+	# set (a client ignores one). Then it reads the client's two Pongs and sends what it
+	# found as a second text message: "pongs ok", or which Pong was wrong and how.
+	method : PingsThenData(client : TCPSocket, first_size : Int, second_size : Int, stray_pong : Bool) ~ Nil {
+		first_ping := Filled(first_size, 0x41);
+		second_ping := Filled(second_size, 0x61);
+		WriteFrame(client, 9, first_ping);
+		if(stray_pong) {
+			WriteFrame(client, 10, Filled(3, 0x30));
+		};
+		WriteFrame(client, 9, second_ping);
+		WriteFrame(client, 1, "data intact"->ToByteArray());
+
+		verdict := "pongs ok";
+		fault := PongFault(client, first_ping);
+		if(fault->IsEmpty()) {
+			fault := PongFault(client, second_ping);
+			if(<>fault->IsEmpty()) {
+				verdict := "second Pong: {$fault}";
+			};
+		}
+		else {
+			verdict := "first Pong: {$fault}";
+		};
+
+		WriteFrame(client, 1, verdict->ToByteArray());
+		# hold the connection until the client has read the verdict
+		client->ReadByte();
+	}
+
+	# Waits for the client's Ping (PingSocket), sends a Ping of its own first and only then
+	# the Pong, and reads the Pong the client owes for the server's Ping.
+	method : PingBeforePong(client : TCPSocket) ~ Nil {
+		ping := Byte->New[6];
+		ReadN(client, ping, 6);
+		server_ping := Filled(4, 0x50);
+		WriteFrame(client, 9, server_ping);
+		WriteFrame(client, 10, Byte->New[0]);
+
+		verdict := PongFault(client, server_ping);
+		if(verdict->IsEmpty()) {
+			verdict := "pong ok";
+		};
+		WriteFrame(client, 1, verdict->ToByteArray());
+		client->ReadByte();
+	}
+
 	# Sends a Ping with 'size' payload bytes and reads the client's Pong off the wire: FIN and
 	# opcode 0xA, the mask bit with the length, four mask bytes, the Ping's payload masked.
 	# What it found goes back to the client as a text frame, "pong ok" or what was wrong; the
@@ -196,28 +289,9 @@ class ScriptedServer {
 		};
 		WriteFrame(client, 9, payload);
 
-		verdict := "pong ok";
-		hdr := Byte->New[2];
-		ReadN(client, hdr, 2);
-		first := (hdr[0] and 0xff)->As(Int);
-		second := (hdr[1] and 0xff)->As(Int);
-		expected := 0x80 + size;
-		if(first <> 0x8a) {
-			verdict := "first byte {$first}, expected 138 (FIN + opcode 0xA)";
-		}
-		else if(second <> expected) {
-			verdict := "second byte {$second}, expected {$expected} (mask bit + length {$size})";
-		}
-		else {
-			mask := Byte->New[4];
-			ReadN(client, mask, 4);
-			body := Byte->New[size];
-			ReadN(client, body, size);
-			each(i : size) {
-				if((body[i] xor mask[i % 4])->As(Byte) <> payload[i]) {
-					verdict := "the unmasked payload differs from the Ping's at byte {$i}";
-				};
-			};
+		verdict := PongFault(client, payload);
+		if(verdict->IsEmpty()) {
+			verdict := "pong ok";
 		};
 
 		WriteFrame(client, 1, verdict->ToByteArray());
@@ -350,6 +424,23 @@ class ScriptedServer {
 			else if(path->Equals("/cut-after-cr")) {
 				client->WriteString("{$ok}\r");
 			}
+			# A CR that is not followed by LF is not a line ending. Each of these replies is
+			# correct but for one bare CR: in place of the blank line, at the end of the
+			# status line, and at the end of a header line. The client took any byte after a
+			# CR for the LF, so the first of them connected.
+			else if(path->Equals("/bare-cr-blank")) {
+				client->WriteString("{$ok}\rX");
+			}
+			else if(path->Equals("/bare-cr-status")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\rXUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			else if(path->Equals("/bare-cr-header")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\rXConnection: Upgrade\r\nSec-WebSocket-Accept: {$accept}\r\n\r\n");
+			}
+			# lines that end with LF alone are read as before
+			else if(path->Equals("/lf-only")) {
+				client->WriteString("HTTP/1.1 101 Switching Protocols\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Accept: {$accept}\n\n");
+			}
 			else if(path->Equals("/flood")) {
 				flood := "HTTP/1.1 101 Switching Protocols\r\n";
 				each(i : 400) {
@@ -444,6 +535,32 @@ class ScriptedServer {
 			else if(path->Equals("/ping-126")) {
 				client->WriteString("{$ok}\r\n");
 				Send(client, [0x89, 0x7e, 0x00, 0x7e]);
+			}
+			else if(path->Equals("/close-126")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x88, 0x7e, 0x00, 0x7e]);
+			}
+			# nor can it be split into fragments: a Ping without the FIN bit
+			else if(path->Equals("/fragmented-ping")) {
+				client->WriteString("{$ok}\r\n");
+				Send(client, [0x09, 0x02, 0x68, 0x69]);
+			}
+			# Pings in a row before a message, and a Ping ahead of the Pong PingSocket waits for
+			else if(path->Equals("/two-pings")) {
+				client->WriteString("{$ok}\r\n");
+				PingsThenData(client, 2, 5, false);
+			}
+			else if(path->Equals("/two-pings-125")) {
+				client->WriteString("{$ok}\r\n");
+				PingsThenData(client, 125, 125, false);
+			}
+			else if(path->Equals("/pings-around-pong")) {
+				client->WriteString("{$ok}\r\n");
+				PingsThenData(client, 0, 7, true);
+			}
+			else if(path->Equals("/ping-before-pong")) {
+				client->WriteString("{$ok}\r\n");
+				PingBeforePong(client);
 			};
 
 			client->Close();
@@ -601,6 +718,57 @@ class WebSocketHandshakeTest {
 
 		if(ws->PingSocket()) {
 			Fail("{$path}: PingSocket succeeded on the lost connection");
+		};
+
+		ws->CloseSocket();
+	}
+
+	# Two Pings (and perhaps a stray Pong) arrive before a message: the message is delivered
+	# whole, and the server got a correct Pong for each Ping
+	function : PingsThenData(path : String) ~ Nil {
+		ws := Open(path);
+		if(<>ws->Connect()) {
+			Fail("{$path}: the handshake was refused");
+			return;
+		};
+
+		data := ws->ReadSocketText();
+		if(data = Nil) {
+			Fail("{$path}: no message after the Pings");
+		}
+		else if(<>data->Equals("data intact")) {
+			Fail("{$path}: the message after the Pings was '{$data}'");
+		};
+
+		verdict := ws->ReadSocketText();
+		if(verdict = Nil) {
+			Fail("{$path}: no verdict on the Pongs");
+		}
+		else if(<>verdict->Equals("pongs ok")) {
+			Fail("{$path}: the server read the Pongs as: {$verdict}");
+		};
+
+		ws->CloseSocket();
+	}
+
+	# PingSocket when the server sends a Ping of its own before the Pong
+	function : PingBeforePong() ~ Nil {
+		ws := Open("/ping-before-pong");
+		if(<>ws->Connect()) {
+			Fail("/ping-before-pong: the handshake was refused");
+			return;
+		};
+
+		if(<>ws->PingSocket()) {
+			Fail("/ping-before-pong: PingSocket did not see the Pong behind the server's Ping");
+		};
+
+		verdict := ws->ReadSocketText();
+		if(verdict = Nil) {
+			Fail("/ping-before-pong: no verdict on the Pong for the server's Ping");
+		}
+		else if(<>verdict->Equals("pong ok")) {
+			Fail("/ping-before-pong: the server read the Pong as: {$verdict}");
 		};
 
 		ws->CloseSocket();
@@ -821,6 +989,10 @@ class WebSocketHandshakeTest {
 		Refused("/cut-before-blank", "ended before the blank line");
 		Refused("/cut-mid-line", "ended before the blank line");
 		Refused("/cut-after-cr", "ended before the blank line");
+		Refused("/bare-cr-blank", "a carriage return in the reply is not followed by a line feed");
+		Refused("/bare-cr-status", "a carriage return in the reply is not followed by a line feed");
+		Refused("/bare-cr-header", "a carriage return in the reply is not followed by a line feed");
+		Accepted("/lf-only");
 		Refused("/flood", "too many headers");
 
 		Frames();
@@ -847,6 +1019,13 @@ class WebSocketHandshakeTest {
 		Pong("/ping-125");
 		Pong("/ping-empty");
 		RefusedFrame("/ping-126", 0, "a control frame longer than 125 bytes");
+		RefusedFrame("/close-126", 0, "a control frame longer than 125 bytes");
+		RefusedFrame("/fragmented-ping", 0, "a fragmented control frame");
+
+		PingsThenData("/two-pings");
+		PingsThenData("/two-pings-125");
+		PingsThenData("/pings-around-pong");
+		PingBeforePong();
 
 		# a correct server still connects after all of the above, and the server stops
 		Accepted("/quit");

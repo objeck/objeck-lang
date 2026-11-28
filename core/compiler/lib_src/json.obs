@@ -1553,8 +1553,15 @@ obj->ToString()->PrintLine();
 				};
 			};
 
-			# the exponent, held to a size that cannot overflow: past a few dozen it only
-			# decides between zero and "does not fit"
+			# The exponent, held to a size that cannot overflow. It moves the point across at
+			# most 'count' digits, and the result has at most 19, so once it is larger than
+			# count + 20 its exact size no longer matters: a positive one puts more than 19
+			# digits before the point (does not fit) and a negative one puts none (zero).
+			# The bound has to come from the number's own length. It was a fixed 1000000,
+			# and a fraction longer than that can take back a larger exponent: 0. followed
+			# by 9999999 zeros and 1e10000000 is exactly 1, and read as 0 with the
+			# exponent's last digit dropped.
+			exponent_limit := count + 20;
 			exponent := 0;
 			if(i < size) {
 				if(chars[i] = 'e' | chars[i] = 'E') {
@@ -1568,7 +1575,7 @@ obj->ToString()->PrintLine();
 					};
 					start := i;
 					while(IsDigit(chars, i)) {
-						if(exponent < 1000000) {
+						if(exponent <= exponent_limit) {
 							exponent := exponent * 10 + (chars[i] - '0');
 						};
 						i += 1;
