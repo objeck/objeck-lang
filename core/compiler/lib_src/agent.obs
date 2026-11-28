@@ -3310,6 +3310,7 @@ scope->GetStepsUsed()->PrintLine();
 		@conversation : AgentConversation;
 		@tools : Vector<AgentTool>;
 		@scope : AgentScope;
+		@thread_id : Int;
 		@late_start_ms : static : Int;
 		@late_scope_ms : static : Int;
 
@@ -3376,6 +3377,18 @@ scope->GetStepsUsed()->PrintLine();
 			return @slot->IsFinished();
 		}
 
+		# True when the worker's thread can be joined without a wait: it has handed in its result, or it
+		# is gone without having done so. The second happens when the program ends: Main returns, the VM
+		# halts the other threads, and a worker that is halted inside its call never reaches its last
+		# statement. The reaper's thread would wait for such a worker for ever, and the VM waits two
+		# seconds at exit for a thread that does not end.
+		method : public : IsOver() ~ Bool {
+			if(@slot->IsFinished()) {
+				return true;
+			};
+			return @thread_id > 0 & <>Thread->IsAlive(@thread_id);
+		}
+
 		#~
 		Runs the call on the worker thread and puts the outcome, or the error that was raised, in the slot
 		@param param not used
@@ -3385,6 +3398,8 @@ scope->GetStepsUsed()->PrintLine();
 			failure : String;
 			reply : AgentReply;
 			entered := false;
+			# the number of this thread, for IsOver; 0 until the thread has started
+			@thread_id := Thread->GetCurrentId();
 			if(@late_start_ms > 0) {
 				Thread->Sleep(@late_start_ms);
 			};
@@ -3435,42 +3450,154 @@ scope->GetStepsUsed()->PrintLine();
 
 	# The workers that were not waited for to their end, of every agent. A thread that is never joined
 	# keeps its stack (POSIX) or its handle (Windows) for the life of the process, so each is joined once
-	# it has finished: when any agent next starts a worker or ends a run. The list used to be the agent's
-	# own, and an agent that is used once, or whose run ended in an error, never came back to it. One that
-	# never finishes stays on the list; nothing else is kept, so the list is as long as the number of
-	# workers still running.
+	# it has finished. One that never finishes stays on the list.
+	#
+	# Who joins them: a thread of the reaper's own, which is started when a worker is handed over, looks
+	# at the list ten times a second, and ends when the list is empty (the next worker starts another, and
+	# joins the one that ended). The agents join what has finished too, when they start a worker or end a
+	# run, which is sooner, but that alone left the last workers of a program unjoined: when they finished
+	# after the last agent had done its last work there was nobody to come back for them. The thread runs
+	# nothing of the caller's: it asks a worker whether it has finished and joins it. It does not keep a
+	# program alive: it ends with the list. When Main returns while it still watches a worker, the
+	# program ends when that worker's thread does (as it did before there was a reaper thread) and at
+	# most a tenth of a second later: a worker that the VM halted at exit counts as over (IsOver), so the
+	# list empties and the thread ends, and the VM does not have to give up waiting for it.
+	#
+	# There is one reaper for the process, reached through a static, and nothing in the language makes a
+	# static exactly once: two threads that use the reaper first at the same moment can each make one.
+	# That is harmless here by construction, the way the HTTP connection pool does it (net.obs): a reaper
+	# is whole by itself, with its own list, its own lock made together with the list, and its own thread.
+	# A thread that made one uses the one it made; the one that is not kept in the static is still watched
+	# by its own thread until its list is empty. No worker is lost and no list is ever used under two
+	# locks. (The reaper used to keep the list and the lock in two statics filled in one after the other:
+	# a second first user replaced both while the first was using them, and a worker on the list that
+	# was replaced was never joined.)
 	class : private : AgentReaper {
-		@workers : static : Vector<AgentWorker>;
-		@lock : static : ThreadMutex;
+		@group : static : AgentReaper;
+		@first_use_ms : static : Int;
+		@made : static : Vector<AgentReaper>;
+		@made_lock : static : ThreadMutex;
+		@lock : ThreadMutex;
+		@workers : Vector<AgentWorker>;
+		@thread : AgentReaperThread;
+		@running : Bool;
+		@queued : Int;
+		@joined : Int;
 
-		# makes the list; called from Agent's constructor, so before any worker exists
-		function : Init() ~ Nil {
-			if(@lock = Nil) {
-				@workers := Vector->New()<AgentWorker>;
-				@lock := ThreadMutex->New("agent_reaper");
+		New() {
+			@lock := ThreadMutex->New("agent_reaper");
+			@workers := Vector->New()<AgentWorker>;
+		}
+
+		# the reaper in use, made at the first call; see the class comment for two first calls at once
+		function : Group() ~ AgentReaper {
+			group := @group;
+			if(group = Nil) {
+				# for tests: holds a first user here so that another can arrive (Agent->ReaperTest)
+				if(@first_use_ms > 0) {
+					Thread->Sleep(@first_use_ms);
+				};
+				group := AgentReaper->New();
+				@group := group;
+				# for tests: the tally; its list and lock are made by the test before it starts a thread
+				if(@made <> Nil) {
+					critical(@made_lock) {
+						@made->AddBack(group);
+					};
+				};
 			};
+			return group;
 		}
 
 		# takes a worker that is still running
 		function : Keep(worker : AgentWorker) ~ Nil {
-			Init();
-			critical(@lock) {
-				@workers->AddBack(worker);
-			};
+			Group()->Add(worker);
 		}
 
 		# joins the workers that have finished; those still running stay
 		function : Reap() ~ Nil {
-			if(@lock = Nil) {
-				return;
+			group := @group;
+			if(group <> Nil) {
+				group->Sweep();
+			};
+		}
+
+		# for tests: see Agent->ReaperTest
+		function : Test(what : Int, value : Int) ~ Int {
+			if(what = 0) {
+				@first_use_ms := value;
+				if(@made = Nil) {
+					@made_lock := ThreadMutex->New("agent_reaper_tally");
+					made := Vector->New()<AgentReaper>;
+					if(@group <> Nil) {
+						made->AddBack(@group);
+					};
+					@made := made;
+				};
+			}
+			else if(what = 1) {
+				@group := Nil;
+			}
+			else if(@made <> Nil) {
+				total := 0;
+				critical(@made_lock) {
+					i := 0;
+					while(i < @made->Size()) {
+						total += @made->Get(i)->Count(what = 3);
+						i += 1;
+					};
+				};
+				return total;
+			};
+			return 0;
+		}
+
+		method : public : Count(joined : Bool) ~ Int {
+			count := 0;
+			critical(@lock) {
+				if(joined) {
+					count := @joined;
+				}
+				else {
+					count := @queued;
+				};
+			};
+			return count;
+		}
+
+		# Puts a worker on the list and makes sure a thread is watching it. The thread says under the lock
+		# that it is ending, so a worker is never added behind the back of a thread that has decided to go
+		method : public : Add(worker : AgentWorker) ~ Nil {
+			ended : AgentReaperThread;
+			fresh : AgentReaperThread;
+			critical(@lock) {
+				@workers->AddBack(worker);
+				@queued += 1;
+				if(<>@running) {
+					ended := @thread;
+					fresh := AgentReaperThread->New(@self);
+					@thread := fresh;
+					@running := true;
+				};
 			};
 
+			# the thread before this one has said it is ending: it is joined like any other
+			if(ended <> Nil) {
+				ended->Join();
+			};
+			if(fresh <> Nil) {
+				fresh->Execute(Nil);
+			};
+		}
+
+		# joins the workers that have finished; those still running stay
+		method : public : Sweep() ~ Nil {
 			done : Vector<AgentWorker>;
 			critical(@lock) {
 				i := 0;
 				while(i < @workers->Size()) {
 					worker := @workers->Get(i);
-					if(worker->IsFinished()) {
+					if(worker->IsOver()) {
 						if(done = Nil) {
 							done := Vector->New()<AgentWorker>;
 						};
@@ -3490,7 +3617,38 @@ scope->GetStepsUsed()->PrintLine();
 					done->Get(i)->Join();
 					i += 1;
 				};
+				critical(@lock) {
+					@joined += done->Size();
+				};
 			};
+		}
+
+		# the reaper's thread: looks at the list ten times a second and ends when it is empty
+		method : public : Watch() ~ Nil {
+			ending := false;
+			while(<>ending) {
+				Thread->Sleep(100);
+				Sweep();
+				critical(@lock) {
+					if(@workers->IsEmpty()) {
+						@running := false;
+						ending := true;
+					};
+				};
+			};
+		}
+	}
+
+	class : private : AgentReaperThread from Thread {
+		@group : AgentReaper;
+
+		New(group : AgentReaper) {
+			Parent("agent_reaper");
+			@group := group;
+		}
+
+		method : public : Run(param : System.Base) ~ Nil {
+			@group->Watch();
 		}
 	}
 
@@ -3561,7 +3719,7 @@ result->GetText()->PrintLine();
 			@max_result_chars := 20000;
 			@approve_all := false;
 			@tool_mode := AgentTool->Mode->IN_THREAD;
-			AgentReaper->Init();
+			AgentReaper->Group();
 		}
 
 		#~
@@ -3572,6 +3730,21 @@ result->GetText()->PrintLine();
 		method : public : SetSystem(system : String) ~ Agent {
 			@conversation->SetSystem(system);
 			return @self;
+		}
+
+		#~
+		For tests only: the reaper of abandoned workers. 0 makes the first use of the reaper in the process
+		wait `value` milliseconds between finding that there is none yet and making one (so that two threads
+		can be made to do that at once), and the first such call starts the tally; 1 forgets the reaper that is in use, so that
+		the next use is a first use again; 2 gets how many workers were handed to a reaper since the tally
+		began; 3 gets how many of them were joined
+		@hidden
+		@param what which of the four
+		@param value the milliseconds for 0, else not used
+		@return the count for 2 and 3, else 0
+		~#
+		function : ReaperTest(what : Int, value : Int) ~ Int {
+			return AgentReaper->Test(what, value);
 		}
 
 		#~

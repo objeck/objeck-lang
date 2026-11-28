@@ -1,0 +1,168 @@
+# EXTRA_LIBS: agent,net,json,cipher,misc
+#~
+Two threads that use the reaper of abandoned workers for the first time at the same moment lose no
+worker (API.Agent), against a scripted fake model (no key, no network).
+
+The reaper is one object for the process, reached through a static, and nothing makes a static exactly
+once: two threads whose first agents are constructed together can each find that there is no reaper yet
+and each make one. It used to keep its list and its lock in two statics filled in one after the other,
+so the second thread replaced both while the first was already using them: a worker the first thread
+had put on the list that was replaced was never joined (and the two lists could be used under different
+locks). A reaper is now whole by itself, list, lock and its own thread; a thread uses the one it made, and
+the one that does not stay in the static is still emptied by its own thread.
+
+The interleaving is forced with Agent->ReaperTest (a hidden test hook): the first use of the reaper is
+held between "there is none" and "here is one", 5 ms for the first thread and 40 ms for the second, so the
+first thread has made its reaper, run its agent and left a worker with it before the second thread
+publishes its own. That is done 200 times, the reaper being forgotten before each round; an ordinary
+agent run after each round gives the old code its chance to join what it still knew of. In the end every
+worker that was handed over (nearly all of the 400) must have been joined.
+
+(Each round here leaves two reapers behind, and so two finished reaper threads that nobody joins: the
+test makes two hundred "first uses" in one process. A program has one, and at most one reaper more than
+it needs.)
+~#
+use API.Agent;
+use Data.JSON;
+use Collection, System.Concurrency;
+
+# takes a little while, as a tool on a worker does
+class SlowHandler implements AgentToolHandler {
+  New() {
+  }
+
+  method : public : Run(arguments : JsonElement) ~ String {
+    Thread->Sleep(30);
+    return "ok";
+  }
+}
+
+# cancels the token when the tool is about to start, and raises on the halt event that follows
+class RaisingSink implements AgentTraceSink {
+  @token : AgentCancel;
+
+  New(token : AgentCancel) {
+    @token := token;
+  }
+
+  method : public : OnEvent(event : AgentEvent) ~ Nil {
+    if(event->GetKind()->Equals("tool_start")) {
+      @token->Cancel("stopped by the sink");
+    }
+    else if(event->GetKind()->Equals("halt")) {
+      Runtime->Raise(Error->New("the sink raised on halt"));
+    };
+  }
+}
+
+# constructs an agent (the first use of the reaper in its round) and makes one run that leaves a worker
+class FirstUser from Thread {
+  New() {
+    Parent("first_user");
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    agent := AgentReaperFirstUseTest->NewAgent();
+    token := AgentCancel->New();
+    agent->SetCancel(token);
+    agent->SetTrace(RaisingSink->New(token));
+    try {
+      agent->Run("go");
+    }
+    on(e : Error) {
+      AgentReaperFirstUseTest->Raised();
+    };
+  }
+}
+
+class AgentReaperFirstUseTest {
+  @failures : static : Int;
+  @raised : static : Int;
+  @lock : static : ThreadMutex;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Raised() ~ Nil {
+    critical(@lock) {
+      @raised += 1;
+    };
+  }
+
+  function : NewAgent() ~ Agent {
+    registry := ToolRegistry->New();
+    registry->Add(AgentTool->New("slow", "a test tool", JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{}}"), SlowHandler->New()));
+    script := Vector->New()<AgentReply>;
+    script->AddBack(AgentReply->Ask("c1", "slow", "{}"));
+    script->AddBack(AgentReply->Say("done"));
+    agent := Agent->New(ScriptedBackend->New(script), registry);
+    agent->SetToolMode(AgentTool->Mode->BOUNDED_THREAD);
+    return agent;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+    @lock := ThreadMutex->New("reaper_first_use_test");
+    rounds := 200;
+    if(args->Size() > 0) {
+      rounds := args[0]->ToInt();
+    };
+
+    "{$rounds} rounds of two threads that use the reaper first at the same moment:"->PrintLine();
+    completed := 0;
+    for(i := 0; i < rounds; i += 1;) {
+      # the next use of the reaper is a first use again
+      Agent->ReaperTest(1, 0);
+
+      # the first thread is held 5 ms at its first use, the second, which arrives meanwhile, 40 ms
+      Agent->ReaperTest(0, 5);
+      first := FirstUser->New();
+      first->Execute(Nil);
+      Thread->Sleep(2);
+      Agent->ReaperTest(0, 40);
+      second := FirstUser->New();
+      second->Execute(Nil);
+      first->Join();
+      second->Join();
+      Agent->ReaperTest(0, 0);
+
+      # both workers have finished; an ordinary run joins what the reaper in use still has
+      Thread->Sleep(40);
+      result := NewAgent()->Run("an ordinary run");
+      if(result->IsCompleted()) {
+        completed += 1;
+      };
+    };
+
+    queued := Agent->ReaperTest(2, 0);
+    Check("every run was made: two that left a worker and one ordinary, each round", @raised = rounds * 2 & completed = rounds);
+    # a worker that had already finished when its run gave it up is joined on the spot and never reaches a
+    # reaper; with a tool of 30 ms that is rare, and it is not what is tested
+    "  {$queued} of {$rounds * 2} abandoned workers were still running and were handed to a reaper"->PrintLine();
+    Check("most abandoned workers were handed to a reaper", queued >= rounds);
+
+    waited := 0;
+    while(Agent->ReaperTest(3, 0) < queued & waited < 5000) {
+      Thread->Sleep(20);
+      waited += 20;
+    };
+    joined := Agent->ReaperTest(3, 0);
+    if(joined <> queued) {
+      "  {$joined} of {$queued} workers were joined"->PrintLine();
+    };
+    Check("no worker was lost: as many were joined as were handed over", joined = queued);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
