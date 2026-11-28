@@ -163,6 +163,7 @@ class Pool {
         if(stop_) {
           return;
         }
+        // coverity[missing_lock] every write of generation_ (For) holds mutex_ as well as call_mutex_; this read holds mutex_
         seen = generation_;
       }
       Work(tid);
