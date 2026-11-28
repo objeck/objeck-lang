@@ -136,7 +136,7 @@ class Pool {
   unsigned long generation_;
   int finished_;
   bool stop_;
-  int threads_;
+  std::atomic<int> threads_;  // read without a lock by For and Threads; written under call_mutex_
 
   // Static partition: thread `tid` runs a fixed contiguous block of the indexes. Dynamic
   // scheduling would balance better, but which thread runs which sample would change from run

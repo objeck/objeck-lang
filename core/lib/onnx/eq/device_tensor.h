@@ -439,7 +439,7 @@ static void device_new(VMContext& context) {
       buf->allocator.reset(new Ort::Allocator(*session, buf->mem));
       buf->value = Ort::Value::CreateTensor(*buf->allocator, shape.data(), shape.size(), type);
       buf->type = type;
-      buf->shape = shape;
+      buf->shape = std::move(shape);
       buf->count = count;
       buf->bytes = count * elem_type_size(type);
 

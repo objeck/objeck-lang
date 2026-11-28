@@ -28,6 +28,10 @@
 # Its default images leave out linux.release.natives_untested, and on arm64
 # both modes leave out x64_only_images.
 #
+# Before any image runs, tools/packaging/check_portable_archive.sh unpacks the tarball into a fresh
+# tree and holds it to check_docs_deps.py --portable; the archive's sha256 is printed up front and in
+# the final PASS line, and the smoke fails if the file changed under it.
+#
 # DOCKER="sudo docker" where docker needs root. Exit 0 only if every image passed.
 
 set -euo pipefail
@@ -64,6 +68,21 @@ command -v openssl >/dev/null || die "needs openssl, for the test certificate"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/pkg" "$WORK/fixture"
+
+# Bind the smoke to the archive the portable gate inspected: check_portable_archive.sh unpacks THIS
+# file into a fresh tree and runs check_docs_deps.py --portable on it, then prints its sha256. The
+# distros below run the same bytes, and the hash is re-taken at the end, so a PASS here and a PASS
+# there are about one file. (What the smoke tests is unchanged.)
+case "$(basename "$TGZ")" in
+  objeck-linux-arm64_*) ARCH=arm64 ;;
+  objeck-linux-x64_*|objeck-linux-x86_64_*) ARCH=x64 ;;
+  *) case "$(uname -m)" in aarch64|arm64) ARCH=arm64 ;; *) ARCH=x64 ;; esac ;;
+esac
+bash "$REPO/tools/packaging/check_portable_archive.sh" --sha256-out "$WORK/archive.sha256" "$TGZ" "$ARCH" \
+  || die "the portable archive check failed; not running the distribution smoke on an archive that fails it"
+ARCHIVE_SHA256="$(cat "$WORK/archive.sha256")"
+echo "smoke runs archive sha256 $ARCHIVE_SHA256"
+
 tar -xzf "$TGZ" -C "$WORK/pkg"
 [ -x "$WORK/pkg/objeck-lang/bin/obr" ] || die "$(basename "$TGZ") has no objeck-lang/bin/obr"
 cp "$REPO/tools/packaging/portable-linux/smoke.sh" "$REPO/tools/packaging/portable-linux/natives.sh" \
@@ -128,4 +147,6 @@ if [ ${#FAILED[@]} -gt 0 ]; then
   echo "FAILED on: ${FAILED[*]}"
   exit 1
 fi
-echo "PASS ($MODE) $(basename "$TGZ") on ${#IMAGES[@]} distributions: ${IMAGES[*]}"
+if command -v sha256sum >/dev/null 2>&1; then AFTER_SHA="$(sha256sum "$TGZ" | cut -d' ' -f1)"; else AFTER_SHA="$(shasum -a 256 "$TGZ" | cut -d' ' -f1)"; fi
+[ "$AFTER_SHA" = "$ARCHIVE_SHA256" ] || die "$(basename "$TGZ") changed during the smoke ($ARCHIVE_SHA256 -> $AFTER_SHA)"
+echo "PASS ($MODE) $(basename "$TGZ") sha256 $ARCHIVE_SHA256 on ${#IMAGES[@]} distributions: ${IMAGES[*]}"

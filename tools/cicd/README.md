@@ -27,12 +27,23 @@ Each fails (exit 1) when two things that must agree by hand have drifted. Severa
 | `check_test_exit_codes.py`, `check_jit_optouts.py`, `check_diff_markers.py` | regression-test conventions: a test can fail, an opt-out has a stated reason |
 | `check_native_write_barrier.py` | native code that stores a received object runs the write barrier |
 | `check_benchmark_inputs.py` | `perf-results/run_benchmarks.sh` vs the inputs documented in `docs/performance.md` |
+| `gate_manifest.py`, `skip_allowlist.json` | per-test manifests of a regression run and the skips a release gate accepts (see below); `lint` and `test_gate_manifest.py` run in the `tools` job |
 | `check_manifest_resign.py` | anything that replaces a published `SHA256SUMS` re-signs it |
 | `check_onnx_provider_parity.py` | needs a machine with an execution provider |
 | `check_macos_tree_links.sh` | every Mach-O file in a macOS tree loads its libraries from the tree or the OS (no rpath outside the tree, no absolute dependency outside `/usr/lib` and `/System`); called by `core/release/deploy_macos_arm64.sh`, not by a workflow step |
 | `test_*.py`, `test_apt_harden.sh` | unit tests for the scripts above, for `nightly_triage.py` (and its contract with the workflow), `stress_probe.py`, `obu verify`, the apt retry wrapper, and `API.Inference` over a mock server (`mock_inference_server.py`, `serve_onnx_model.py`). The `tools` job runs those that need no build; `test_inference_round_trip.py` and `test_obu_verify.py` run in the build job |
 
 `doc_coverage.py` is a measurement, not a gate: it writes [docs/DOC_COVERAGE.md](../../docs/DOC_COVERAGE.md) (`python tools/cicd/doc_coverage.py --write docs/DOC_COVERAGE.md`).
+
+## Gate manifests: a gate may not go green without showing its cases ran
+
+A count line ("299 passed, 40 skipped") cannot show the same tests ran. `gate_manifest.py` turns a regression log (either runner) into a per-test, per-mode manifest and holds a gate to it:
+
+- `verify_platform.sh` / `.cmd` call `gate_manifest.py judge` for each regression pass (and run the compiler checks `nesting_limit`, `dead_store_chain` and `stack_depth`, each recorded `PASS`/`FAIL` in the result file) (modes `default` and `jit1`). A log with no `Results:` line, a test that started and never reported, a test run twice, a `Results:` line that disagrees with the tests named, or a skip that is not in `skip_allowlist.json` for that platform and mode is a **FAIL**, never `PASS (counts not found)`. The result file names the manifest (`manifest=rc-results/<VERSION>/<platform>.manifest.json`).
+- `skip_allowlist.json` is the one reviewed list of accepted skips (the `# SKIP_ALLOWED:` tests, plus the `VERIFY_SKIP` / `GC_STRESS_SKIP` marker opt-outs), each with a reason, platform and mode. `gate_manifest.py lint` (CI `tools` job, `local_ci.py`) keeps it in step with the test sources.
+- `compare <baseline> <candidate>` fails on a test missing from the candidate, a PASS that is no longer a PASS, and an unlisted skip. A test only the candidate has is printed; it fails too when a reviewed-additions file (`--reviewed-additions`, one `test` or `mode:test` per line) is given and does not list it.
+
+**Baselines are produced by the previous gate; never write one by hand.** The comparison runs only when `tools/cicd/gate_baselines/<platform>.json` exists (`linux-x64`, `linux-arm64`, `macos-arm64`, `windows-x64`, `windows-arm64`); with none, the gate still checks counts and skips and says so. To make one: after a release gate passed on a platform at the commit that shipped, copy that run's `rc-results/<VERSION>/<platform>.manifest.json` to `tools/cicd/gate_baselines/<platform>.json` in the post-release commit. For the next gate, list every test added since (the manifest comparison prints them) in `tools/cicd/gate_baselines/<platform>.reviewed_additions.txt` (or point `GATE_REVIEWED_ADDITIONS` at a file) so that an addition is a reviewed decision, then replace the baseline from the gate that follows.
 
 ## Nightly, soak and probes
 

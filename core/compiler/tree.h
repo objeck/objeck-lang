@@ -4604,6 +4604,10 @@ namespace frontend {
    * ParsedProgram class
    ****************************/
   class ParsedProgram {
+    // see SetElementwiseStringLiterals
+    std::set<std::wstring> elementwise_literal_methods;
+    bool elementwise_literals_all = false;
+
     std::map<IntStringHolder*, int, int_string_comp> int_string_ids;
     std::vector<IntStringHolder*> int_strings;
 
@@ -5036,6 +5040,26 @@ namespace frontend {
 
     Linker* GetLinker() {
       return linker;
+    }
+
+    // A short String literal is copied from the operand stack (STRING_LITERAL_STACK_MAX,
+    // context.h), which costs a word for each element on top of what already waits
+    // there. Where that takes a method past the loader's limit the compilation is
+    // made again with the literals of those methods (named by their encoded names),
+    // or of every method, built an element at a time instead: see
+    // backend::StackDepth::Retry (stack_depth.h), the only caller.
+    void SetElementwiseStringLiterals(const std::set<std::wstring>& methods, bool all) {
+      elementwise_literal_methods = methods;
+      elementwise_literals_all = all;
+    }
+
+    bool ElementwiseStringLiterals(const std::wstring& method) const {
+      return elementwise_literals_all || elementwise_literal_methods.find(method) != elementwise_literal_methods.end();
+    }
+
+    // this is such a second or third attempt (its warnings were shown by the first)
+    bool IsStringLiteralRetry() const {
+      return elementwise_literals_all || !elementwise_literal_methods.empty();
     }
 
     void SetStart(Class* c, Method* m) {

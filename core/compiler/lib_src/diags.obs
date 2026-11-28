@@ -5,13 +5,44 @@ use System.API;
 Static analysis and language-server support. Analyzer parses Objeck source files and returns symbols, diagnostics, hover info, completions, references, and definitions for IDE tooling. Compile with -lib diags.
 ~#
 bundle System.Diagnostics {
-	class : private: Proxy {
+	class : private : Proxy {
 		@lib_proxy : static : DllProxy;
+		@lock : static : System.Concurrency.ThreadMutex;
+
+		# The lock the library's process-wide state is made under: the native library's
+		# proxy below, and the entry-point names each class keeps (@fn_...). Both are
+		# made on first use and then shared by every thread, and until this lock they
+		# were tested and stored with nothing between the threads: two threads making
+		# their first calls together each made a proxy, and a thread could pick up a
+		# proxy or a name another thread had stored a moment earlier with nothing to say
+		# the object behind it was complete (ThreadSanitizer, v2026.11.4 soak). Now each
+		# is made, and read, inside critical(Lock()).
+		#
+		# The lock itself is made on the first call into the library, and that one step
+		# has no lock to stand behind: the language has no way to make a single object
+		# from several threads at once. A program whose very first use of this library
+		# may come from two threads at the same moment should make one call from the
+		# thread that starts them, before it starts them; from then on every thread
+		# finds this lock made.
+		function : Lock() ~ System.Concurrency.ThreadMutex {
+			if(@lock = Nil) {
+				@lock := System.Concurrency.ThreadMutex->New("diags_native");
+			};
+
+			return @lock;
+		}
 
 		function : GetDllProxy() ~ DllProxy {
-			@lib_proxy := @lib_proxy ?? DllProxy->New("libobjk_diags");
+			proxy : DllProxy;
+			lib_lock := Lock();
+			critical(lib_lock) {
+				if(@lib_proxy = Nil) {
+					@lib_proxy := DllProxy->New("libobjk_diags");
+				};
+				proxy := @lib_proxy;
+			};
 
-			return @lib_proxy;
+			return proxy;
 		}
 	}
 
@@ -46,7 +77,9 @@ bundle System.Diagnostics {
 			array_args[2] := src_file;
 			array_args[3] := IntRef->New();
 			array_args[4] := IntRef->New();
-			if(@fn_diag_parse_file = Nil) { @fn_diag_parse_file := "diag_parse_file"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_parse_file = Nil) { @fn_diag_parse_file := "diag_parse_file"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_parse_file, array_args);
 
 			program_handle := array_args[0]->As(IntRef);
@@ -102,7 +135,9 @@ bundle System.Diagnostics {
 			array_args[3] := StringArrayRef->New(texts);
 			array_args[4] := IntRef->New();
 			array_args[5] := IntRef->New();
-			if(@fn_diag_parse_text = Nil) { @fn_diag_parse_text := "diag_parse_text"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_parse_text = Nil) { @fn_diag_parse_text := "diag_parse_text"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_parse_text, array_args);
 
 			program_handle := array_args[0]->As(IntRef);
@@ -218,7 +253,9 @@ bundle System.Diagnostics {
 				array_args[0] := @self;
 				array_args[1] := uri;
 				array_args[2] := sys_path;
-				if(@fn_diag_get_symbols = Nil) { @fn_diag_get_symbols := "diag_get_symbols"; };
+				# the name is made, and seen made, under the library's lock (Proxy->Lock)
+				lib_lock := Proxy->Lock();
+				critical(lib_lock) { if(@fn_diag_get_symbols = Nil) { @fn_diag_get_symbols := "diag_get_symbols"; }; };
 				Proxy->GetDllProxy()->CallFunction(@fn_diag_get_symbols, array_args);
 			};
 
@@ -254,7 +291,9 @@ bundle System.Diagnostics {
 				array_args[1] := uri;
 				array_args[2] := sys_path;
 				array_args[3] := analyzed;
-				if(@fn_diag_get_diagnosis = Nil) { @fn_diag_get_diagnosis := "diag_get_diagnosis"; };
+				# the name is made, and seen made, under the library's lock (Proxy->Lock)
+				lib_lock := Proxy->Lock();
+				critical(lib_lock) { if(@fn_diag_get_diagnosis = Nil) { @fn_diag_get_diagnosis := "diag_get_diagnosis"; }; };
 				Proxy->GetDllProxy()->CallFunction(@fn_diag_get_diagnosis, array_args);
 				@was_analyzed := analyzed->Get();
 				@is_diagnosed := true;
@@ -291,7 +330,9 @@ bundle System.Diagnostics {
 			array_args[2] := IntRef->New(line);
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
-			if(@fn_diag_find_references = Nil) { @fn_diag_find_references := "diag_find_references"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_find_references = Nil) { @fn_diag_find_references := "diag_find_references"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_references, array_args);
 
 			return @references_results;
@@ -409,7 +450,9 @@ bundle System.Diagnostics {
 			array_args[2] := IntRef->New(line);
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
-			if(@fn_diag_type_hierarchy_super = Nil) { @fn_diag_type_hierarchy_super := "diag_type_hierarchy_super"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_type_hierarchy_super = Nil) { @fn_diag_type_hierarchy_super := "diag_type_hierarchy_super"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_type_hierarchy_super, array_args);
 
 			return @supertypes_results;
@@ -474,7 +517,9 @@ bundle System.Diagnostics {
 			array_args[2] := IntRef->New(line);
 			array_args[3] := IntRef->New(pos);
 			array_args[4] := sys_path;
-			if(@fn_diag_code_rename = Nil) { @fn_diag_code_rename := "diag_code_rename"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_code_rename = Nil) { @fn_diag_code_rename := "diag_code_rename"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_code_rename, array_args);
 
 			return @rename_results;
@@ -500,7 +545,9 @@ bundle System.Diagnostics {
 			array_args[5] := var_str;
 			array_args[6] := mthd_str;
 			array_args[7] := sys_path;
-			if(@fn_diag_signature_help = Nil) { @fn_diag_signature_help := "diag_signature_help"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_signature_help = Nil) { @fn_diag_signature_help := "diag_signature_help"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_signature_help, array_args);
 
 			return array_args[0]->As(Result);
@@ -522,7 +569,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(start_range_line);
 			array_args[4] := IntRef->New(start_range_char);
 			array_args[5] := var_name;
-			if(@fn_diag_code_action = Nil) { @fn_diag_code_action := "diag_code_action"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_code_action = Nil) { @fn_diag_code_action := "diag_code_action"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_code_action, array_args);
 
 			return array_args[0]->As(Result);
@@ -556,7 +605,9 @@ bundle System.Diagnostics {
 			array_args[5] := var_str;
 			array_args[6] := mthd_str;
 			array_args[7] := sys_path;
-			if(@fn_diag_hover = Nil) { @fn_diag_hover := "diag_hover"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_hover = Nil) { @fn_diag_hover := "diag_hover"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_hover, array_args);
 
 			return array_args[0]->As(Result);
@@ -590,7 +641,9 @@ bundle System.Diagnostics {
 			array_args[5] := var_str;
 			array_args[6] := mthd_str;
 			array_args[7] := sys_path;
-			if(@fn_diag_completion_help = Nil) { @fn_diag_completion_help := "diag_completion_help"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_completion_help = Nil) { @fn_diag_completion_help := "diag_completion_help"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_completion_help, array_args);
 
 			return array_args[0]->As(Result);
@@ -612,7 +665,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_find_declaration = Nil) { @fn_diag_find_declaration := "diag_find_declaration"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_find_declaration = Nil) { @fn_diag_find_declaration := "diag_find_declaration"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_declaration, array_args);
 
 			return array_args[0]->As(Result);
@@ -642,7 +697,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_find_definition = Nil) { @fn_diag_find_definition := "diag_find_definition"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_find_definition = Nil) { @fn_diag_find_definition := "diag_find_definition"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_definition, array_args);
 
 			return array_args[0]->As(Result);
@@ -664,7 +721,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_find_type_definition = Nil) { @fn_diag_find_type_definition := "diag_find_type_definition"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_find_type_definition = Nil) { @fn_diag_find_type_definition := "diag_find_type_definition"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_type_definition, array_args);
 
 			return array_args[0]->As(Result);
@@ -689,7 +748,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_find_implementation = Nil) { @fn_diag_find_implementation := "diag_find_implementation"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_find_implementation = Nil) { @fn_diag_find_implementation := "diag_find_implementation"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_find_implementation, array_args);
 
 			return @impl_results;
@@ -711,7 +772,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_prepare_call_hierarchy = Nil) { @fn_diag_prepare_call_hierarchy := "diag_prepare_call_hierarchy"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_prepare_call_hierarchy = Nil) { @fn_diag_prepare_call_hierarchy := "diag_prepare_call_hierarchy"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_prepare_call_hierarchy, array_args);
 
 			return array_args[0]->As(Result);
@@ -736,7 +799,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_incoming_calls = Nil) { @fn_diag_incoming_calls := "diag_incoming_calls"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_incoming_calls = Nil) { @fn_diag_incoming_calls := "diag_incoming_calls"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_incoming_calls, array_args);
 
 			return @incoming_results;
@@ -761,7 +826,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(line);
 			array_args[4] := IntRef->New(pos);
 			array_args[5] := sys_path;
-			if(@fn_diag_outgoing_calls = Nil) { @fn_diag_outgoing_calls := "diag_outgoing_calls"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_outgoing_calls = Nil) { @fn_diag_outgoing_calls := "diag_outgoing_calls"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_outgoing_calls, array_args);
 
 			return @outgoing_results;
@@ -786,7 +853,9 @@ bundle System.Diagnostics {
 			array_args[3] := IntRef->New(start_line);
 			array_args[4] := IntRef->New(end_line);
 			array_args[5] := sys_path;
-			if(@fn_diag_inlay_hints = Nil) { @fn_diag_inlay_hints := "diag_inlay_hints"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_inlay_hints = Nil) { @fn_diag_inlay_hints := "diag_inlay_hints"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_inlay_hints, array_args);
 
 			return @inlay_results;
@@ -807,7 +876,9 @@ bundle System.Diagnostics {
 			array_args[1] := @self;
 			array_args[2] := uri;
 			array_args[3] := sys_path;
-			if(@fn_diag_semantic_tokens = Nil) { @fn_diag_semantic_tokens := "diag_semantic_tokens"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_semantic_tokens = Nil) { @fn_diag_semantic_tokens := "diag_semantic_tokens"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_semantic_tokens, array_args);
 
 			return @semantic_results;
@@ -824,7 +895,9 @@ bundle System.Diagnostics {
 		method : public : Release() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@progam_handle);
-			if(@fn_diag_tree_release = Nil) { @fn_diag_tree_release := "diag_tree_release"; };
+			# the name is made, and seen made, under the library's lock (Proxy->Lock)
+			lib_lock := Proxy->Lock();
+			critical(lib_lock) { if(@fn_diag_tree_release = Nil) { @fn_diag_tree_release := "diag_tree_release"; }; };
 			Proxy->GetDllProxy()->CallFunction(@fn_diag_tree_release, array_args);
 		}
 	}

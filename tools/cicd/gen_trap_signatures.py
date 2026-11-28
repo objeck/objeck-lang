@@ -160,8 +160,9 @@ def frame_traps():
 
 
 def code_tokens(text):
-    """An Objeck source as (word | '{' | '}' | '(' | ')' | '~' | ';'), without its
-    comments, strings and character literals: a brace in a string is not a block."""
+    """An Objeck source as words and the punctuation a declaration is read by
+    ('{' '}' '(' ')' '[' ']' '<' '>' '~' ';' ':' ','), without its comments, strings
+    and character literals: a brace in a string is not a block."""
     out = []
     i, n = 0, len(text)
     while i < n:
@@ -189,30 +190,105 @@ def code_tokens(text):
             out.append(text[i:end])
             i = end
         else:
-            if ch in "{}();~":
+            if ch in "{}()[]<>;~:,":
                 out.append(ch)
             i += 1
     return out
 
 
+# how a parameter's type is spelled in a method's name ("Class:Method:i,o.System.String,b*,")
+PRIMITIVE_CODES = {"Int": "i", "Float": "f", "Bool": "l", "Byte": "b", "Char": "c"}
+# the spelling of a signature that could not be read from the source: it equals no
+# context, so the trap it belongs to is reported rather than passed
+UNREAD_SIGNATURE = "?"
+
+
+def declared_classes(sources):
+    """class name -> the bundles that declare one of that name, over every source."""
+    home = collections.defaultdict(set)
+    for toks in sources:
+        bundle = None
+        for k, tok in enumerate(toks):
+            if tok == "bundle" and k + 1 < len(toks):
+                bundle = toks[k + 1]
+            elif tok in ("class", "interface", "enum", "consts") and bundle:
+                j = k + 1
+                while j < len(toks) and toks[j] in ("public", "private", "native", ":"):
+                    j += 1
+                if j < len(toks) and toks[j][0].isalpha():
+                    home[toks[j]].add(bundle)
+    return home
+
+
+def parameter_signature(params, bundle, home):
+    """The tokens between a declaration's parentheses, 'gmt : Bool' or 'name : String,
+    data : Byte[]', as the compiler spells them in the method's name: 'l,' and
+    'o.System.String,b*,'. UNREAD_SIGNATURE for anything this does not read (a
+    generic, a function type, a class two bundles declare), so that nothing is
+    matched by guessing."""
+    out = ""
+    k = 0
+    while k < len(params):
+        # name ':' Type, then '[' ',' ... ']' for each array
+        if k + 2 >= len(params) or params[k + 1] != ":" or not params[k + 2][0].isalpha():
+            return UNREAD_SIGNATURE
+        base = params[k + 2]
+        k += 3
+        stars = 0
+        while k < len(params) and params[k] == "[":
+            stars += 1
+            k += 1
+            while k < len(params) and params[k] == ",":
+                stars += 1
+                k += 1
+            if k >= len(params) or params[k] != "]":
+                return UNREAD_SIGNATURE
+            k += 1
+        if k < len(params):
+            if params[k] != ",":
+                return UNREAD_SIGNATURE
+            k += 1
+        if base in PRIMITIVE_CODES:
+            code = PRIMITIVE_CODES[base]
+        elif "." in base:
+            code = "o." + base
+        else:
+            # a class of the bundle the method is in, or the one bundle that declares it
+            bundles = home.get(base, set())
+            if bundle in bundles:
+                code = "o.%s.%s" % (bundle, base)
+            elif len(bundles) == 1:
+                code = "o.%s.%s" % (next(iter(bundles)), base)
+            else:
+                return UNREAD_SIGNATURE
+        out += code + "*" * stars + ","
+    return out
+
+
 def library_traps(traps, lib_src=None):
-    """Where the library sources hold each directive: trap -> [(Bundle.Class:Method,
-    tail)], one for each statement. 'tail' is True where the directive is the last
-    statement of a method that returns a value, which is where a TRAP leaves that
-    value on the stack for the method's RTRN.
+    """Where the library sources hold each directive: trap -> [(context, tail)], one
+    for each statement. 'context' is the method's whole name as an image carries it
+    and the table lists it, 'Bundle.Class:Method:<parameter signature>': the class,
+    the method AND its parameters, because overloads share the first two (SYS_TIME
+    is in Date:New() and Date:New(Bool), and in no other Date:New). 'tail' is True
+    where the directive is the last statement of a method that returns a value,
+    which is where a TRAP leaves that value on the stack for the method's RTRN.
 
     A directive is written only in a library (the compiler reads one nowhere else),
     so this list is complete where a corpus of images may not be. Checked against
-    the committed table when written: all 29 frame-reading traps' contexts and all
-    TRAP result counts agree with it."""
+    the committed table when written: all 29 frame-reading traps' contexts, signature
+    for signature, and all TRAP result counts agree with it."""
     out = collections.defaultdict(list)
+    sources = []
     for path in sorted(glob.glob(os.path.join(lib_src or LIB_SRC, "*.obs"))):
         with open(path, encoding="utf-8", errors="replace") as f:
-            toks = code_tokens(f.read())
+            sources.append(code_tokens(f.read()))
+    home = declared_classes(sources)
+    for toks in sources:
         depth = 0
         bundle = []        # (name, the depth of its body), innermost last
         classes = []
-        method = None      # (name, returns a value, the depth of its body)
+        method = None      # (name with its parameter signature, returns a value, the depth of its body)
         pending = None     # a declaration read, waiting for its '{'
         k = 0
         while k < len(toks):
@@ -241,7 +317,7 @@ def library_traps(traps, lib_src=None):
             elif tok in ("class", "interface") and not method:
                 # 'class Name', 'class : public : Name'
                 j = k + 1
-                while j < len(toks) and toks[j] in ("public", "private", "native"):
+                while j < len(toks) and toks[j] in ("public", "private", "native", ":"):
                     j += 1
                 if j < len(toks) and toks[j][0].isalpha():
                     pending = ("class", toks[j], None)
@@ -251,6 +327,7 @@ def library_traps(traps, lib_src=None):
                 while j < len(toks) and toks[j] != "(":
                     j += 1
                 name = "New" if tok == "New" else toks[j - 1]
+                opened = j
                 level = 0
                 while j < len(toks):
                     level += toks[j] == "("
@@ -258,6 +335,7 @@ def library_traps(traps, lib_src=None):
                     if level == 0:
                         break
                     j += 1
+                name += ":" + parameter_signature(toks[opened + 1:j], bundle[-1][0] if bundle else None, home)
                 value = tok != "New" and toks[j + 1:j + 2] == ["~"] and toks[j + 2:j + 3] != ["Nil"]
                 # a virtual or interface declaration has no body: it ends with ';'
                 m = j + 1
@@ -274,19 +352,25 @@ def library_traps(traps, lib_src=None):
     return out
 
 
-def context_method(context):
-    """'System.Time.Date:New:l,' -> 'System.Time.Date:New', as library_traps names it."""
-    return ":".join(context.split(":")[:2])
-
-
 def context_problems(trap, contexts, library):
     """What is wrong with a frame-reading trap's contexts, held to the methods the
-    library sources hold its directive in ('' when nothing is)."""
+    library sources hold its directive in ('' when nothing is).
+
+    Whole names are compared, parameters included. Class and method alone were
+    compared at first, and that passed a list in which one overload stood for
+    another: 'Date:New:' with 'Date:New:i,o.System.String,' for SYS_TIME, whose
+    second method is 'Date:New:l,'. The loader matches the whole name, so it would
+    have refused Date->New(Bool) and let the trap stand in a method that never
+    holds it."""
     want = collections.Counter(where for where, _ in library.get(trap, []))
-    have = collections.Counter(context_method(c) for c in contexts)
+    have = collections.Counter(contexts)
     missing = sorted((want - have).elements())
     extra = sorted((have - want).elements())
     said = []
+    unread = [m for m in missing if m.endswith(":" + UNREAD_SIGNATURE)]
+    if unread:
+        said.append("the parameters of %s could not be read from the library source: teach parameter_signature the type" % ", ".join(unread))
+    missing = [m for m in missing if m not in unread]
     if missing:
         said.append("no context for %s, which the library sources hold it in (a corpus without that method's image?)" % ", ".join(missing))
     if extra:

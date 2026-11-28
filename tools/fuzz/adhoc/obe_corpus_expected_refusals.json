@@ -1,0 +1,2521 @@
+{
+ "format": 1,
+ "comment": "Sources the compiler is expected to refuse, with the refusal's text class (first error, names and numbers abstracted). Anything else the compiler refuses fails obe_corpus_gate.py. Derived from a full run of the gate; entries are removed when a source starts compiling (the run reports nothing: it simply loads).",
+ "entries": [
+  {
+   "source": "programs/examples/checkers/checkers.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_ai.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_audio.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_chars.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_draw.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_engine.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_fx.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_game.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_logic.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_music.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_tests.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_tournament.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_train.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/checkers/checkers_wav.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/ml/lab_data.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/ml/rf_lab.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/examples/ml/svm_lab.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/gemini/gemini_actions.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/gemini/gemini_assist.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/gemini/gemini_corpus_actions.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/json/test0.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/km.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/lr3.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/mn1.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Class 'X' defined in shared libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/nn2.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Class 'X' defined in shared libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/nn3.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or interface: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/nn4.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/ml/nn5.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected expression, found 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/odbc/sql_auth.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/openai/openai_actions.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/openai/openai_assist_files.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/openai/openai_chat.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or interface: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/openai/realtime-text.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected 'X', 'X', 'X', 'X', 'X', 'X' or 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/sdl/config/sdl_game_config.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_0.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_1.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_2.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_3.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_4.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic to concrete size mismatch",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_7.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic to concrete size mismatch",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/sdl_test_9.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic type mismatch for class 'X': expected N type parameter(s), got N",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test3/bullet.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test3/enemy.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test3/platform.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test3/player.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test4/bullet.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test4/enemy.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test4/platform.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test4/player.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test6/blocks.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test6/enemies.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test6/game.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test6/level.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/engine/tests/test6/player.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/flashcards/multiplication.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_03.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_07.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_08.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_10.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_11.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_12.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_13.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_14.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_15.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_16.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_17.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_19.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_29.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_30.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_31.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_32.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_38.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_39.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_40.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_43.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_breakout.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_paddle.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/foo/sdl_sound.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/Actor.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/anim_sprite.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/background.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/bg_texture.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/component.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/game.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/ship.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/proj/chapt_2/sprite.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/frameworks/sdl/test/test4.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic size mismatch, ensure calling parameters and generic types match",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/frameworks/web/get_post.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/langs/tiny/common/instructions.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/langs/tiny/compiler/compiler.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/langs/tiny/compiler/emitter.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/langs/tiny/compiler/parser.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/langs/tiny/compiler/scanner.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/langs/tiny/vm/interpreter.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/regression/agent_scope_late_worker_test.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/regression/mcp_http_cancel_rejected_call_test.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/regression/mcp_stubs/use_stub.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/regression/select_label_order/select_label_order_lib.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/aoc_2022/day_five/day_five.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected expression, found 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/aoc_2022/day_five/day_five_p2.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected expression, found 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/aoc_2022/day_six/day_six.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected expression, found 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/aoc_2022/day_six/day_six_p2.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected expression, found 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/ml_enhancements_test.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Invalid function variable type or dimension size",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm102.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm104.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm106.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm112.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Dimension size mismatch or uninitialized type",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm113.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm114.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm116.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm120.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm122.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm124.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm125.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm127.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm128.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm130.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm132.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm133.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Cannot inherit from an undefined class type",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm134.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm139.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm140.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm141.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm142.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Cannot reference an instance variable from this context",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm143.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm144.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm173.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm180.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm185.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm188.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm189.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm206.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined variable: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm217.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm218.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm220.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm23.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm237.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm254.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm267b.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm278.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm28.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm284.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Invalid cast with classes: System.Base and Int",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm298.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm299.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Cannot reference private method/function 'X' from this context",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm304.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or interface: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm306.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm311.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm315.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Invalid character sequence",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm317a.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm317b.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm329.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm33.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm330.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm334.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm345.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm35.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Classes cannot be derived from interfaces",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm350.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm37.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic to concrete size mismatch",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm38.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Class 'X' defined in shared libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm42.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic to concrete size mismatch",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm43.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm46.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm48.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm49.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic type mismatch for class 'X': expected N type parameter(s), got N",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm52.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm54.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm62.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm72.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm77.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm78.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Class 'X' defined in shared libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm85.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic type mismatch for class 'X': expected N type parameter(s), got N",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm86.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic type mismatch for class 'X': expected N type parameter(s), got N",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm88.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Virtual methods/functions from 'X' have not been implemented:",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm89.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm91.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined or incompatible enum type: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm92.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined variable: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "programs/tests/prgm94.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Generic type mismatch for class 'X': expected N type parameter(s), got N",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/prgm96.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Invalid operation using classes: 'X' and 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "programs/tests/test_mbedtls_migration.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined function/method call: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/adapter_anthropic.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/adapter_command.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/adapter_gemini.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/adapter_ollama.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/adapter_openai.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/compare.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/eval.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/llm_eval.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_command_model.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_harness.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_references_a.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_references_b.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_report.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_stats.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/tests/llm_eval_units.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/llm_eval/verify_references.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Bundle name 'X' not defined in program or linked libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/doc_json/doc_json.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/doc_json/doc_parser.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/format_code/formatter.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/format_code/regression_test.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/format_code/scanner.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/format_code/test.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/frameworks.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/inline_completion.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/proxy.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/server/server.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/format_corpus_lsp.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/lsp_codeaction.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/lsp_codeaction_ambiguous.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/lsp_codeaction_declared.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/lsp_codeaction_shapes.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/test_0.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined variable: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/test_2.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/test_3.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined variable: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws1/a.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class or enum: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws1/b.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws_lsp_features/animals.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Expected 'X', found 'X'",
+   "reason": "does not compile as a single file (measured 2026-11-27 with the toolchain of the tree); listed so that a NEW refusal anywhere else is not hidden: review the source before trusting this entry"
+  },
+  {
+   "source": "tools/lsp/tests/ws_lsp_features/main.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws_lsp_features/shapes.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws_multi_a/main.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws_multi_a/types.obs",
+   "tags": [
+    "dbg",
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws_multi_b/main.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Undefined class: 'X'",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/lsp/tests/ws_multi_b/types.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "The 'X' function was not defined",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  },
+  {
+   "source": "tools/research/faults/fault_agents.obs",
+   "tags": [
+    "s0",
+    "s1",
+    "s2",
+    "s3"
+   ],
+   "refusal": "Class 'X' defined in shared libraries",
+   "reason": "a fragment: it names code defined in sibling files or libraries the gate does not link, so it does not compile as one file with the default and the all-libraries sets (measured 2026-11-27 with the toolchain of the tree)"
+  }
+ ]
+}

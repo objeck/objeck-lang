@@ -1161,20 +1161,24 @@ class IPSecureSocket {
   // 30: API.OpenAI and API.Google wait on non-streaming HTTPS requests while a
   // model reasons, often silently for longer than 30 seconds. 0 means no
   // timeout. OBJECK_TLS_RECV_TIMEOUT (milliseconds) overrides it. Cached on
-  // first read.
+  // first read: a function-local static, which initializes once however many
+  // threads connect at the start. It was an int tested and assigned by hand,
+  // and set to the default BEFORE the variable was read, so a second thread
+  // connecting in that window took the default and ignored the override for
+  // its socket (and ThreadSanitizer reported the unsynchronised write).
   static int DefaultRecvTimeoutMs() {
-    static int cached = -1;
-    if(cached < 0) {
-      cached = TLS_DEFAULT_RECV_TIMEOUT_MS;
+    static const int cached = []() {
+      int timeout_ms = TLS_DEFAULT_RECV_TIMEOUT_MS;
       const char* val = getenv("OBJECK_TLS_RECV_TIMEOUT");
       if(val && *val) {
         char* end = nullptr;
         const long ms = strtol(val, &end, 10);
         if(end != val && *end == '\0' && ms >= 0 && ms <= 0x7fffffffL) {
-          cached = (int)ms;
+          timeout_ms = (int)ms;
         }
       }
-    }
+      return timeout_ms;
+    }();
     return cached;
   }
 

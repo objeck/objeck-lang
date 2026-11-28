@@ -25,10 +25,22 @@ changed loop bound is not a defect, so hangs are counted, not failed), crash
 <out>/crashes.jsonl saying what was changed; with --gdb (Linux) the faulting
 frames are recorded and the crashes are grouped by them.
 
-Exit status 1 when any mutant crashed.
+Verdict. The inputs that make a run reproducible are printed and written to <out>/verdict.json
+(rng seed, mutant count, the hash of the seed list by content, modes, structured share), with the
+number of mutants attempted and completed: fewer completed than requested fails (status 3). A crash
+passes only by SIGNATURE (the function that faulted, from the --jit=off gdb frames; '(jit code)'
+for a fault in generated code) listed in obe_accepted_crashes.json, whose every entry carries a
+reason and the class number from docs/design/OBE_TYPE_VERIFIER.md / the residual assessment. When the
+run's inputs equal the ones the file was measured with, a crash must also be one of that signature's
+witness mutants, so a NEW crash at a known site cannot replace a known one. A signature that is not
+listed, or a crash whose signature cannot be established (no --gdb), fails (status 1); a listed
+signature not seen is reported, not failed (a fix landed: remove the entry). With no accepted file
+(or --no-accepted) any crash fails. --replay DIR runs known crash images instead of mutating, to
+re-derive the signatures; --write-accepted FILE writes a skeleton to complete by hand.
 """
 import argparse
 import collections
+import hashlib
 import json
 import os
 import random
@@ -86,6 +98,7 @@ class Seed:
         self.name = os.path.splitext(os.path.basename(path))[0]
         with open(path, "rb") as f:
             raw = f.read()
+        self.raw = raw
         self.image = zlib.decompress(raw[4:])
         _, classes, _ = obe_image.parse(self.image)
         self.classes = classes
@@ -335,10 +348,113 @@ def gdb_frames(obr, flags, env, path, timeout):
     return frames or ["(no frames)"]
 
 
+# ---- the verdict: crashes are accepted by SIGNATURE from a checked-in file, never by count ----
+
+ACCEPTED_FORMAT = 1
+DEFAULT_ACCEPTED = os.path.join(HERE, "obe_accepted_crashes.json")
+RC_CRASH, RC_INCOMPLETE, RC_USAGE = 1, 3, 2
+
+
+def seed_list_hash(seeds):
+    """sha256 over 'name sha256(file)' lines of the sorted seed images: the seed LIST, by content."""
+    h = hashlib.sha256()
+    for s in sorted(seeds, key=lambda s: s.name):
+        h.update(("%s %s\n" % (s.name, hashlib.sha256(s.raw).hexdigest())).encode())
+    return h.hexdigest()
+
+
+def crash_signature(record):
+    """What a crash is, apart from which mutant made it: the function that faulted.
+
+    Taken from the --jit=off run when it crashed (the interpreter's frames are named; compiled
+    code has none), else from the first crashing mode: '(jit code)' for a fault in generated code,
+    'silent-exit1' for a status 1 with no message. None when the frames were not recorded."""
+    results = record["results"]
+    crashed = [m for m, v in results.items() if v[0] == "crash"]
+    if not crashed:
+        return "silent-exit1"
+    frames = record.get("frames_by_mode", {})
+    pick = "off" if "off" in crashed and "off" in frames else crashed[0]
+    got = frames.get(pick) or (record.get("frames") if pick == (crashed[0]) else None)
+    if not got:
+        return None
+    if got[0] in ("??", "(no frames)", "(gdb timeout)"):
+        return "(jit code)" if got[0] == "??" else None
+    return got[0]
+
+
+def load_accepted(path):
+    """The accepted-crash file: {format, inputs, entries: [{signature, classes, reason, witnesses}]}.
+    Raises ValueError naming what is wrong: an entry with no reason or class is not accepted."""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if data.get("format") != ACCEPTED_FORMAT or not isinstance(data.get("entries"), list):
+        raise ValueError("%s: not a format-%d accepted-crash file" % (path, ACCEPTED_FORMAT))
+    seen = set()
+    for i, e in enumerate(data["entries"]):
+        for key in ("signature", "classes", "reason"):
+            if not e.get(key):
+                raise ValueError("%s: entry %d has no %s" % (path, i, key))
+        if not all(isinstance(c, int) for c in e["classes"]):
+            raise ValueError("%s: entry %d: classes must be the assessment's class numbers" % (path, i))
+        if e["signature"] in seen:
+            raise ValueError("%s: signature %s listed twice" % (path, e["signature"]))
+        seen.add(e["signature"])
+    return data
+
+
+def assess(crashes, accepted, inputs, attempted, completed, gdb):
+    """(rc, lines, report). crashes: records; accepted: loaded file or None; inputs: the run's pinned
+    inputs {seed, count, seeds_sha256, modes, structured}.
+
+    PASS needs: every requested mutant completed; no crash at all when there is no accepted file;
+    otherwise every crash has a signature in the file and, when the run's inputs are the ones the file
+    was measured with, is one of that signature's witness mutants, so a NEW crash at a known site
+    cannot stand in for a known one. Accepted signatures this run did not see are reported (a fix
+    landed: remove the entry), not failed."""
+    lines, bad = [], []
+    if completed < attempted:
+        bad.append("only %d of %d mutants completed" % (completed, attempted))
+    sigs = {}
+    if accepted is None:
+        if crashes:
+            bad.append("%d crash(es) and no accepted-crash file: none is accepted" % len(crashes))
+    else:
+        entries = {e["signature"]: e for e in accepted["entries"]}
+        pinned = accepted.get("inputs", {})
+        same = all(pinned.get(k) == inputs.get(k) for k in ("seed", "count", "seeds_sha256", "modes", "structured"))
+        lines.append("accepted-crash file inputs %s this run's: crash identity is %s"
+                     % ("equal" if same else "NOT equal to", "signature and witness mutant" if same else "signature only"))
+        for r in crashes:
+            sig = crash_signature(r)
+            if sig is None:
+                bad.append("%s: crashed and its signature could not be established (run with --gdb on a -g build)" % r["file"])
+                continue
+            sigs.setdefault(sig, []).append(r["file"])
+            e = entries.get(sig)
+            if e is None:
+                bad.append("%s: UNACCEPTED crash signature %s (%s)" % (r["file"], sig, r["change"]))
+            elif same and e.get("witnesses") and os.path.splitext(r["file"])[0] not in e["witnesses"]:
+                bad.append("%s: signature %s is accepted but this mutant is not one of its witnesses (a new crash at a known site)"
+                           % (r["file"], sig))
+        for sig, e in sorted(entries.items()):
+            if sig not in sigs:
+                lines.append("accepted signature not seen (fixed? remove it from the file): %s (classes %s)" % (sig, e["classes"]))
+    classes_of = {e["signature"]: e["classes"] for e in accepted["entries"]} if accepted else {}
+    for sig, files in sorted(sigs.items()):
+        lines.append("  %3d  %s  classes %s" % (len(files), sig, classes_of.get(sig, "UNACCEPTED")))
+    report = {"inputs": inputs, "attempted": attempted, "completed": completed, "crashes": len(crashes),
+              "signatures": {s: len(f) for s, f in sorted(sigs.items())}, "problems": bad}
+    if bad:
+        crash_problem = any(not b.startswith("only ") for b in bad)
+        return (RC_CRASH if crash_problem else RC_INCOMPLETE), lines + ["verdict: FAIL"] + ["  - " + b for b in bad], report
+    return 0, lines + ["verdict: PASS (%d crash(es), all accepted by signature)" % len(crashes)], report
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--obr", required=True)
-    ap.add_argument("--seeds", required=True)
+    ap.add_argument("--seeds", default=None, help="directory of the seed .obe images (not needed with --replay)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--count", type=int, default=10000)
     ap.add_argument("--seed", type=int, default=1)
@@ -348,13 +464,44 @@ def main():
     ap.add_argument("--timeout", type=float, default=10)
     ap.add_argument("--gdb", action="store_true")
     ap.add_argument("--keep-hangs", action="store_true")
+    ap.add_argument("--accepted", default=None,
+                    help="accepted-crash file (default: obe_accepted_crashes.json beside this script when it "
+                         "exists): a crash passes only if its signature is listed")
+    ap.add_argument("--no-accepted", action="store_true", help="accept no crash at all, even if a file exists")
+    ap.add_argument("--replay", default=None, metavar="DIR",
+                    help="do not mutate: run the .obe files of DIR (known crash images) as the mutants, to "
+                         "derive or re-check the accepted signatures; --count and --seeds are not used")
+    ap.add_argument("--write-accepted", default=None, metavar="FILE",
+                    help="write the crashes of this run as a NEW accepted-crash file skeleton (reasons and "
+                         "class numbers are filled in by hand from the assessment)")
     args = ap.parse_args()
 
     modes = [m for m in args.modes.split(",") if m]
-    seeds = [Seed(os.path.join(args.seeds, f)) for f in sorted(os.listdir(args.seeds)) if f.endswith(".obe")]
-    if not seeds:
-        print("no seeds in", args.seeds)
-        return 2
+    unknown = [m for m in modes if m not in MODES]
+    if not modes or unknown:
+        print("unknown or no --modes: %s (known: %s)" % (",".join(unknown) or "none given", ",".join(MODES)))
+        return RC_USAGE
+    replay = None
+    if args.replay:
+        replay = sorted(f for f in os.listdir(args.replay) if f.endswith(".obe"))
+        if not replay:
+            print("no .obe files in", args.replay)
+            return RC_USAGE
+        args.count = len(replay)
+        seeds = []
+    else:
+        if not args.seeds:
+            print("--seeds is required (or --replay DIR)")
+            return RC_USAGE
+        seeds = [Seed(os.path.join(args.seeds, f)) for f in sorted(os.listdir(args.seeds)) if f.endswith(".obe")]
+        if not seeds:
+            print("no seeds in", args.seeds)
+            return RC_USAGE
+    # The inputs that make a run reproducible, printed and written with the verdict: the same seed,
+    # count and seed list give the same mutants at any --jobs.
+    inputs = {"seed": args.seed, "count": args.count, "seeds": len(seeds),
+              "seeds_sha256": seed_list_hash(seeds) if seeds else "replay", "modes": ",".join(modes),
+              "structured": args.structured}
     out = os.path.abspath(args.out)
     work = os.path.join(out, "work")
     keep = os.path.join(out, "crashes")
@@ -363,25 +510,34 @@ def main():
     obr = os.path.abspath(args.obr)
 
     # the control: an unchanged seed must run, or every count below means nothing
-    control = os.path.join(work, "control.obe")
-    with open(control, "wb") as f:
-        f.write(pack(seeds[0].image))
-    p = subprocess.run([obr, control], capture_output=True, timeout=args.timeout, cwd=work, stdin=subprocess.DEVNULL)
-    if p.returncode != 0:
-        print("control failed: the unchanged seed %s exits %d: %s" % (seeds[0].name, p.returncode, p.stdout[:200]))
-        return 2
+    if seeds:
+        control = os.path.join(work, "control.obe")
+        with open(control, "wb") as f:
+            f.write(pack(seeds[0].image))
+        p = subprocess.run([obr, control], capture_output=True, timeout=args.timeout, cwd=work, stdin=subprocess.DEVNULL)
+        if p.returncode != 0:
+            print("control failed: the unchanged seed %s exits %d: %s" % (seeds[0].name, p.returncode, p.stdout[:200]))
+            return RC_USAGE
 
     def one(i):
         # each mutant draws from its own stream, so a run is the same at any --jobs
-        r = random.Random((args.seed << 32) ^ i)
-        seed = r.choice(seeds)
-        try:
-            what, image = structured(r, seed) if r.random() < args.structured else blind(r, seed)
-        except (ValueError, struct.error, IndexError):
-            what, image = blind(r, seed)
         path = os.path.join(work, "m%d_%d.obe" % (args.seed, i))
-        with open(path, "wb") as f:
-            f.write(pack(image))
+        if replay is not None:
+            with open(os.path.join(args.replay, replay[i]), "rb") as src:
+                data = src.read()
+            with open(path, "wb") as f:
+                f.write(data)
+            what = "replay " + replay[i]
+            seed = argparse.Namespace(name=os.path.splitext(replay[i])[0])
+        else:
+            r = random.Random((args.seed << 32) ^ i)
+            seed = r.choice(seeds)
+            try:
+                what, image = structured(r, seed) if r.random() < args.structured else blind(r, seed)
+            except (ValueError, struct.error, IndexError):
+                what, image = blind(r, seed)
+            with open(path, "wb") as f:
+                f.write(pack(image))
         results = {}
         for mode in modes:
             flags, extra = MODES[mode]
@@ -399,13 +555,17 @@ def main():
         bad = [m for m in modes if results[m][0] in ("crash", "silent-exit1")]
         hung = [m for m in modes if results[m][0] == "hang"]
         if bad or (hung and args.keep_hangs):
-            kept = os.path.join(keep, "%s_%d_%d.obe" % (seed.name, args.seed, i))
+            kept = os.path.join(keep, seed.name + ".obe" if replay is not None else "%s_%d_%d.obe" % (seed.name, args.seed, i))
             os.replace(path, kept)
             record = {"file": os.path.basename(kept), "seed": seed.name, "change": what,
                       "results": {m: list(results[m]) for m in modes}}
             if args.gdb and bad:
-                flags, extra = MODES[bad[0]]
+                # the interpreter's frames name the faulting function; compiled code has none. So the
+                # --jit=off run is traced when it crashed, and the first crashing mode otherwise.
+                traced = "off" if "off" in bad and results["off"][0] == "crash" else bad[0]
+                flags, extra = MODES[traced]
                 record["frames"] = gdb_frames(obr, flags, dict(os.environ, **extra), kept, args.timeout)
+                record["frames_by_mode"] = {traced: record["frames"]}
         else:
             os.remove(path)
         return what.split(" ")[0] if not what.startswith("blind") else what, results, record
@@ -413,8 +573,24 @@ def main():
     totals = {m: collections.Counter() for m in modes}
     by_kind = collections.defaultdict(collections.Counter)
     records = []
+    completed = 0
+    harness_errors = []
+
+    def guarded(i):
+        # a harness failure for one mutant is counted (attempted != completed fails the verdict), not
+        # allowed to end the run with a traceback and a status that reads like a crash
+        try:
+            return one(i)
+        except Exception as e:  # noqa: BLE001
+            harness_errors.append("mutant %d: %s: %s" % (i, type(e).__name__, e))
+            return None
+
     with ThreadPoolExecutor(args.jobs) as ex:
-        for kind, results, record in ex.map(one, range(args.count)):
+        for done in ex.map(guarded, range(args.count)):
+            if done is None:
+                continue
+            completed += 1
+            kind, results, record = done
             worst = "ran"
             for m in modes:
                 totals[m][results[m][0]] += 1
@@ -431,6 +607,10 @@ def main():
         for record in records:
             f.write(json.dumps(record) + "\n")
 
+    print("inputs: seed=%d count=%d seeds=%d seeds_sha256=%s modes=%s structured=%s"
+          % (inputs["seed"], inputs["count"], inputs["seeds"], inputs["seeds_sha256"], inputs["modes"], inputs["structured"]))
+    print("mutants attempted %d, completed %d%s" % (args.count, completed,
+          "" if not harness_errors else " (harness errors: %s)" % "; ".join(harness_errors[:3])))
     print("mutants %d, seeds %d, rng seed %d" % (args.count, len(seeds), args.seed))
     for m in modes:
         print("  %-8s %s" % (m, dict(sorted(totals[m].items()))))
@@ -453,7 +633,31 @@ def main():
             print("  %5d  %s" % (len(rs), key))
             for r in rs[:3]:
                 print("           %s: %s" % (r["file"], r["change"]))
-    return 1 if crashes else 0
+    accepted_path = None if args.no_accepted else (args.accepted or (DEFAULT_ACCEPTED if os.path.isfile(DEFAULT_ACCEPTED) else None))
+    if args.write_accepted:
+        skeleton = {"format": ACCEPTED_FORMAT, "inputs": inputs, "entries": []}
+        by_sig = collections.defaultdict(list)
+        for r in crashes:
+            by_sig[crash_signature(r) or "UNKNOWN"].append(os.path.splitext(r["file"])[0])
+        for sig, files in sorted(by_sig.items()):
+            skeleton["entries"].append({"signature": sig, "classes": [], "reason": "", "witnesses": sorted(files)})
+        with open(args.write_accepted, "w", encoding="utf-8") as f:
+            json.dump(skeleton, f, indent=1)
+            f.write(chr(10))
+        print("wrote %d signature(s) to %s: fill in classes and reasons by hand" % (len(by_sig), args.write_accepted))
+    try:
+        accepted = load_accepted(accepted_path) if accepted_path else None
+    except (ValueError, OSError, json.JSONDecodeError) as e:
+        print("accepted-crash file: %s" % e)
+        return RC_USAGE
+    rc, lines, report = assess(crashes, accepted, inputs, args.count, completed, args.gdb)
+    print("accepted-crash file: %s" % (accepted_path or "none (any crash fails)"))
+    for line in lines:
+        print(line)
+    report["harness_errors"] = harness_errors
+    with open(os.path.join(out, "verdict.json"), "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=1)
+    return rc
 
 
 if __name__ == "__main__":

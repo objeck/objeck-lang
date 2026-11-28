@@ -2212,7 +2212,8 @@ PARSER_NO_INLINE void Parser::RefuseMcpEntry(const std::wstring& file_name, int 
   refusal.line = line_num;
   refusal.pos = line_pos;
   refusal.message = message;
-  mcp_entry_refusals.push_back(refusal);
+  // the last use of 'refusal': its two strings are moved into the list, not copied (CID 1689717)
+  mcp_entry_refusals.push_back(std::move(refusal));
 }
 
 // Every file has been read: the errors RefuseMcpEntry kept are reported when the program has a

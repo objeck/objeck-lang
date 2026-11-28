@@ -440,7 +440,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     that the program joins -- must print the one-line count of dropped faults,
     and its three Joins must report the newest worker's own message, "Thread
     fault record dropped" for the oldest, and nothing for a worker that did
-    not fault; "capped" 100 times, under the cap, drops nothing.
+    not fault; "capped" 100 times, under the cap, drops nothing. The hook's
+    line also carries peak=N, the most records that were ever waiting for a
+    Join at once, counted from the entries themselves after every fault: it
+    must be exactly 4096 for "capped" 10000 and for thread_fault_join_many.obs
+    (4300 faulted workers joined after they have all ended), never more.
  39. A caller and its callee compiled at the same moment by two threads give
     the right code. A generated program has 24 pairs: a long `Caller`, compiled
     on its first call, that holds a call of a `native` `Leaf` its first call
@@ -2019,6 +2023,10 @@ def check_thread_fault_registry(obc, obr, env, bin_dir):
             if left is not None:
                 check(f"capped x {count} leaves {want[0]} records (records={left[0]} handles={left[1]})",
                       left == want, f"left={left}")
+            peak = re.search(rb"^\[thread-faults\] records=.* peak=(\d+)", err, re.M)
+            check(f"capped x {count}: never more than {min(count, 4096)} records waited at once "
+                  f"(peak={peak.group(1).decode() if peak else None})",
+                  peak is not None and int(peak.group(1)) == min(count, 4096), f"stderr tail={err[-200:]!r}")
             check(f"capped x {count}: {dropped} dropped faults are " + ("counted on stderr" if dropped else "not mentioned"),
                   (int(said.group(1)) == dropped) if said else dropped == 0, f"line={said.group(0) if said else None!r}")
 
@@ -2035,6 +2043,15 @@ def check_thread_fault_registry(obc, obr, env, bin_dir):
             each = (peaks[4000] - peaks[500]) / 3500.0
             check(f"an unjoined thread costs under 32 KB of peak resident memory ({each / 1024:.1f} KB each)",
                   each < 32 * 1024, f"peaks={peaks}")
+
+    dest = compile_fixture(obc, "thread_fault_join_many", env, bin_dir)
+    if dest:
+        rc, out, err = run([obr, dest], env=stats_env, cwd=bin_dir, timeout=600)
+        peak = re.search(rb"^\[thread-faults\] records=.* peak=(\d+)", err, re.M)
+        check("thread_fault_join_many passes with the registry report on",
+              rc == 0 and b"thread_fault_join_many: all checks passed" in out, f"rc={rc} out={out[-300:]!r}")
+        check(f"and never more than 4096 records waited at once (peak={peak.group(1).decode() if peak else None})",
+              peak is not None and int(peak.group(1)) == 4096, f"stderr tail={err[-200:]!r}")
 
     dest = compile_fixture(obc, "thread_restart_join", env, bin_dir)
     if dest:
@@ -2765,7 +2782,8 @@ def check_loader_depth_limit(obc, obr, env, bin_dir):
     # The verifier keeps the stack's state for every instruction and compared the
     # deepest with the limit only when the walk was over, so a method that pushes N
     # words cost N * N / 2 states first: 42 GB to refuse 50,000 pushes. obc cannot
-    # write such a method (it builds a long String literal an element at a time), so
+    # write such a method (it builds a long String literal an element at a time, and
+    # an expression that needs more than the limit is its own error: stack_depth.h), so
     # the image is made here: N 'LOAD_INT_LIT 0' and N 'POP_INT' put in front of a
     # function that returns 7. With 1,000 it holds 1,000 words and must load and run;
     # with 1,001 it must be refused; with 400,000 it must be refused at the same

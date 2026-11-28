@@ -253,7 +253,18 @@ file system (a changed program can reach any trap); run it in a scratch
 directory on a machine you can afford to have files appear on. A run is the same
 at any `--jobs`. Timeouts are counted as hangs, not failures (a changed loop
 bound is not a defect), so on a loaded machine a slow crash can be miscounted
-as one: compare runs made on a quiet machine. What still crashes, and why, is in
+as one: compare runs made on a quiet machine. The verdict does not accept a count of crashes. The run prints and writes
+(`<out>/verdict.json`) its pinned inputs (rng seed, mutant count, a hash of the seed list by
+content, modes) and the mutants attempted and completed (fewer completed than requested fails,
+status 3). A crash passes only if its SIGNATURE (the function that faulted, from the `--jit=off`
+gdb frames; `(jit code)` for a fault in generated code) is in
+`adhoc/obe_accepted_crashes.json`, where every entry carries a reason and the class number from
+the residual assessment; run with the inputs the file was measured with, a crash must also be one of
+that signature's witness mutants, so a NEW crash at a known site cannot stand in for a known one.
+Without `--gdb` a crash has no signature and fails. An accepted signature that no longer appears is
+reported, not failed: remove it when the fix lands. `--replay DIR` runs known crash images instead of
+mutating (to re-derive signatures), `--write-accepted FILE` writes a skeleton to complete by hand,
+`--no-accepted` accepts nothing. What still crashes, and why, is in
 [docs/design/OBE_TYPE_VERIFIER.md](../../docs/design/OBE_TYPE_VERIFIER.md).
 
 The other half is `adhoc/obe_corpus_gate.py <tree> <deploy dir> <out dir> [jobs]`:
@@ -262,5 +273,23 @@ every `.obs` of the tree compiled at `-opt s0`, `s1`, `s2` and `s3` (a quarter w
 documented class so the whole library links, each loaded with
 `OBJECK_VERIFY_ONLY=1`. Nothing it compiles is run. It exits 1 if the loader
 refuses any image: a rule that refuses what `obc` writes is wrong, or has found a
-compiler bug. It also exits 1 when no library class linked whole (an API index that
-names no library file leaves that half with nothing to load).
+compiler bug. It now accounts for every (source, configuration)
+pair instead of counting images: each ends as loaded, an expected compile refusal (listed in
+`adhoc/obe_corpus_expected_refusals.json` by source glob and refusal text class, with a reason) or a named
+exclusion (`adhoc/obe_corpus_exclusions.json`), and every library's whole-library program is loaded at
+all four levels or excluded by name. It deletes its output directory first (only an empty one or one
+carrying its marker), fails on any `.obe` it did not write, any image it did not load and any pair
+left unaccounted, prints attempted and completed counts and writes `<out>/ledger.json`. It exits 1 on
+a loader refusal and when no library class linked whole (an API index that names no library file
+leaves that half with nothing to load).
+
+The same run holds the two counts of the operand stack equal. `obc` reports an
+expression whose method needs more operand stack than the loader allows
+(`core/compiler/stack_depth.h`), from its own count of the words; a count that ran
+high would refuse a program the loader accepts. Each image is compiled and loaded
+with `OBJECK_STACK_DEPTH_OUT=<file>`, under which `obc` and `obr` each write a line
+for every method (its name, a tab and the most words its stack stands above its
+arguments, `?` where the walk gave no verdict), and the gate exits 1 if the two
+lists of any image differ or `obc` left a method uncounted. A change to an
+instruction's stack effect, to a trap's row or to either walk is checked by
+running it.
