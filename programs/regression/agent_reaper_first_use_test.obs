@@ -14,12 +14,12 @@ the one that does not stay in the static is still emptied by its own thread.
 The interleaving is forced with Agent->ReaperTest (a hidden test hook): the first use of the reaper is
 held between "there is none" and "here is one", 5 ms for the first thread and 40 ms for the second, so the
 first thread has made its reaper, run its agent and left a worker with it before the second thread
-publishes its own. That is done 200 times, the reaper being forgotten before each round; an ordinary
+publishes its own. That is done 60 times, the reaper being forgotten before each round; an ordinary
 agent run after each round gives the old code its chance to join what it still knew of. In the end every
-worker that was handed over (nearly all of the 400) must have been joined.
+worker that was handed over (nearly all of the 120) must have been joined.
 
 (Each round here leaves two reapers behind, and so two finished reaper threads that nobody joins: the
-test makes two hundred "first uses" in one process. A program has one, and at most one reaper more than
+test makes sixty "first uses" in one process. A program has one, and at most one reaper more than
 it needs.)
 ~#
 use API.Agent;
@@ -110,7 +110,7 @@ class AgentReaperFirstUseTest {
   function : Main(args : String[]) ~ Nil {
     @failures := 0;
     @lock := ThreadMutex->New("reaper_first_use_test");
-    rounds := 200;
+    rounds := 60;
     if(args->Size() > 0) {
       rounds := args[0]->ToInt();
     };

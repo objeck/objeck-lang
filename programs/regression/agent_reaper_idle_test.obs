@@ -154,7 +154,9 @@ class AgentReaperIdleTest {
     };
 
     queued := Agent->ReaperTest(2, 0) - before_queued;
-    Check("every run ended with the sink's error and left its worker to the reaper", @raised = count & queued = count);
+    # a worker whose thread starts and ends before the run gives it up (a fast start, as on macOS CI) is joined on
+    # the spot and never reaches the reaper, so no run need hand one over (on Linux nearly all do)
+    Check("every run ended with the sink's error and left its worker to the reaper (a worker that had already ended was joined on the spot)", @raised = count & queued <= count);
 
     took := Settle();
     joined := Agent->ReaperTest(3, 0);
