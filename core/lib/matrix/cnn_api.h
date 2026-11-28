@@ -915,7 +915,7 @@ OBJK_CNN_EXPORT void ml_cnn_create(VMContext& context) {
     }
     std::lock_guard<std::mutex> lock(g_mutex);
     const size_t id = g_next_id++;
-    g_models[id] = model;
+    g_models[id] = std::move(model);
     APITools_SetIntValue(context, 0, id);
   } catch(...) {
     g_global_error = "out of memory";

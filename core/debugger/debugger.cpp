@@ -438,7 +438,7 @@ void Runtime::Debugger::GetStepInTargets(std::vector<StepInTargetInfo>& targets)
     info.id = (int)step_in_calls.size();
     info.label = PrintMethod(callee);
     info.line = cur_line_num;
-    step_in_calls.push_back(call);
+    step_in_calls.push_back(std::move(call));
     targets.push_back(std::move(info));
   }
 }
