@@ -135,7 +135,7 @@ class DtlsCloseRaces {
 		for(round := 0; round < rounds; round += 1;) {
 			server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
 			if(<>server->Listen()) {
-				Check("the DTLS server listens (round {$round})", false);
+				Check("the DTLS server listens (round {$round}): {$(DTLSSocketServer->GetLastError())}", false);
 				return;
 			};
 			acceptor := DtlsAcceptor->New(server, 4);
@@ -184,6 +184,7 @@ class DtlsCloseRaces {
 
 	# a read in progress when the socket is closed: it ends, promptly (a DTLS read has no timeout)
 	function : CheckSocketClose(cert : String, key : String, rounds : Int) ~ Nil {
+		connected := 0;
 		read_ended := 0;
 		loops_ended := 0;
 		slowest := 0;
@@ -193,7 +194,7 @@ class DtlsCloseRaces {
 			# is not this test's subject.)
 			server := DTLSSocketServer->New(cert, key, "", "127.0.0.1", 0);
 			if(<>server->Listen()) {
-				Check("the DTLS server listens (round {$round})", false);
+				Check("the DTLS server listens (round {$round}): {$(DTLSSocketServer->GetLastError())}", false);
 				return;
 			};
 			acceptor := DtlsAcceptor->New(server, 4);
@@ -201,6 +202,7 @@ class DtlsCloseRaces {
 
 			client := DTLSSocket->New("127.0.0.1", server->GetPort(), cert, true);
 			if(client->IsOpen()) {
+				connected += 1;
 				reader := DtlsBlockedReader->New(client);
 				reader->Execute(Nil);
 				for(waited := 0; <>reader->IsStarted() & waited < 5000; waited += 1;) {
@@ -217,10 +219,17 @@ class DtlsCloseRaces {
 				if(reader->IsFinished()) {
 					read_ended += 1;
 					reader->Join();
+				}
+				else {
+					# what the odd round did, for whoever reads a failure
+					"  round {$round}: the read had not ended {$took} ms after Close() (started={$(reader->IsStarted())}, closed {$((round % 4) * 5)} ms after it started, accepted={$(acceptor->GetServed())})"->PrintLine();
 				};
 				if(took > slowest) {
 					slowest := took;
 				};
+			}
+			else {
+				"  round {$round}: the client did not connect: {$(DTLSSocket->GetLastError())} (accepted={$(acceptor->GetServed())})"->PrintLine();
 			};
 
 			acceptor->Stop();
@@ -231,13 +240,17 @@ class DtlsCloseRaces {
 			if(acceptor->IsFinished()) {
 				loops_ended += 1;
 				acceptor->Join();
+			}
+			else {
+				"  round {$round}: the accept loop had not ended 5000 ms after the server was closed (accepted={$(acceptor->GetServed())})"->PrintLine();
 			};
 			kept := acceptor->GetKept(0);
 			if(kept <> Nil) {
 				kept->Close();
 			};
 		};
-		Check("closing a socket ended the read in progress on it ({$read_ended} of {$rounds} rounds, slowest {$slowest} ms)", read_ended = rounds);
+		Check("every client connected ({$connected} of {$rounds})", connected = rounds);
+		Check("closing a socket ended the read in progress on it ({$read_ended} of {$connected} connected rounds, slowest {$slowest} ms)", read_ended = connected);
 		Check("every accept loop ended ({$loops_ended} of {$rounds})", loops_ended = rounds);
 	}
 
