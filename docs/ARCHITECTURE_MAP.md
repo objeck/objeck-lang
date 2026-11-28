@@ -94,7 +94,7 @@ flowchart LR
 | Written by | `FileEmitter` via `IntermediateProgram::Write` (`emit.cpp`) | the same, with `-tar lib` |
 | Read by | `Loader::LoadImage` (`core/vm/loader.cpp`) | `Library::LoadFile` in `linker.cpp` at compile time |
 | On disk | `[uncompressed size: 4 bytes][zlib stream]`; an older raw zlib stream (first byte `0x78`) is still accepted | the same |
-| First two integers | `VER_NUM`, then the magic `MAGIC_NUM_EXE` (`0xffc0`) | `VER_NUM`, then `MAGIC_NUM_LIB` (`0xffbb`) |
+| First two integers | `VER_NUM`, then the magic `MAGIC_NUM_EXE` (`0xffc0`) | `VER_NUM`, then `MAGIC_NUM_LIB` (`0xffbc`) |
 | Then | the string id, the float, bool, byte, int and char string tables, the start class and method, classes (methods, instructions) | the same tables, plus bundle names, aliases, enums, and each method's signature, parameter names and defaults |
 | An enum record | none: a program carries no enums | the name with its bundle, the offset (8 bytes), the **kind** (one byte: 0 an `enum`, 1 a `consts` group), the item count, then each item's name and value (8 bytes) |
 | A method record begins | `id` (4 bytes), then five one-byte fields: virtual, has an and/or temporary, lambda, **function**, **MCP entry**; then the name, the return type, the parameter count, the frame size, the declarations and the instructions | `id`, the method type (4 bytes), then virtual, and/or (with what the temporary holds), lambda, native, function, **MCP entry**; then the same, plus the parameter names and defaults and the generic marks before the instructions |
